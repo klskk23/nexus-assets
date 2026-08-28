@@ -1,5 +1,8 @@
 # Feature Specification: 资产台账与流转系统 Demo
 
+> **本规格描述 feature 001 交付时的形态。** 编号模型与字段绑定规则随后由
+> `docs/design-baseline-v2.md` 改写，冲突处以 v2 为准。
+
 **Feature Branch**: `001-asset-ledger-demo`
 
 **Created**: 2026-08-28

@@ -1,5 +1,8 @@
 # Phase 1 数据模型
 
+> **本规格描述 feature 001 交付时的形态。** 编号模型与字段绑定规则随后由
+> `docs/design-baseline-v2.md` 改写，冲突处以 v2 为准。
+
 **Feature**: 001-asset-ledger-demo | **Date**: 2026-08-28
 
 DDL 取自 `docs/design-baseline.md` 第 2 节，是 `migrations/001_init.sql` 的权威来源。
