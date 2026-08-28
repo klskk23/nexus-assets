@@ -8,6 +8,10 @@
 
 **Input**: User description: "$ARGUMENTS"
 
+> **语言规范**（章程原则 V）：本规格的全部正文内容必须使用**中文**撰写。
+> 仅以下内容保留英文：API 路径与参数名、字段 key、错误码 `error.code`、
+> 数据库标识符。用户可见文案（UI 文本、字段 label、`error.message`）使用中文。
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--

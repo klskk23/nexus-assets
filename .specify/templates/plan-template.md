@@ -40,7 +40,19 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+依据 `.specify/memory/constitution.md` v1.1.0。**必须逐条填写符合情况，不得以「通过」一词概括。**
+
+| # | 原则 | 本特性的符合情况 |
+|---|------|------------------|
+| I | 代码质量 | [分层边界如何保持？新增依赖及理由？] |
+| II | 测试标准 | [涉及哪些核心管线逻辑？端点集成测试？**触及 UI 则必须列出 DOM 测试**] |
+| III | 用户体验一致性 | [用到哪些 shadcn/ui 组件？**是否需要自定义组件？若需要，开发者是否已确认？**] |
+| IV | 性能要求 | [新增查询路径与索引？分页？前端 bundle 影响？] |
+| V | 语言规范 | [文档中文、代码英文；新增的用户可见文案清单] |
+
+**技术栈约束**：后端 Go + Gin + SQLite（`BEGIN IMMEDIATE` / WAL / 写连接池 = 1）+ goose；
+前端 Vite + React + TypeScript + react-router + Tailwind CSS + shadcn/ui + TanStack Query。
+偏离必须在下方 Complexity Tracking 中登记。
 
 ## Project Structure
 
