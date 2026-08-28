@@ -5,12 +5,17 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+
+	"github.com/klskk23/nexus-assets/internal/model"
+	"github.com/klskk23/nexus-assets/internal/store"
 )
 
 // Blocker names one asset standing in the way of removing a holder entity.
 type Blocker struct {
 	AssetID string `json:"asset_id"`
-	SN      string `json:"sn"`
+	// Name is how the asset is referred to: its category's display key, or the
+	// short UUID when the category has not nominated one.
+	Name string `json:"name"`
 	// Reason is "holder" when the asset is currently held by the entity, or
 	// "reference" when a reference field on the asset points at it.
 	Reason string `json:"reason"`
@@ -43,9 +48,15 @@ func (s *Store) Blockers(ctx context.Context, entityID string) ([]Blocker, int, 
 		defer rows.Close()
 		for rows.Next() {
 			var b Blocker
-			if err := rows.Scan(&b.AssetID, &b.SN, &b.Reason); err != nil {
+			var attrsJSON, displayKey string
+			if err := rows.Scan(&b.AssetID, &attrsJSON, &displayKey, &b.Reason); err != nil {
 				return err
 			}
+			attrs, err := store.UnmarshalJSONMap(attrsJSON)
+			if err != nil {
+				return err
+			}
+			b.Name = model.AssetDisplayName(b.AssetID, attrs, displayKey)
 			out = append(out, b)
 		}
 		return rows.Err()
@@ -59,13 +70,15 @@ const blockerPredicate = `
 
 const countBlockersSQL = `SELECT count(*) FROM assets WHERE ` + blockerPredicate
 
+// The display name is assembled in Go rather than SQL, so ordering falls back
+// to creation order: stable, and the same order the list page shows.
 const listBlockersSQL = `
-	SELECT id, sn,
-	       CASE WHEN holder_type = 'entity' AND holder_id = ? THEN 'holder' ELSE 'reference' END
-	FROM assets
-	WHERE ` + `(holder_type = 'entity' AND holder_id = ?)
-	  OR EXISTS (SELECT 1 FROM json_each(assets.attrs) WHERE json_each.value = ?)
-	ORDER BY sn LIMIT ?`
+	SELECT a.id, a.attrs, coalesce(c.display_key, ''),
+	       CASE WHEN a.holder_type = 'entity' AND a.holder_id = ? THEN 'holder' ELSE 'reference' END
+	FROM assets a JOIN categories c ON c.id = a.category_id
+	WHERE (a.holder_type = 'entity' AND a.holder_id = ?)
+	   OR EXISTS (SELECT 1 FROM json_each(a.attrs) WHERE json_each.value = ?)
+	ORDER BY a.created_at, a.id LIMIT ?`
 
 // describeBlockers renders a message a person can act on.
 func describeBlockers(entityName string, blockers []Blocker, total int) string {
@@ -75,7 +88,7 @@ func describeBlockers(entityName string, blockers []Blocker, total int) string {
 		if b.Reason == "reference" {
 			reason = "引用"
 		}
-		parts = append(parts, fmt.Sprintf("%s（%s）", b.SN, reason))
+		parts = append(parts, fmt.Sprintf("%s（%s）", b.Name, reason))
 	}
 	msg := fmt.Sprintf("「%s」仍被 %d 台设备%s", entityName, total, joinOr(parts))
 	if total > len(blockers) {

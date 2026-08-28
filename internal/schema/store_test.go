@@ -34,7 +34,6 @@ func tree(t *testing.T, s *Store, ctx context.Context) (root, child model.Catego
 	}
 	child, err = s.CreateCategory(ctx, CreateCategoryInput{
 		Code: "RT", Name: "SDWAN 路由器", ParentID: &root.ID,
-		SNTemplate: "{{ .attrs.mac | hex2dec }}",
 	})
 	if err != nil {
 		t.Fatalf("create child: %v", err)
@@ -76,32 +75,41 @@ func TestListCategoriesOrdersByPath(t *testing.T) {
 	}
 }
 
-func TestSNTemplateInheritance(t *testing.T) {
+// The display key is deliberately not inherited, unlike a bound field. A child
+// category is usually exactly where a different numbering rule belongs, so
+// silently adopting the parent's would be the wrong default.
+func TestDisplayKeyIsNotInherited(t *testing.T) {
 	s, ctx := newStore(t)
 	root, child := tree(t, s, ctx)
 
-	templates, err := s.SNTemplates(ctx)
+	tag, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "tag", Label: "标签", Type: model.FieldText, IsUnique: true,
+	})
 	if err != nil {
-		t.Fatalf("templates: %v", err)
+		t.Fatal(err)
 	}
-	tmpl, from := ResolveSNTemplate(child.Path, templates)
-	if from != child.ID {
-		t.Errorf("child defines its own template, from = %q", from)
+	if err := s.Bind(ctx, root.ID, tag.ID, true, 10); err != nil {
+		t.Fatal(err)
+	}
+	key := "tag"
+	if _, err := s.UpdateCategory(ctx, root.ID, UpdateCategoryInput{DisplayKey: &key}); err != nil {
+		t.Fatalf("set root display key: %v", err)
 	}
 
-	// Move the rule up to the root and clear it on the child.
-	empty := ""
-	if _, err := s.UpdateCategory(ctx, child.ID, UpdateCategoryInput{SNTemplate: &empty}); err != nil {
-		t.Fatalf("clear child template: %v", err)
+	keys, err := s.DisplayKeys(ctx)
+	if err != nil {
+		t.Fatal(err)
 	}
-	rootTmpl := "{{ .attrs.mac | hex2dec | pad 16 }}"
-	if _, err := s.UpdateCategory(ctx, root.ID, UpdateCategoryInput{SNTemplate: &rootTmpl}); err != nil {
-		t.Fatalf("set root template: %v", err)
+	if keys[root.ID] != "tag" {
+		t.Errorf("root display key = %q", keys[root.ID])
 	}
-	templates, _ = s.SNTemplates(ctx)
-	tmpl, from = ResolveSNTemplate(child.Path, templates)
-	if from != root.ID || tmpl != rootTmpl {
-		t.Errorf("the child should now inherit the root rule, got %q from %q", tmpl, from)
+	if keys[child.ID] != "" {
+		t.Errorf("the child must not inherit the parent's display key, got %q", keys[child.ID])
+	}
+
+	// An inherited binding is still eligible, it just has to be chosen.
+	if _, err := s.UpdateCategory(ctx, child.ID, UpdateCategoryInput{DisplayKey: &key}); err != nil {
+		t.Fatalf("a key inherited from the parent must be selectable: %v", err)
 	}
 }
 

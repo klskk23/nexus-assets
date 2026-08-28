@@ -35,7 +35,7 @@ const page = {
   items: [
     {
       id: "a1",
-      sn: "112394521950",
+      display_name: "112394521950",
       category_id: "net",
       model_id: null,
       status: "in_stock",
@@ -69,7 +69,7 @@ describe("Assets list", () => {
 
   it("focuses the search box on mount so a scanner can type straight away", async () => {
     renderWithProviders(<Assets />)
-    await waitFor(() => expect(screen.getByLabelText(/搜索资产编号/)).toHaveFocus())
+    await waitFor(() => expect(screen.getByLabelText(/搜索编号/)).toHaveFocus())
   })
 
   it("shows the total and the fixed columns", async () => {

@@ -17,6 +17,9 @@ type lookups struct {
 	holdersByName map[string]model.HolderEntity
 	usersByName   map[string]string
 	fieldByKey    map[string]model.BoundField
+	// displayKey is the category's nominated identifier, so a preview row can
+	// show the same label the asset will carry once it exists.
+	displayKey string
 }
 
 func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups, error) {
@@ -26,6 +29,12 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 		usersByName:   map[string]string{},
 		fieldByKey:    map[string]model.BoundField{},
 	}
+
+	cat, err := s.schema.GetCategory(ctx, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	l.displayKey = cat.DisplayKey
 
 	models, err := s.schema.ListModels(ctx)
 	if err != nil {

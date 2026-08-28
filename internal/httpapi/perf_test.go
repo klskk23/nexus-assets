@@ -69,7 +69,7 @@ func TestPerformanceAtTenThousandAssets(t *testing.T) {
 		{"list deep page", "/api/assets?limit=50&offset=9000", listBudget},
 		{"list filtered by status", "/api/assets?limit=50&status=in_stock", listBudget},
 		{"list filtered by custom field", "/api/assets?limit=50&attr.firmware=2.1.3", listBudget},
-		{"exact serial-number search", "/api/assets?q=" + one.SN, listBudget},
+		{"exact identifier search", "/api/assets?q=" + one.DisplayName, listBudget},
 		{"single asset read", "/api/assets/" + one.ID, singleOpBudget},
 		{"overview", "/api/overview", listBudget},
 	}

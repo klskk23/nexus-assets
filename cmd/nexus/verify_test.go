@@ -51,7 +51,7 @@ func newApp(t *testing.T) (*app, string, string) {
 		t.Fatal(err)
 	}
 	cat, err := sch.CreateCategory(ctx, schema.CreateCategoryInput{
-		Code: "RT", Name: "路由器", SNTemplate: "{{ .attrs.mac | hex2dec }}",
+		Code: "RT", Name: "路由器",
 	})
 	if err != nil {
 		t.Fatal(err)

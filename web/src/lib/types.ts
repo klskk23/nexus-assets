@@ -48,13 +48,12 @@ export interface Category {
   name: string
   parent_id: string | null
   path: string
-  sn_template: string
+  /** Key of the bound field people read aloud; empty falls back to the short UUID. */
+  display_key: string
 }
 
 export interface CategorySchema {
   category: Category
-  sn_template: string
-  sn_template_from: string
   fields: BoundField[]
 }
 
@@ -83,7 +82,8 @@ export interface Holder {
 
 export interface Asset {
   id: string
-  sn: string
+  /** Derived by the server from the category's display key, or the short UUID. */
+  display_name: string
   category_id: string
   model_id: string | null
   status: AssetStatus

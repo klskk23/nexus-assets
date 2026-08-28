@@ -5,6 +5,7 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -70,15 +71,58 @@ func FailErr(c *gin.Context, err error) {
 		Fail(c, http.StatusNotFound, CodeNotFound, MsgNotFound, nil)
 
 	case errors.Is(err, schema.ErrCategoryHasAssets):
-		Fail(c, http.StatusConflict, CodeCategoryHasAssets, err.Error(), nil)
+		Fail(c, http.StatusConflict, CodeCategoryHasAssets,
+			userText(err, schema.ErrCategoryHasAssets), nil)
 
 	case errors.Is(err, schema.ErrKeyConflict):
-		Fail(c, http.StatusConflict, CodeUniqueConflict, err.Error(), nil)
+		Fail(c, http.StatusConflict, CodeUniqueConflict, userText(err, schema.ErrKeyConflict), nil)
 
-	case errors.Is(err, holder.ErrReferenced), errors.Is(err, auth.ErrStillOwnsAssets):
-		Fail(c, http.StatusConflict, CodeReferenceBlocked, err.Error(), nil)
+	// Configuration mistakes carry their own explanation of what to fix first,
+	// so the message is passed through rather than flattened to a generic one.
+	case errors.Is(err, schema.ErrDependenciesUnmet):
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
+			userText(err, schema.ErrDependenciesUnmet), nil)
+
+	case errors.Is(err, schema.ErrDisplayKeyInvalid):
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
+			userText(err, schema.ErrDisplayKeyInvalid), nil)
+
+	case errors.Is(err, schema.ErrFieldDependedOn):
+		Fail(c, http.StatusConflict, CodeReferenceBlocked,
+			userText(err, schema.ErrFieldDependedOn), nil)
+
+	case errors.Is(err, holder.ErrDefaultStockRequired):
+		Fail(c, http.StatusConflict, CodeReferenceBlocked,
+			userText(err, holder.ErrDefaultStockRequired), nil)
+
+	case errors.Is(err, holder.ErrReferenced):
+		Fail(c, http.StatusConflict, CodeReferenceBlocked, userText(err, holder.ErrReferenced), nil)
+
+	case errors.Is(err, auth.ErrStillOwnsAssets):
+		Fail(c, http.StatusConflict, CodeReferenceBlocked,
+			userText(err, auth.ErrStillOwnsAssets), nil)
 
 	default:
 		Fail(c, http.StatusInternalServerError, CodeInternal, MsgInternal, nil)
 	}
+}
+
+// userText renders a domain error for the screen.
+//
+// A sentinel carries an English identifier so errors.Is can match it; the part
+// after it is the Chinese guidance. Passing err.Error() through whole put
+// "expression key dependencies are unmet: " in front of that guidance on the
+// user's screen, which is exactly what principle V rules out.
+func userText(err error, sentinel error) string {
+	msg := err.Error()
+	rest, ok := strings.CutPrefix(msg, sentinel.Error())
+	if !ok {
+		return msg
+	}
+	rest = strings.TrimLeft(rest, ": ：")
+	if rest == "" {
+		// A bare sentinel has no guidance of its own to show.
+		return MsgValidationFailed
+	}
+	return rest
 }

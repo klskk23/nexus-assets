@@ -5,20 +5,22 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
+	"time"
 
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/store"
-	"time"
 )
 
-const assetCols = `id, sn, category_id, model_id, status, owner_id, holder_type, holder_id, attrs, version, created_at, updated_at`
+const assetCols = `id, category_id, model_id, status, owner_id, holder_type, holder_id, attrs, version, created_at, updated_at`
 
 func scanAsset(row interface{ Scan(...any) error }) (model.Asset, error) {
 	var a model.Asset
 	var modelID sql.NullString
 	var attrs, created, updated string
 	var holderType, holderID string
-	if err := row.Scan(&a.ID, &a.SN, &a.CategoryID, &modelID, &a.Status, &a.OwnerID,
+	if err := row.Scan(&a.ID, &a.CategoryID, &modelID, &a.Status, &a.OwnerID,
 		&holderType, &holderID, &attrs, &a.Version, &created, &updated); err != nil {
 		return a, err
 	}
@@ -45,53 +47,147 @@ func loadForUpdate(ctx context.Context, tx *sql.Tx, id string) (model.Asset, err
 	return a, err
 }
 
-// checkUnique enforces the uniqueness of every field marked unique, plus the
-// serial number.
+// uniqueValues extracts the values that must not collide, keyed by field.
 //
-// A plain select-then-insert is safe here only because the surrounding
-// transaction is BEGIN IMMEDIATE on a single-connection write pool: SQLite
-// serialises writers, so no other transaction can slip a conflicting row in
-// between the check and the insert. On a database without that guarantee this
-// would have to become a database-level constraint.
-func checkUnique(ctx context.Context, tx *sql.Tx, fields []model.BoundField, attrs map[string]any, sn, selfID string) error {
-	var conflict string
-	err := tx.QueryRowContext(ctx,
-		`SELECT sn FROM assets WHERE sn = ? AND id != ? LIMIT 1`, sn, selfID).Scan(&conflict)
-	if err == nil {
-		return FieldErrors{"sn": fmt.Sprintf("编号 %s 已被占用", conflict)}
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-	var histAsset string
-	err = tx.QueryRowContext(ctx,
-		`SELECT asset_id FROM asset_sn_history WHERE sn = ? AND asset_id != ? LIMIT 1`, sn, selfID).Scan(&histAsset)
-	if err == nil {
-		return FieldErrors{"sn": "该编号曾属于另一台设备，不能重复使用"}
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-
+// An empty value never occupies a slot: half the devices in a batch may not
+// have their optional asset tag filled in yet, and they must not all collide
+// with each other on the empty string.
+func uniqueValues(fields []model.BoundField, attrs map[string]any) map[string]string {
+	out := map[string]string{}
 	for _, f := range fields {
 		if !f.IsUnique {
 			continue
 		}
 		v, ok := attrs[f.Key]
-		if !ok || v == nil || v == "" {
+		if !ok || v == nil {
 			continue
 		}
-		var otherSN string
-		q := `SELECT sn FROM assets WHERE json_extract(attrs, '$.' || ?) = ? AND id != ? LIMIT 1`
-		err := tx.QueryRowContext(ctx, q, f.Key, fmt.Sprintf("%v", v), selfID).Scan(&otherSN)
+		s := strings.TrimSpace(fmt.Sprintf("%v", v))
+		if s == "" {
+			continue
+		}
+		out[f.Key] = s
+	}
+	return out
+}
+
+// probeUnique looks for a colliding live value so the error can name the device
+// holding it, and the field worth correcting.
+//
+// The partial unique index on asset_unique_values is what actually guarantees
+// uniqueness; this pass exists purely to turn a constraint violation into a
+// message someone can act on. Because the guarantee no longer depends on the
+// select-then-insert window, the single-connection write pool is now a
+// performance choice rather than a correctness requirement.
+func probeUnique(ctx context.Context, tx *sql.Tx, fields []model.BoundField,
+	want map[string]string, selfID string) error {
+
+	// Static keys are probed before expression keys. When a duplicate MAC also
+	// collides on the number derived from it, both are real conflicts, but only
+	// the MAC is a field the person can go and correct -- reporting the derived
+	// key instead sends them looking for something they cannot edit.
+	var keys []string
+	for _, pass := range []bool{false, true} {
+		for _, f := range fields {
+			if _, ok := want[f.Key]; !ok {
+				continue
+			}
+			if (f.Type == model.FieldComputed) == pass {
+				keys = append(keys, f.Key)
+			}
+		}
+	}
+	for _, k := range keys {
+		var otherID string
+		err := tx.QueryRowContext(ctx,
+			`SELECT asset_id FROM asset_unique_values
+			 WHERE field_key = ? AND value = ? AND archived_at IS NULL AND asset_id != ? LIMIT 1`,
+			k, want[k], selfID).Scan(&otherID)
 		if err == nil {
-			return FieldErrors{f.Key: fmt.Sprintf("该值已被资产 %s 占用", otherSN)}
+			return FieldErrors{k: fmt.Sprintf("该值已被资产 %s 占用", describeAsset(ctx, tx, otherID))}
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
 	}
 	return nil
+}
+
+// syncUniqueValues brings the reverse-lookup table in line with what was just
+// written, archiving the values that changed.
+//
+// Archived rows drop out of the partial index, so a replaced value stops
+// occupying its slot while staying searchable. That is deliberate: a device
+// that had its mainboard swapped legitimately hands its old MAC to whoever
+// receives the old board, and the scanner should still find the history.
+func syncUniqueValues(ctx context.Context, tx *sql.Tx, assetID string,
+	want map[string]string, now time.Time) error {
+
+	rows, err := tx.QueryContext(ctx,
+		`SELECT field_key, value FROM asset_unique_values WHERE asset_id = ? AND archived_at IS NULL`, assetID)
+	if err != nil {
+		return fmt.Errorf("load unique values: %w", err)
+	}
+	live := map[string]string{}
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			rows.Close()
+			return err
+		}
+		live[k] = v
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for k, v := range live {
+		if want[k] == v {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE asset_unique_values SET archived_at = ?
+			 WHERE asset_id = ? AND field_key = ? AND value = ? AND archived_at IS NULL`,
+			store.FormatTime(now), assetID, k, v); err != nil {
+			return fmt.Errorf("archive unique value: %w", err)
+		}
+	}
+
+	keys := make([]string, 0, len(want))
+	for k := range want {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if live[k] == want[k] {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO asset_unique_values (asset_id, field_key, value, created_at) VALUES (?, ?, ?, ?)`,
+			assetID, k, want[k], store.FormatTime(now)); err != nil {
+			// The probe should have caught this; reaching here means a
+			// collision the probe could not see, so report it as one.
+			return FieldErrors{k: fmt.Sprintf("该值已被占用：%v", err)}
+		}
+	}
+	return nil
+}
+
+// describeAsset renders another asset the way a person would refer to it.
+func describeAsset(ctx context.Context, tx *sql.Tx, id string) string {
+	var attrs, displayKey string
+	err := tx.QueryRowContext(ctx,
+		`SELECT a.attrs, coalesce(c.display_key, '')
+		 FROM assets a JOIN categories c ON c.id = a.category_id WHERE a.id = ?`, id).Scan(&attrs, &displayKey)
+	if err != nil {
+		return model.ShortID(id)
+	}
+	m, err := store.UnmarshalJSONMap(attrs)
+	if err != nil {
+		return model.ShortID(id)
+	}
+	return model.AssetDisplayName(id, m, displayKey)
 }
 
 // insertTransfer appends one immutable event.

@@ -150,7 +150,7 @@ func (s *Store) Disable(ctx context.Context, id string) error {
 			return err
 		}
 		if owned > 0 {
-			return fmt.Errorf("%w: %d asset(s) must be transferred first", ErrStillOwnsAssets, owned)
+			return fmt.Errorf("%w：该账号仍是 %d 台设备的负责人，请先改派再停用", ErrStillOwnsAssets, owned)
 		}
 		now := time.Now().UTC()
 		res, err := tx.ExecContext(ctx,

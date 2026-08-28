@@ -17,4 +17,5 @@ export interface ProductModelRow {
   name: string
   vendor?: string
   attr_defaults: Record<string, unknown>
+  archived_at?: string | null
 }

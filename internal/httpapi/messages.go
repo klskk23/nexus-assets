@@ -21,4 +21,7 @@ const (
 	MsgNotTailEvent      = "只能修改该设备最新的一条流转记录"
 	MsgNoDefaultStock    = "尚未设置默认库存点，请选择归还位置"
 	MsgUploadTooLarge    = "文件过大，请拆分后再导入"
+	// The default stock point can move but not switch off; check-in would
+	// otherwise have two behaviours with nothing on screen to distinguish them.
+	MsgDefaultStockRequired = "默认库存点只能更换，不能取消。请直接把其他位置设为默认。"
 )

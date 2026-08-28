@@ -25,14 +25,15 @@ import (
 )
 
 type harness struct {
-	router *gin.Engine
-	schema *schema.Store
-	token  string
-	assets *asset.Service
-	catID  string
-	locID  string
-	userID string
-	ctx    context.Context
+	router    *gin.Engine
+	schema    *schema.Store
+	token     string
+	assets    *asset.Service
+	catID     string
+	locID     string
+	userID    string
+	snFieldID string
+	ctx       context.Context
 }
 
 func newHarness(t *testing.T) *harness {
@@ -70,7 +71,7 @@ func newHarness(t *testing.T) *harness {
 		t.Fatalf("set default stock: %v", err)
 	}
 	root, err := sch.CreateCategory(ctx, schema.CreateCategoryInput{
-		Code: "RT", Name: "SDWAN 路由器", SNTemplate: "{{ .attrs.mac | hex2dec }}",
+		Code: "RT", Name: "SDWAN 路由器",
 	})
 	if err != nil {
 		t.Fatalf("create category: %v", err)
@@ -84,6 +85,20 @@ func newHarness(t *testing.T) *harness {
 	if err := sch.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
+	sn, err := sch.CreateField(ctx, schema.CreateFieldInput{
+		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
+		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+	})
+	if err != nil {
+		t.Fatalf("create sn field: %v", err)
+	}
+	if err := sch.Bind(ctx, root.ID, sn.ID, false, 20); err != nil {
+		t.Fatalf("bind sn: %v", err)
+	}
+	displayKey := "sn"
+	if _, err := sch.UpdateCategory(ctx, root.ID, schema.UpdateCategoryInput{DisplayKey: &displayKey}); err != nil {
+		t.Fatalf("set display key: %v", err)
+	}
 
 	cfg := &config.Config{JWTSecret: []byte("test"), JWTTTL: time.Hour}
 	issuer := auth.NewIssuer(cfg.JWTSecret, cfg.JWTTTL)
@@ -96,7 +111,7 @@ func newHarness(t *testing.T) *harness {
 		importer.New(db, sch, hs, us, svc), audit.New(db), nil, nil)
 	return &harness{
 		router: srv.Router(), schema: sch, token: tok, assets: svc,
-		catID: root.ID, locID: loc.ID, userID: u.ID, ctx: ctx,
+		catID: root.ID, locID: loc.ID, userID: u.ID, snFieldID: sn.ID, ctx: ctx,
 	}
 }
 

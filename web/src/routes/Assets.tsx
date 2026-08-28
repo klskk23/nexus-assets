@@ -198,7 +198,7 @@ export function Assets() {
                   <TableRow key={a.id} className="cursor-pointer">
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
-                        aria-label={zh.common.selectOne(a.sn)}
+                        aria-label={zh.common.selectOne(a.display_name)}
                         checked={selected.includes(a.id)}
                         onCheckedChange={() => toggleSelected(a.id)}
                       />
@@ -207,7 +207,7 @@ export function Assets() {
                       className="font-mono"
                       onClick={() => navigate(`/assets/${a.id}`)}
                     >
-                      {a.sn}
+                      {a.display_name}
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{zh.status[a.status] ?? a.status}</Badge>

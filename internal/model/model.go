@@ -1,7 +1,11 @@
 // Package model holds the domain types shared across the application.
 package model
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
 // AssetStatus is the lifecycle state of a physical device.
 type AssetStatus string
@@ -137,12 +141,16 @@ type User struct {
 
 // Category is a node in the classification tree.
 type Category struct {
-	ID         string     `json:"id"`
-	Code       string     `json:"code"`
-	Name       string     `json:"name"`
-	ParentID   *string    `json:"parent_id"`
-	Path       string     `json:"path"`
-	SNTemplate string     `json:"sn_template"`
+	ID       string  `json:"id"`
+	Code     string  `json:"code"`
+	Name     string  `json:"name"`
+	ParentID *string `json:"parent_id"`
+	Path     string  `json:"path"`
+	// DisplayKey names the bound field whose value people read aloud. Empty
+	// means the category has not nominated one, and assets fall back to
+	// ShortID. It is deliberately not inherited from ancestors: a child
+	// category is usually exactly where a different numbering rule belongs.
+	DisplayKey string     `json:"display_key"`
 	ArchivedAt *time.Time `json:"archived_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
@@ -226,15 +234,17 @@ type HolderEntity struct {
 
 // Asset is the ledger record of one physical device.
 type Asset struct {
-	ID         string         `json:"id"`
-	SN         string         `json:"sn"`
-	CategoryID string         `json:"category_id"`
-	ModelID    *string        `json:"model_id"`
-	Status     AssetStatus    `json:"status"`
-	OwnerID    string         `json:"-"`
-	Owner      *User          `json:"owner,omitempty"`
-	Holder     Holder         `json:"holder"`
-	Attrs      map[string]any `json:"attrs"`
+	ID string `json:"id"`
+	// DisplayName is derived on read from the category's DisplayKey, never
+	// stored. The UUID in ID is the only identity the database knows about.
+	DisplayName string         `json:"display_name"`
+	CategoryID  string         `json:"category_id"`
+	ModelID     *string        `json:"model_id"`
+	Status      AssetStatus    `json:"status"`
+	OwnerID     string         `json:"-"`
+	Owner       *User          `json:"owner,omitempty"`
+	Holder      Holder         `json:"holder"`
+	Attrs       map[string]any `json:"attrs"`
 	// ArchivedAttrs holds keys that are no longer part of the category's
 	// effective field set. They are kept, shown read-only, and never validated.
 	ArchivedAttrs map[string]any `json:"archived_attrs,omitempty"`
@@ -270,4 +280,35 @@ type AssetState struct {
 	Status  AssetStatus
 	Holder  Holder
 	OwnerID string
+}
+
+// ShortID is the fallback human-facing identifier: the first group of the UUID.
+// Eight hex digits tell devices apart on a shelf and can be copied by hand,
+// which the full UUID cannot.
+func ShortID(id string) string {
+	if i := strings.IndexByte(id, '-'); i > 0 {
+		return id[:i]
+	}
+	if len(id) > 8 {
+		return id[:8]
+	}
+	return id
+}
+
+// AssetDisplayName resolves what to show for one asset.
+//
+// A configured display key always has a value -- it must be unique, its
+// dependencies are forced to be required, and a failed evaluation rolls the
+// save back -- so the fallback only fires for a category that never nominated
+// one. It still guards against an empty stored value rather than trusting that
+// chain, because the cost of being wrong is a blank first column.
+func AssetDisplayName(id string, attrs map[string]any, displayKey string) string {
+	if displayKey != "" {
+		if v, ok := attrs[displayKey]; ok && v != nil {
+			if s := strings.TrimSpace(fmt.Sprintf("%v", v)); s != "" {
+				return s
+			}
+		}
+	}
+	return ShortID(id)
 }

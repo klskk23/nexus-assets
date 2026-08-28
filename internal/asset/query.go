@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
+	"github.com/klskk23/nexus-assets/internal/store"
 )
 
 // Get loads one asset and splits its stored values into live and orphan keys.
@@ -25,6 +27,13 @@ func (s *Service) Get(ctx context.Context, id string) (model.Asset, error) {
 		return a, err
 	}
 	a.Attrs, a.ArchivedAttrs = SplitAttrs(schema.ActiveFields(fields), a.Attrs)
+
+	var displayKey string
+	if err := s.db.ReadDB().QueryRowContext(ctx,
+		`SELECT coalesce(display_key, '') FROM categories WHERE id = ?`, a.CategoryID).Scan(&displayKey); err != nil {
+		return a, err
+	}
+	a.DisplayName = model.AssetDisplayName(a.ID, a.Attrs, displayKey)
 	return a, nil
 }
 
@@ -115,14 +124,16 @@ func (s *Service) List(ctx context.Context, f ListFilter) (ListResult, error) {
 			res.ExactMatchID = id
 		}
 		like := "%" + q + "%"
+		upper := "%" + normaliseScan(q) + "%"
+		// Every unique value, live or retired, is reachable through one table,
+		// so a scanner finds a device by its asset tag, its MAC or its vendor
+		// serial without any of those keys being named here.
 		where = append(where, `(
-			sn LIKE ?
-			OR json_extract(attrs, '$.mac') LIKE ?
-			OR id IN (SELECT asset_id FROM asset_sn_history WHERE sn LIKE ?)
+			id IN (SELECT asset_id FROM asset_unique_values WHERE value LIKE ? OR value LIKE ?)
 			OR model_id IN (SELECT id FROM product_models WHERE name LIKE ?)
+			OR id LIKE ?
 		)`)
-		upper := "%" + strings.ToUpper(strings.NewReplacer(":", "", "-", "", ".", "").Replace(q)) + "%"
-		args = append(args, like, upper, like, like)
+		args = append(args, like, upper, like, q+"%")
 	}
 
 	clause := strings.Join(where, " AND ")
@@ -146,70 +157,150 @@ func (s *Service) List(ctx context.Context, f ListFilter) (ListResult, error) {
 		}
 		res.Items = append(res.Items, a)
 	}
-	return res, rows.Err()
+	if err := rows.Err(); err != nil {
+		return res, err
+	}
+
+	// One map for the whole page rather than a lookup per row: display names
+	// are the first column, so resolving them must not scale with the page.
+	if len(res.Items) > 0 {
+		displayKeys, err := s.schema.DisplayKeys(ctx)
+		if err != nil {
+			return res, err
+		}
+		for i := range res.Items {
+			it := &res.Items[i]
+			it.DisplayName = model.AssetDisplayName(it.ID, it.Attrs, displayKeys[it.CategoryID])
+		}
+	}
+	return res, nil
 }
 
-// exactMatch tries the serial number, its history and a normalised MAC.
+// exactMatch resolves a scanned code to a single asset.
+//
+// Live values first, then retired ones, then the UUID. Ambiguity stops the
+// jump rather than picking a winner: a retired value may legitimately belong to
+// several devices over time -- a swapped mainboard carries its MAC to the next
+// machine -- and silently opening one of them would be worse than showing both.
 func (s *Service) exactMatch(ctx context.Context, q string) (string, bool, error) {
-	normalised := strings.ToUpper(strings.NewReplacer(":", "", "-", "", ".", "", " ", "").Replace(q))
-	queries := []struct {
-		sql string
-		arg string
+	normalised := normaliseScan(q)
+	probes := []struct {
+		sql  string
+		args []any
 	}{
-		{`SELECT id FROM assets WHERE sn = ?`, q},
-		{`SELECT id FROM assets WHERE json_extract(attrs, '$.mac') = ?`, normalised},
-		{`SELECT asset_id FROM asset_sn_history WHERE sn = ?`, q},
+		{`SELECT DISTINCT asset_id FROM asset_unique_values
+		  WHERE archived_at IS NULL AND value IN (?, ?)`, []any{q, normalised}},
+		{`SELECT DISTINCT asset_id FROM asset_unique_values
+		  WHERE archived_at IS NOT NULL AND value IN (?, ?)`, []any{q, normalised}},
+		{`SELECT id FROM assets WHERE id = ?`, []any{q}},
 	}
-	for _, tc := range queries {
-		var id string
-		err := s.db.ReadDB().QueryRowContext(ctx, tc.sql+` LIMIT 2`, tc.arg).Scan(&id)
-		if errors.Is(err, sql.ErrNoRows) {
-			continue
-		}
+	for _, p := range probes {
+		ids, err := s.collectIDs(ctx, p.sql+` LIMIT 2`, p.args...)
 		if err != nil {
 			return "", false, err
 		}
-		return id, true, nil
+		switch len(ids) {
+		case 0:
+			continue
+		case 1:
+			return ids[0], true, nil
+		default:
+			// Several devices answer to this code; let the list show them.
+			return "", false, nil
+		}
 	}
 	return "", false, nil
 }
 
-// SNHistory returns the retired serial numbers of one asset, newest first.
-func (s *Service) SNHistory(ctx context.Context, assetID string) ([]string, error) {
-	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT sn FROM asset_sn_history WHERE asset_id = ? ORDER BY replaced_at DESC`, assetID)
+func (s *Service) collectIDs(ctx context.Context, q string, args ...any) ([]string, error) {
+	rows, err := s.db.ReadDB().QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []string
 	for rows.Next() {
-		var sn string
-		if err := rows.Scan(&sn); err != nil {
+		var id string
+		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
-		out = append(out, sn)
+		out = append(out, id)
 	}
 	return out, rows.Err()
 }
 
-// Delete removes an asset outright, cascading its transfer history and serial
-// number aliases. The caller is responsible for the typed-SN confirmation.
-func (s *Service) Delete(ctx context.Context, id, confirmSN string) error {
+// normaliseScan strips the separators a scanner or a human may include, so a
+// MAC typed as aa-bb-cc matches one stored as AABBCC.
+func normaliseScan(q string) string {
+	return strings.ToUpper(strings.NewReplacer(":", "", "-", "", ".", "", " ", "").Replace(q))
+}
+
+// HistoricValue is one value an asset used to carry on a unique field.
+type HistoricValue struct {
+	Key        string    `json:"key"`
+	Value      string    `json:"value"`
+	ArchivedAt time.Time `json:"archived_at"`
+}
+
+// ValueHistory returns the retired unique values of one asset, newest first.
+//
+// This is what keeps an already-printed label useful after the value behind it
+// changed: the old code still resolves, it simply no longer holds the slot.
+func (s *Service) ValueHistory(ctx context.Context, assetID string) ([]HistoricValue, error) {
+	rows, err := s.db.ReadDB().QueryContext(ctx,
+		`SELECT field_key, value, archived_at FROM asset_unique_values
+		 WHERE asset_id = ? AND archived_at IS NOT NULL
+		 ORDER BY archived_at DESC, field_key`, assetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []HistoricValue
+	for rows.Next() {
+		var h HistoricValue
+		var archived string
+		if err := rows.Scan(&h.Key, &h.Value, &archived); err != nil {
+			return nil, err
+		}
+		var err error
+		if h.ArchivedAt, err = store.ParseTime(archived); err != nil {
+			return nil, err
+		}
+		out = append(out, h)
+	}
+	return out, rows.Err()
+}
+
+// Delete removes an asset outright, along with its transfer history and its
+// unique-value rows.
+//
+// The caller types the asset's display name to confirm. For a category with no
+// display key that is the short UUID, which is still eight characters someone
+// has to copy deliberately -- the point is to make deletion a considered act,
+// not to make it convenient.
+func (s *Service) Delete(ctx context.Context, id, confirm string) error {
 	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		var sn string
-		if err := tx.QueryRowContext(ctx, `SELECT sn FROM assets WHERE id = ?`, id).Scan(&sn); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return ErrNotFound
-			}
+		var attrsJSON, displayKey string
+		err := tx.QueryRowContext(ctx,
+			`SELECT a.attrs, coalesce(c.display_key, '')
+			 FROM assets a JOIN categories c ON c.id = a.category_id WHERE a.id = ?`, id).
+			Scan(&attrsJSON, &displayKey)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
 			return err
 		}
-		if sn != confirmSN {
-			return FieldErrors{"confirm_sn": "输入的编号与该资产不符"}
+		attrs, err := store.UnmarshalJSONMap(attrsJSON)
+		if err != nil {
+			return err
+		}
+		if model.AssetDisplayName(id, attrs, displayKey) != confirm {
+			return FieldErrors{"confirm": "输入的编号与该资产不符"}
 		}
 		for _, q := range []string{
 			`DELETE FROM asset_transfers WHERE asset_id = ?`,
-			`DELETE FROM asset_sn_history WHERE asset_id = ?`,
+			`DELETE FROM asset_unique_values WHERE asset_id = ?`,
 			`DELETE FROM assets WHERE id = ?`,
 		} {
 			if _, err := tx.ExecContext(ctx, q, id); err != nil {

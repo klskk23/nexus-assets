@@ -8,11 +8,13 @@ import (
 	"github.com/klskk23/nexus-assets/internal/model"
 )
 
-func TestReferrersFindsBothComputedFieldsAndSerialRules(t *testing.T) {
+func TestReferrersFindsExpressionKeys(t *testing.T) {
 	s, ctx := newStore(t)
-	root, child := tree(t, s, ctx) // child's sn_template reads .attrs.mac
+	root, _ := tree(t, s, ctx)
 
-	mac, err := s.CreateField(ctx, CreateFieldInput{Key: "mac", Label: "基准 MAC", Type: model.FieldMAC})
+	mac, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,20 +32,40 @@ func TestReferrersFindsBothComputedFieldsAndSerialRules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("referrers: %v", err)
 	}
-	if len(refs) != 2 {
-		t.Fatalf("got %d referrers, want the computed field and the category rule: %+v", len(refs), refs)
+	if len(refs) != 1 || refs[0].Kind != "field" || refs[0].Label != "标签" {
+		t.Fatalf("the expression key should be the one referrer, got %+v", refs)
 	}
-	kinds := map[string]bool{}
-	for _, r := range refs {
-		kinds[r.Kind] = true
+}
+
+// The second way to be referenced: a category showing the field as its
+// identifier. Archiving it would blank that category's first column.
+func TestArchiveRefusedWhileAFieldIsADisplayKey(t *testing.T) {
+	s, ctx := newStore(t)
+	root, _ := tree(t, s, ctx)
+
+	tag, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "tag", Label: "资产标签", Type: model.FieldText, IsUnique: true,
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !kinds["field"] || !kinds["category"] {
-		t.Errorf("both kinds should be found, got %+v", refs)
+	if err := s.Bind(ctx, root.ID, tag.ID, true, 10); err != nil {
+		t.Fatal(err)
 	}
-	for _, r := range refs {
-		if r.Kind == "category" && r.Label != child.Name {
-			t.Errorf("category referrer = %q, want %q", r.Label, child.Name)
-		}
+	key := "tag"
+	if _, err := s.UpdateCategory(ctx, root.ID, UpdateCategoryInput{DisplayKey: &key}); err != nil {
+		t.Fatal(err)
+	}
+
+	refs, err := s.ArchiveField(ctx, tag.ID)
+	if !errors.Is(err, ErrFieldReferenced) {
+		t.Fatalf("want ErrFieldReferenced, got %v", err)
+	}
+	if len(refs) != 1 || refs[0].Kind != "display_key" {
+		t.Errorf("the referrer should be the category display key, got %+v", refs)
+	}
+	if !strings.Contains(err.Error(), "网络设备") {
+		t.Errorf("the error should name the category, got %v", err)
 	}
 }
 
@@ -51,14 +73,6 @@ func TestReferrersFindsBothComputedFieldsAndSerialRules(t *testing.T) {
 func TestReferrersIgnoresStringLiteralsAndFindsNestedCalls(t *testing.T) {
 	s, ctx := newStore(t)
 	root, _ := tree(t, s, ctx)
-	// Clear the child's rule so only the field under test references anything.
-	empty := ""
-	cats, _ := s.ListCategories(ctx)
-	for _, c := range cats {
-		if _, err := s.UpdateCategory(ctx, c.ID, UpdateCategoryInput{SNTemplate: &empty}); err != nil {
-			t.Fatal(err)
-		}
-	}
 	_ = root
 
 	if _, err := s.CreateField(ctx, CreateFieldInput{Key: "real", Label: "真实项", Type: model.FieldText}); err != nil {
@@ -93,15 +107,21 @@ func TestReferrersIgnoresStringLiteralsAndFindsNestedCalls(t *testing.T) {
 
 func TestArchiveFieldRefusedWhileReferenced(t *testing.T) {
 	s, ctx := newStore(t)
-	tree(t, s, ctx) // the child category's rule reads .attrs.mac
+	tree(t, s, ctx)
 
 	mac, err := s.CreateField(ctx, CreateFieldInput{Key: "mac", Label: "基准 MAC", Type: model.FieldMAC})
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
+		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	// Archiving mac would make every asset in that category unsaveable, since
-	// the serial-number rule could no longer be evaluated.
+	// the expression key over it could no longer be evaluated.
 	refs, err := s.ArchiveField(ctx, mac.ID)
 	if !errors.Is(err, ErrFieldReferenced) {
 		t.Fatalf("want ErrFieldReferenced, got %v", err)
@@ -109,7 +129,7 @@ func TestArchiveFieldRefusedWhileReferenced(t *testing.T) {
 	if len(refs) == 0 {
 		t.Error("the caller needs the referrer list to show the user what is in the way")
 	}
-	if !strings.Contains(err.Error(), "编号生成规则") {
+	if !strings.Contains(err.Error(), "设备编号") {
 		t.Errorf("the message should name what is referencing it, got: %v", err)
 	}
 

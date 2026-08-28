@@ -116,7 +116,7 @@ paths:
       tags: [assets]
       summary: 资产列表。搜索精确优先、否则子串；支持任意 attr.<key> 等值筛选
       parameters:
-        - { name: q, in: query, schema: { type: string }, description: 精确匹配 sn / 历史 sn / MAC；未命中则对型号名与备注子串匹配 }
+        - { name: q, in: query, schema: { type: string }, description: 精确匹配任一唯一字段的当前值或历史值，其次 UUID；未命中则子串匹配 }
         - { name: category_id, in: query, schema: { type: string } }
         - { name: include_descendants, in: query, schema: { type: boolean, default: true } }
         - { name: status, in: query, schema: { $ref: "#/components/schemas/AssetStatus" } }
@@ -195,9 +195,9 @@ paths:
         "409": { $ref: "#/components/responses/Error" }
     delete:
       tags: [assets]
-      summary: 硬删并级联流转历史。需带 confirm_sn 二次确认
+      summary: 硬删并级联流转历史与唯一值。需带 confirm 二次确认（输入该资产的显示编号）
       parameters:
-        - { name: confirm_sn, in: query, required: true, schema: { type: string } }
+        - { name: confirm, in: query, required: true, schema: { type: string } }
       responses:
         "204": { description: Deleted }
         "422": { $ref: "#/components/responses/Error" }
@@ -293,7 +293,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     patch:
       tags: [metadata]
-      summary: 改名 / 改 sn_template / 移动位置。子树下有资产时拒绝移动
+      summary: 改名 / 改 display_key / 移动位置。子树下有资产时拒绝移动
       responses:
         "200": { description: OK }
         "409": { $ref: "#/components/responses/Error" }
@@ -301,7 +301,7 @@ paths:
   /categories/{id}/schema:
     get:
       tags: [metadata]
-      summary: 该类别的有效信息项集（祖先并集、必填、排序、options）与生效的 sn_template
+      summary: 该类别的有效信息项集（祖先并集、必填、排序、options）与它选定的显示编号
       description: 动态表单、筛选器与 CSV 模板的唯一数据源
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
@@ -313,15 +313,15 @@ paths:
               schema:
                 type: object
                 properties:
-                  sn_template: { type: string, nullable: true }
+                  category: { $ref: "#/components/schemas/Category" }
                   fields:
                     type: array
                     items: { $ref: "#/components/schemas/FieldSchema" }
 
-  /categories/{id}/recompute-sn:
+  /categories/{id}/recompute:
     post:
       tags: [metadata]
-      summary: 重算该类别存量资产的编号
+      summary: 重算该类别子树内所有资产的表达式键
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
         - { name: dry_run, in: query, schema: { type: boolean, default: true } }
@@ -334,13 +334,24 @@ paths:
                 type: object
                 properties:
                   affected: { type: integer }
+                  total: { type: integer }
                   conflicts:
                     type: array
                     items:
                       type: object
                       properties:
-                        sn: { type: string }
-                        asset_ids: { type: array, items: { type: string } }
+                        key: { type: string }
+                        value: { type: string }
+                        assets: { type: array, items: { type: string } }
+                  samples:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        asset: { type: string }
+                        key: { type: string }
+                        from: { type: string }
+                        to: { type: string }
                   applied: { type: boolean }
 
   /categories/{id}/import-template.csv:
@@ -365,7 +376,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     patch:
       tags: [metadata]
-      summary: 修改或停用。被计算项 / sn_template 引用时拒绝停用
+      summary: 修改或停用。被表达式键引用、或被某类别选作显示编号时拒绝停用
       responses:
         "200": { description: OK }
         "409": { $ref: "#/components/responses/Error" }
@@ -551,8 +562,8 @@ components:
     Asset:
       type: object
       properties:
-        id: { type: string }
-        sn: { type: string }
+        id: { type: string, description: UUID，唯一内部标识 }
+        display_name: { type: string, description: 由类别 display_key 求值得到；未配置时为 UUID 前 8 位 }
         category_id: { type: string }
         model_id: { type: string, nullable: true }
         status: { $ref: "#/components/schemas/AssetStatus" }

@@ -77,22 +77,6 @@ func TestResolveRejectsDuplicateKeyOnChain(t *testing.T) {
 	}
 }
 
-func TestResolveSNTemplateWalksUp(t *testing.T) {
-	templates := map[string]string{"net": "{{ .id }}", "router": "{{ .attrs.mac | hex2dec }}"}
-	tmpl, from := ResolveSNTemplate("/net/router/sdwan/", templates)
-	if from != "router" {
-		t.Errorf("template should come from the nearest ancestor that sets one, got %q", from)
-	}
-	if tmpl != "{{ .attrs.mac | hex2dec }}" {
-		t.Errorf("tmpl = %q", tmpl)
-	}
-
-	tmpl, from = ResolveSNTemplate("/net/router/sdwan/", map[string]string{})
-	if tmpl != "" || from != "" {
-		t.Errorf("no template anywhere on the chain should yield empty, got %q from %q", tmpl, from)
-	}
-}
-
 func TestPathHelpers(t *testing.T) {
 	if got := BuildPath("", "net"); got != "/net/" {
 		t.Errorf("BuildPath root = %q", got)

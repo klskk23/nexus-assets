@@ -7,7 +7,7 @@ import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import { zh, zhMeta } from "@/i18n/zh"
 import { StateBoundary } from "@/components/StateBoundary"
 import { CollapsibleTree, buildTree } from "@/features/tree/CollapsibleTree"
-import { SnTemplateEditor } from "@/features/categories/SnTemplateEditor"
+import { DisplayKeyEditor } from "@/features/categories/DisplayKeyEditor"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,7 +21,6 @@ export function Categories() {
   const [code, setCode] = useState("")
   const [name, setName] = useState("")
   const [parentId, setParentId] = useState("")
-  const [snTemplate, setSnTemplate] = useState("")
   const [bindField, setBindField] = useState("")
   const [bindRequired, setBindRequired] = useState(false)
   const [banner, setBanner] = useState<string | null>(null)
@@ -46,13 +45,11 @@ export function Categories() {
         code,
         name,
         parent_id: parentId || null,
-        sn_template: snTemplate,
       }),
     onSuccess: () => {
       setBanner(null)
       setCode("")
       setName("")
-      setSnTemplate("")
       queryClient.invalidateQueries({ queryKey: ["categories"] })
     },
     onError: (e) => setBanner(e instanceof ApiError ? e.message : zh.common.error),
@@ -103,16 +100,6 @@ export function Categories() {
                 ))}
               </select>
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="c-sn">{zhMeta.categories.snTemplate}</Label>
-              <Input
-                id="c-sn"
-                className="font-mono"
-                placeholder="{{ .attrs.mac | hex2dec }}"
-                value={snTemplate}
-                onChange={(e) => setSnTemplate(e.target.value)}
-              />
-            </div>
           </div>
           {banner && (
             <p role="alert" className="text-sm text-destructive">
@@ -152,15 +139,12 @@ export function Categories() {
         {selected && (
           <div className="grid gap-6">
             {schema.data && (
-              <SnTemplateEditor
+              <DisplayKeyEditor
+                key={selected}
                 categoryID={selected}
                 categoryName={schema.data.category.name}
-                template={schema.data.category.sn_template}
-                inheritedFromName={
-                  schema.data.sn_template_from && schema.data.sn_template_from !== selected
-                    ? (categories.data ?? []).find((c) => c.id === schema.data!.sn_template_from)?.name
-                    : undefined
-                }
+                displayKey={schema.data.category.display_key}
+                fields={schema.data.fields}
               />
             )}
           <Card>

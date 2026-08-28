@@ -211,19 +211,22 @@ func (s *Server) getAsset(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
-	history, err := s.assets.SNHistory(c.Request.Context(), a.ID)
+	history, err := s.assets.ValueHistory(c.Request.Context(), a.ID)
 	if err != nil {
 		FailErr(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"asset": items[0], "sn_history": history})
+	if history == nil {
+		history = []asset.HistoricValue{}
+	}
+	c.JSON(http.StatusOK, gin.H{"asset": items[0], "value_history": history})
 }
 
 func (s *Server) deleteAsset(c *gin.Context) {
-	confirm := c.Query("confirm_sn")
+	confirm := c.Query("confirm")
 	if confirm == "" {
 		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgSNMismatch,
-			map[string]string{"confirm_sn": "请输入该资产的编号以确认删除"})
+			map[string]string{"confirm": "请输入该资产的编号以确认删除"})
 		return
 	}
 	if err := s.assets.Delete(c.Request.Context(), c.Param("id"), confirm); err != nil {

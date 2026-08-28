@@ -88,7 +88,7 @@ func (s *Service) Export(ctx context.Context, f asset.ListFilter) ([]byte, error
 			holderLabel = userName[a.Holder.ID]
 		}
 		rec := []string{
-			a.SN,
+			a.DisplayName,
 			catName[a.CategoryID],
 			statusLabel[a.Status],
 			holderLabel,

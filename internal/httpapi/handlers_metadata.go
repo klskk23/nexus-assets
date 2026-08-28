@@ -30,14 +30,14 @@ func (s *Server) createCategory(c *gin.Context) {
 		Code       string  `json:"code" binding:"required"`
 		Name       string  `json:"name" binding:"required"`
 		ParentID   *string `json:"parent_id"`
-		SNTemplate string  `json:"sn_template"`
+		DisplayKey string  `json:"display_key"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
 		return
 	}
 	out, err := s.schema.CreateCategory(c.Request.Context(), schema.CreateCategoryInput{
-		Code: req.Code, Name: req.Name, ParentID: req.ParentID, SNTemplate: req.SNTemplate,
+		Code: req.Code, Name: req.Name, ParentID: req.ParentID, DisplayKey: req.DisplayKey,
 	})
 	if err != nil {
 		FailErr(c, err)
@@ -52,7 +52,7 @@ func (s *Server) createCategory(c *gin.Context) {
 func (s *Server) patchCategory(c *gin.Context) {
 	var req struct {
 		Name       *string `json:"name"`
-		SNTemplate *string `json:"sn_template"`
+		DisplayKey *string `json:"display_key"`
 		// RawMessage, not **string: unmarshalling JSON null into a double
 		// pointer clears the outer one, so "move to the root" would be
 		// indistinguishable from "leave the parent alone" and the guard on
@@ -64,7 +64,7 @@ func (s *Server) patchCategory(c *gin.Context) {
 		return
 	}
 
-	in := schema.UpdateCategoryInput{Name: req.Name, SNTemplate: req.SNTemplate}
+	in := schema.UpdateCategoryInput{Name: req.Name, DisplayKey: req.DisplayKey}
 	if len(req.ParentID) > 0 {
 		var parent *string
 		if err := json.Unmarshal(req.ParentID, &parent); err != nil {
@@ -104,21 +104,12 @@ func (s *Server) categorySchema(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
-	templates, err := s.schema.SNTemplates(ctx)
-	if err != nil {
-		FailErr(c, err)
-		return
-	}
-	tmpl, from := schema.ResolveSNTemplate(cat.Path, templates)
-
 	if fields == nil {
 		fields = []model.BoundField{}
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"category":         cat,
-		"sn_template":      tmpl,
-		"sn_template_from": from,
-		"fields":           schema.ActiveFields(fields),
+		"category": cat,
+		"fields":   schema.ActiveFields(fields),
 	})
 }
 
@@ -181,7 +172,7 @@ func (s *Server) patchField(c *gin.Context) {
 				c.AbortWithStatusJSON(http.StatusConflict, gin.H{
 					"error": gin.H{
 						"code":      CodeReferenceBlocked,
-						"message":   err.Error(),
+						"message":   userText(err, schema.ErrFieldReferenced),
 						"referrers": referrers,
 					},
 				})
@@ -316,7 +307,15 @@ func (s *Server) patchHolder(c *gin.Context) {
 	ctx := c.Request.Context()
 	before, _ := s.holders.Get(ctx, c.Param("id"))
 
-	if req.DefaultStock != nil && *req.DefaultStock {
+	if req.DefaultStock != nil {
+		// Saying false used to be accepted and then quietly ignored, so a
+		// request that did nothing came back 200. The marker moves; it does not
+		// switch off.
+		if !*req.DefaultStock {
+			Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, MsgDefaultStockRequired,
+				map[string]string{"is_default_stock": MsgDefaultStockRequired})
+			return
+		}
 		if err := s.holders.SetDefaultStock(ctx, c.Param("id")); err != nil {
 			FailErr(c, err)
 			return
@@ -343,15 +342,15 @@ func (s *Server) patchHolder(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
-// recomputeSN re-derives the serial numbers of a category subtree.
+// recompute re-evaluates the expression keys of a category subtree.
 //
-// Two phases, and the dry run is the default: changing a rule that governs
+// Two phases, and the dry run is the default: editing a template that governs
 // thousands of devices is not something to discover the consequences of after
 // the fact.
-func (s *Server) recomputeSN(c *gin.Context) {
+func (s *Server) recompute(c *gin.Context) {
 	dryRun := c.DefaultQuery("dry_run", "true") != "false"
 
-	report, err := s.assets.RecomputeSN(c.Request.Context(), c.Param("id"), dryRun)
+	report, err := s.assets.Recompute(c.Request.Context(), c.Param("id"), dryRun)
 	if err != nil {
 		FailErr(c, err)
 		return
@@ -392,7 +391,7 @@ func (s *Server) failHolder(c *gin.Context, err error) {
 	c.AbortWithStatusJSON(http.StatusConflict, gin.H{
 		"error": gin.H{
 			"code":     CodeReferenceBlocked,
-			"message":  err.Error(),
+			"message":  userText(err, holder.ErrReferenced),
 			"blockers": blockers,
 		},
 	})

@@ -38,6 +38,7 @@ const fields = [
 const holders = [
   { id: "h1", type: "location", name: "上海仓库", parent_id: null, is_default_stock: false },
   { id: "h2", type: "company", name: "XX 集团", parent_id: null, is_default_stock: false },
+  { id: "h3", type: "location", name: "北京仓库", parent_id: null, is_default_stock: true },
 ]
 
 const users = [
@@ -128,6 +129,29 @@ describe("Holders page", () => {
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/holders/h1", { is_default_stock: true }),
     )
+  })
+
+  // The marker moves but never switches off, so the location that holds it gets
+  // a badge with no control -- a toggle here would only ever be refused.
+  it("gives the current default a badge rather than a way to clear it", async () => {
+    renderWithProviders(<Holders />)
+    const current = await screen.findByRole("row", { name: /北京仓库/ })
+    expect(within(current).getByText("默认库存点")).toBeInTheDocument()
+    expect(
+      within(current).queryByRole("button", { name: "设为默认库存点" }),
+    ).not.toBeInTheDocument()
+  })
+
+  it("surfaces a refusal from the server rather than swallowing it", async () => {
+    patch.mockRejectedValueOnce(
+      new ApiError(409, "reference_blocked", "「北京仓库」是当前默认库存点，请先转移"),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<Holders />)
+    const warehouse = await screen.findByRole("row", { name: /上海仓库/ })
+    await user.click(within(warehouse).getByRole("button", { name: "设为默认库存点" }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("是当前默认库存点")
   })
 })
 

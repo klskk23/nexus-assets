@@ -56,7 +56,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 
 	cat, err := sch.CreateCategory(ctx, schema.CreateCategoryInput{
-		Code: "RT", Name: "SDWAN 路由器", SNTemplate: "{{ .attrs.mac | hex2dec }}",
+		Code: "RT", Name: "SDWAN 路由器",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +68,7 @@ func newFixture(t *testing.T) *fixture {
 		Key: "firmware", Label: "固件版本", Type: model.FieldText,
 	})
 	tag, _ := sch.CreateField(ctx, schema.CreateFieldInput{
-		Key: "asset_tag", Label: "推导编号", Type: model.FieldComputed,
+		Key: "asset_tag", Label: "推导编号", Type: model.FieldComputed, IsUnique: true,
 		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
 	})
 	for _, f := range []struct {
@@ -79,6 +79,10 @@ func newFixture(t *testing.T) *fixture {
 		if err := sch.Bind(ctx, cat.ID, f.id, f.required, f.sort); err != nil {
 			t.Fatal(err)
 		}
+	}
+	displayKey := "asset_tag"
+	if _, err := sch.UpdateCategory(ctx, cat.ID, schema.UpdateCategoryInput{DisplayKey: &displayKey}); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := sch.CreateModel(ctx, schema.CreateModelInput{
 		CategoryID: cat.ID, Name: "SDWAN-X100", Vendor: "Acme",
@@ -173,8 +177,8 @@ func TestPreviewReportsPerRowErrorsAndWritesNothing(t *testing.T) {
 	if report.Rows[2].Fields["mac"] == "" {
 		t.Errorf("the missing required row should name the field: %+v", report.Rows[2])
 	}
-	if report.Rows[0].SN != "112394521950" {
-		t.Errorf("a passing row should preview its generated number, got %q", report.Rows[0].SN)
+	if report.Rows[0].Display != "112394521950" {
+		t.Errorf("a passing row should preview its generated number, got %q", report.Rows[0].Display)
 	}
 	if n := f.count(t); n != 0 {
 		t.Errorf("a preview must write nothing, found %d assets", n)

@@ -100,15 +100,3 @@ func ActiveFields(fields []model.BoundField) []model.BoundField {
 	}
 	return out
 }
-
-// ResolveSNTemplate walks up the ancestor chain and returns the first non-empty
-// sn_template, together with the category it came from.
-func ResolveSNTemplate(path string, templates map[string]string) (tmpl, from string) {
-	ids := AncestorIDs(path)
-	for i := len(ids) - 1; i >= 0; i-- {
-		if t := strings.TrimSpace(templates[ids[i]]); t != "" {
-			return t, ids[i]
-		}
-	}
-	return "", ""
-}

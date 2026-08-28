@@ -5,63 +5,69 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/klskk23/nexus-assets/internal/compute"
+	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
 
-// ErrRecomputeConflict reports that the new rule would give two devices the
-// same number.
-var ErrRecomputeConflict = errors.New("the new rule produces duplicate serial numbers")
+// ErrRecomputeConflict reports that the new rules would give two devices the
+// same value on a key that must be unique.
+var ErrRecomputeConflict = errors.New("recomputed values collide on a unique key")
 
-// Conflict is one collision the new rule would cause.
+// Conflict is one collision the new rules would cause.
 type Conflict struct {
-	SN     string   `json:"sn"`
-	Assets []string `json:"assets"` // the old serial numbers involved
+	Key   string `json:"key"`
+	Value string `json:"value"`
+	// Assets names the devices that would end up sharing the value.
+	Assets []string `json:"assets"`
 }
 
 // RecomputeReport is what a run produced.
 type RecomputeReport struct {
-	// Affected counts assets whose number would change.
+	// Affected counts assets at least one of whose values would change.
 	Affected int `json:"affected"`
-	// Total is how many assets the rule was applied to.
+	// Total is how many assets the rules were applied to.
 	Total     int        `json:"total"`
 	Conflicts []Conflict `json:"conflicts"`
 	// Applied is false for a dry run, and false for a real run that was
-	// rolled back because of a conflict.
+	// abandoned because of a conflict.
 	Applied bool `json:"applied"`
 	// Samples shows a few before/after pairs so the operator can sanity-check
-	// the rule before committing to it.
+	// the rules before committing to them.
 	Samples []RecomputeSample `json:"samples"`
 }
 
 // RecomputeSample is one before/after pair.
 type RecomputeSample struct {
-	From string `json:"from"`
-	To   string `json:"to"`
+	Asset string `json:"asset"`
+	Key   string `json:"key"`
+	From  string `json:"from"`
+	To    string `json:"to"`
 }
 
 const maxSamples = 5
 
-// RecomputeSN re-derives the serial number of every asset in a category
+// Recompute re-evaluates every expression key of every asset in a category
 // subtree.
 //
-// Two phases on purpose. Changing a rule that governs thousands of devices is
-// not something to discover the consequences of afterwards, so a dry run
+// Two phases on purpose. Editing a template that governs thousands of devices
+// is not something to discover the consequences of afterwards, so a dry run
 // reports the blast radius and any collisions first. The real run is one
-// transaction: if a single pair of devices would end up sharing a number the
-// whole thing is abandoned, because a half-renumbered warehouse is worse than
-// an un-renumbered one.
-func (s *Service) RecomputeSN(ctx context.Context, categoryID string, dryRun bool) (RecomputeReport, error) {
+// transaction: if a single pair of devices would end up sharing a value on a
+// unique key the whole thing is abandoned, because a half-renumbered warehouse
+// is worse than an un-renumbered one.
+func (s *Service) Recompute(ctx context.Context, categoryID string, dryRun bool) (RecomputeReport, error) {
 	var report RecomputeReport
 
 	root, err := s.schema.GetCategory(ctx, categoryID)
 	if err != nil {
 		return report, err
 	}
-	templates, err := s.schema.SNTemplates(ctx)
+	bindings, err := s.schema.BindingsByCategory(ctx)
 	if err != nil {
 		return report, err
 	}
@@ -69,13 +75,23 @@ func (s *Service) RecomputeSN(ctx context.Context, categoryID string, dryRun boo
 	if err != nil {
 		return report, err
 	}
-	catByID := make(map[string]struct{ code, name, path string }, len(categories))
+	catByID := make(map[string]model.Category, len(categories))
 	for _, c := range categories {
-		catByID[c.ID] = struct{ code, name, path string }{c.Code, c.Name, c.Path}
+		catByID[c.ID] = c
+	}
+	// Models are loaded in one go rather than per asset: a subtree recompute
+	// touches thousands of rows and a lookup per row is the classic N+1.
+	models, err := s.schema.ListModels(ctx)
+	if err != nil {
+		return report, err
+	}
+	modelByID := make(map[string]model.ProductModel, len(models))
+	for _, m := range models {
+		modelByID[m.ID] = m
 	}
 
 	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT a.id, a.sn, a.category_id, a.model_id, a.attrs
+		`SELECT a.id, a.category_id, a.model_id, a.attrs
 		 FROM assets a JOIN categories c ON c.id = a.category_id
 		 WHERE c.path LIKE ? || '%'
 		 ORDER BY a.created_at, a.id`, root.Path)
@@ -84,16 +100,20 @@ func (s *Service) RecomputeSN(ctx context.Context, categoryID string, dryRun boo
 	}
 	defer rows.Close()
 
-	type change struct{ id, oldSN, newSN string }
+	type change struct {
+		id     string
+		attrs  map[string]any
+		unique map[string]string
+	}
 	var changes []change
-	// Numbers that will exist once the run completes, so a collision between
-	// two recomputed assets is caught as well as one against an untouched row.
-	claimed := map[string][]string{}
+	// Values that will exist once the run completes, so a collision between two
+	// recomputed assets is caught as well as one against an untouched row.
+	claimed := map[[2]string][]string{}
 
 	for rows.Next() {
-		var id, oldSN, catID, attrsJSON string
+		var id, catID, attrsJSON string
 		var modelID sql.NullString
-		if err := rows.Scan(&id, &oldSN, &catID, &modelID, &attrsJSON); err != nil {
+		if err := rows.Scan(&id, &catID, &modelID, &attrsJSON); err != nil {
 			return report, err
 		}
 		report.Total++
@@ -103,30 +123,53 @@ func (s *Service) RecomputeSN(ctx context.Context, categoryID string, dryRun boo
 			return report, err
 		}
 		cat := catByID[catID]
-		tmpl, _ := schema.ResolveSNTemplate(cat.path, templates)
-		if tmpl == "" {
-			return report, FieldErrors{"sn": fmt.Sprintf("类别「%s」及其上级都没有编号生成规则", cat.name)}
+		fields, err := schema.Resolve(cat.Path, bindings)
+		if err != nil {
+			return report, err
 		}
+		fields = schema.ActiveFields(fields)
 
 		var modelName, modelVendor string
-		if modelID.Valid && modelID.String != "" {
-			pm, err := s.schema.GetModel(ctx, modelID.String)
-			if err == nil {
+		if modelID.Valid {
+			if pm, ok := modelByID[modelID.String]; ok {
 				modelName, modelVendor = pm.Name, pm.Vendor
 			}
 		}
 
-		newSN, err := compute.Eval("sn", tmpl, compute.NewContext(id, attrs, cat.code, cat.name, modelName, modelVendor))
+		before := make(map[string]any, len(attrs))
+		for k, v := range attrs {
+			before[k] = v
+		}
+		values, err := evalComputed(fields, compute.NewContext(id, attrs, cat.Code, cat.Name, modelName, modelVendor))
 		if err != nil {
-			return report, FieldErrors{"sn": fmt.Sprintf("资产 %s 的编号无法生成：%v", oldSN, err)}
+			return report, err
 		}
 
-		claimed[newSN] = append(claimed[newSN], oldSN)
-		if newSN != oldSN {
-			changes = append(changes, change{id: id, oldSN: oldSN, newSN: newSN})
-			if len(report.Samples) < maxSamples {
-				report.Samples = append(report.Samples, RecomputeSample{From: oldSN, To: newSN})
+		display := model.AssetDisplayName(id, before, cat.DisplayKey)
+		dirty := false
+		keys := make([]string, 0, len(values))
+		for k := range values {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			from, to := fmt.Sprintf("%v", before[k]), fmt.Sprintf("%v", values[k])
+			if from == to {
+				continue
 			}
+			dirty = true
+			attrs[k] = values[k]
+			if len(report.Samples) < maxSamples {
+				report.Samples = append(report.Samples, RecomputeSample{Asset: display, Key: k, From: from, To: to})
+			}
+		}
+
+		next := uniqueValues(fields, attrs)
+		for k, v := range next {
+			claimed[[2]string{k, v}] = append(claimed[[2]string{k, v}], display)
+		}
+		if dirty {
+			changes = append(changes, change{id: id, attrs: attrs, unique: next})
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -134,14 +177,15 @@ func (s *Service) RecomputeSN(ctx context.Context, categoryID string, dryRun boo
 	}
 	report.Affected = len(changes)
 
-	for sn, owners := range claimed {
+	for kv, owners := range claimed {
 		if len(owners) > 1 {
-			report.Conflicts = append(report.Conflicts, Conflict{SN: sn, Assets: owners})
+			report.Conflicts = append(report.Conflicts, Conflict{Key: kv[0], Value: kv[1], Assets: owners})
 		}
 	}
 	if err := s.collideWithUntouched(ctx, root.Path, claimed, &report); err != nil {
 		return report, err
 	}
+	sortConflicts(report.Conflicts)
 
 	if dryRun || len(report.Conflicts) > 0 || report.Affected == 0 {
 		return report, nil
@@ -150,16 +194,19 @@ func (s *Service) RecomputeSN(ctx context.Context, categoryID string, dryRun boo
 	now := time.Now().UTC()
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		for _, c := range changes {
-			if _, err := tx.ExecContext(ctx,
-				`INSERT INTO asset_sn_history (asset_id, sn, replaced_at) VALUES (?, ?, ?)`,
-				c.id, c.oldSN, store.FormatTime(now)); err != nil {
+			attrsJSON, err := store.MarshalJSONMap(c.attrs)
+			if err != nil {
 				return err
 			}
-			// The unique index is the last line of defence; a violation here
-			// aborts the whole transaction, which is the intended behaviour.
 			if _, err := tx.ExecContext(ctx,
-				`UPDATE assets SET sn = ?, updated_at = ? WHERE id = ?`,
-				c.newSN, store.FormatTime(now), c.id); err != nil {
+				`UPDATE assets SET attrs = ?, version = version + 1, updated_at = ? WHERE id = ?`,
+				attrsJSON, store.FormatTime(now), c.id); err != nil {
+				return err
+			}
+			// The partial unique index is the last line of defence; a violation
+			// here aborts the whole transaction, which is the intended
+			// behaviour.
+			if err := syncUniqueValues(ctx, tx, c.id, c.unique, now); err != nil {
 				return fmt.Errorf("%w: %v", ErrRecomputeConflict, err)
 			}
 		}
@@ -172,32 +219,26 @@ func (s *Service) RecomputeSN(ctx context.Context, categoryID string, dryRun boo
 	return report, nil
 }
 
-// collideWithUntouched checks the proposed numbers against assets outside the
-// subtree and against retired numbers, which stay reserved so an old label can
-// never point at a different device.
+// collideWithUntouched checks the proposed values against assets outside the
+// subtree.
+//
+// Retired values are deliberately not checked: an archived row leaves the
+// partial unique index, so a value that was replaced is free to appear again.
+// A mainboard swap really does move a MAC from one device to another.
 func (s *Service) collideWithUntouched(ctx context.Context, rootPath string,
-	claimed map[string][]string, report *RecomputeReport) error {
+	claimed map[[2]string][]string, report *RecomputeReport) error {
 
-	for sn, owners := range claimed {
-		var otherSN string
+	for kv, owners := range claimed {
+		var otherID string
 		err := s.db.ReadDB().QueryRowContext(ctx,
-			`SELECT a.sn FROM assets a JOIN categories c ON c.id = a.category_id
-			 WHERE a.sn = ? AND c.path NOT LIKE ? || '%' LIMIT 1`, sn, rootPath).Scan(&otherSN)
+			`SELECT uv.asset_id FROM asset_unique_values uv
+			 JOIN assets a ON a.id = uv.asset_id
+			 JOIN categories c ON c.id = a.category_id
+			 WHERE uv.field_key = ? AND uv.value = ? AND uv.archived_at IS NULL
+			   AND c.path NOT LIKE ? || '%' LIMIT 1`, kv[0], kv[1], rootPath).Scan(&otherID)
 		if err == nil {
-			report.Conflicts = append(report.Conflicts, Conflict{SN: sn, Assets: append(owners, otherSN)})
-			continue
-		}
-		if !errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
-
-		var histFor string
-		err = s.db.ReadDB().QueryRowContext(ctx,
-			`SELECT h.sn FROM asset_sn_history h
-			 JOIN assets a ON a.id = h.asset_id
-			 WHERE h.sn = ? AND a.sn != ? LIMIT 1`, sn, sn).Scan(&histFor)
-		if err == nil {
-			report.Conflicts = append(report.Conflicts, Conflict{SN: sn, Assets: append(owners, "(已退役编号)")})
+			report.Conflicts = append(report.Conflicts,
+				Conflict{Key: kv[0], Value: kv[1], Assets: append(owners, model.ShortID(otherID))})
 			continue
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
@@ -205,4 +246,15 @@ func (s *Service) collideWithUntouched(ctx context.Context, rootPath string,
 		}
 	}
 	return nil
+}
+
+// sortConflicts gives the report a stable order; map iteration would otherwise
+// shuffle it between identical runs and make the dry run look unrepeatable.
+func sortConflicts(cs []Conflict) {
+	sort.Slice(cs, func(i, j int) bool {
+		if cs[i].Key != cs[j].Key {
+			return cs[i].Key < cs[j].Key
+		}
+		return cs[i].Value < cs[j].Value
+	})
 }

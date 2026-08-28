@@ -11,9 +11,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-const types: FieldType[] = [
-  "text", "number", "boolean", "date", "enum", "reference", "mac", "ip", "url", "computed",
+// Static keys carry what someone typed or imported; an expression key carries
+// what the system worked out from them. One enum in the database, two groups
+// here, because that is the distinction a person is actually choosing between.
+const staticTypes: FieldType[] = [
+  "text", "number", "boolean", "date", "enum", "reference", "mac", "ip", "url",
 ]
+const expressionTypes: FieldType[] = ["computed"]
 
 export function Fields() {
   const [editing, setEditing] = useState<FieldDefinitionRow | null>(null)
@@ -81,11 +85,23 @@ export function Fields() {
               value={type}
               onChange={(e) => setType(e.target.value as FieldType)}
             >
-              {types.map((t) => (
-                <option key={t} value={t}>
-                  {zhMeta.fieldTypes[t]}
-                </option>
-              ))}
+              {/* The two kinds are one enum in the database; the split lives
+                  here, where it is the difference a person actually cares
+                  about: is this value typed in, or worked out? */}
+              <optgroup label={zhConfig.field.staticGroup}>
+                {staticTypes.map((t) => (
+                  <option key={t} value={t}>
+                    {zhMeta.fieldTypes[t]}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label={zhConfig.field.expressionGroup}>
+                {expressionTypes.map((t) => (
+                  <option key={t} value={t}>
+                    {zhMeta.fieldTypes[t]}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
           <div className="flex items-center gap-2 pt-6">
@@ -106,6 +122,8 @@ export function Fields() {
                 value={template}
                 onChange={(e) => setTemplate(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">{zhConfig.field.templateHint}</p>
+              <p className="text-xs text-muted-foreground">{zhConfig.field.depsHint}</p>
             </div>
           )}
         </div>

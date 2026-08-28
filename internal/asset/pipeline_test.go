@@ -23,12 +23,14 @@ type fixture struct {
 	userID   string
 	locID    string
 	catID    string
+	rootID   string
 	macField string
+	snField  string
 }
 
 // newFixture builds a minimal but real system: temp database, migrations, one
 // account, one location, a two-level category tree with a unique MAC field and
-// the default serial-number rule.
+// an expression key over it nominated as the display key.
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
 	ctx := context.Background()
@@ -68,7 +70,6 @@ func newFixture(t *testing.T) *fixture {
 	}
 	child, err := sch.CreateCategory(ctx, schema.CreateCategoryInput{
 		Code: "RT", Name: "SDWAN 路由器", ParentID: &root.ID,
-		SNTemplate: "{{ .attrs.mac | hex2dec }}",
 	})
 	if err != nil {
 		t.Fatalf("create child category: %v", err)
@@ -89,13 +90,28 @@ func newFixture(t *testing.T) *fixture {
 	if err := sch.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
 		t.Fatalf("bind mac: %v", err)
 	}
+	sn, err := sch.CreateField(ctx, schema.CreateFieldInput{
+		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
+		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+	})
+	if err != nil {
+		t.Fatalf("create sn field: %v", err)
+	}
 	if err := sch.Bind(ctx, root.ID, fw.ID, false, 20); err != nil {
 		t.Fatalf("bind firmware: %v", err)
+	}
+	if err := sch.Bind(ctx, root.ID, sn.ID, false, 30); err != nil {
+		t.Fatalf("bind sn: %v", err)
+	}
+	displayKey := "sn"
+	if _, err := sch.UpdateCategory(ctx, child.ID, schema.UpdateCategoryInput{DisplayKey: &displayKey}); err != nil {
+		t.Fatalf("set display key: %v", err)
 	}
 
 	return &fixture{
 		svc: NewService(db, sch), schema: sch, holders: hs, users: us,
-		ctx: ctx, userID: u.ID, locID: loc.ID, catID: child.ID, macField: mac.ID,
+		ctx: ctx, userID: u.ID, locID: loc.ID, catID: child.ID, rootID: root.ID,
+		macField: mac.ID, snField: sn.ID,
 	}
 }
 
@@ -119,15 +135,18 @@ func (f *fixture) save(t *testing.T, in SaveInput) (model.Asset, error) {
 	return f.svc.Save(f.ctx, in)
 }
 
-// The default serial-number rule, verified end to end.
-func TestSaveGeneratesSNFromMAC(t *testing.T) {
+// The expression key over the MAC, verified end to end.
+func TestSaveDerivesDisplayNameFromMAC(t *testing.T) {
 	f := newFixture(t)
 	a, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "00:1A:2B:3C:4D:5E"}})
 	if err != nil {
 		t.Fatalf("save: %v", err)
 	}
-	if a.SN != "112394521950" {
-		t.Errorf("SN = %q, want 112394521950 (0x001A2B3C4D5E)", a.SN)
+	if a.Attrs["sn"] != "112394521950" {
+		t.Errorf("sn = %q, want 112394521950 (0x001A2B3C4D5E)", a.Attrs["sn"])
+	}
+	if a.DisplayName != "112394521950" {
+		t.Errorf("display name = %q, want the display key's value", a.DisplayName)
 	}
 	if a.Attrs["mac"] != "001A2B3C4D5E" {
 		t.Errorf("MAC should be stored normalised, got %v", a.Attrs["mac"])
@@ -171,14 +190,14 @@ func TestDuplicateMACAcrossSpellingsRejected(t *testing.T) {
 	}
 }
 
-// Correcting the MAC regenerates the SN and keeps the old one searchable.
-func TestMACCorrectionRegeneratesSNAndArchivesOld(t *testing.T) {
+// Correcting the MAC regenerates the number and keeps the old one searchable.
+func TestMACCorrectionRegeneratesNumberAndArchivesOld(t *testing.T) {
 	f := newFixture(t)
 	a, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D5E"}})
 	if err != nil {
 		t.Fatalf("save: %v", err)
 	}
-	oldSN := a.SN
+	oldSN := a.DisplayName
 
 	b, err := f.save(t, SaveInput{
 		ID: a.ID, Version: a.Version, Attrs: map[string]any{"mac": "001A2B3C4D5F"},
@@ -186,19 +205,27 @@ func TestMACCorrectionRegeneratesSNAndArchivesOld(t *testing.T) {
 	if err != nil {
 		t.Fatalf("update: %v", err)
 	}
-	if b.SN == oldSN {
-		t.Fatal("SN should change with the MAC it is derived from")
+	if b.DisplayName == oldSN {
+		t.Fatal("the number should change with the MAC it is derived from")
 	}
-	if b.SN != "112394521951" {
-		t.Errorf("SN = %q, want 112394521951", b.SN)
+	if b.DisplayName != "112394521951" {
+		t.Errorf("display name = %q, want 112394521951", b.DisplayName)
 	}
 
-	hist, err := f.svc.SNHistory(f.ctx, a.ID)
+	hist, err := f.svc.ValueHistory(f.ctx, a.ID)
 	if err != nil {
 		t.Fatalf("history: %v", err)
 	}
-	if len(hist) != 1 || hist[0] != oldSN {
-		t.Errorf("old SN should be archived, got %v", hist)
+	// Both unique fields moved: the MAC itself and the number derived from it.
+	got := map[string]string{}
+	for _, h := range hist {
+		got[h.Key] = h.Value
+	}
+	if got["sn"] != oldSN {
+		t.Errorf("old number should be archived, got %v", hist)
+	}
+	if got["mac"] != "001A2B3C4D5E" {
+		t.Errorf("old MAC should be archived too, got %v", hist)
 	}
 
 	// A label printed with the old number still finds the device.
@@ -261,13 +288,13 @@ func TestAttributeOnlyEditEmitsNoTransfer(t *testing.T) {
 	}
 }
 
-func TestDeleteRequiresMatchingSN(t *testing.T) {
+func TestDeleteRequiresMatchingDisplayName(t *testing.T) {
 	f := newFixture(t)
 	a, _ := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D5E"}})
 	if err := f.svc.Delete(f.ctx, a.ID, "wrong"); err == nil {
 		t.Fatal("a mismatched confirmation must refuse the delete")
 	}
-	if err := f.svc.Delete(f.ctx, a.ID, a.SN); err != nil {
+	if err := f.svc.Delete(f.ctx, a.ID, a.DisplayName); err != nil {
 		t.Fatalf("delete with the right SN: %v", err)
 	}
 	if _, err := f.svc.Get(f.ctx, a.ID); !errors.Is(err, ErrNotFound) {
@@ -355,12 +382,14 @@ func TestComputedChainEvaluatesInDependencyOrder(t *testing.T) {
 			rootID = c.ID
 		}
 	}
-	// Bind the dependent field first, so a correct result cannot come from
-	// declaration order alone.
-	if err := f.schema.Bind(ctx, rootID, full.ID, false, 40); err != nil {
+	// Dependencies must be bound first, so the ordering has to come from
+	// somewhere else: full_tag is given the lower sort, which puts it ahead of
+	// base_num in the resolved field list. A correct result therefore cannot
+	// come from list order alone.
+	if err := f.schema.Bind(ctx, rootID, base.ID, false, 40); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.schema.Bind(ctx, rootID, base.ID, false, 30); err != nil {
+	if err := f.schema.Bind(ctx, rootID, full.ID, false, 30); err != nil {
 		t.Fatal(err)
 	}
 
@@ -498,5 +527,107 @@ func TestRetiredIsTerminalInThePipeline(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "terminal") {
 		t.Errorf("error should say why, got %v", err)
+	}
+}
+
+// Binding an expression key before its inputs is refused, and the refusal says
+// what to bind first. Left to save time, the same mistake surfaces as "why can
+// this device not be saved" with the error on the wrong field.
+func TestBindingAnExpressionKeyBeforeItsInputsIsRefused(t *testing.T) {
+	f := newFixture(t)
+	ctx := f.ctx
+
+	tag, err := f.schema.CreateField(ctx, schema.CreateFieldInput{
+		Key: "rack_tag", Label: "机柜标签", Type: model.FieldComputed,
+		Options: model.FieldOptions{Template: "{{ .attrs.rack | upper }}"},
+	})
+	if err != nil {
+		t.Fatalf("create rack_tag: %v", err)
+	}
+	rack, err := f.schema.CreateField(ctx, schema.CreateFieldInput{
+		Key: "rack", Label: "机柜", Type: model.FieldText,
+	})
+	if err != nil {
+		t.Fatalf("create rack: %v", err)
+	}
+
+	err = f.schema.Bind(ctx, f.catID, tag.ID, false, 50)
+	if !errors.Is(err, schema.ErrDependenciesUnmet) {
+		t.Fatalf("want ErrDependenciesUnmet, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "rack") {
+		t.Errorf("the refusal should name the missing input, got %v", err)
+	}
+
+	// Bound but optional is still not enough: an empty value would fail to
+	// evaluate, and a failed evaluation rolls the whole save back.
+	if err := f.schema.Bind(ctx, f.catID, rack.ID, false, 40); err != nil {
+		t.Fatalf("bind rack: %v", err)
+	}
+	err = f.schema.Bind(ctx, f.catID, tag.ID, false, 50)
+	if !errors.Is(err, schema.ErrDependenciesUnmet) {
+		t.Fatalf("an optional input must still be refused, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "必填") {
+		t.Errorf("the refusal should say the input must be required, got %v", err)
+	}
+
+	if err := f.schema.Bind(ctx, f.catID, rack.ID, true, 40); err != nil {
+		t.Fatalf("mark rack required: %v", err)
+	}
+	if err := f.schema.Bind(ctx, f.catID, tag.ID, false, 50); err != nil {
+		t.Fatalf("with its input bound and required, the expression key must bind: %v", err)
+	}
+}
+
+// The mirror of the bind gate. Without it, unbinding an input leaves every
+// asset in the category permanently unsaveable.
+func TestUnbindingAnInputAnExpressionReadsIsRefused(t *testing.T) {
+	f := newFixture(t)
+	err := f.schema.Unbind(f.ctx, f.rootID, f.macField)
+	if !errors.Is(err, schema.ErrFieldDependedOn) {
+		t.Fatalf("want ErrFieldDependedOn, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "设备编号") {
+		t.Errorf("the refusal should name what reads it, got %v", err)
+	}
+}
+
+// A category may not point its display key at a field two devices could share.
+func TestDisplayKeyMustBeUnique(t *testing.T) {
+	f := newFixture(t)
+	key := "firmware"
+	_, err := f.schema.UpdateCategory(f.ctx, f.catID, schema.UpdateCategoryInput{DisplayKey: &key})
+	if !errors.Is(err, schema.ErrDisplayKeyInvalid) {
+		t.Fatalf("want ErrDisplayKeyInvalid, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "唯一") {
+		t.Errorf("the refusal should explain what to fix, got %v", err)
+	}
+
+	missing := "nope"
+	if _, err := f.schema.UpdateCategory(f.ctx, f.catID,
+		schema.UpdateCategoryInput{DisplayKey: &missing}); !errors.Is(err, schema.ErrDisplayKeyInvalid) {
+		t.Errorf("an unbound key must be refused too, got %v", err)
+	}
+}
+
+// With no display key configured, an asset still has to be referable.
+func TestDisplayNameFallsBackToShortUUID(t *testing.T) {
+	f := newFixture(t)
+	empty := ""
+	if _, err := f.schema.UpdateCategory(f.ctx, f.catID,
+		schema.UpdateCategoryInput{DisplayKey: &empty}); err != nil {
+		t.Fatalf("clear display key: %v", err)
+	}
+	a, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D5E"}})
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	if a.DisplayName != model.ShortID(a.ID) {
+		t.Errorf("display name = %q, want the short UUID %q", a.DisplayName, model.ShortID(a.ID))
+	}
+	if len(a.DisplayName) != 8 {
+		t.Errorf("the fallback should be eight hex digits, got %q", a.DisplayName)
 	}
 }

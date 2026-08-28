@@ -25,10 +25,12 @@ var errPreviewRollback = errors.New("import preview: rolling back")
 type RowResult struct {
 	// Line is the spreadsheet row number the person sees, counting the two
 	// header rows.
-	Line   int               `json:"line"`
-	Status string            `json:"status"` // ok | error
-	SN     string            `json:"sn,omitempty"`
-	Fields map[string]string `json:"fields,omitempty"`
+	Line   int    `json:"line"`
+	Status string `json:"status"` // ok | error
+	// Display is how the created asset will be referred to: the category's
+	// display key, or the short UUID when the category has not nominated one.
+	Display string            `json:"display,omitempty"`
+	Fields  map[string]string `json:"fields,omitempty"`
 }
 
 // Report is the outcome of checking a whole file.
@@ -227,7 +229,7 @@ func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, categoryID, actorID 
 	}
 
 	res.Status = "ok"
-	res.SN = created.SN
+	res.Display = model.AssetDisplayName(created.ID, created.Attrs, look.displayKey)
 	res.Fields = nil
 	return res
 }

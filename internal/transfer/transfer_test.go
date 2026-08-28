@@ -69,7 +69,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 
 	cat, err := sch.CreateCategory(ctx, schema.CreateCategoryInput{
-		Code: "RT", Name: "SDWAN 路由器", SNTemplate: "{{ .attrs.mac | hex2dec }}",
+		Code: "RT", Name: "SDWAN 路由器",
 	})
 	if err != nil {
 		t.Fatalf("create category: %v", err)

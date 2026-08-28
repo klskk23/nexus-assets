@@ -33,7 +33,7 @@ func runSeed(ctx context.Context, a *app, count int) error {
 	}
 
 	root, err := a.schema.CreateCategory(ctx, schema.CreateCategoryInput{
-		Code: "SEED", Name: "种子设备", SNTemplate: "{{ .attrs.mac | hex2dec }}",
+		Code: "SEED", Name: "种子设备",
 	})
 	if err != nil {
 		return fmt.Errorf("create category: %w", err)
@@ -57,10 +57,28 @@ func runSeed(ctx context.Context, a *app, count int) error {
 	if err != nil {
 		return err
 	}
+	// The numbering rule is an ordinary expression key now: unique so it can
+	// serve as the display key, and bound only after its input exists.
+	sn, err := a.schema.CreateField(ctx, schema.CreateFieldInput{
+		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
+		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+	})
+	if err != nil {
+		return err
+	}
 	if err := a.schema.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
 		return err
 	}
 	if err := a.schema.Bind(ctx, root.ID, fw.ID, false, 20); err != nil {
+		return err
+	}
+	if err := a.schema.Bind(ctx, root.ID, sn.ID, false, 30); err != nil {
+		return err
+	}
+	displayKey := "sn"
+	if _, err := a.schema.UpdateCategory(ctx, root.ID, schema.UpdateCategoryInput{
+		DisplayKey: &displayKey,
+	}); err != nil {
 		return err
 	}
 

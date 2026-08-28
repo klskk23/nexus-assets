@@ -24,17 +24,17 @@ type Store struct{ db *store.Store }
 // New builds a schema store.
 func New(db *store.Store) *Store { return &Store{db: db} }
 
-const categoryCols = `id, code, name, parent_id, path, sn_template, archived_at, created_at, updated_at`
+const categoryCols = `id, code, name, parent_id, path, display_key, archived_at, created_at, updated_at`
 
 func scanCategory(row interface{ Scan(...any) error }) (model.Category, error) {
 	var c model.Category
-	var parent, snTmpl, archived sql.NullString
+	var parent, displayKey, archived sql.NullString
 	var created, updated string
-	if err := row.Scan(&c.ID, &c.Code, &c.Name, &parent, &c.Path, &snTmpl, &archived, &created, &updated); err != nil {
+	if err := row.Scan(&c.ID, &c.Code, &c.Name, &parent, &c.Path, &displayKey, &archived, &created, &updated); err != nil {
 		return c, err
 	}
 	c.ParentID = store.StrPtr(parent)
-	c.SNTemplate = snTmpl.String
+	c.DisplayKey = displayKey.String
 	var err error
 	if c.ArchivedAt, err = store.ScanTime(archived); err != nil {
 		return c, err
@@ -86,7 +86,7 @@ type CreateCategoryInput struct {
 	Code       string
 	Name       string
 	ParentID   *string
-	SNTemplate string
+	DisplayKey string
 }
 
 // CreateCategory inserts a category, computing its materialised path from the
@@ -107,15 +107,21 @@ func (s *Store) CreateCategory(ctx context.Context, in CreateCategoryInput) (mod
 		now := time.Now().UTC()
 		out = model.Category{
 			ID: store.NewID(), Code: in.Code, Name: in.Name, ParentID: in.ParentID,
-			SNTemplate: in.SNTemplate, CreatedAt: now, UpdatedAt: now,
+			DisplayKey: in.DisplayKey, CreatedAt: now, UpdatedAt: now,
 		}
 		out.Path = BuildPath(parentPath, out.ID)
 
+		// Only inherited fields can back a display key at creation time, since
+		// the category has no bindings of its own yet.
+		if err := validateDisplayKey(ctx, tx, out.Path, out.DisplayKey); err != nil {
+			return err
+		}
+
 		_, err := tx.ExecContext(ctx,
-			`INSERT INTO categories (id, code, name, parent_id, path, sn_template, created_at, updated_at)
+			`INSERT INTO categories (id, code, name, parent_id, path, display_key, created_at, updated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 			out.ID, out.Code, out.Name, store.NullString(out.ParentID), out.Path,
-			out.SNTemplate, store.FormatTime(now), store.FormatTime(now))
+			store.NullString(nilIfEmpty(out.DisplayKey)), store.FormatTime(now), store.FormatTime(now))
 		return err
 	})
 	if err != nil {
@@ -127,7 +133,7 @@ func (s *Store) CreateCategory(ctx context.Context, in CreateCategoryInput) (mod
 // UpdateCategoryInput carries the mutable parts of a category.
 type UpdateCategoryInput struct {
 	Name       *string
-	SNTemplate *string
+	DisplayKey *string
 	ParentID   **string // outer nil means "leave alone"
 }
 
@@ -151,8 +157,8 @@ func (s *Store) UpdateCategory(ctx context.Context, id string, in UpdateCategory
 		if in.Name != nil {
 			cur.Name = *in.Name
 		}
-		if in.SNTemplate != nil {
-			cur.SNTemplate = *in.SNTemplate
+		if in.DisplayKey != nil {
+			cur.DisplayKey = *in.DisplayKey
 		}
 
 		if in.ParentID != nil {
@@ -163,7 +169,7 @@ func (s *Store) UpdateCategory(ctx context.Context, id string, in UpdateCategory
 				return err
 			}
 			if n > 0 {
-				return fmt.Errorf("%w: %d asset(s) under %s", ErrCategoryHasAssets, n, cur.Name)
+				return fmt.Errorf("%w：「%s」的子树下还有 %d 台资产，请先把它们移到别处再移动类别", ErrCategoryHasAssets, cur.Name, n)
 			}
 			parentPath := ""
 			if *in.ParentID != nil {
@@ -176,11 +182,15 @@ func (s *Store) UpdateCategory(ctx context.Context, id string, in UpdateCategory
 			cur.Path = BuildPath(parentPath, cur.ID)
 		}
 
+		if err := validateDisplayKey(ctx, tx, cur.Path, cur.DisplayKey); err != nil {
+			return err
+		}
+
 		cur.UpdatedAt = time.Now().UTC()
 		_, err = tx.ExecContext(ctx,
-			`UPDATE categories SET name = ?, sn_template = ?, parent_id = ?, path = ?, updated_at = ?
+			`UPDATE categories SET name = ?, display_key = ?, parent_id = ?, path = ?, updated_at = ?
 			 WHERE id = ?`,
-			cur.Name, cur.SNTemplate, store.NullString(cur.ParentID), cur.Path,
+			cur.Name, store.NullString(nilIfEmpty(cur.DisplayKey)), store.NullString(cur.ParentID), cur.Path,
 			store.FormatTime(cur.UpdatedAt), id)
 		out = cur
 		return err
@@ -191,12 +201,14 @@ func (s *Store) UpdateCategory(ctx context.Context, id string, in UpdateCategory
 	return out, nil
 }
 
-// SNTemplates returns every category's raw sn_template, keyed by id, for
-// ResolveSNTemplate.
-func (s *Store) SNTemplates(ctx context.Context) (map[string]string, error) {
-	rows, err := s.db.ReadDB().QueryContext(ctx, `SELECT id, coalesce(sn_template, '') FROM categories`)
+// DisplayKeys returns every category's display key, keyed by category id.
+//
+// The list page resolves the display name of a whole page of assets from this
+// one map, which is what keeps the statement count flat as rows grow.
+func (s *Store) DisplayKeys(ctx context.Context) (map[string]string, error) {
+	rows, err := s.db.ReadDB().QueryContext(ctx, `SELECT id, coalesce(display_key, '') FROM categories`)
 	if err != nil {
-		return nil, fmt.Errorf("load sn templates: %w", err)
+		return nil, fmt.Errorf("load display keys: %w", err)
 	}
 	defer rows.Close()
 	out := map[string]string{}
@@ -220,4 +232,52 @@ func jsonOrEmpty(v any) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+// ErrDisplayKeyInvalid rejects a display key that cannot serve as an identifier.
+var ErrDisplayKeyInvalid = errors.New("display key is not usable")
+
+// validateDisplayKey enforces the two things a display key must satisfy: the
+// field is in the category's effective set, and it is marked unique.
+//
+// Uniqueness is not optional decoration. Everything the display name is for --
+// a printed label, a spoken hand-over, a stock count, a scanner jumping
+// straight to one device -- stops working the moment two assets can show the
+// same value.
+func validateDisplayKey(ctx context.Context, tx *sql.Tx, path, key string) error {
+	if key == "" {
+		return nil
+	}
+	const q = `SELECT f.label, f.is_unique, f.archived_at
+	           FROM category_fields cf
+	           JOIN categories c ON c.id = cf.category_id
+	           JOIN field_definitions f ON f.id = cf.field_id
+	           WHERE f.key = ? AND ? LIKE c.path || '%'`
+	var label string
+	var isUnique int
+	var archived sql.NullString
+	err := tx.QueryRowContext(ctx, q, key, path).Scan(&label, &isUnique, &archived)
+	if errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("%w: 信息项 %q 未绑定到该类别，请先绑定再设为显示编号", ErrDisplayKeyInvalid, key)
+	}
+	if err != nil {
+		return err
+	}
+	if archived.Valid {
+		return fmt.Errorf("%w: 信息项「%s」已停用，不能用作显示编号", ErrDisplayKeyInvalid, label)
+	}
+	if isUnique != 1 {
+		return fmt.Errorf("%w: 信息项「%s」未标为唯一，两台设备可能显示同一个编号；请先将它标为唯一",
+			ErrDisplayKeyInvalid, label)
+	}
+	return nil
+}
+
+// nilIfEmpty keeps an unset display key as SQL NULL rather than an empty
+// string, so "not configured" has exactly one representation.
+func nilIfEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

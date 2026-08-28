@@ -1,9 +1,9 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
-import { api } from "@/lib/api"
+import { api, ApiError } from "@/lib/api"
 import type { HolderEntity } from "@/lib/types"
-import { zhMeta } from "@/i18n/zh"
+import { zh, zhMeta } from "@/i18n/zh"
 import { CrudPage } from "@/features/metadata/CrudPage"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,9 +15,15 @@ export function Holders() {
   const [type, setType] = useState("location")
   const queryClient = useQueryClient()
 
+  const [banner, setBanner] = useState<string | null>(null)
+
   const setDefault = useMutation({
     mutationFn: (id: string) => api.patch(`/holders/${id}`, { is_default_stock: true }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["holders"] }),
+    onSuccess: () => {
+      setBanner(null)
+      queryClient.invalidateQueries({ queryKey: ["holders"] })
+    },
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : zh.common.error),
   })
 
   return (
@@ -35,11 +41,18 @@ export function Holders() {
         { header: zhMeta.holders.type, cell: (h) => zhMeta.entityTypes[h.type] ?? h.type },
         {
           header: zhMeta.holders.defaultStock,
+          // The marker moves but never switches off, so the current holder gets
+          // a badge with no control rather than a toggle that would be refused.
           cell: (h) =>
             h.is_default_stock ? (
               <Badge>{zhMeta.holders.defaultStock}</Badge>
             ) : h.type === "location" ? (
-              <Button variant="ghost" size="sm" onClick={() => setDefault.mutate(h.id)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={setDefault.isPending}
+                onClick={() => setDefault.mutate(h.id)}
+              >
                 {zhMeta.holders.setDefault}
               </Button>
             ) : null,
@@ -47,6 +60,11 @@ export function Holders() {
       ]}
       form={
         <div className="grid gap-4 sm:grid-cols-2">
+          {banner && (
+            <p role="alert" className="text-sm text-destructive sm:col-span-2">
+              {banner}
+            </p>
+          )}
           <div className="grid gap-1.5">
             <Label htmlFor="h-name">{zhMeta.holders.name}</Label>
             <Input id="h-name" value={name} onChange={(e) => setName(e.target.value)} />

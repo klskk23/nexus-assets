@@ -131,6 +131,7 @@ func (s *Store) UpdateField(ctx context.Context, id string, in UpdateFieldInput)
 		if err != nil {
 			return err
 		}
+		var templateChanged bool
 		if in.Label != nil {
 			cur.Label = *in.Label
 		}
@@ -138,6 +139,8 @@ func (s *Store) UpdateField(ctx context.Context, id string, in UpdateFieldInput)
 			if err := ValidateOptions(cur.Type, *in.Options); err != nil {
 				return err
 			}
+			templateChanged = cur.Type == model.FieldComputed &&
+				cur.Options.Template != in.Options.Template
 			cur.Options = *in.Options
 		}
 		now := time.Now().UTC()
@@ -158,11 +161,24 @@ func (s *Store) UpdateField(ctx context.Context, id string, in UpdateFieldInput)
 			return err
 		}
 		cur.UpdatedAt = now
-		_, err = tx.ExecContext(ctx,
+		if _, err := tx.ExecContext(ctx,
 			`UPDATE field_definitions SET label = ?, options = ?, archived_at = ?, updated_at = ? WHERE id = ?`,
-			cur.Label, string(opts), archived, store.FormatTime(now), id)
+			cur.Label, string(opts), archived, store.FormatTime(now), id); err != nil {
+			return err
+		}
+		// Re-run the dependency gate after the write, so the check reads the
+		// new template; a failure rolls the transaction back. Editing a
+		// template can introduce a dependency nothing ever checked, because the
+		// gate itself only runs at bind time -- without this, pointing an
+		// already-bound expression key at an optional field is the way around
+		// it.
+		if templateChanged {
+			if err := recheckBoundCategories(ctx, tx, cur.Key); err != nil {
+				return err
+			}
+		}
 		out = cur
-		return err
+		return nil
 	})
 	return out, err
 }
@@ -172,4 +188,38 @@ func boolInt(b bool) int {
 		return 1
 	}
 	return 0
+}
+
+// recheckBoundCategories re-runs the dependency gate for every category the
+// field is bound to, so a template edit cannot leave a binding unsatisfiable.
+func recheckBoundCategories(ctx context.Context, tx *sql.Tx, key string) error {
+	rows, err := tx.QueryContext(ctx,
+		`SELECT c.id, c.name, c.path
+		 FROM category_fields cf
+		 JOIN categories c ON c.id = cf.category_id
+		 JOIN field_definitions f ON f.id = cf.field_id
+		 WHERE f.key = ?`, key)
+	if err != nil {
+		return fmt.Errorf("load bound categories: %w", err)
+	}
+	defer rows.Close()
+	type bound struct{ name, path string }
+	var targets []bound
+	for rows.Next() {
+		var id string
+		var b bound
+		if err := rows.Scan(&id, &b.name, &b.path); err != nil {
+			return err
+		}
+		targets = append(targets, b)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, b := range targets {
+		if err := checkBindDeps(ctx, tx, b.path, key); err != nil {
+			return fmt.Errorf("%w（类别「%s」）", err, b.name)
+		}
+	}
+	return nil
 }

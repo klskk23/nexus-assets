@@ -52,19 +52,19 @@ func NewService(db *store.Store, sch *schema.Store) *Service {
 //
 // The order is not negotiable and is spelled out in data-model.md:
 //
-//	1  resolve the effective field set from the category chain
-//	2  merge model defaults into missing keys
-//	3  normalise format-typed values      <- must precede step 6
-//	4  validate types, required and regex
-//	5  evaluate computed fields in topological order
-//	6  evaluate the serial number
-//	7  check uniqueness inside the transaction
-//	8  archive the previous serial number when it changed
-//	9  write with an optimistic-lock guard
-//	10 emit a transfer event when the state triple moved
+//	1 resolve the effective field set from the category chain
+//	2 merge model defaults into missing keys
+//	3 normalise format-typed values      <- must precede step 6
+//	4 validate types, required and regex
+//	5 evaluate expression keys in topological order
+//	6 probe uniqueness so a collision can name the other device
+//	7 write with an optimistic-lock guard
+//	8 sync the unique-value table, archiving values that changed
+//	9 emit a transfer event when the state triple moved
 //
-// Everything happens inside one BEGIN IMMEDIATE transaction, which is what
-// makes the select-then-insert uniqueness check in step 7 safe.
+// Normalisation still has to precede the uniqueness stages: without it
+// "AA:BB:CC" and "aa-bb-cc" are two different strings and the same MAC gets in
+// twice.
 func (s *Service) Save(ctx context.Context, in SaveInput) (model.Asset, error) {
 	prep, err := s.Prepare(ctx, in)
 	if err != nil {
@@ -86,17 +86,29 @@ type Prepared struct {
 	Input  SaveInput
 	Fields []model.BoundField
 	Attrs  map[string]any
-	SN     string
+	// ID is the asset id, allocated here rather than at write time so an
+	// expression key may read {{ .id }} -- which is the natural way to build a
+	// short label out of the UUID now that there is no separate serial column.
+	ID string
+	// Unique holds the values that must not collide, keyed by field.
+	Unique map[string]string
+	// DisplayKey is the category's nominated identifier, carried through so
+	// the created asset can be handed back already named.
+	DisplayKey string
 }
 
-// Prepare runs stages 1 through 6: resolve the field set, merge model defaults,
-// normalise, validate, evaluate computed fields and derive the serial number.
+// Prepare runs stages 1 through 5: resolve the field set, merge model defaults,
+// normalise, validate and evaluate the expression keys.
 //
 // Nothing here touches the write pool, so a caller can prepare many rows before
 // opening a single transaction to write them.
 func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
 	var prep Prepared
 	prep.Input = in
+	prep.ID = in.ID
+	if prep.ID == "" {
+		prep.ID = store.NewID()
+	}
 
 	cat, err := s.schema.GetCategory(ctx, in.CategoryID)
 	if err != nil {
@@ -138,8 +150,8 @@ func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
 		return prep, ferrs
 	}
 
-	// 5. computed fields, in dependency order
-	ctxData := compute.NewContext(in.ID, clean, cat.Code, cat.Name, modelName, modelVendor)
+	// 5. expression keys, in dependency order
+	ctxData := compute.NewContext(prep.ID, clean, cat.Code, cat.Name, modelName, modelVendor)
 	computedValues, err := evalComputed(fields, ctxData)
 	if err != nil {
 		return prep, err
@@ -148,27 +160,14 @@ func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
 		clean[k] = v
 	}
 
-	// 6. serial number, from the nearest ancestor that defines a template
-	templates, err := s.schema.SNTemplates(ctx)
-	if err != nil {
-		return prep, err
-	}
-	tmpl, _ := schema.ResolveSNTemplate(cat.Path, templates)
-	if tmpl == "" {
-		return prep, FieldErrors{"sn": "该类别及其上级都没有配置编号生成规则"}
-	}
-	ctxData = compute.NewContext(in.ID, clean, cat.Code, cat.Name, modelName, modelVendor)
-	sn, err := compute.Eval("sn", tmpl, ctxData)
-	if err != nil {
-		return prep, FieldErrors{"sn": fmt.Sprintf("编号生成失败：%v", err)}
-	}
-
-	prep.Fields, prep.Attrs, prep.SN = fields, clean, sn
+	prep.Fields, prep.Attrs = fields, clean
+	prep.Unique = uniqueValues(fields, clean)
+	prep.DisplayKey = cat.DisplayKey
 	return prep, nil
 }
 
-// Persist runs stages 7 through 10 inside a caller-supplied transaction:
-// uniqueness, serial-number archiving, the optimistic-lock write and the
+// Persist runs stages 6 through 9 inside a caller-supplied transaction: the
+// uniqueness probe, the optimistic-lock write, the unique-value sync and the
 // transfer event.
 //
 // Taking the transaction as a parameter is what lets the importer write a whole
@@ -176,7 +175,7 @@ func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
 // transaction, a MAC repeated twice inside one file is caught just like a
 // collision with an existing row.
 func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model.Asset, error) {
-	in, fields, clean, sn := prep.Input, prep.Fields, prep.Attrs, prep.SN
+	in, clean := prep.Input, prep.Attrs
 	var out model.Asset
 	now := time.Now().UTC()
 
@@ -190,52 +189,41 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 			prev = &p
 		}
 
-		// 7. uniqueness, inside the write transaction
-		if err := checkUnique(ctx, tx, fields, clean, sn, in.ID); err != nil {
+		// 6. uniqueness: probe first so a collision can name the other device
+		if err := probeUnique(ctx, tx, prep.Fields, prep.Unique, prep.ID); err != nil {
 			return out, err
 		}
 
-		id := in.ID
-		if id == "" {
-			id = store.NewID()
-		}
+		id := prep.ID
 
 		attrsJSON, err := store.MarshalJSONMap(clean)
 		if err != nil {
 			return out, err
 		}
 
+		// 7. write, under an optimistic-lock guard on update
 		if prev == nil {
 			_, err = tx.ExecContext(ctx,
-				`INSERT INTO assets (id, sn, category_id, model_id, status, owner_id, holder_type, holder_id,
+				`INSERT INTO assets (id, category_id, model_id, status, owner_id, holder_type, holder_id,
 				                     attrs, version, created_at, updated_at)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-				id, sn, in.CategoryID, store.NullString(in.ModelID), string(in.Status), in.OwnerID,
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+				id, in.CategoryID, store.NullString(in.ModelID), string(in.Status), in.OwnerID,
 				string(in.Holder.Type), in.Holder.ID, attrsJSON,
 				store.FormatTime(now), store.FormatTime(now))
 			if err != nil {
 				return out, err
 			}
 			out = model.Asset{
-				ID: id, SN: sn, CategoryID: in.CategoryID, ModelID: in.ModelID,
+				ID: id, CategoryID: in.CategoryID, ModelID: in.ModelID,
 				Status: in.Status, OwnerID: in.OwnerID, Holder: in.Holder,
 				Attrs: clean, Version: 1, CreatedAt: now, UpdatedAt: now,
 			}
 		} else {
-			// 8. keep the old serial number searchable
-			if prev.SN != sn {
-				if _, err := tx.ExecContext(ctx,
-					`INSERT INTO asset_sn_history (asset_id, sn, replaced_at) VALUES (?, ?, ?)`,
-					id, prev.SN, store.FormatTime(now)); err != nil {
-					return out, err
-				}
-			}
-			// 9. optimistic lock
 			res, err := tx.ExecContext(ctx,
-				`UPDATE assets SET sn = ?, category_id = ?, model_id = ?, status = ?, owner_id = ?,
+				`UPDATE assets SET category_id = ?, model_id = ?, status = ?, owner_id = ?,
 				                   holder_type = ?, holder_id = ?, attrs = ?, version = version + 1, updated_at = ?
 				 WHERE id = ? AND version = ?`,
-				sn, in.CategoryID, store.NullString(in.ModelID), string(in.Status), in.OwnerID,
+				in.CategoryID, store.NullString(in.ModelID), string(in.Status), in.OwnerID,
 				string(in.Holder.Type), in.Holder.ID, attrsJSON, store.FormatTime(now), id, in.Version)
 			if err != nil {
 				return out, err
@@ -244,13 +232,21 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 				return out, ErrVersionConflict
 			}
 			out = model.Asset{
-				ID: id, SN: sn, CategoryID: in.CategoryID, ModelID: in.ModelID,
+				ID: id, CategoryID: in.CategoryID, ModelID: in.ModelID,
 				Status: in.Status, OwnerID: in.OwnerID, Holder: in.Holder,
 				Attrs: clean, Version: in.Version + 1, CreatedAt: prev.CreatedAt, UpdatedAt: now,
 			}
 		}
 
-		// 10. transfer event, only when the state triple actually moved
+		// 8. the reverse-lookup table, after the row exists so its foreign key
+		// holds. The partial unique index is the real guarantee.
+		if err := syncUniqueValues(ctx, tx, id, prep.Unique, now); err != nil {
+			return out, err
+		}
+
+		out.DisplayName = model.AssetDisplayName(id, clean, prep.DisplayKey)
+
+		// 9. transfer event, only when the state triple actually moved
 		var from *model.AssetState
 		if prev != nil {
 			from = &model.AssetState{Status: prev.Status, Holder: prev.Holder, OwnerID: prev.OwnerID}

@@ -27,8 +27,8 @@ func newFixture(t *testing.T) (*Store, *store.Store, context.Context) {
 		`INSERT INTO users (id, email, name, auth_type, status, role, token_version, created_at, updated_at)
 		 VALUES ('u1', 'a@example.com', '管理员', 'local', 'active', 'admin', 0,
 		         '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
-		`INSERT INTO categories (id, code, name, path, created_at, updated_at)
-		 VALUES ('cat', 'RT', '路由器', '/cat/', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+		`INSERT INTO categories (id, code, name, path, display_key, created_at, updated_at)
+		 VALUES ('cat', 'RT', '路由器', '/cat/', 'tag', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
 	} {
 		if _, err := db.WriteDBForTest().ExecContext(ctx, q); err != nil {
 			t.Fatalf("seed reference rows: %v", err)
@@ -49,21 +49,22 @@ func TestBlockersFindsBothPossessionAndReference(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	insert := `INSERT INTO assets (id, sn, category_id, status, owner_id, holder_type, holder_id, attrs, created_at, updated_at)
-	           VALUES (?, ?, 'cat', 'in_stock', 'u1', 'entity', ?, ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`
-	seed := func(id, sn, holderID, attrs string) {
+	insert := `INSERT INTO assets (id, category_id, status, owner_id, holder_type, holder_id, attrs, created_at, updated_at)
+	           VALUES (?, 'cat', 'in_stock', 'u1', 'entity', ?, ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`
+	seed := func(id, holderID, attrs string) {
 		t.Helper()
-		if _, err := db.WriteDBForTest().ExecContext(ctx, insert, id, sn, holderID, attrs); err != nil {
-			t.Fatalf("seed %s: %v", sn, err)
+		if _, err := db.WriteDBForTest().ExecContext(ctx, insert, id, holderID, attrs); err != nil {
+			t.Fatalf("seed %s: %v", id, err)
 		}
 	}
-	// Held by the warehouse.
-	seed("a1", "SN-1", warehouse.ID, `{}`)
+	// Held by the warehouse. The category's display key is "tag", so the
+	// blocker list must name the device by that rather than by its UUID.
+	seed("a1", warehouse.ID, `{"tag":"SN-1"}`)
 	// Not held by it, but names it in a reference field -- the second way to
 	// be in the way, and the one a possession-only check would miss.
-	seed("a2", "SN-2", other.ID, `{"install_location":"`+warehouse.ID+`"}`)
+	seed("a2", other.ID, `{"tag":"SN-2","install_location":"`+warehouse.ID+`"}`)
 	// Unrelated.
-	seed("a3", "SN-3", other.ID, `{}`)
+	seed("a3", other.ID, `{"tag":"SN-3"}`)
 
 	blockers, total, err := hs.Blockers(ctx, warehouse.ID)
 	if err != nil {
@@ -74,7 +75,7 @@ func TestBlockersFindsBothPossessionAndReference(t *testing.T) {
 	}
 	byReason := map[string]string{}
 	for _, b := range blockers {
-		byReason[b.Reason] = b.SN
+		byReason[b.Reason] = b.Name
 	}
 	if byReason["holder"] != "SN-1" {
 		t.Errorf("possession blocker = %+v", blockers)
@@ -91,8 +92,8 @@ func TestArchiveRefusedWithAnActionableMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := db.WriteDBForTest().ExecContext(ctx,
-		`INSERT INTO assets (id, sn, category_id, status, owner_id, holder_type, holder_id, attrs, created_at, updated_at)
-		 VALUES ('a1', 'SN-1', 'cat', 'in_stock', 'u1', 'entity', ?, '{}', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+		`INSERT INTO assets (id, category_id, status, owner_id, holder_type, holder_id, attrs, created_at, updated_at)
+		 VALUES ('a1', 'cat', 'in_stock', 'u1', 'entity', ?, '{"tag":"SN-1"}', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
 		warehouse.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -139,9 +140,9 @@ func TestBlockerListIsCappedButTheTotalIsNot(t *testing.T) {
 	}
 	for i := 0; i < 12; i++ {
 		if _, err := db.WriteDBForTest().ExecContext(ctx,
-			`INSERT INTO assets (id, sn, category_id, status, owner_id, holder_type, holder_id, attrs, created_at, updated_at)
-			 VALUES (?, ?, 'cat', 'in_stock', 'u1', 'entity', ?, '{}', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
-			string(rune('a'+i)), "SN-"+string(rune('A'+i)), w.ID); err != nil {
+			`INSERT INTO assets (id, category_id, status, owner_id, holder_type, holder_id, attrs, created_at, updated_at)
+			 VALUES (?, 'cat', 'in_stock', 'u1', 'entity', ?, ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+			string(rune('a'+i)), w.ID, `{"tag":"SN-`+string(rune('A'+i))+`"}`); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -159,5 +160,49 @@ func TestBlockerListIsCappedButTheTotalIsNot(t *testing.T) {
 	msg := describeBlockers("上海仓库", blockers, total)
 	if !strings.Contains(msg, "仅列出前") {
 		t.Errorf("the message should say the list is truncated: %s", msg)
+	}
+}
+
+// The default stock marker moves; it does not switch off. Archiving used to
+// clear it on the way out, which was a back door around exactly that rule.
+func TestArchivingTheDefaultStockPointIsRefused(t *testing.T) {
+	hs, _, ctx := newFixture(t)
+
+	a, err := hs.Create(ctx, CreateInput{Type: model.EntityLocation, Name: "上海仓库"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := hs.Create(ctx, CreateInput{Type: model.EntityLocation, Name: "北京仓库"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := hs.SetDefaultStock(ctx, a.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	err = hs.Archive(ctx, a.ID)
+	if !errors.Is(err, ErrDefaultStockRequired) {
+		t.Fatalf("want ErrDefaultStockRequired, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "上海仓库") {
+		t.Errorf("the message should name the location, got %v", err)
+	}
+
+	// Still the default, and still active.
+	cur, ok, err := hs.DefaultStock(ctx)
+	if err != nil || !ok || cur.ID != a.ID {
+		t.Fatalf("the marker must survive the refused archive: %v %v %+v", err, ok, cur)
+	}
+
+	// Move it first, then the archive goes through.
+	if err := hs.SetDefaultStock(ctx, b.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := hs.Archive(ctx, a.ID); err != nil {
+		t.Fatalf("once the marker has moved, archiving must succeed: %v", err)
+	}
+	cur, ok, err = hs.DefaultStock(ctx)
+	if err != nil || !ok || cur.ID != b.ID {
+		t.Errorf("the marker should now be on the other location: %v %v %+v", err, ok, cur)
 	}
 }

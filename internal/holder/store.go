@@ -18,6 +18,13 @@ var ErrNotFound = errors.New("holder entity not found")
 // ErrReferenced blocks removing an entity something still points at.
 var ErrReferenced = errors.New("holder entity is still referenced")
 
+// ErrDefaultStockRequired blocks clearing the default stock marker.
+//
+// The marker can move but not disappear. Allowing it to be cleared would give
+// check-in two behaviours -- straight to the default, or stop and ask -- with
+// nothing on screen to say which one is in force.
+var ErrDefaultStockRequired = errors.New("the default stock point can be moved but not cleared")
+
 // Store provides access to holder entities.
 type Store struct{ db *store.Store }
 
@@ -171,10 +178,18 @@ func (s *Store) Archive(ctx context.Context, id string) error {
 		return fmt.Errorf("%w: %s", ErrReferenced, describeBlockers(e.Name, blockers, total))
 	}
 
+	// Archiving used to clear the marker on the way out, which was a back door
+	// around ErrDefaultStockRequired: disable the default location and the
+	// system quietly had no default at all.
+	if e.IsDefaultStock {
+		return fmt.Errorf("%w：「%s」是当前默认库存点，请先把默认库存点转移到其他位置再停用它",
+			ErrDefaultStockRequired, e.Name)
+	}
+
 	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		now := time.Now().UTC()
 		_, err = tx.ExecContext(ctx,
-			`UPDATE holder_entities SET archived_at = ?, is_default_stock = 0, updated_at = ? WHERE id = ?`,
+			`UPDATE holder_entities SET archived_at = ?, updated_at = ? WHERE id = ?`,
 			store.FormatTime(now), store.FormatTime(now), id)
 		return err
 	})

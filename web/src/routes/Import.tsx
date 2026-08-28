@@ -21,7 +21,7 @@ import {
 interface RowResult {
   line: number
   status: "ok" | "error"
-  sn?: string
+  display?: string
   fields?: Record<string, string>
 }
 

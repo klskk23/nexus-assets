@@ -74,15 +74,16 @@ func TestEveryMetadataMutationIsAudited(t *testing.T) {
 	}
 }
 
-func TestUpdatingACategoryRecordsBothSides(t *testing.T) {
+func TestUpdatingAFieldTemplateRecordsBothSides(t *testing.T) {
 	h := newHarness(t)
 
 	newRule := `{{ printf \"%s-%s\" .category.code (.attrs.mac | hex2dec) }}`
-	if rec := h.patch(t, "/api/categories/"+h.catID, `{"sn_template":"`+newRule+`"}`); rec.Code != http.StatusOK {
+	if rec := h.patch(t, "/api/fields/"+h.snFieldID,
+		`{"options":{"template":"`+newRule+`"}}`); rec.Code != http.StatusOK {
 		t.Fatalf("update: %s", rec.Body.String())
 	}
 
-	page := decode[audit.Page](t, h.get(t, "/api/audit?target_type=category"))
+	page := decode[audit.Page](t, h.get(t, "/api/audit?target_type=field"))
 	if page.Total == 0 {
 		t.Fatal("the rule change was not audited")
 	}
@@ -156,23 +157,23 @@ func TestArchivingAHeldHolderIsRefusedWithBlockers(t *testing.T) {
 	}
 }
 
-func TestDeletingAnAssetNeedsTheMatchingSN(t *testing.T) {
+func TestDeletingAnAssetNeedsTheMatchingNumber(t *testing.T) {
 	h := newHarness(t)
 	h.seed(t, 0, 1)
 	id := h.firstAssetID(t)
-	sn := decode[assetListResponse](t, h.get(t, "/api/assets")).Items[0].SN
+	sn := decode[assetListResponse](t, h.get(t, "/api/assets")).Items[0].DisplayName
 
 	if rec := h.do(t, http.MethodDelete, "/api/assets/"+id, ""); rec.Code != http.StatusBadRequest {
 		t.Errorf("no confirmation at all should be refused, got %d", rec.Code)
 	}
-	if rec := h.do(t, http.MethodDelete, "/api/assets/"+id+"?confirm_sn=wrong", ""); rec.Code != http.StatusUnprocessableEntity {
+	if rec := h.do(t, http.MethodDelete, "/api/assets/"+id+"?confirm=wrong", ""); rec.Code != http.StatusUnprocessableEntity {
 		t.Errorf("a mismatched confirmation should be refused, got %d", rec.Code)
 	}
 	if got := decode[assetListResponse](t, h.get(t, "/api/assets")).Total; got != 1 {
 		t.Fatalf("the asset must survive a refused delete, total = %d", got)
 	}
 
-	if rec := h.do(t, http.MethodDelete, "/api/assets/"+id+"?confirm_sn="+sn, ""); rec.Code != http.StatusNoContent {
+	if rec := h.do(t, http.MethodDelete, "/api/assets/"+id+"?confirm="+sn, ""); rec.Code != http.StatusNoContent {
 		t.Fatalf("the right confirmation should delete, got %d", rec.Code)
 	}
 	if got := decode[assetListResponse](t, h.get(t, "/api/assets")).Total; got != 0 {

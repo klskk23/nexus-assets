@@ -225,7 +225,8 @@ export function FieldEditor({ field, onClose }: Props) {
               value={options.template ?? ""}
               onChange={(e) => set({ template: e.target.value })}
             />
-            <p className="text-xs text-muted-foreground">{zhConfig.sn.hint}</p>
+            <p className="text-xs text-muted-foreground">{zhConfig.field.templateHint}</p>
+            <p className="text-xs text-muted-foreground">{zhConfig.field.depsHint}</p>
           </div>
         )}
 
@@ -257,7 +258,7 @@ export function FieldEditor({ field, onClose }: Props) {
             {zhConfig.field.archive}
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            {zhConfig.sn.cancel}
+            {zh.common.cancel}
           </Button>
         </div>
       </CardContent>

@@ -50,7 +50,7 @@ describe("export from the asset list", () => {
     renderWithProviders(<Assets />)
     await screen.findByRole("link", { name: "导出 CSV" })
 
-    await user.type(screen.getByLabelText(/搜索资产编号/), "4D5E")
+    await user.type(screen.getByLabelText(/搜索编号/), "4D5E")
     await screen.findByRole("option", { name: "网络设备" })
     await user.selectOptions(screen.getByLabelText("类别"), "net")
     await user.selectOptions(screen.getByLabelText("状态"), "in_use")

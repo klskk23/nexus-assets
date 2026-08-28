@@ -11,6 +11,8 @@ import { DynamicForm } from "@/features/assets/DynamicForm"
 import { Timeline } from "@/features/transfers/Timeline"
 import { EditEvent } from "@/features/transfers/EditEvent"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
+import { ModelPicker } from "@/features/assets/ModelPicker"
+import { TransferDialog } from "@/features/transfers/TransferDialog"
 import {
   Collapsible,
   CollapsibleContent,
@@ -20,9 +22,15 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
+interface HistoricValue {
+  key: string
+  value: string
+  archived_at: string
+}
+
 interface DetailResponse {
   asset: Asset
-  sn_history: string[]
+  value_history: HistoricValue[]
 }
 
 export function AssetDetail() {
@@ -34,6 +42,8 @@ export function AssetDetail() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [banner, setBanner] = useState<string | null>(null)
   const [editing, setEditing] = useState<Transfer | null>(null)
+  const [modelId, setModelId] = useState<string | null>(null)
+  const [transferOpen, setTransferOpen] = useState(false)
 
   const detail = useQuery({
     queryKey: ["asset", id],
@@ -57,14 +67,17 @@ export function AssetDetail() {
   })
 
   useEffect(() => {
-    if (asset) setValues(asset.attrs)
+    if (asset) {
+      setValues(asset.attrs)
+      setModelId(asset.model_id)
+    }
   }, [asset])
 
   const save = useMutation({
     mutationFn: () =>
       api.patch<Asset>(`/assets/${id}`, {
         category_id: asset!.category_id,
-        model_id: asset!.model_id,
+        model_id: modelId,
         status: asset!.status,
         owner_id: asset!.owner?.id,
         holder_type: asset!.holder.type,
@@ -74,8 +87,8 @@ export function AssetDetail() {
       }),
     onSuccess: (updated) => {
       setFieldErrors({})
-      if (asset && updated.sn !== asset.sn) {
-        setBanner(zh.assets.snChanged(asset.sn, updated.sn))
+      if (asset && updated.display_name !== asset.display_name) {
+        setBanner(zh.assets.snChanged(asset.display_name, updated.display_name))
       } else {
         setBanner(zh.assets.saved)
       }
@@ -93,7 +106,8 @@ export function AssetDetail() {
   })
 
   const remove = useMutation({
-    mutationFn: () => api.del<void>(`/assets/${id}?confirm_sn=${encodeURIComponent(asset!.sn)}`),
+    mutationFn: () =>
+      api.del<void>(`/assets/${id}?confirm=${encodeURIComponent(asset!.display_name)}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assets"] })
       navigate("/assets", { replace: true })
@@ -112,14 +126,23 @@ export function AssetDetail() {
       {asset && (
         <div className="grid gap-6">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-mono text-xl font-semibold">{asset.sn}</h1>
+            <h1 className="font-mono text-xl font-semibold">{asset.display_name}</h1>
             <Badge variant="secondary">{zh.status[asset.status] ?? asset.status}</Badge>
-            {(detail.data?.sn_history ?? []).length > 0 && (
-              <span className="text-sm text-muted-foreground">
-                {zh.common.formerSN(detail.data!.sn_history.join("、"))}
-              </span>
-            )}
+            <Button className="ml-auto" onClick={() => setTransferOpen(true)}>
+              {zh.assets.transfer}
+            </Button>
           </div>
+
+          <TransferDialog
+            assetIDs={[id]}
+            open={transferOpen}
+            onOpenChange={setTransferOpen}
+            onDone={() => {
+              setBanner(zhTransfer.actions.done(1))
+              queryClient.invalidateQueries({ queryKey: ["asset", id] })
+              queryClient.invalidateQueries({ queryKey: ["timeline", id] })
+            }}
+          />
 
           {banner && (
             <p role="status" className="rounded-md border bg-secondary px-3 py-2 text-sm">
@@ -142,6 +165,17 @@ export function AssetDetail() {
                   <dd>{asset.owner?.name ?? zh.common.none}</dd>
                 </div>
               </dl>
+
+              <ModelPicker
+                categoryID={asset.category_id}
+                value={modelId}
+                values={values}
+                confirmOverwrite
+                onChange={(mid, patch) => {
+                  setModelId(mid)
+                  setValues((cur) => ({ ...cur, ...patch }))
+                }}
+              />
 
               {schema.data && (
                 <DynamicForm
@@ -178,6 +212,24 @@ export function AssetDetail() {
             </CardContent>
           </Card>
 
+          {(detail.data?.value_history ?? []).length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{zh.assets.valueHistory}</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-2">
+                <p className="text-sm text-muted-foreground">{zh.assets.valueHistoryHint}</p>
+                <ul className="grid gap-1 font-mono text-sm">
+                  {(detail.data?.value_history ?? []).map((h, i) => (
+                    <li key={i}>
+                      {h.key}: {h.value}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
           {archived.length > 0 && (
             <Collapsible>
               <CollapsibleTrigger asChild>
@@ -211,9 +263,9 @@ export function AssetDetail() {
                   </Button>
                 }
                 title={zh.assets.deleteTitle}
-                description={zh.assets.deleteHint(asset.sn)}
+                description={zh.assets.deleteHint(asset.display_name)}
                 confirmLabel={zh.assets.delete}
-                requirePhrase={asset.sn}
+                requirePhrase={asset.display_name}
                 onConfirm={() => remove.mutate()}
               />
             </CardContent>

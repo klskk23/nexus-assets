@@ -9,21 +9,22 @@ import (
 	"github.com/klskk23/nexus-assets/internal/schema"
 )
 
-// setSNTemplate rewrites the rule on the fixture's leaf category.
-func (f *fixture) setSNTemplate(t *testing.T, tmpl string) {
+// setTemplate rewrites the expression behind the fixture's display key.
+func (f *fixture) setTemplate(t *testing.T, tmpl string) {
 	t.Helper()
-	if _, err := f.schema.UpdateCategory(f.ctx, f.catID, schema.UpdateCategoryInput{SNTemplate: &tmpl}); err != nil {
-		t.Fatalf("set sn_template: %v", err)
+	opts := model.FieldOptions{Template: tmpl}
+	if _, err := f.schema.UpdateField(f.ctx, f.snField, schema.UpdateFieldInput{Options: &opts}); err != nil {
+		t.Fatalf("set template: %v", err)
 	}
 }
 
-func (f *fixture) snOf(t *testing.T, id string) string {
+func (f *fixture) numberOf(t *testing.T, id string) string {
 	t.Helper()
 	a, err := f.svc.Get(f.ctx, id)
 	if err != nil {
 		t.Fatalf("get asset: %v", err)
 	}
-	return a.SN
+	return a.DisplayName
 }
 
 // A dry run must be exactly that: a report, with nothing written.
@@ -33,11 +34,11 @@ func TestRecomputeDryRunWritesNothing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	before := a.SN
+	before := a.DisplayName
 
-	f.setSNTemplate(t, `{{ printf "%s-%s" .category.code (.attrs.mac | hex2dec) }}`)
+	f.setTemplate(t, `{{ printf "%s-%s" .category.code (.attrs.mac | hex2dec) }}`)
 
-	report, err := f.svc.RecomputeSN(f.ctx, f.catID, true)
+	report, err := f.svc.Recompute(f.ctx, f.catID, true)
 	if err != nil {
 		t.Fatalf("dry run: %v", err)
 	}
@@ -53,7 +54,10 @@ func TestRecomputeDryRunWritesNothing(t *testing.T) {
 	if report.Samples[0].To != "RT-112394521950" {
 		t.Errorf("sample target = %q", report.Samples[0].To)
 	}
-	if got := f.snOf(t, a.ID); got != before {
+	if report.Samples[0].Key != "sn" {
+		t.Errorf("the sample should name the key it changed, got %q", report.Samples[0].Key)
+	}
+	if got := f.numberOf(t, a.ID); got != before {
 		t.Errorf("the dry run changed the stored number: %q -> %q", before, got)
 	}
 }
@@ -70,12 +74,12 @@ func TestRecomputeAppliesAndArchivesOldNumbers(t *testing.T) {
 	}
 	oldSNs := make([]string, len(ids))
 	for i, id := range ids {
-		oldSNs[i] = f.snOf(t, id)
+		oldSNs[i] = f.numberOf(t, id)
 	}
 
-	f.setSNTemplate(t, `{{ printf "%s-%s" .category.code (.attrs.mac | hex2dec) }}`)
+	f.setTemplate(t, `{{ printf "%s-%s" .category.code (.attrs.mac | hex2dec) }}`)
 
-	report, err := f.svc.RecomputeSN(f.ctx, f.catID, false)
+	report, err := f.svc.Recompute(f.ctx, f.catID, false)
 	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}
@@ -84,16 +88,22 @@ func TestRecomputeAppliesAndArchivesOldNumbers(t *testing.T) {
 	}
 
 	for i, id := range ids {
-		newSN := f.snOf(t, id)
+		newSN := f.numberOf(t, id)
 		if !strings.HasPrefix(newSN, "RT-") {
 			t.Errorf("asset %d keeps the old rule: %q", i, newSN)
 		}
 		// A printed label must still find the device.
-		hist, err := f.svc.SNHistory(f.ctx, id)
+		hist, err := f.svc.ValueHistory(f.ctx, id)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(hist) != 1 || hist[0] != oldSNs[i] {
+		var archived []string
+		for _, h := range hist {
+			if h.Key == "sn" {
+				archived = append(archived, h.Value)
+			}
+		}
+		if len(archived) != 1 || archived[0] != oldSNs[i] {
 			t.Errorf("asset %d did not archive its old number: %v", i, hist)
 		}
 		res, err := f.svc.List(f.ctx, ListFilter{Q: oldSNs[i]})
@@ -119,12 +129,12 @@ func TestRecomputeRollsBackEntirelyOnAConflict(t *testing.T) {
 		}
 		ids = append(ids, a.ID)
 	}
-	before := []string{f.snOf(t, ids[0]), f.snOf(t, ids[1])}
+	before := []string{f.numberOf(t, ids[0]), f.numberOf(t, ids[1])}
 
 	// Keeping only the trailing four hex digits collapses them onto one number.
-	f.setSNTemplate(t, `{{ slice 8 12 .attrs.mac | hex2dec }}`)
+	f.setTemplate(t, `{{ slice 8 12 .attrs.mac | hex2dec }}`)
 
-	report, err := f.svc.RecomputeSN(f.ctx, f.catID, true)
+	report, err := f.svc.Recompute(f.ctx, f.catID, true)
 	if err != nil {
 		t.Fatalf("dry run: %v", err)
 	}
@@ -134,8 +144,11 @@ func TestRecomputeRollsBackEntirelyOnAConflict(t *testing.T) {
 	if len(report.Conflicts[0].Assets) < 2 {
 		t.Errorf("the conflict should name the devices involved: %+v", report.Conflicts[0])
 	}
+	if report.Conflicts[0].Key != "sn" {
+		t.Errorf("the conflict should name the key, got %q", report.Conflicts[0].Key)
+	}
 
-	report, err = f.svc.RecomputeSN(f.ctx, f.catID, false)
+	report, err = f.svc.Recompute(f.ctx, f.catID, false)
 	if err != nil {
 		t.Fatalf("real run should report rather than error: %v", err)
 	}
@@ -143,7 +156,7 @@ func TestRecomputeRollsBackEntirelyOnAConflict(t *testing.T) {
 		t.Fatal("a run with a conflict must not be applied")
 	}
 	for i, id := range ids {
-		if got := f.snOf(t, id); got != before[i] {
+		if got := f.numberOf(t, id); got != before[i] {
 			t.Errorf("asset %d changed despite the rollback: %q -> %q", i, before[i], got)
 		}
 	}
@@ -154,7 +167,7 @@ func TestRecomputeWithNoChangesIsANoOp(t *testing.T) {
 	if _, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D5E"}}); err != nil {
 		t.Fatal(err)
 	}
-	report, err := f.svc.RecomputeSN(f.ctx, f.catID, false)
+	report, err := f.svc.Recompute(f.ctx, f.catID, false)
 	if err != nil {
 		t.Fatalf("recompute: %v", err)
 	}
@@ -166,27 +179,44 @@ func TestRecomputeWithNoChangesIsANoOp(t *testing.T) {
 	}
 }
 
+// A template that parses but blows up on real data is reported, not applied.
 func TestRecomputeReportsAnUnevaluableRule(t *testing.T) {
 	f := newFixture(t)
 	if _, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D5E"}}); err != nil {
 		t.Fatal(err)
 	}
-	// firmware is not set on this asset.
-	f.setSNTemplate(t, `{{ .attrs.firmware | upper }}`)
+	// The dependency is satisfied -- mac is bound and required -- so this gets
+	// past the bind gate and fails only when it meets an actual value.
+	f.setTemplate(t, `{{ slice 99 100 .attrs.mac }}`)
 
-	_, err := f.svc.RecomputeSN(f.ctx, f.catID, true)
+	_, err := f.svc.Recompute(f.ctx, f.catID, true)
 	if err == nil {
 		t.Fatal("a rule that cannot be evaluated must be reported, not applied")
 	}
 	var fe FieldErrors
 	if !errors.As(err, &fe) || fe["sn"] == "" {
-		t.Errorf("the error should point at the serial number, got %#v", err)
+		t.Errorf("the error should point at the expression key, got %#v", err)
+	}
+}
+
+// The bind-time dependency gate must survive a later template edit, or it is
+// only a gate on the first day.
+func TestTemplateEditCannotIntroduceAnOptionalDependency(t *testing.T) {
+	f := newFixture(t)
+	// firmware is bound but optional, so an expression may not read it.
+	opts := model.FieldOptions{Template: `{{ .attrs.firmware | upper }}`}
+	_, err := f.schema.UpdateField(f.ctx, f.snField, schema.UpdateFieldInput{Options: &opts})
+	if !errors.Is(err, schema.ErrDependenciesUnmet) {
+		t.Fatalf("want ErrDependenciesUnmet, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "firmware") {
+		t.Errorf("the error should name the field to fix, got %v", err)
 	}
 }
 
 func TestRecomputeRequiresAKnownCategory(t *testing.T) {
 	f := newFixture(t)
-	if _, err := f.svc.RecomputeSN(f.ctx, "missing", true); !errors.Is(err, schema.ErrNotFound) {
+	if _, err := f.svc.Recompute(f.ctx, "missing", true); !errors.Is(err, schema.ErrNotFound) {
 		t.Errorf("want ErrNotFound, got %v", err)
 	}
 }

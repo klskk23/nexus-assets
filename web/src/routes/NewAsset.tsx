@@ -7,6 +7,7 @@ import type { Asset, Category, CategorySchema, HolderEntity } from "@/lib/types"
 import { zh } from "@/i18n/zh"
 import { useAuth } from "@/features/auth/useAuth"
 import { DynamicForm } from "@/features/assets/DynamicForm"
+import { ModelPicker } from "@/features/assets/ModelPicker"
 import { StateBoundary } from "@/components/StateBoundary"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,6 +20,7 @@ export function NewAsset() {
   // The quick-entry card on the overview arrives with a category already picked.
   const [categoryId, setCategoryId] = useState(searchParams.get("category_id") ?? "")
   const [holderId, setHolderId] = useState("")
+  const [modelId, setModelId] = useState<string | null>(null)
   const [values, setValues] = useState<Record<string, unknown>>({})
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [banner, setBanner] = useState<string | null>(null)
@@ -43,6 +45,7 @@ export function NewAsset() {
     mutationFn: () =>
       api.post<Asset>("/assets", {
         category_id: categoryId,
+        model_id: modelId,
         owner_id: user?.id,
         // Nothing exists yet on a fresh install, so the first asset may be held
         // by the person recording it rather than by a location.
@@ -75,7 +78,12 @@ export function NewAsset() {
               id="new-category"
               className="border-input bg-background h-9 rounded-md border px-3 text-sm"
               value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
+              onChange={(e) => {
+                setCategoryId(e.target.value)
+                // A model belongs to one category chain; keeping the old choice
+                // across a category change would silently attach the wrong one.
+                setModelId(null)
+              }}
             >
               <option value="">—</option>
               {(categories.data ?? []).map((c) => (
@@ -115,6 +123,15 @@ export function NewAsset() {
             <StateBoundary isLoading={schema.isLoading} error={schema.error as Error | null}>
               <>
                 <p className="text-sm text-muted-foreground">{zh.assets.generatedSN}</p>
+                <ModelPicker
+                  categoryID={categoryId}
+                  value={modelId}
+                  values={values}
+                  onChange={(id, patch) => {
+                    setModelId(id)
+                    setValues((cur) => ({ ...cur, ...patch }))
+                  }}
+                />
                 {schema.data && (
                   <DynamicForm
                     fields={schema.data.fields}

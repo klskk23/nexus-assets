@@ -13,6 +13,7 @@ vi.mock("react-router", async () => {
 })
 
 const get = vi.fn()
+const post = vi.fn()
 const patch = vi.fn()
 const del = vi.fn()
 vi.mock("@/lib/api", async () => {
@@ -21,7 +22,7 @@ vi.mock("@/lib/api", async () => {
     ...actual,
     api: {
       get: (p: string) => get(p),
-      post: vi.fn(),
+      post: (p: string, b: unknown) => post(p, b),
       patch: (p: string, b: unknown) => patch(p, b),
       del: (p: string) => del(p),
     },
@@ -30,7 +31,7 @@ vi.mock("@/lib/api", async () => {
 
 const asset = {
   id: "a1",
-  sn: "112394521950",
+  display_name: "112394521950",
   category_id: "net",
   model_id: null,
   status: "in_stock",
@@ -44,18 +45,37 @@ const asset = {
 }
 
 const schema = {
-  category: { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", sn_template: "" },
-  sn_template: "{{ .attrs.mac | hex2dec }}",
-  sn_template_from: "net",
+  category: { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", display_key: "sn" },
   fields: [
     { id: "f1", key: "mac", label: "基准 MAC", type: "mac", options: {}, is_unique: true, required: true, sort: 10 },
     { id: "f2", key: "firmware", label: "固件版本", type: "text", options: {}, is_unique: false, required: false, sort: 20 },
   ],
 }
 
+const models = [
+  { id: "m1", category_id: "net", name: "X100", vendor: "Acme", attr_defaults: { firmware: "3.0.0" } },
+]
+
 function route(p: string) {
-  if (p === "/assets/a1") return Promise.resolve({ asset, sn_history: ["112394521949"] })
+  if (p === "/assets/a1") {
+    return Promise.resolve({
+      asset,
+      value_history: [{ key: "sn", value: "112394521949", archived_at: "2026-08-01T00:00:00Z" }],
+    })
+  }
   if (p.endsWith("/schema")) return Promise.resolve(schema)
+  if (p === "/categories") return Promise.resolve([schema.category])
+  if (p === "/models") return Promise.resolve(models)
+  if (p === "/users") {
+    return Promise.resolve([
+      { id: "u2", email: "z@example.com", name: "张三", auth_type: "local", status: "active" },
+    ])
+  }
+  if (p === "/holders") {
+    return Promise.resolve([
+      { id: "loc", type: "location", name: "上海仓库", parent_id: null, is_default_stock: true },
+    ])
+  }
   return Promise.resolve([])
 }
 
@@ -63,11 +83,12 @@ describe("AssetDetail", () => {
   beforeEach(() => {
     navigate.mockReset()
     get.mockReset().mockImplementation(route)
+    post.mockReset().mockResolvedValue({ batch_id: null, transfers: [{ id: "t1" }] })
     patch.mockReset()
     del.mockReset()
   })
 
-  it("shows the serial number, status and any retired numbers", async () => {
+  it("shows the number, status and any retired values", async () => {
     renderWithProviders(<AssetDetail />)
     expect(await screen.findByText("112394521950")).toBeInTheDocument()
     expect(screen.getByText("在库")).toBeInTheDocument()
@@ -120,7 +141,7 @@ describe("AssetDetail", () => {
   })
 
   it("announces the new number when correcting the MAC changes it", async () => {
-    patch.mockResolvedValue({ ...asset, sn: "112394521951", version: 4 })
+    patch.mockResolvedValue({ ...asset, display_name: "112394521951", version: 4 })
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
@@ -131,9 +152,59 @@ describe("AssetDetail", () => {
     )
   })
 
+  // The gap that sent us here: an asset could be recorded and then never moved
+  // or have its status changed, because the only transfer controls lived on the
+  // list page behind a multi-select.
+  it("can hand the device over from the detail page", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+
+    await user.click(screen.getByRole("button", { name: "流转" }))
+    const dialog = await screen.findByRole("dialog")
+    expect(within(dialog).getByText("已选 1 台")).toBeInTheDocument()
+
+    await user.selectOptions(within(dialog).getByLabelText("操作"), "checkout")
+    await user.selectOptions(await within(dialog).findByLabelText("账号"), "u2")
+    await user.type(within(dialog).getByLabelText("备注"), "借给张三")
+    await user.click(within(dialog).getByRole("button", { name: "提交" }))
+
+    // A single device is just a one-element batch, through the same endpoint
+    // the list page uses.
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/transfers", {
+        asset_ids: ["a1"],
+        note: "借给张三",
+        to_status: "in_use",
+        to_holder_type: "user",
+        to_holder_id: "u2",
+      }),
+    )
+  })
+
+  it("changes the status without leaving the page", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+
+    await user.click(screen.getByRole("button", { name: "流转" }))
+    const dialog = await screen.findByRole("dialog")
+    await user.selectOptions(within(dialog).getByLabelText("操作"), "status")
+    await user.selectOptions(within(dialog).getByLabelText("状态"), "in_repair")
+    await user.click(within(dialog).getByRole("button", { name: "提交" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/transfers", {
+        asset_ids: ["a1"],
+        note: "",
+        to_status: "in_repair",
+      }),
+    )
+  })
+
   // Deleting is irreversible, so it goes through a dialog that stays inert
-  // until the serial number is typed out.
-  it("requires the serial number to be typed before it will delete", async () => {
+  // until the number is typed out.
+  it("requires the number to be typed before it will delete", async () => {
     del.mockResolvedValue(undefined)
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
@@ -153,6 +224,6 @@ describe("AssetDetail", () => {
     expect(confirm).toBeEnabled()
 
     await user.click(confirm)
-    await waitFor(() => expect(del).toHaveBeenCalledWith("/assets/a1?confirm_sn=112394521950"))
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/assets/a1?confirm=112394521950"))
   })
 })
