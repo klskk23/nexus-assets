@@ -595,6 +595,20 @@ components:
           description: 不含 computed 项，由服务端求值
           additionalProperties: true
 
+    Category:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        name: { type: string }
+        parent_id: { type: string, nullable: true }
+        path: { type: string, description: 物化路径，形如 /root/child/self/ }
+        display_key:
+          type: string
+          description: >
+            指向该类别有效字段集内某个标为唯一的信息项 key，空串表示未设置。
+            不沿祖先链继承；未设置时资产以 UUID 前 8 位指代
+
     FieldSchema:
       type: object
       properties:

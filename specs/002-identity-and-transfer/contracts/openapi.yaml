@@ -1,0 +1,381 @@
+openapi: 3.1.0
+info:
+  title: Nexus Assets API — 002 增量
+  version: 0.2.0
+  description: >
+    编号模型重构与流转补全带来的契约变化。**这是一份增量，不是全量。**
+    完整的端点清单见 specs/001-asset-ledger-demo/contracts/openapi.yaml（已就地更新）；
+    本文件只列出发生变化的路径与结构，变化的动机见同目录 README.md。
+    全局约定（认证、错误 envelope、分页、乐观锁）沿用 001，未作改动。
+servers:
+  - url: /api
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: assets
+  - name: metadata
+
+paths:
+  # ---------------- 参数改名：confirm_sn → confirm ----------------
+  /assets/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [assets]
+      summary: 硬删并级联流转历史与唯一值。需带 confirm 二次确认
+      description: >
+        确认串是该资产当前**显示的**编号：类别配了 display_key 时是该字段的取值，
+        未配置时是 UUID 的前 8 位。参数名不再叫 confirm_sn —— 没有 sn 这个东西了。
+      parameters:
+        - { name: confirm, in: query, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Deleted }
+        "422": { $ref: "#/components/responses/Error" }
+
+  # ---------------- 响应改字段：sn_history → value_history ----------------
+  /assets/{id}/detail:
+    get:
+      tags: [assets]
+      summary: （即 GET /assets/{id}）资产详情与其唯一值的历史
+      description: 路径未变，此处单列是为了描述响应结构的变化。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset: { $ref: "#/components/schemas/Asset" }
+                  value_history:
+                    type: array
+                    description: 该资产上已被替换掉的唯一值，最近的在前。仍可被搜索命中
+                    items: { $ref: "#/components/schemas/HistoricValue" }
+
+  # ---------------- 请求改字段：sn_template → display_key ----------------
+  /categories:
+    post:
+      tags: [metadata]
+      summary: 新建类别
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, name]
+              properties:
+                code: { type: string }
+                name: { type: string }
+                parent_id: { type: string, nullable: true }
+                display_key:
+                  type: string
+                  description: >
+                    可选。新建时只有从父类别继承来的字段可以被选中 ——
+                    这个类别自己还没有任何绑定
+      responses:
+        "201": { description: Created }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /categories/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: 改名 / 改 display_key / 移动位置。子树下有资产时拒绝移动
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                display_key:
+                  type: string
+                  description: >
+                    指向该类别有效字段集（含继承）内某个信息项的 key。空串表示不设置。
+                    该字段必须已标为唯一且未停用，否则返回 422 —— 两台设备显示同一个编号，
+                    贴标签、口头指代、盘点与扫码就全部失效
+                parent_id: { type: [string, "null"] }
+      responses:
+        "200": { description: OK }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  # ---------------- 端点改名：recompute-sn → recompute ----------------
+  /categories/{id}/recompute:
+    post:
+      tags: [metadata]
+      summary: 重算该类别子树内所有资产的表达式键
+      description: >
+        原名 recompute-sn。重算对象从「编号」扩大到「全部表达式键」，
+        因为编号已经不是一个特殊的东西了。两阶段不变：dry_run 先看影响面，
+        任一唯一字段冲突则整体放弃。
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: dry_run, in: query, schema: { type: boolean, default: true } }
+      responses:
+        "200":
+          description: dry_run 时返回影响面与冲突清单；执行时任一冲突即整体回滚
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecomputeReport" }
+
+  # ---------------- 行为变化，请求形态不变 ----------------
+  /assets:
+    get:
+      tags: [assets]
+      summary: 资产列表。q 的精确匹配范围已改变
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+          description: >
+            精确匹配依次尝试：任一唯一信息项的当前值 → 任一唯一信息项的历史值 → 资产 UUID。
+            匹配前按录入规则规范化（去 : - . 空格、转大写），使扫码枪的输出格式不影响命中。
+            **不再有任何字段名被硬编码** —— 给某个字段勾上唯一，它当天就参与扫码直达。
+            恰好命中一条时返回 exact_match_id；命中多条时不返回（归档值允许被别的设备
+            重新占用，多命中是合法状态，猜一个跳过去比不跳更危险）。
+            未精确命中时，对唯一值、型号名与 UUID 前缀做子串匹配
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Asset" }
+                  total: { type: integer }
+                  offset: { type: integer }
+                  limit: { type: integer }
+                  exact_match_id: { type: string, nullable: true }
+
+  /categories/{id}/schema:
+    get:
+      tags: [metadata]
+      summary: 该类别的有效信息项集。不再返回编号规则
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  category:
+                    $ref: "#/components/schemas/Category"
+                  fields:
+                    type: array
+                    items: { $ref: "#/components/schemas/FieldSchema" }
+
+  /categories/{id}/bindings:
+    post:
+      tags: [metadata]
+      summary: 绑定信息项。绑定表达式键时校验其依赖闭包
+      description: >
+        绑定一个表达式键时，递归展开它读取的全部 key。闭包中每一项都必须已在该类别的
+        有效字段集内，其中的静态键还必须已标为必填 —— 求值失败会回滚整次保存，
+        所以被表达式读取的静态键事实上就是必填的，这里把隐形约束变成显式约束。
+        任一条不满足即 422，message 分类列出「库中不存在 / 尚未绑定 / 需要改必填」。
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [field_id]
+              properties:
+                field_id: { type: string }
+                required: { type: boolean, default: false }
+                sort: { type: integer, default: 0 }
+      responses:
+        "204": { description: Bound }
+        "409":
+          description: key 已绑定在同一条链上
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "422":
+          description: 依赖未满足，或表达式键成环
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /fields/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: 修改或停用信息项
+      description: >
+        两处新增拦截。其一，改写表达式键的 template 时，对它已绑定的每一个类别
+        重跑绑定门禁 —— 门禁只在绑定那一刻跑过，事后改模板本来是绕过它的后门。
+        其二，被某类别选作 display_key 的字段不得停用，与「被表达式键引用不得停用」
+        同属一条规则。
+      responses:
+        "200": { description: OK }
+        "409":
+          description: 被表达式键引用，或被某类别选作显示编号
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "422":
+          description: 改写后的模板在某个已绑定类别上依赖不满足
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /holders/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: 设为默认库存点 / 停用
+      description: >
+        默认库存点可以更换，不能取消。传 is_default_stock=false 返回 422 而不是
+        静默返回 200 —— 一个什么都没做的请求报告成功，比报错更难排查。
+        当前作为默认库存点的位置也不得停用：001 的 Archive 会顺手把标记清零，
+        那是取消默认的后门。
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_default_stock:
+                  type: boolean
+                  description: 只接受 true。传 false 返回 422
+                archive: { type: boolean }
+      responses:
+        "200": { description: OK }
+        "409":
+          description: 该位置仍被资产使用，或它是当前默认库存点
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "422":
+          description: 试图取消默认库存点
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  responses:
+    Error:
+      description: 错误
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      description: 结构见 001 的 README.md。message 中不含用于程序判定的英文标识
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, description: 英文 snake_case }
+            message: { type: string, description: 中文，用户可见 }
+            fields:
+              type: object
+              additionalProperties: { type: string }
+
+    Asset:
+      type: object
+      description: 相对 001，去掉 sn，加上派生的 display_name
+      properties:
+        id:
+          type: string
+          description: UUID。唯一的内部标识，不再有第二个编号列
+        display_name:
+          type: string
+          description: >
+            由所属类别的 display_key 对 attrs 求值得到；类别未配置时为 id 的前 8 位十六进制。
+            读取时派生，不落库
+        category_id: { type: string }
+        model_id: { type: string, nullable: true }
+        status: { type: string, enum: [in_stock, in_use, in_repair, lost, retired] }
+        owner: { type: object }
+        holder: { type: object }
+        attrs: { type: object, additionalProperties: true }
+        archived_attrs: { type: object, additionalProperties: true }
+        version: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Category:
+      type: object
+      description: 相对 001，去掉 sn_template，加上 display_key
+      properties:
+        id: { type: string }
+        code: { type: string }
+        name: { type: string }
+        parent_id: { type: string, nullable: true }
+        path: { type: string }
+        display_key:
+          type: string
+          description: >
+            指向该类别有效字段集内某个标为唯一的信息项 key，空串表示未设置。
+            **不沿祖先链继承** —— 子类别往往正是需要不同编号规则的地方，
+            静默继承会显示出一个没人为它选过的编号
+
+    FieldSchema:
+      type: object
+      description: 结构未变。type 为 computed 者即表达式键，其余九种为静态键
+      properties:
+        key: { type: string }
+        label: { type: string }
+        type: { type: string }
+        options: { type: object }
+        is_unique: { type: boolean }
+        required: { type: boolean }
+        sort: { type: integer }
+        inherited_from: { type: string, nullable: true }
+
+    HistoricValue:
+      type: object
+      description: >
+        某台资产在某个唯一信息项上曾经持有的取值。仍参与精确匹配，但已退出唯一性约束 ——
+        换主板之后旧 MAC 出现在另一台设备上是正常的
+      properties:
+        key: { type: string }
+        value: { type: string }
+        archived_at: { type: string, format: date-time }
+
+    RecomputeReport:
+      type: object
+      properties:
+        affected: { type: integer, description: 至少有一个取值会变化的资产数 }
+        total: { type: integer, description: 该子树内被重算的资产总数 }
+        applied: { type: boolean, description: dry_run 与「因冲突而放弃」两种情形均为 false }
+        conflicts:
+          type: array
+          items:
+            type: object
+            properties:
+              key: { type: string, description: 发生冲突的信息项 }
+              value: { type: string }
+              assets: { type: array, items: { type: string }, description: 会共享该取值的设备 }
+        samples:
+          type: array
+          description: 前若干条 before/after，供操作者在执行前判断规则是否写对
+          items:
+            type: object
+            properties:
+              asset: { type: string }
+              key: { type: string }
+              from: { type: string }
+              to: { type: string }
