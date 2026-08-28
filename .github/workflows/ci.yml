@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # ---- Gate 1: Go formatting, vet and lint ----
+      - name: gofmt
+        run: test -z "$(gofmt -l ./cmd ./internal ./migrations)" || (gofmt -l ./cmd ./internal ./migrations && exit 1)
+
+      - name: go vet
+        run: go vet ./cmd/... ./internal/...
+
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      # ---- Gate 2: TypeScript and ESLint ----
+      - name: install web deps
+        run: cd web && npm ci
+
+      - name: tsc
+        run: cd web && npx tsc --noEmit
+
+      - name: eslint
+        run: cd web && npx eslint .
+
+      # ---- Gate 3: Go tests plus core pipeline coverage >= 80% ----
+      - name: go test
+        run: go test ./cmd/... ./internal/...
+
+      - name: core pipeline coverage
+        run: |
+          go test -coverprofile=c.out ./internal/schema/... ./internal/asset/... ./internal/compute/...
+          total=$(go tool cover -func=c.out | awk '/^total:/ {print substr($3, 1, length($3)-1)}')
+          echo "core pipeline coverage: $total%"
+          awk -v t="$total" 'BEGIN { exit (t + 0 >= 80) ? 0 : 1 }' || {
+            echo "coverage below the 80% required by constitution principle II"
+            exit 1
+          }
+
+      # ---- Gate 4: frontend tests including DOM tests ----
+      - name: vitest
+        run: cd web && npx vitest run
+
+      # ---- Gate 5: reconciliation ----
+      - name: build and verify
+        run: |
+          cd web && npm run build && cd ..
+          CGO_ENABLED=0 go build -o nexus ./cmd/nexus
+          ./nexus verify
+
+      # ---- Gate 6: no unapproved custom components ----
+      - name: custom component guard
+        run: |
+          count=$(find web/src/components/custom -name '*.tsx' 2>/dev/null | wc -l)
+          if [ "$count" -gt 0 ]; then
+            echo "found $count custom component(s); each needs prior developer approval"
+            find web/src/components/custom -name '*.tsx'
+            grep -L "Approved by developer" $(find web/src/components/custom -name '*.tsx') && exit 1
+          fi
+          echo "no custom components"
+
+      # ---- Constitution principle IV: initial chunk budget ----
+      - name: bundle budget
+        run: |
+          max=512000
+          largest=$(find web/dist/assets -name 'index-*.js' -exec gzip -c {} \; | wc -c)
+          echo "initial chunk gzip size: $largest bytes (budget $max)"
+          [ "$largest" -le "$max" ] || exit 1

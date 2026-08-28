@@ -1,0 +1,273 @@
+// Package model holds the domain types shared across the application.
+package model
+
+import "time"
+
+// AssetStatus is the lifecycle state of a physical device.
+type AssetStatus string
+
+const (
+	StatusInStock  AssetStatus = "in_stock"
+	StatusInUse    AssetStatus = "in_use"
+	StatusInRepair AssetStatus = "in_repair"
+	StatusLost     AssetStatus = "lost"
+	StatusRetired  AssetStatus = "retired"
+)
+
+// AllStatuses lists every status in display order.
+var AllStatuses = []AssetStatus{
+	StatusInStock, StatusInUse, StatusInRepair, StatusLost, StatusRetired,
+}
+
+// Valid reports whether s is a known status.
+func (s AssetStatus) Valid() bool {
+	for _, v := range AllStatuses {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
+// HolderType distinguishes a user account from a holder entity.
+type HolderType string
+
+const (
+	HolderTypeUser   HolderType = "user"
+	HolderTypeEntity HolderType = "entity"
+)
+
+// EntityType is the kind of a holder entity. New kinds cost one enum value.
+type EntityType string
+
+const (
+	EntityCompany    EntityType = "company"
+	EntityLocation   EntityType = "location"
+	EntityDepartment EntityType = "department"
+)
+
+// FieldType enumerates the ten supported custom field kinds.
+type FieldType string
+
+const (
+	FieldText      FieldType = "text"
+	FieldNumber    FieldType = "number"
+	FieldBoolean   FieldType = "boolean"
+	FieldDate      FieldType = "date"
+	FieldEnum      FieldType = "enum"
+	FieldReference FieldType = "reference"
+	FieldMAC       FieldType = "mac"
+	FieldIP        FieldType = "ip"
+	FieldURL       FieldType = "url"
+	FieldComputed  FieldType = "computed"
+)
+
+// AllFieldTypes lists every supported field type.
+var AllFieldTypes = []FieldType{
+	FieldText, FieldNumber, FieldBoolean, FieldDate, FieldEnum,
+	FieldReference, FieldMAC, FieldIP, FieldURL, FieldComputed,
+}
+
+// Valid reports whether t is a known field type.
+func (t FieldType) Valid() bool {
+	for _, v := range AllFieldTypes {
+		if v == t {
+			return true
+		}
+	}
+	return false
+}
+
+// TransferKind labels what a transfer event represents.
+type TransferKind string
+
+const (
+	KindCreate       TransferKind = "create"
+	KindCheckout     TransferKind = "checkout"
+	KindCheckin      TransferKind = "checkin"
+	KindTransfer     TransferKind = "transfer"
+	KindReassign     TransferKind = "reassign"
+	KindStatusChange TransferKind = "status_change"
+)
+
+// AuthType distinguishes how an account signs in.
+type AuthType string
+
+const (
+	AuthOIDC  AuthType = "oidc"
+	AuthLocal AuthType = "local"
+)
+
+// UserStatus is the account lifecycle state.
+type UserStatus string
+
+const (
+	UserActive   UserStatus = "active"
+	UserDisabled UserStatus = "disabled"
+)
+
+// Holder identifies whoever currently possesses an asset.
+type Holder struct {
+	Type HolderType `json:"type"`
+	ID   string     `json:"id"`
+	Name string     `json:"name,omitempty"`
+	// EntityType is set only when Type is HolderTypeEntity.
+	EntityType EntityType `json:"entity_type,omitempty"`
+}
+
+// Equal compares only the identity, ignoring denormalised display fields.
+func (h Holder) Equal(other Holder) bool {
+	return h.Type == other.Type && h.ID == other.ID
+}
+
+// User is an account.
+type User struct {
+	ID           string     `json:"id"`
+	Email        string     `json:"email"`
+	Name         string     `json:"name"`
+	AuthType     AuthType   `json:"auth_type"`
+	PasswordHash string     `json:"-"`
+	OIDCSubject  string     `json:"-"`
+	Status       UserStatus `json:"status"`
+	Role         string     `json:"-"`
+	TokenVersion int        `json:"-"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+}
+
+// Category is a node in the classification tree.
+type Category struct {
+	ID         string     `json:"id"`
+	Code       string     `json:"code"`
+	Name       string     `json:"name"`
+	ParentID   *string    `json:"parent_id"`
+	Path       string     `json:"path"`
+	SNTemplate string     `json:"sn_template"`
+	ArchivedAt *time.Time `json:"archived_at,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
+}
+
+// FieldDefinition is a globally registered information item.
+type FieldDefinition struct {
+	ID         string       `json:"id"`
+	Key        string       `json:"key"`
+	Label      string       `json:"label"`
+	Type       FieldType    `json:"type"`
+	Options    FieldOptions `json:"options"`
+	IsUnique   bool         `json:"is_unique"`
+	ArchivedAt *time.Time   `json:"archived_at,omitempty"`
+	CreatedAt  time.Time    `json:"created_at"`
+	UpdatedAt  time.Time    `json:"updated_at"`
+}
+
+// FieldOptions carries per-type configuration. Which members matter is decided
+// by the owning field's Type.
+type FieldOptions struct {
+	// text
+	Regex     string `json:"regex,omitempty"`
+	RegexHint string `json:"regex_hint,omitempty"`
+	// number
+	Min       *float64 `json:"min,omitempty"`
+	Max       *float64 `json:"max,omitempty"`
+	Precision *int     `json:"precision,omitempty"`
+	Unit      string   `json:"unit,omitempty"`
+	// enum
+	Choices    []EnumChoice `json:"choices,omitempty"`
+	Deprecated []string     `json:"deprecated,omitempty"`
+	// reference
+	Target      string       `json:"target,omitempty"` // user | entity
+	EntityTypes []EntityType `json:"entity_types,omitempty"`
+	// computed
+	Template string `json:"template,omitempty"`
+}
+
+// EnumChoice is one selectable option.
+type EnumChoice struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+}
+
+// BoundField is a field definition together with its binding to one category.
+type BoundField struct {
+	FieldDefinition
+	Required bool `json:"required"`
+	Sort     int  `json:"sort"`
+	// InheritedFrom names the ancestor category the binding comes from; it is
+	// empty when the binding lives on the category being resolved.
+	InheritedFrom string `json:"inherited_from,omitempty"`
+}
+
+// ProductModel groups devices of the same make.
+type ProductModel struct {
+	ID           string         `json:"id"`
+	CategoryID   string         `json:"category_id"`
+	Name         string         `json:"name"`
+	Vendor       string         `json:"vendor,omitempty"`
+	ImageURL     string         `json:"image_url,omitempty"`
+	AttrDefaults map[string]any `json:"attr_defaults"`
+	ArchivedAt   *time.Time     `json:"archived_at,omitempty"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+}
+
+// HolderEntity is anything other than an account that can hold an asset.
+type HolderEntity struct {
+	ID             string         `json:"id"`
+	Type           EntityType     `json:"type"`
+	Name           string         `json:"name"`
+	ParentID       *string        `json:"parent_id"`
+	IsDefaultStock bool           `json:"is_default_stock"`
+	Attrs          map[string]any `json:"attrs"`
+	ArchivedAt     *time.Time     `json:"archived_at,omitempty"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+}
+
+// Asset is the ledger record of one physical device.
+type Asset struct {
+	ID         string         `json:"id"`
+	SN         string         `json:"sn"`
+	CategoryID string         `json:"category_id"`
+	ModelID    *string        `json:"model_id"`
+	Status     AssetStatus    `json:"status"`
+	OwnerID    string         `json:"-"`
+	Owner      *User          `json:"owner,omitempty"`
+	Holder     Holder         `json:"holder"`
+	Attrs      map[string]any `json:"attrs"`
+	// ArchivedAttrs holds keys that are no longer part of the category's
+	// effective field set. They are kept, shown read-only, and never validated.
+	ArchivedAttrs map[string]any `json:"archived_attrs,omitempty"`
+	Version       int            `json:"version"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+}
+
+// Transfer is the immutable record of one possession, ownership or status change.
+type Transfer struct {
+	ID         string       `json:"id"`
+	AssetID    string       `json:"asset_id"`
+	BatchID    *string      `json:"batch_id"`
+	Kind       TransferKind `json:"kind"`
+	FromStatus *AssetStatus `json:"from_status"`
+	FromHolder *Holder      `json:"from_holder"`
+	FromOwner  *string      `json:"from_owner_id"`
+	ToStatus   AssetStatus  `json:"to_status"`
+	ToHolder   Holder       `json:"to_holder"`
+	ToOwner    string       `json:"to_owner_id"`
+	Note       string       `json:"note,omitempty"`
+	DueAt      *time.Time   `json:"due_at"`
+	ActorID    string       `json:"-"`
+	Actor      *User        `json:"actor,omitempty"`
+	CreatedAt  time.Time    `json:"created_at"`
+	EditedAt   *time.Time   `json:"edited_at"`
+	EditedBy   *string      `json:"edited_by"`
+	Original   string       `json:"-"`
+}
+
+// AssetState is the triple that drives transfer events.
+type AssetState struct {
+	Status  AssetStatus
+	Holder  Holder
+	OwnerID string
+}

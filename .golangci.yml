@@ -1,0 +1,23 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gocyclo
+  settings:
+    gocyclo:
+      # Constitution principle I: cyclomatic complexity must be <= 15
+      min-complexity: 16
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - gocyclo
+
+formatters:
+  enable:
+    - gofmt
