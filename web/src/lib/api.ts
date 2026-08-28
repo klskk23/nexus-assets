@@ -1,3 +1,5 @@
+import { zh } from "@/i18n/zh"
+
 /** Field-level messages keyed by field key, straight from the error envelope. */
 export type FieldErrors = Record<string, string>
 
@@ -8,6 +10,8 @@ export class ApiError extends Error {
     readonly code: string,
     message: string,
     readonly fields?: FieldErrors,
+    /** Extra payload some refusals carry, such as what is blocking an archive. */
+    readonly referrers?: { kind: string; id: string; label: string }[],
   ) {
     super(message)
     this.name = "ApiError"
@@ -57,7 +61,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
   if (!res.ok) {
     const e = payload?.error ?? {}
-    throw new ApiError(res.status, e.code ?? "internal_error", e.message ?? "请求失败", e.fields)
+    throw new ApiError(res.status, e.code ?? "internal_error", e.message ?? zh.common.requestFailed, e.fields, e.referrers)
   }
   return payload as T
 }

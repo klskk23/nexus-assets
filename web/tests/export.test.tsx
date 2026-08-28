@@ -1,0 +1,77 @@
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+
+import { Assets } from "@/routes/Assets"
+import { renderWithProviders } from "@/test/renderWithProviders"
+
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual<typeof import("react-router")>("react-router")
+  return { ...actual, useNavigate: () => vi.fn() }
+})
+
+const get = vi.fn()
+vi.mock("@/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api")
+  return { ...actual, api: { get: (p: string) => get(p), post: vi.fn(), patch: vi.fn(), del: vi.fn() } }
+})
+
+const categories = [
+  { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", sn_template: "" },
+]
+const page = { items: [], total: 0, offset: 0, limit: 50 }
+const schema = {
+  category: categories[0],
+  sn_template: "",
+  sn_template_from: "",
+  fields: [],
+}
+
+beforeEach(() => {
+  get.mockReset().mockImplementation((p: string) => {
+    if (p === "/categories") return Promise.resolve(categories)
+    if (p.endsWith("/schema")) return Promise.resolve(schema)
+    return Promise.resolve(page)
+  })
+  localStorage.clear()
+})
+
+describe("export from the asset list", () => {
+  it("exports everything when no filter is set", async () => {
+    renderWithProviders(<Assets />)
+    const link = await screen.findByRole("link", { name: "导出 CSV" })
+    expect(link).toHaveAttribute("href", "/api/export.csv?")
+    expect(link).toHaveAttribute("download")
+  })
+
+  // An export that quietly ignored the filters would be worse than none.
+  it("carries the active filters into the export URL", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByRole("link", { name: "导出 CSV" })
+
+    await user.type(screen.getByLabelText(/搜索资产编号/), "4D5E")
+    await screen.findByRole("option", { name: "网络设备" })
+    await user.selectOptions(screen.getByLabelText("类别"), "net")
+    await user.selectOptions(screen.getByLabelText("状态"), "in_use")
+
+    const href = screen.getByRole("link", { name: "导出 CSV" }).getAttribute("href")!
+    const params = new URLSearchParams(href.split("?")[1])
+    expect(params.get("q")).toBe("4D5E")
+    expect(params.get("category_id")).toBe("net")
+    expect(params.get("include_descendants")).toBe("true")
+    expect(params.get("status")).toBe("in_use")
+  })
+
+  it("follows the descendants switch", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByRole("option", { name: "网络设备" })
+
+    await user.selectOptions(screen.getByLabelText("类别"), "net")
+    await user.click(screen.getByLabelText("含子类别"))
+
+    const href = screen.getByRole("link", { name: "导出 CSV" }).getAttribute("href")!
+    expect(new URLSearchParams(href.split("?")[1]).get("include_descendants")).toBe("false")
+  })
+})

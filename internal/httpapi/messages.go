@@ -18,4 +18,7 @@ const (
 	MsgSNMismatch        = "输入的编号与该资产不符"
 	MsgOIDCDisabled      = "本系统未启用 Google 登录"
 	MsgOIDCStateMismatch = "登录请求已过期，请重新发起"
+	MsgNotTailEvent      = "只能修改该设备最新的一条流转记录"
+	MsgNoDefaultStock    = "尚未设置默认库存点，请选择归还位置"
+	MsgUploadTooLarge    = "文件过大，请拆分后再导入"
 )

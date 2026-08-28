@@ -103,3 +103,8 @@ func (s *Store) Close() error {
 
 // Path returns the database file path.
 func (s *Store) Path() string { return s.path }
+
+// WriteDBForTest exposes the write pool so tests can seed rows directly.
+// Production code goes through Write, which wraps every change in a
+// transaction.
+func (s *Store) WriteDBForTest() *sql.DB { return s.write }

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useNavigate } from "react-router"
+import { useNavigate, useSearchParams } from "react-router"
 import { useMutation, useQuery } from "@tanstack/react-query"
 
 import { api, ApiError, type FieldErrors } from "@/lib/api"
@@ -15,7 +15,9 @@ import { Label } from "@/components/ui/label"
 export function NewAsset() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [categoryId, setCategoryId] = useState("")
+  const [searchParams] = useSearchParams()
+  // The quick-entry card on the overview arrives with a category already picked.
+  const [categoryId, setCategoryId] = useState(searchParams.get("category_id") ?? "")
   const [holderId, setHolderId] = useState("")
   const [values, setValues] = useState<Record<string, unknown>>({})
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -96,7 +98,7 @@ export function NewAsset() {
               {locations.map((h) => (
                 <option key={h.id} value={h.id}>
                   {h.name}
-                  {h.is_default_stock ? "（默认库存点）" : ""}
+                  {h.is_default_stock ? zh.common.defaultStockSuffix : ""}
                 </option>
               ))}
             </select>

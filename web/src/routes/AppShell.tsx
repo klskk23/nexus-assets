@@ -7,12 +7,15 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
 const links = [
+  { to: "/", label: zh.nav.overview },
   { to: "/assets", label: zh.nav.assets },
   { to: "/categories", label: zh.nav.categories },
   { to: "/fields", label: zh.nav.fields },
   { to: "/models", label: zh.nav.models },
   { to: "/holders", label: zh.nav.holders },
   { to: "/users", label: zh.nav.users },
+  { to: "/import", label: zh.nav.importPage },
+  { to: "/audit", label: zh.nav.audit },
 ]
 
 /** Chrome around every signed-in page, and the gate that keeps them signed in. */
@@ -38,6 +41,7 @@ export function AppShell() {
               <NavLink
                 key={l.to}
                 to={l.to}
+                end={l.to === "/"}
                 className={({ isActive }) =>
                   cn(
                     "rounded-md px-3 py-1.5 text-sm hover:bg-accent",

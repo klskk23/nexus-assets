@@ -8,30 +8,38 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/klskk23/nexus-assets/internal/asset"
+	"github.com/klskk23/nexus-assets/internal/audit"
 	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/config"
 	"github.com/klskk23/nexus-assets/internal/holder"
+	"github.com/klskk23/nexus-assets/internal/importer"
 	"github.com/klskk23/nexus-assets/internal/schema"
+	"github.com/klskk23/nexus-assets/internal/transfer"
 )
 
 // Server wires the HTTP surface to the domain services.
 type Server struct {
-	cfg     *config.Config
-	issuer  *auth.Issuer
-	users   *auth.Store
-	schema  *schema.Store
-	holders *holder.Store
-	assets  *asset.Service
-	oidc    *auth.OIDC
-	webFS   fs.FS
+	cfg       *config.Config
+	issuer    *auth.Issuer
+	users     *auth.Store
+	schema    *schema.Store
+	holders   *holder.Store
+	assets    *asset.Service
+	transfers *transfer.Service
+	importer  *importer.Service
+	audit     *audit.Store
+	oidc      *auth.OIDC
+	webFS     fs.FS
 }
 
 // NewServer builds the API server.
 func NewServer(cfg *config.Config, issuer *auth.Issuer, users *auth.Store,
 	sch *schema.Store, holders *holder.Store, assets *asset.Service,
+	transfers *transfer.Service, imp *importer.Service, aud *audit.Store,
 	oidcFlow *auth.OIDC, webFS fs.FS) *Server {
 	return &Server{cfg: cfg, issuer: issuer, users: users, schema: sch,
-		holders: holders, assets: assets, oidc: oidcFlow, webFS: webFS}
+		holders: holders, assets: assets, transfers: transfers, importer: imp,
+		audit: aud, oidc: oidcFlow, webFS: webFS}
 }
 
 // Router builds the gin engine.
@@ -60,6 +68,8 @@ func (s *Server) Router() *gin.Engine {
 	authed.POST("/fields", s.createField)
 	authed.PATCH("/fields/:id", s.patchField)
 	authed.POST("/categories/:id/bindings", s.bindField)
+	authed.GET("/fields/:id/referrers", s.listFieldReferrers)
+	authed.POST("/categories/:id/recompute-sn", s.recomputeSN)
 
 	authed.GET("/models", s.listModels)
 	authed.POST("/models", s.createModel)
@@ -77,6 +87,18 @@ func (s *Server) Router() *gin.Engine {
 	authed.GET("/assets/:id", s.getAsset)
 	authed.PATCH("/assets/:id", s.patchAsset)
 	authed.DELETE("/assets/:id", s.deleteAsset)
+	authed.GET("/assets/:id/transfers", s.listAssetTransfers)
+
+	authed.GET("/categories/:id/import-template.csv", s.importTemplate)
+	authed.POST("/import/preview", s.importPreview)
+	authed.POST("/import/commit", s.importCommit)
+	authed.GET("/export.csv", s.exportCSV)
+
+	authed.GET("/audit", s.listAudit)
+	authed.GET("/overview", s.overview)
+
+	authed.POST("/transfers", s.createTransfer)
+	authed.PATCH("/transfers/:id", s.patchTransfer)
 
 	if s.webFS != nil {
 		s.mountWeb(r)

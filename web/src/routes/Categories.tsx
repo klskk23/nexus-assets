@@ -7,6 +7,7 @@ import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import { zh, zhMeta } from "@/i18n/zh"
 import { StateBoundary } from "@/components/StateBoundary"
 import { CollapsibleTree, buildTree } from "@/features/tree/CollapsibleTree"
+import { SnTemplateEditor } from "@/features/categories/SnTemplateEditor"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -149,6 +150,19 @@ export function Categories() {
         </Card>
 
         {selected && (
+          <div className="grid gap-6">
+            {schema.data && (
+              <SnTemplateEditor
+                categoryID={selected}
+                categoryName={schema.data.category.name}
+                template={schema.data.category.sn_template}
+                inheritedFromName={
+                  schema.data.sn_template_from && schema.data.sn_template_from !== selected
+                    ? (categories.data ?? []).find((c) => c.id === schema.data!.sn_template_from)?.name
+                    : undefined
+                }
+              />
+            )}
           <Card>
             <CardHeader>
               <CardTitle>{zhMeta.categories.fields}</CardTitle>
@@ -205,6 +219,7 @@ export function Categories() {
               </ul>
             </CardContent>
           </Card>
+          </div>
         )}
       </div>
     </div>

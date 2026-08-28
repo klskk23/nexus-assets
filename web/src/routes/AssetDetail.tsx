@@ -4,9 +4,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError, type FieldErrors } from "@/lib/api"
 import type { Asset, CategorySchema } from "@/lib/types"
-import { zh } from "@/i18n/zh"
+import type { Transfer } from "@/lib/transferTypes"
+import { zh, zhTransfer } from "@/i18n/zh"
 import { StateBoundary } from "@/components/StateBoundary"
 import { DynamicForm } from "@/features/assets/DynamicForm"
+import { Timeline } from "@/features/transfers/Timeline"
+import { EditEvent } from "@/features/transfers/EditEvent"
+import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import {
   Collapsible,
   CollapsibleContent,
@@ -15,8 +19,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 
 interface DetailResponse {
   asset: Asset
@@ -31,7 +33,7 @@ export function AssetDetail() {
   const [values, setValues] = useState<Record<string, unknown>>({})
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [banner, setBanner] = useState<string | null>(null)
-  const [confirmSN, setConfirmSN] = useState("")
+  const [editing, setEditing] = useState<Transfer | null>(null)
 
   const detail = useQuery({
     queryKey: ["asset", id],
@@ -39,6 +41,14 @@ export function AssetDetail() {
   })
 
   const asset = detail.data?.asset
+
+  const timeline = useQuery({
+    queryKey: ["timeline", id],
+    queryFn: () => api.get<Transfer[]>(`/assets/${id}/transfers`),
+  })
+  // Only the newest event may still be corrected; the window closes as soon as
+  // the asset moves again.
+  const tailID = timeline.data?.[timeline.data.length - 1]?.id
 
   const schema = useQuery({
     queryKey: ["schema", asset?.category_id],
@@ -83,7 +93,7 @@ export function AssetDetail() {
   })
 
   const remove = useMutation({
-    mutationFn: () => api.del<void>(`/assets/${id}?confirm_sn=${encodeURIComponent(confirmSN)}`),
+    mutationFn: () => api.del<void>(`/assets/${id}?confirm_sn=${encodeURIComponent(asset!.sn)}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assets"] })
       navigate("/assets", { replace: true })
@@ -106,7 +116,7 @@ export function AssetDetail() {
             <Badge variant="secondary">{zh.status[asset.status] ?? asset.status}</Badge>
             {(detail.data?.sn_history ?? []).length > 0 && (
               <span className="text-sm text-muted-foreground">
-                旧编号：{detail.data!.sn_history.join("、")}
+                {zh.common.formerSN(detail.data!.sn_history.join("、"))}
               </span>
             )}
           </div>
@@ -150,6 +160,24 @@ export function AssetDetail() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle>{zhTransfer.timeline}</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              {editing && (
+                <EditEvent event={editing} assetID={id} onClose={() => setEditing(null)} />
+              )}
+              <Timeline
+                events={timeline.data ?? []}
+                isLoading={timeline.isLoading}
+                error={timeline.error as Error | null}
+                editableId={tailID}
+                onEdit={setEditing}
+              />
+            </CardContent>
+          </Card>
+
           {archived.length > 0 && (
             <Collapsible>
               <CollapsibleTrigger asChild>
@@ -176,22 +204,18 @@ export function AssetDetail() {
               <CardTitle>{zh.assets.deleteTitle}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3">
-              <Label htmlFor="confirm-sn">{zh.assets.deleteHint(asset.sn)}</Label>
-              <Input
-                id="confirm-sn"
-                className="max-w-xs font-mono"
-                value={confirmSN}
-                onChange={(e) => setConfirmSN(e.target.value)}
+              <ConfirmDialog
+                trigger={
+                  <Button variant="destructive" className="w-fit" disabled={remove.isPending}>
+                    {zh.assets.delete}
+                  </Button>
+                }
+                title={zh.assets.deleteTitle}
+                description={zh.assets.deleteHint(asset.sn)}
+                confirmLabel={zh.assets.delete}
+                requirePhrase={asset.sn}
+                onConfirm={() => remove.mutate()}
               />
-              <div>
-                <Button
-                  variant="destructive"
-                  disabled={confirmSN !== asset.sn || remove.isPending}
-                  onClick={() => remove.mutate()}
-                >
-                  {zh.assets.delete}
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </div>

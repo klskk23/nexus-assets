@@ -1,3 +1,4 @@
+import { zh } from "@/i18n/zh"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -51,14 +52,14 @@ function FieldRow({
           {field.label}
           {field.required && <span className="ml-1 text-destructive">*</span>}
         </Label>
-        {field.inherited_from && <Badge variant="secondary">继承</Badge>}
-        {field.is_unique && <Badge variant="outline">唯一</Badge>}
+        {field.inherited_from && <Badge variant="secondary">{zh.common.inherited}</Badge>}
+        {field.is_unique && <Badge variant="outline">{zh.common.unique}</Badge>}
       </div>
 
       <FieldControl id={id} field={field} value={value} describedBy={describedBy} onChange={onChange} />
 
       {field.type === "computed" && (
-        <p className="text-xs text-muted-foreground">由其他信息项自动计算，不可直接填写</p>
+        <p className="text-xs text-muted-foreground">{zh.common.computedHint}</p>
       )}
       {error && (
         <p id={`${id}-error`} role="alert" className="text-sm text-destructive">
@@ -111,7 +112,7 @@ function FieldControl({
           {(field.options.choices ?? []).map((c) => (
             <option key={c.value} value={c.value} disabled={isDeprecated(field.options, c.value)}>
               {c.label}
-              {isDeprecated(field.options, c.value) ? "（已废弃）" : ""}
+              {isDeprecated(field.options, c.value) ? zh.common.deprecatedSuffix : ""}
             </option>
           ))}
         </select>

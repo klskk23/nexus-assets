@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { screen, waitFor } from "@testing-library/react"
+import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { AssetDetail } from "@/routes/AssetDetail"
@@ -131,24 +131,28 @@ describe("AssetDetail", () => {
     )
   })
 
-  it("keeps delete disabled until the typed serial number matches", async () => {
+  // Deleting is irreversible, so it goes through a dialog that stays inert
+  // until the serial number is typed out.
+  it("requires the serial number to be typed before it will delete", async () => {
     del.mockResolvedValue(undefined)
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
-    const button = screen.getByRole("button", { name: "删除" })
-    expect(button).toBeDisabled()
+    await user.click(screen.getByRole("button", { name: "删除" }))
+    const dialog = await screen.findByRole("alertdialog")
+    const confirm = within(dialog).getByRole("button", { name: "删除" })
+    expect(confirm).toBeDisabled()
 
-    const input = screen.getByLabelText(/请输入资产编号/)
+    const input = screen.getByLabelText(/请输入/)
     await user.type(input, "112394521949")
-    expect(button).toBeDisabled()
+    expect(confirm).toBeDisabled()
 
     await user.clear(input)
     await user.type(input, "112394521950")
-    expect(button).toBeEnabled()
+    expect(confirm).toBeEnabled()
 
-    await user.click(button)
+    await user.click(confirm)
     await waitFor(() => expect(del).toHaveBeenCalledWith("/assets/a1?confirm_sn=112394521950"))
   })
 })

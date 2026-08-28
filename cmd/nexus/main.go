@@ -10,22 +10,28 @@ import (
 	"os"
 
 	"github.com/klskk23/nexus-assets/internal/asset"
+	"github.com/klskk23/nexus-assets/internal/audit"
 	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/config"
 	"github.com/klskk23/nexus-assets/internal/holder"
 	"github.com/klskk23/nexus-assets/internal/httpapi"
+	"github.com/klskk23/nexus-assets/internal/importer"
 	"github.com/klskk23/nexus-assets/internal/schema"
 	"github.com/klskk23/nexus-assets/internal/store"
+	"github.com/klskk23/nexus-assets/internal/transfer"
 	"github.com/klskk23/nexus-assets/web"
 )
 
 type app struct {
-	cfg     *config.Config
-	db      *store.Store
-	users   *auth.Store
-	schema  *schema.Store
-	holders *holder.Store
-	assets  *asset.Service
+	cfg       *config.Config
+	db        *store.Store
+	users     *auth.Store
+	schema    *schema.Store
+	holders   *holder.Store
+	assets    *asset.Service
+	transfers *transfer.Service
+	importer  *importer.Service
+	audit     *audit.Store
 }
 
 func main() {
@@ -47,8 +53,16 @@ func run(args []string) error {
 		switch args[0] {
 		case "verify":
 			return runVerify(ctx, a)
+		case "seed":
+			n := 10000
+			if len(args) > 1 {
+				if _, err := fmt.Sscanf(args[1], "%d", &n); err != nil {
+					return fmt.Errorf("seed count %q: %w", args[1], err)
+				}
+			}
+			return runSeed(ctx, a, n)
 		default:
-			return fmt.Errorf("unknown subcommand %q (known: verify)", args[0])
+			return fmt.Errorf("unknown subcommand %q (known: verify, seed)", args[0])
 		}
 	}
 	return a.serve()
@@ -75,6 +89,9 @@ func setup(ctx context.Context) (*app, error) {
 		holders: holder.New(db),
 		assets:  asset.NewService(db, sch),
 	}
+	a.transfers = transfer.New(db, a.holders)
+	a.importer = importer.New(db, sch, a.holders, a.users, a.assets)
+	a.audit = audit.New(db)
 
 	created, err := auth.Bootstrap(ctx, a.users, cfg.AdminEmail, cfg.AdminPassword)
 	if err != nil {
@@ -104,7 +121,7 @@ func (a *app) serve() error {
 		log.Print("Google sign-in is not configured; local accounts only")
 	}
 
-	srv := httpapi.NewServer(a.cfg, issuer, a.users, a.schema, a.holders, a.assets, oidcFlow, webFS)
+	srv := httpapi.NewServer(a.cfg, issuer, a.users, a.schema, a.holders, a.assets, a.transfers, a.importer, a.audit, oidcFlow, webFS)
 
 	log.Printf("listening on %s (database %s)", a.cfg.Addr, a.cfg.DBPath)
 	return srv.Router().Run(a.cfg.Addr)

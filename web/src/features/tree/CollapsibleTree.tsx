@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { ChevronRight } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { zh } from "@/i18n/zh"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -60,7 +61,7 @@ function TreeItem({
                 variant="ghost"
                 size="icon"
                 className="size-6 shrink-0"
-                aria-label={open ? `收起 ${node.label}` : `展开 ${node.label}`}
+                aria-label={open ? zh.common.collapse(node.label) : zh.common.expand(node.label)}
               >
                 <ChevronRight className={cn("size-4 transition-transform", open && "rotate-90")} />
               </Button>

@@ -159,44 +159,23 @@ func (s *Store) SetDefaultStock(ctx context.Context, id string) error {
 // refused" rule covers fields and accounts, so there is one behaviour to
 // remember rather than three.
 func (s *Store) Archive(ctx context.Context, id string) error {
+	e, err := s.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	blockers, total, err := s.Blockers(ctx, id)
+	if err != nil {
+		return err
+	}
+	if total > 0 {
+		return fmt.Errorf("%w: %s", ErrReferenced, describeBlockers(e.Name, blockers, total))
+	}
+
 	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		blockers, err := referencingAssets(ctx, tx, id, 5)
-		if err != nil {
-			return err
-		}
-		if len(blockers) > 0 {
-			return fmt.Errorf("%w: held by or referenced from %v", ErrReferenced, blockers)
-		}
 		now := time.Now().UTC()
 		_, err = tx.ExecContext(ctx,
 			`UPDATE holder_entities SET archived_at = ?, is_default_stock = 0, updated_at = ? WHERE id = ?`,
 			store.FormatTime(now), store.FormatTime(now), id)
 		return err
 	})
-}
-
-// referencingAssets returns up to limit SNs of assets that hold or reference
-// the entity, so the error can tell the user what is in the way.
-func referencingAssets(ctx context.Context, tx *sql.Tx, id string, limit int) ([]string, error) {
-	q := `SELECT sn FROM assets
-	      WHERE (holder_type = 'entity' AND holder_id = ?)
-	         OR EXISTS (
-	              SELECT 1 FROM json_each(assets.attrs)
-	              WHERE json_each.value = ?
-	            )
-	      LIMIT ?`
-	rows, err := tx.QueryContext(ctx, q, id, id, limit)
-	if err != nil {
-		return nil, fmt.Errorf("check holder references: %w", err)
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var sn string
-		if err := rows.Scan(&sn); err != nil {
-			return nil, err
-		}
-		out = append(out, sn)
-	}
-	return out, rows.Err()
 }

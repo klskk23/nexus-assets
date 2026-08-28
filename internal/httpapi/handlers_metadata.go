@@ -2,10 +2,12 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/klskk23/nexus-assets/internal/audit"
 	"github.com/klskk23/nexus-assets/internal/holder"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
@@ -41,6 +43,9 @@ func (s *Server) createCategory(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
+	if !s.record(c, audit.ActionCreate, audit.TargetCategory, out.ID, nil, out) {
+		return
+	}
 	c.JSON(http.StatusCreated, out)
 }
 
@@ -70,9 +75,14 @@ func (s *Server) patchCategory(c *gin.Context) {
 		in.ParentID = &parent
 	}
 
+	before, _ := s.schema.GetCategory(c.Request.Context(), c.Param("id"))
+
 	out, err := s.schema.UpdateCategory(c.Request.Context(), c.Param("id"), in)
 	if err != nil {
 		FailErr(c, err)
+		return
+	}
+	if !s.record(c, audit.ActionUpdate, audit.TargetCategory, out.ID, before, out) {
 		return
 	}
 	c.JSON(http.StatusOK, out)
@@ -143,6 +153,9 @@ func (s *Server) createField(c *gin.Context) {
 		Fail(c, http.StatusUnprocessableEntity, CodeTemplateInvalid, err.Error(), nil)
 		return
 	}
+	if !s.record(c, audit.ActionCreate, audit.TargetField, out.ID, nil, out) {
+		return
+	}
 	c.JSON(http.StatusCreated, out)
 }
 
@@ -156,12 +169,43 @@ func (s *Server) patchField(c *gin.Context) {
 		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
 		return
 	}
-	out, err := s.schema.UpdateField(c.Request.Context(), c.Param("id"), schema.UpdateFieldInput{
-		Label: req.Label, Options: req.Options, Archive: req.Archive,
+	ctx := c.Request.Context()
+	before, _ := s.schema.GetField(ctx, c.Param("id"))
+
+	// Archiving goes through the reference check: a field a template reads may
+	// not be taken away, or every asset in that category becomes unsaveable.
+	if req.Archive != nil && *req.Archive {
+		referrers, err := s.schema.ArchiveField(ctx, c.Param("id"))
+		if err != nil {
+			if errors.Is(err, schema.ErrFieldReferenced) {
+				c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+					"error": gin.H{
+						"code":      CodeReferenceBlocked,
+						"message":   err.Error(),
+						"referrers": referrers,
+					},
+				})
+				return
+			}
+			FailErr(c, err)
+			return
+		}
+		if !s.record(c, audit.ActionArchive, audit.TargetField, c.Param("id"), before, nil) {
+			return
+		}
+	}
+
+	out, err := s.schema.UpdateField(ctx, c.Param("id"), schema.UpdateFieldInput{
+		Label: req.Label, Options: req.Options,
 	})
 	if err != nil {
-		FailErr(c, err)
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, err.Error(), nil)
 		return
+	}
+	if req.Archive == nil || !*req.Archive {
+		if !s.record(c, audit.ActionUpdate, audit.TargetField, out.ID, before, out) {
+			return
+		}
 	}
 	c.JSON(http.StatusOK, out)
 }
@@ -178,6 +222,9 @@ func (s *Server) bindField(c *gin.Context) {
 	}
 	if err := s.schema.Bind(c.Request.Context(), c.Param("id"), req.FieldID, req.Required, req.Sort); err != nil {
 		FailErr(c, err)
+		return
+	}
+	if !s.record(c, audit.ActionCreate, audit.TargetBinding, c.Param("id"), nil, req) {
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -215,6 +262,9 @@ func (s *Server) createModel(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
+	if !s.record(c, audit.ActionCreate, audit.TargetModel, out.ID, nil, out) {
+		return
+	}
 	c.JSON(http.StatusCreated, out)
 }
 
@@ -248,6 +298,9 @@ func (s *Server) createHolder(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
+	if !s.record(c, audit.ActionCreate, audit.TargetHolder, out.ID, nil, out) {
+		return
+	}
 	c.JSON(http.StatusCreated, out)
 }
 
@@ -261,6 +314,8 @@ func (s *Server) patchHolder(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
+	before, _ := s.holders.Get(ctx, c.Param("id"))
+
 	if req.DefaultStock != nil && *req.DefaultStock {
 		if err := s.holders.SetDefaultStock(ctx, c.Param("id")); err != nil {
 			FailErr(c, err)
@@ -269,7 +324,7 @@ func (s *Server) patchHolder(c *gin.Context) {
 	}
 	if req.Archive != nil && *req.Archive {
 		if err := s.holders.Archive(ctx, c.Param("id")); err != nil {
-			FailErr(c, err)
+			s.failHolder(c, err)
 			return
 		}
 	}
@@ -278,5 +333,67 @@ func (s *Server) patchHolder(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
+	action := audit.ActionUpdate
+	if req.Archive != nil && *req.Archive {
+		action = audit.ActionArchive
+	}
+	if !s.record(c, action, audit.TargetHolder, out.ID, before, out) {
+		return
+	}
 	c.JSON(http.StatusOK, out)
+}
+
+// recomputeSN re-derives the serial numbers of a category subtree.
+//
+// Two phases, and the dry run is the default: changing a rule that governs
+// thousands of devices is not something to discover the consequences of after
+// the fact.
+func (s *Server) recomputeSN(c *gin.Context) {
+	dryRun := c.DefaultQuery("dry_run", "true") != "false"
+
+	report, err := s.assets.RecomputeSN(c.Request.Context(), c.Param("id"), dryRun)
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, report)
+}
+
+// listFieldReferrers reports what reads a field, so the UI can warn before the
+// user tries to archive it.
+func (s *Server) listFieldReferrers(c *gin.Context) {
+	f, err := s.schema.GetField(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	refs, err := s.schema.ReferrersOf(c.Request.Context(), f.Key)
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	if refs == nil {
+		refs = []schema.Referrer{}
+	}
+	c.JSON(http.StatusOK, refs)
+}
+
+// failHolder attaches the blocking assets to a refusal so the page can show
+// exactly what is in the way rather than a bare conflict.
+func (s *Server) failHolder(c *gin.Context, err error) {
+	if !errors.Is(err, holder.ErrReferenced) {
+		FailErr(c, err)
+		return
+	}
+	blockers, _, listErr := s.holders.Blockers(c.Request.Context(), c.Param("id"))
+	if listErr != nil {
+		blockers = nil
+	}
+	c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+		"error": gin.H{
+			"code":     CodeReferenceBlocked,
+			"message":  err.Error(),
+			"blockers": blockers,
+		},
+	})
 }

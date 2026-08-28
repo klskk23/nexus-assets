@@ -209,28 +209,28 @@ Excel 和记忆里」变成「设备有账可查」。
 
 ### Tests for User Story 2 (REQUIRED - 章程原则 II) ⚠️
 
-- [ ] T099 [P] [US2] Integration test that checkout writes one transfer with full from/to values and flips status in `internal/transfer/transfer_test.go`
-- [ ] T100 [P] [US2] Integration test that a 20-asset batch writes 20 rows sharing one `batch_id` in a single transaction in `internal/transfer/batch_test.go`
-- [ ] T101 [P] [US2] Integration test that the tail event is editable, a non-tail event yields `409 not_tail_event`, and `edited_*` is written, in `internal/transfer/edit_test.go`
-- [ ] T102 [P] [US2] Integration test that illegal transitions (`retired` to anything, `lost` to `in_use`) yield `422 illegal_transition` in `internal/transfer/status_test.go`
-- [ ] T103 [P] [US2] Integration test that disabling a user who still owns assets yields `409 reference_blocked` in `internal/httpapi/users_test.go`
+- [X] T099 [P] [US2] Integration test that checkout writes one transfer with full from/to values and flips status in `internal/transfer/transfer_test.go`
+- [X] T100 [P] [US2] Integration test that a 20-asset batch writes 20 rows sharing one `batch_id` in a single transaction in `internal/transfer/batch_test.go`
+- [X] T101 [P] [US2] Integration test that the tail event is editable, a non-tail event yields `409 not_tail_event`, and `edited_*` is written, in `internal/transfer/edit_test.go`
+- [X] T102 [P] [US2] Integration test that illegal transitions (`retired` to anything, `lost` to `in_use`) yield `422 illegal_transition` in `internal/transfer/status_test.go`
+- [X] T103 [P] [US2] Integration test that disabling a user who still owns assets yields `409 reference_blocked` in `internal/httpapi/users_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T104 [US2] Implement single transfer with kind derivation and status validation in `internal/transfer/transfer.go`
-- [ ] T105 [US2] Implement batch transfer sharing a `batch_id` in one transaction in `internal/transfer/batch.go`
-- [ ] T106 [US2] Implement tail-event editing with `edited_at`/`edited_by`/`original` in `internal/transfer/edit.go` — batch events edit as a whole only
-- [ ] T107 [US2] Implement check-in defaulting to the default stock point, requiring an explicit location when none is set, in `internal/transfer/checkin.go` (FR-065)
-- [ ] T108 [US2] Implement transfer handlers in `internal/httpapi/transfers.go`
+- [X] T104 [US2] Implement single transfer with kind derivation and status validation in `internal/transfer/transfer.go`
+- [X] T105 [US2] Implement batch transfer sharing a `batch_id` in one transaction in `internal/transfer/batch.go`
+- [X] T106 [US2] Implement tail-event editing with `edited_at`/`edited_by`/`original` in `internal/transfer/edit.go` — batch events edit as a whole only
+- [X] T107 [US2] Implement check-in defaulting to the default stock point, requiring an explicit location when none is set, in `internal/transfer/checkin.go` (FR-065)
+- [X] T108 [US2] Implement transfer handlers in `internal/httpapi/transfers.go`
 
 ### Frontend for User Story 2
 
-- [ ] T109 [US2] Implement the transfer timeline with batch folding in `web/src/features/transfers/Timeline.tsx`
-- [ ] T110 [US2] DOM test that a 20-row batch renders folded as one entry in `web/tests/timeline.test.tsx`
-- [ ] T111 [US2] Implement the multi-select action bar (签出/归还/转移/改负责人/改状态) in `web/src/features/assets/ActionBar.tsx`
-- [ ] T112 [US2] DOM test multi-select then batch submit produces one request with all asset ids in `web/tests/actionBar.test.tsx`
-- [ ] T113 [US2] Implement tail-event editing UI with the modification trace shown in `web/src/features/transfers/EditEvent.tsx`
-- [ ] T114 [US2] DOM test that a non-tail event offers no edit affordance in `web/tests/editEvent.test.tsx`
+- [X] T109 [US2] Implement the transfer timeline with batch folding in `web/src/features/transfers/Timeline.tsx`
+- [X] T110 [US2] DOM test that a 20-row batch renders folded as one entry in `web/tests/timeline.test.tsx`
+- [X] T111 [US2] Implement the multi-select action bar (签出/归还/转移/改负责人/改状态) in `web/src/features/assets/ActionBar.tsx`
+- [X] T112 [US2] DOM test multi-select then batch submit produces one request with all asset ids in `web/tests/actionBar.test.tsx`
+- [X] T113 [US2] Implement tail-event editing UI with the modification trace shown in `web/src/features/transfers/EditEvent.tsx`
+- [X] T114 [US2] DOM test that a non-tail event offers no edit affordance in `web/tests/editEvent.test.tsx`
 
 **Checkpoint**: US2 独立可用 —— 流转与追溯完整
 
@@ -245,29 +245,29 @@ Excel 和记忆里」变成「设备有账可查」。
 
 ### Tests for User Story 3 (REQUIRED - 章程原则 II) ⚠️
 
-- [ ] T115 [P] [US3] Integration test that a child category inherits all ancestor fields and may only append in `internal/schema/inherit_test.go`
-- [ ] T116 [P] [US3] Integration test that saving a cyclic computed rule yields `422 template_invalid` with the cycle path in `internal/httpapi/fields_test.go`
-- [ ] T117 [P] [US3] Integration test that disabling a field referenced by `sn_template` yields `409 reference_blocked` listing the referrers in `internal/httpapi/fields_test.go`
-- [ ] T118 [P] [US3] Integration test that `recompute-sn?dry_run=true` writes nothing and reports conflicts, and that a real run with any conflict rolls back entirely, in `internal/asset/recompute_test.go`
-- [ ] T119 [P] [US3] Integration test that moving a category with assets in its subtree yields `409 category_has_assets` in `internal/httpapi/categories_test.go`
-- [ ] T120 [P] [US3] Integration test that a removed enum option is retained on existing assets, flagged deprecated, and rejected for new records, in `internal/schema/enum_test.go`
+- [X] T115 [P] [US3] Integration test that a child category inherits all ancestor fields and may only append in `internal/schema/inherit_test.go`
+- [X] T116 [P] [US3] Integration test that saving a cyclic computed rule yields `422 template_invalid` with the cycle path in `internal/httpapi/fields_test.go`
+- [X] T117 [P] [US3] Integration test that disabling a field referenced by `sn_template` yields `409 reference_blocked` listing the referrers in `internal/httpapi/fields_test.go`
+- [X] T118 [P] [US3] Integration test that `recompute-sn?dry_run=true` writes nothing and reports conflicts, and that a real run with any conflict rolls back entirely, in `internal/asset/recompute_test.go`
+- [X] T119 [P] [US3] Integration test that moving a category with assets in its subtree yields `409 category_has_assets` in `internal/httpapi/categories_test.go`
+- [X] T120 [P] [US3] Integration test that a removed enum option is retained on existing assets, flagged deprecated, and rejected for new records, in `internal/schema/enum_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T121 [US3] Implement reverse-dependency scanning across all computed templates and `sn_template` in `internal/schema/refcheck.go`
-- [ ] T122 [US3] Implement the two-phase SN recompute (dry run then transactional apply with全量 rollback on conflict) in `internal/asset/recompute.go`
-- [ ] T123 [US3] Implement the category move guard in `internal/schema/category_store.go`
-- [ ] T124 [US3] Implement enum option deprecation semantics in `internal/schema/options.go`
-- [ ] T125 [US3] Implement the recompute and category handlers in `internal/httpapi/categories.go`
+- [X] T121 [US3] Implement reverse-dependency scanning across all computed templates and `sn_template` in `internal/schema/refcheck.go`
+- [X] T122 [US3] Implement the two-phase SN recompute (dry run then transactional apply with全量 rollback on conflict) in `internal/asset/recompute.go`
+- [X] T123 [US3] Implement the category move guard in `internal/schema/category_store.go`
+- [X] T124 [US3] Implement enum option deprecation semantics in `internal/schema/options.go`
+- [X] T125 [US3] Implement the recompute and category handlers in `internal/httpapi/categories.go`
 
 ### Frontend for User Story 3
 
-- [ ] T126 [US3] Implement the category tree page reusing `CollapsibleTree`, showing which ancestor each field is inherited from, in `web/src/routes/Categories.tsx`
-- [ ] T127 [US3] DOM test that an inherited field displays its `inherited_from` attribution in `web/tests/categories.test.tsx`
-- [ ] T128 [US3] Implement the `sn_template` editor with a recompute preview dialog in `web/src/features/categories/SnTemplateEditor.tsx`
-- [ ] T129 [US3] DOM test that the preview shows affected count and conflicts before any apply is possible in `web/tests/snTemplate.test.tsx`
-- [ ] T130 [US3] Implement the field definition editor with per-type options forms in `web/src/features/fields/FieldEditor.tsx`
-- [ ] T131 [US3] DOM test that attempting to disable a referenced field surfaces the referrer list in `web/tests/fieldEditor.test.tsx`
+- [X] T126 [US3] Implement the category tree page reusing `CollapsibleTree`, showing which ancestor each field is inherited from, in `web/src/routes/Categories.tsx`
+- [X] T127 [US3] DOM test that an inherited field displays its `inherited_from` attribution in `web/tests/categories.test.tsx`
+- [X] T128 [US3] Implement the `sn_template` editor with a recompute preview dialog in `web/src/features/categories/SnTemplateEditor.tsx`
+- [X] T129 [US3] DOM test that the preview shows affected count and conflicts before any apply is possible in `web/tests/snTemplate.test.tsx`
+- [X] T130 [US3] Implement the field definition editor with per-type options forms in `web/src/features/fields/FieldEditor.tsx`
+- [X] T131 [US3] DOM test that attempting to disable a referenced field surfaces the referrer list in `web/tests/fieldEditor.test.tsx`
 
 **Checkpoint**: US3 独立可用 —— 配置完全自助
 
@@ -282,28 +282,28 @@ Excel 和记忆里」变成「设备有账可查」。
 
 ### Tests for User Story 4 (REQUIRED - 章程原则 II) ⚠️
 
-- [ ] T132 [P] [US4] Integration test that the template's second header row matches the category's effective field keys in `internal/importer/template_test.go`
-- [ ] T133 [P] [US4] Integration test that preview reports per-row errors and writes nothing in `internal/importer/preview_test.go`
-- [ ] T134 [P] [US4] Integration test that a duplicate MAC **within the uploaded file** is caught, not only against existing rows, in `internal/importer/preview_test.go`
-- [ ] T135 [P] [US4] Integration test that commit is all-or-nothing and writes one `create` transfer per row sharing a `batch_id` in `internal/importer/commit_test.go`
-- [ ] T136 [P] [US4] Integration test that a row referencing an unknown model or location errors instead of auto-creating in `internal/importer/preview_test.go`
-- [ ] T137 [P] [US4] Integration test that export honours the current filter parameters in `internal/httpapi/export_test.go`
+- [X] T132 [P] [US4] Integration test that the template's second header row matches the category's effective field keys in `internal/importer/template_test.go`
+- [X] T133 [P] [US4] Integration test that preview reports per-row errors and writes nothing in `internal/importer/preview_test.go`
+- [X] T134 [P] [US4] Integration test that a duplicate MAC **within the uploaded file** is caught, not only against existing rows, in `internal/importer/preview_test.go`
+- [X] T135 [P] [US4] Integration test that commit is all-or-nothing and writes one `create` transfer per row sharing a `batch_id` in `internal/importer/commit_test.go`
+- [X] T136 [P] [US4] Integration test that a row referencing an unknown model or location errors instead of auto-creating in `internal/importer/preview_test.go`
+- [X] T137 [P] [US4] Integration test that export honours the current filter parameters in `internal/httpapi/export_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T138 [US4] Implement the two-row-header CSV template generator in `internal/importer/template.go`
-- [ ] T139 [US4] Implement per-row preview running the full save pipeline without persisting in `internal/importer/preview.go`
-- [ ] T140 [US4] Implement name-based resolution of model and reference columns, erroring on miss, in `internal/importer/resolve.go`
-- [ ] T141 [US4] Implement single-transaction commit in `internal/importer/commit.go`
-- [ ] T142 [US4] Implement CSV export honouring list filters in `internal/importer/export.go`
-- [ ] T143 [US4] Implement import and export handlers in `internal/httpapi/importexport.go`
+- [X] T138 [US4] Implement the two-row-header CSV template generator in `internal/importer/template.go`
+- [X] T139 [US4] Implement per-row preview running the full save pipeline without persisting in `internal/importer/preview.go`
+- [X] T140 [US4] Implement name-based resolution of model and reference columns, erroring on miss, in `internal/importer/resolve.go`
+- [X] T141 [US4] Implement single-transaction commit in `internal/importer/commit.go`
+- [X] T142 [US4] Implement CSV export honouring list filters in `internal/importer/export.go`
+- [X] T143 [US4] Implement import and export handlers in `internal/httpapi/importexport.go`
 
 ### Frontend for User Story 4
 
-- [ ] T144 [US4] Implement the import page (download template → upload → preview → commit) in `web/src/routes/Import.tsx`
-- [ ] T145 [US4] DOM test that the preview lists each failing line with its reason and blocks commit until resolved in `web/tests/import.test.tsx`
-- [ ] T146 [US4] Add the export button honouring current filters to `web/src/routes/Assets.tsx`
-- [ ] T147 [US4] DOM test that export is invoked with the active filter parameters in `web/tests/export.test.tsx`
+- [X] T144 [US4] Implement the import page (download template → upload → preview → commit) in `web/src/routes/Import.tsx`
+- [X] T145 [US4] DOM test that the preview lists each failing line with its reason and blocks commit until resolved in `web/tests/import.test.tsx`
+- [X] T146 [US4] Add the export button honouring current filters to `web/src/routes/Assets.tsx`
+- [X] T147 [US4] DOM test that export is invoked with the active filter parameters in `web/tests/export.test.tsx`
 
 **Checkpoint**: US4 独立可用 —— 存量数据可批量进出
 
@@ -321,24 +321,24 @@ Excel 和记忆里」变成「设备有账可查」。
 
 ### Tests for User Story 5 (REQUIRED - 章程原则 II) ⚠️
 
-- [ ] T148 [P] [US5] Integration test that deleting a holder entity still held by assets or targeted by a reference field yields `409 reference_blocked` with the blocking assets listed in `internal/holder/refcheck_test.go`
-- [ ] T149 [P] [US5] Integration test that every metadata create, update and archive writes an audit entry with actor, time and before/after in `internal/audit/audit_test.go`
-- [ ] T150 [P] [US5] Integration test that deleting an asset without a matching `confirm_sn` is refused in `internal/httpapi/assets_test.go`
-- [ ] T151 [P] [US5] End-to-end test of the concurrent edit scenario (US5 AS4) in `internal/httpapi/concurrency_test.go`
+- [X] T148 [P] [US5] Integration test that deleting a holder entity still held by assets or targeted by a reference field yields `409 reference_blocked` with the blocking assets listed in `internal/holder/refcheck_test.go`
+- [X] T149 [P] [US5] Integration test that every metadata create, update and archive writes an audit entry with actor, time and before/after in `internal/audit/audit_test.go`
+- [X] T150 [P] [US5] Integration test that deleting an asset without a matching `confirm_sn` is refused in `internal/httpapi/assets_test.go`
+- [X] T151 [P] [US5] End-to-end test of the concurrent edit scenario (US5 AS4) in `internal/httpapi/concurrency_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T152 [US5] Implement holder reference-integrity checks covering both possession and reference fields in `internal/holder/refcheck.go`
-- [ ] T153 [US5] Implement the audit writer in `internal/audit/audit.go`
-- [ ] T154 [US5] Hook the audit writer into every metadata mutation in `internal/httpapi/metadata.go`
-- [ ] T155 [US5] Implement the audit query endpoint with target-type and time-range filters in `internal/httpapi/audit.go`
+- [X] T152 [US5] Implement holder reference-integrity checks covering both possession and reference fields in `internal/holder/refcheck.go`
+- [X] T153 [US5] Implement the audit writer in `internal/audit/audit.go`
+- [X] T154 [US5] Hook the audit writer into every metadata mutation in `internal/httpapi/metadata.go`
+- [X] T155 [US5] Implement the audit query endpoint with target-type and time-range filters in `internal/httpapi/audit.go`
 
 ### Frontend for User Story 5
 
-- [ ] T156 [US5] Implement the audit log page in `web/src/routes/Audit.tsx`
-- [ ] T157 [US5] DOM test audit filtering by target type and time range in `web/tests/audit.test.tsx`
-- [ ] T158 [US5] Implement destructive-action confirmation dialogs using shadcn/ui `AlertDialog`, requiring SN entry for asset deletion, in `web/src/features/common/ConfirmDialog.tsx`
-- [ ] T159 [US5] DOM test that the delete button stays disabled until the typed SN matches in `web/tests/confirmDialog.test.tsx`
+- [X] T156 [US5] Implement the audit log page in `web/src/routes/Audit.tsx`
+- [X] T157 [US5] DOM test audit filtering by target type and time range in `web/tests/audit.test.tsx`
+- [X] T158 [US5] Implement destructive-action confirmation dialogs using shadcn/ui `AlertDialog`, requiring SN entry for asset deletion, in `web/src/features/common/ConfirmDialog.tsx`
+- [X] T159 [US5] DOM test that the delete button stays disabled until the typed SN matches in `web/tests/confirmDialog.test.tsx`
 
 **Checkpoint**: US5 独立可用 —— 数据受保护且变更可追溯
 
@@ -353,21 +353,21 @@ Excel 和记忆里」变成「设备有账可查」。
 
 ### Tests for User Story 6 (REQUIRED - 章程原则 II) ⚠️
 
-- [ ] T160 [P] [US6] Integration test that `status_counts` equals the count from the list endpoint filtered by each status in `internal/httpapi/overview_test.go`
-- [ ] T161 [P] [US6] Integration test that `category_distribution` includes descendants and **excludes** retired assets in `internal/httpapi/overview_test.go`
-- [ ] T162 [P] [US6] Integration test that recent transfers fold a shared `batch_id` into one entry in `internal/httpapi/overview_test.go`
+- [X] T160 [P] [US6] Integration test that `status_counts` equals the count from the list endpoint filtered by each status in `internal/httpapi/overview_test.go`
+- [X] T161 [P] [US6] Integration test that `category_distribution` includes descendants and **excludes** retired assets in `internal/httpapi/overview_test.go`
+- [X] T162 [P] [US6] Integration test that recent transfers fold a shared `batch_id` into one entry in `internal/httpapi/overview_test.go`
 
 ### Implementation for User Story 6
 
-- [ ] T163 [US6] Implement the overview aggregation query in `internal/asset/overview.go` — constant number of SQL statements, no per-category loop
-- [ ] T164 [US6] Implement the overview handler in `internal/httpapi/overview.go`
+- [X] T163 [US6] Implement the overview aggregation query in `internal/asset/overview.go` — constant number of SQL statements, no per-category loop
+- [X] T164 [US6] Implement the overview handler in `internal/httpapi/overview.go`
 
 ### Frontend for User Story 6
 
-- [ ] T165 [US6] Implement the overview page with status cards, category distribution using `Progress` bars (**no chart library**, research.md D9), recent transfers and a quick-entry card, in `web/src/routes/Overview.tsx`
-- [ ] T166 [US6] DOM test that clicking a status card navigates to the correspondingly filtered asset list in `web/tests/overview.test.tsx`
-- [ ] T167 [US6] DOM test that the quick-entry card prompts to configure a category first when none exist in `web/tests/overview.test.tsx`
-- [ ] T168 [US6] Make the overview the default landing route in `web/src/routes/router.tsx`
+- [X] T165 [US6] Implement the overview page with status cards, category distribution using `Progress` bars (**no chart library**, research.md D9), recent transfers and a quick-entry card, in `web/src/routes/Overview.tsx`
+- [X] T166 [US6] DOM test that clicking a status card navigates to the correspondingly filtered asset list in `web/tests/overview.test.tsx`
+- [X] T167 [US6] DOM test that the quick-entry card prompts to configure a category first when none exist in `web/tests/overview.test.tsx`
+- [X] T168 [US6] Make the overview the default landing route in `web/src/routes/router.tsx`
 
 **Checkpoint**: 全部六个故事完成
 
@@ -376,17 +376,17 @@ Excel 和记忆里」变成「设备有账可查」。
 ## Phase 9: Polish & Cross-Cutting Concerns
 
 - [X] T169 Implement the `nexus verify` reconciliation command in `cmd/nexus/verify.go` — check both the tail snapshot match and adjacent-event `from_*`/`to_*` chain integrity per data-model.md §7
-- [ ] T170 Unit test verify against a deliberately drifted database in `cmd/nexus/verify_test.go`
+- [X] T170 Unit test verify against a deliberately drifted database in `cmd/nexus/verify_test.go`
 - [X] T171 Add `nexus verify` to the CI workflow in `.github/workflows/ci.yml`
-- [ ] T172 Add a 10,000-asset seed generator in `cmd/nexus/seed.go` for performance verification (dev-only, not shipped as demo data — FR-062)
-- [ ] T173 Measure and assert list p95 < 200ms and single read/write p95 < 100ms on the 10k seed in `internal/httpapi/perf_test.go` (章程原则 IV)
+- [X] T172 Add a 10,000-asset seed generator in `cmd/nexus/seed.go` for performance verification (dev-only, not shipped as demo data — FR-062)
+- [X] T173 Measure and assert list p95 < 200ms and single read/write p95 < 100ms on the 10k seed in `internal/httpapi/perf_test.go` (章程原则 IV)
 - [X] T174 [P] Add an initial-chunk size check (< 500KB gzip) to `.github/workflows/ci.yml`
 - [X] T175 [P] Add route-level code splitting for management pages in `web/src/routes/router.tsx`
 - [X] T176 [P] Verify core pipeline package coverage ≥ 80% in the CI workflow for `internal/schema`, `internal/asset`, `internal/compute`
-- [ ] T177 [P] Audit keyboard reachability and visible focus across all eleven routes in `web/tests/a11y.test.tsx` (章程原则 III)
-- [ ] T178 [P] Verify every user-facing string lives in `web/src/i18n/zh.ts` or `internal/httpapi/messages.go`, none inline (章程原则 V)
-- [ ] T179 Update `docs/design-baseline.md` with the three rules added during planning (status machine, holder/status coupling, transfer-kind derivation) so the design doc stays the source of truth
-- [ ] T180 Run all seven merge gates end to end per quickstart.md and record the result in the PR
+- [X] T177 [P] Audit keyboard reachability and visible focus across all eleven routes in `web/tests/a11y.test.tsx` (章程原则 III)
+- [X] T178 [P] Verify every user-facing string lives in `web/src/i18n/zh.ts` or `internal/httpapi/messages.go`, none inline (章程原则 V)
+- [X] T179 Update `docs/design-baseline.md` with the three rules added during planning (status machine, holder/status coupling, transfer-kind derivation) so the design doc stays the source of truth
+- [X] T180 Run all seven merge gates end to end per quickstart.md and record the result in the PR
 
 ---
 

@@ -52,7 +52,7 @@ describe("Login", () => {
     )
   })
 
-  it("submits the credentials and lands on the asset list", async () => {
+  it("submits the credentials and lands on the overview", async () => {
     post.mockResolvedValue({ token: "t0k", user: { id: "u1", name: "管理员" } })
     const user = userEvent.setup()
     renderLogin()
@@ -65,7 +65,7 @@ describe("Login", () => {
       email: "admin@example.com",
       password: "correct-horse",
     }))
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/assets", { replace: true }))
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/", { replace: true }))
   })
 
   it("surfaces the server message and stays put on a bad password", async () => {

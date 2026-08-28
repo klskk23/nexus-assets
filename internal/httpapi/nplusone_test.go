@@ -13,12 +13,15 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/klskk23/nexus-assets/internal/asset"
+	"github.com/klskk23/nexus-assets/internal/audit"
 	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/config"
 	"github.com/klskk23/nexus-assets/internal/holder"
+	"github.com/klskk23/nexus-assets/internal/importer"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
 	"github.com/klskk23/nexus-assets/internal/store"
+	"github.com/klskk23/nexus-assets/internal/transfer"
 )
 
 type harness struct {
@@ -62,6 +65,10 @@ func newHarness(t *testing.T) *harness {
 	if err != nil {
 		t.Fatalf("create location: %v", err)
 	}
+	// Marked so the return action has somewhere to send devices back to.
+	if err := hs.SetDefaultStock(ctx, loc.ID); err != nil {
+		t.Fatalf("set default stock: %v", err)
+	}
 	root, err := sch.CreateCategory(ctx, schema.CreateCategoryInput{
 		Code: "RT", Name: "SDWAN 路由器", SNTemplate: "{{ .attrs.mac | hex2dec }}",
 	})
@@ -85,7 +92,8 @@ func newHarness(t *testing.T) *harness {
 		t.Fatalf("issue token: %v", err)
 	}
 
-	srv := NewServer(cfg, issuer, us, sch, hs, svc, nil, nil)
+	srv := NewServer(cfg, issuer, us, sch, hs, svc, transfer.New(db, hs),
+		importer.New(db, sch, hs, us, svc), audit.New(db), nil, nil)
 	return &harness{
 		router: srv.Router(), schema: sch, token: tok, assets: svc,
 		catID: root.ID, locID: loc.ID, userID: u.ID, ctx: ctx,
@@ -110,23 +118,39 @@ func (h *harness) seed(t *testing.T, from, n int) {
 	}
 }
 
-func (h *harness) patch(t *testing.T, path, body string) *httptest.ResponseRecorder {
+func (h *harness) do(t *testing.T, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPatch, path, strings.NewReader(body))
+	var req *http.Request
+	if body == "" {
+		req = httptest.NewRequest(method, path, nil)
+	} else {
+		req = httptest.NewRequest(method, path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+	}
 	req.Header.Set("Authorization", "Bearer "+h.token)
-	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	h.router.ServeHTTP(rec, req)
 	return rec
 }
 
+func (h *harness) patch(t *testing.T, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	return h.do(t, http.MethodPatch, path, body)
+}
+
 func (h *harness) get(t *testing.T, path string) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, path, nil)
-	req.Header.Set("Authorization", "Bearer "+h.token)
-	rec := httptest.NewRecorder()
-	h.router.ServeHTTP(rec, req)
-	return rec
+	return h.do(t, http.MethodGet, path, "")
+}
+
+// firstAssetID returns the id of the earliest seeded asset.
+func (h *harness) firstAssetID(t *testing.T) string {
+	t.Helper()
+	res, err := h.assets.List(h.ctx, asset.ListFilter{Limit: 1})
+	if err != nil || len(res.Items) == 0 {
+		t.Fatalf("no seeded asset: %v", err)
+	}
+	return res.Items[0].ID
 }
 
 // TestAssetListIssuesConstantQueryCount is the N+1 guard the constitution asks

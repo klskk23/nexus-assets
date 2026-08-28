@@ -1,0 +1,243 @@
+import { useRef, useState } from "react"
+import { useMutation, useQuery } from "@tanstack/react-query"
+
+import { api, ApiError, getToken } from "@/lib/api"
+import type { Category } from "@/lib/types"
+import { zh, zhImport } from "@/i18n/zh"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+
+interface RowResult {
+  line: number
+  status: "ok" | "error"
+  sn?: string
+  fields?: Record<string, string>
+}
+
+interface Report {
+  total: number
+  ok: number
+  rows: RowResult[]
+}
+
+/** Sends a multipart upload; the API client only speaks JSON. */
+async function upload(path: string, categoryID: string, file: File): Promise<Report> {
+  const body = new FormData()
+  body.append("category_id", categoryID)
+  body.append("file", file)
+
+  const token = getToken()
+  const res = await fetch(`/api${path}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body,
+  })
+  const payload = await res.json()
+  if (!res.ok) {
+    const e = payload?.error ?? {}
+    // A refused commit still carries the report, so the page can keep showing
+    // exactly which lines are in the way.
+    const err = new ApiError(res.status, e.code ?? "internal_error", e.message ?? zh.common.error)
+    ;(err as ApiError & { report?: Report }).report = payload?.report
+    throw err
+  }
+  return payload as Report
+}
+
+export function Import() {
+  const [categoryID, setCategoryID] = useState("")
+  const [file, setFile] = useState<File | null>(null)
+  const [report, setReport] = useState<Report | null>(null)
+  const [banner, setBanner] = useState<string | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
+
+  const categories = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => api.get<Category[]>("/categories"),
+  })
+
+  const preview = useMutation({
+    mutationFn: () => upload("/import/preview", categoryID, file!),
+    onSuccess: (r) => {
+      setBanner(null)
+      setReport(r)
+    },
+    onError: (e) => {
+      setReport(null)
+      setBanner(e instanceof ApiError ? e.message : zh.common.error)
+    },
+  })
+
+  const commit = useMutation({
+    mutationFn: () => upload("/import/commit", categoryID, file!),
+    onSuccess: (r) => {
+      setReport(null)
+      setFile(null)
+      if (fileInput.current) fileInput.current.value = ""
+      setBanner(zhImport.done(r.ok ?? 0))
+    },
+    onError: (e) => {
+      const withReport = e as ApiError & { report?: Report }
+      if (withReport.report) setReport(withReport.report)
+      setBanner(e instanceof ApiError ? e.message : zh.common.error)
+    },
+  })
+
+  const failing = report?.rows.filter((r) => r.status === "error") ?? []
+  const canPreview = categoryID !== "" && file !== null
+  const canCommit = report !== null && report.ok === report.total && report.total > 0
+
+  return (
+    <div className="grid max-w-4xl gap-6">
+      <h1 className="text-xl font-semibold">{zhImport.title}</h1>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{zhImport.step1}</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <p className="text-sm text-muted-foreground">{zhImport.step1Hint}</p>
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="im-category">{zhImport.category}</Label>
+              <select
+                id="im-category"
+                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+                value={categoryID}
+                onChange={(e) => {
+                  setCategoryID(e.target.value)
+                  setReport(null)
+                }}
+              >
+                <option value="">—</option>
+                {(categories.data ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* An anchor ignores `disabled`, so without a category selected we
+                render a real button instead of a live link to a broken URL. */}
+            {categoryID === "" ? (
+              <Button variant="outline" className="mb-0.5" disabled>
+                {zhImport.download}
+              </Button>
+            ) : (
+              <Button variant="outline" className="mb-0.5" asChild>
+                <a href={`/api/categories/${categoryID}/import-template.csv`} download>
+                  {zhImport.download}
+                </a>
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{zhImport.step2}</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <p className="text-sm text-muted-foreground">{zhImport.step2Hint}</p>
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="im-file">{zhImport.file}</Label>
+              <Input
+                id="im-file"
+                ref={fileInput}
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => {
+                  setFile(e.target.files?.[0] ?? null)
+                  setReport(null)
+                }}
+              />
+            </div>
+            <Button
+              className="mb-0.5"
+              disabled={!canPreview || preview.isPending}
+              onClick={() => preview.mutate()}
+            >
+              {preview.isPending ? zhImport.previewing : zhImport.preview}
+            </Button>
+          </div>
+
+          {banner && (
+            <p role="alert" className="text-sm text-destructive">
+              {banner}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {report && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{zhImport.step3}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <p className="text-sm text-muted-foreground">{zhImport.step3Hint}</p>
+
+            <p role="status">
+              {zhImport.summary(report.ok, report.total)}
+              {failing.length === 0 ? (
+                <Badge className="ml-2">{zhImport.allGood(report.total)}</Badge>
+              ) : (
+                <Badge variant="outline" className="ml-2">
+                  {zhImport.hasErrors(failing.length)}
+                </Badge>
+              )}
+            </p>
+
+            {failing.length > 0 && (
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-20">{zhImport.line}</TableHead>
+                      <TableHead>{zhImport.problem}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {failing.map((r) => (
+                      <TableRow key={r.line} aria-label={zh.common.lineNo(r.line)}>
+                        <TableCell className="font-mono">{r.line}</TableCell>
+                        <TableCell>
+                          <ul className="grid gap-0.5 text-sm">
+                            {Object.entries(r.fields ?? {}).map(([k, v]) => (
+                              <li key={k}>
+                                <span className="font-mono text-muted-foreground">{k}</span>：{v}
+                              </li>
+                            ))}
+                          </ul>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            <div>
+              <Button disabled={!canCommit || commit.isPending} onClick={() => commit.mutate()}>
+                {commit.isPending ? zhImport.committing : zhImport.commit}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}

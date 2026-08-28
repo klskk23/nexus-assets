@@ -13,7 +13,7 @@ export const router = createBrowserRouter([
     path: "/",
     Component: AppShell,
     children: [
-      { index: true, lazy: async () => ({ Component: (await import("./Assets")).Assets }) },
+      { index: true, lazy: async () => ({ Component: (await import("./Overview")).Overview }) },
       { path: "assets", lazy: async () => ({ Component: (await import("./Assets")).Assets }) },
       { path: "assets/new", lazy: async () => ({ Component: (await import("./NewAsset")).NewAsset }) },
       {
@@ -24,6 +24,8 @@ export const router = createBrowserRouter([
       { path: "fields", lazy: async () => ({ Component: (await import("./Fields")).Fields }) },
       { path: "models", lazy: async () => ({ Component: (await import("./Models")).Models }) },
       { path: "holders", lazy: async () => ({ Component: (await import("./Holders")).Holders }) },
+      { path: "audit", lazy: async () => ({ Component: (await import("./Audit")).Audit }) },
+      { path: "import", lazy: async () => ({ Component: (await import("./Import")).Import }) },
       { path: "users", lazy: async () => ({ Component: (await import("./Users")).Users }) },
     ],
   },

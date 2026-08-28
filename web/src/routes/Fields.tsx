@@ -2,9 +2,11 @@ import { useState } from "react"
 
 import { api } from "@/lib/api"
 import type { FieldDefinitionRow, FieldType } from "@/lib/metaTypes"
-import { zhMeta } from "@/i18n/zh"
+import { zh, zhConfig, zhMeta } from "@/i18n/zh"
 import { CrudPage } from "@/features/metadata/CrudPage"
+import { FieldEditor } from "@/features/fields/FieldEditor"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,6 +16,7 @@ const types: FieldType[] = [
 ]
 
 export function Fields() {
+  const [editing, setEditing] = useState<FieldDefinitionRow | null>(null)
   const [key, setKey] = useState("")
   const [label, setLabel] = useState("")
   const [type, setType] = useState<FieldType>("text")
@@ -21,6 +24,8 @@ export function Fields() {
   const [template, setTemplate] = useState("")
 
   return (
+    <>
+      {editing && <FieldEditor field={editing} onClose={() => setEditing(null)} />}
     <CrudPage<FieldDefinitionRow>
       title={zhMeta.fields.title}
       queryKey="fields"
@@ -44,7 +49,18 @@ export function Fields() {
         { header: zhMeta.fields.type, cell: (f) => zhMeta.fieldTypes[f.type] ?? f.type },
         {
           header: zhMeta.fields.unique,
-          cell: (f) => (f.is_unique ? <Badge variant="outline">唯一</Badge> : null),
+          cell: (f) => (f.is_unique ? <Badge variant="outline">{zh.common.unique}</Badge> : null),
+        },
+        {
+          header: "",
+          cell: (f) =>
+            f.archived_at ? (
+              <Badge variant="secondary">{zhConfig.field.archived}</Badge>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={() => setEditing(f)}>
+                {zhConfig.field.edit}
+              </Button>
+            ),
         },
       ]}
       form={
@@ -82,7 +98,7 @@ export function Fields() {
           </div>
           {type === "computed" && (
             <div className="grid gap-1.5 sm:col-span-2">
-              <Label htmlFor="f-template">模板</Label>
+              <Label htmlFor="f-template">{zh.common.template}</Label>
               <Input
                 id="f-template"
                 className="font-mono"
@@ -95,5 +111,6 @@ export function Fields() {
         </div>
       }
     />
+    </>
   )
 }

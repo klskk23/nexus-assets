@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/klskk23/nexus-assets/internal/audit"
 	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/model"
 )
@@ -38,6 +39,9 @@ func (s *Server) createUser(c *gin.Context) {
 		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, err.Error(), nil)
 		return
 	}
+	if !s.record(c, audit.ActionCreate, audit.TargetUser, out.ID, nil, out) {
+		return
+	}
 	c.JSON(http.StatusCreated, out)
 }
 
@@ -50,6 +54,8 @@ func (s *Server) patchUser(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
+	before, _ := s.users.Get(ctx, c.Param("id"))
+
 	if req.Disable != nil && *req.Disable {
 		if err := s.users.Disable(ctx, c.Param("id")); err != nil {
 			FailErr(c, err)
@@ -59,6 +65,9 @@ func (s *Server) patchUser(c *gin.Context) {
 	out, err := s.users.Get(ctx, c.Param("id"))
 	if err != nil {
 		FailErr(c, err)
+		return
+	}
+	if !s.record(c, audit.ActionArchive, audit.TargetUser, out.ID, before, out) {
 		return
 	}
 	c.JSON(http.StatusOK, out)

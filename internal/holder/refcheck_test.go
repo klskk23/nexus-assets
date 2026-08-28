@@ -1,0 +1,163 @@
+package holder
+
+import (
+	"context"
+	"errors"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/klskk23/nexus-assets/internal/model"
+	"github.com/klskk23/nexus-assets/internal/store"
+)
+
+func newFixture(t *testing.T) (*Store, *store.Store, context.Context) {
+	t.Helper()
+	ctx := context.Background()
+	db, err := store.Open(filepath.Join(t.TempDir(), "h.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	// Foreign keys are on, so the rows the seeded assets point at must exist.
+	for _, q := range []string{
+		`INSERT INTO users (id, email, name, auth_type, status, role, token_version, created_at, updated_at)
+		 VALUES ('u1', 'a@example.com', '管理员', 'local', 'active', 'admin', 0,
+		         '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+		`INSERT INTO categories (id, code, name, path, created_at, updated_at)
+		 VALUES ('cat', 'RT', '路由器', '/cat/', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+	} {
+		if _, err := db.WriteDBForTest().ExecContext(ctx, q); err != nil {
+			t.Fatalf("seed reference rows: %v", err)
+		}
+	}
+	return New(db), db, ctx
+}
+
+func TestBlockersFindsBothPossessionAndReference(t *testing.T) {
+	hs, db, ctx := newFixture(t)
+
+	warehouse, err := hs.Create(ctx, CreateInput{Type: model.EntityLocation, Name: "上海仓库"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := hs.Create(ctx, CreateInput{Type: model.EntityLocation, Name: "北京仓库"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	insert := `INSERT INTO assets (id, sn, category_id, status, owner_id, holder_type, holder_id, attrs, created_at, updated_at)
+	           VALUES (?, ?, 'cat', 'in_stock', 'u1', 'entity', ?, ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`
+	seed := func(id, sn, holderID, attrs string) {
+		t.Helper()
+		if _, err := db.WriteDBForTest().ExecContext(ctx, insert, id, sn, holderID, attrs); err != nil {
+			t.Fatalf("seed %s: %v", sn, err)
+		}
+	}
+	// Held by the warehouse.
+	seed("a1", "SN-1", warehouse.ID, `{}`)
+	// Not held by it, but names it in a reference field -- the second way to
+	// be in the way, and the one a possession-only check would miss.
+	seed("a2", "SN-2", other.ID, `{"install_location":"`+warehouse.ID+`"}`)
+	// Unrelated.
+	seed("a3", "SN-3", other.ID, `{}`)
+
+	blockers, total, err := hs.Blockers(ctx, warehouse.ID)
+	if err != nil {
+		t.Fatalf("blockers: %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("total = %d, want 2", total)
+	}
+	byReason := map[string]string{}
+	for _, b := range blockers {
+		byReason[b.Reason] = b.SN
+	}
+	if byReason["holder"] != "SN-1" {
+		t.Errorf("possession blocker = %+v", blockers)
+	}
+	if byReason["reference"] != "SN-2" {
+		t.Errorf("reference blocker = %+v", blockers)
+	}
+}
+
+func TestArchiveRefusedWithAnActionableMessage(t *testing.T) {
+	hs, db, ctx := newFixture(t)
+	warehouse, err := hs.Create(ctx, CreateInput{Type: model.EntityLocation, Name: "上海仓库"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.WriteDBForTest().ExecContext(ctx,
+		`INSERT INTO assets (id, sn, category_id, status, owner_id, holder_type, holder_id, attrs, created_at, updated_at)
+		 VALUES ('a1', 'SN-1', 'cat', 'in_stock', 'u1', 'entity', ?, '{}', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+		warehouse.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	err = hs.Archive(ctx, warehouse.ID)
+	if !errors.Is(err, ErrReferenced) {
+		t.Fatalf("want ErrReferenced, got %v", err)
+	}
+	for _, want := range []string{"上海仓库", "SN-1", "持有"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the message should mention %q, got: %v", want, err)
+		}
+	}
+
+	still, err := hs.Get(ctx, warehouse.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if still.ArchivedAt != nil {
+		t.Error("the entity must not have been archived")
+	}
+}
+
+func TestArchiveSucceedsOnceNothingPointsAtIt(t *testing.T) {
+	hs, _, ctx := newFixture(t)
+	e, err := hs.Create(ctx, CreateInput{Type: model.EntityCompany, Name: "旧客户"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := hs.Archive(ctx, e.ID); err != nil {
+		t.Fatalf("archive: %v", err)
+	}
+	got, _ := hs.Get(ctx, e.ID)
+	if got.ArchivedAt == nil {
+		t.Error("the entity should be archived")
+	}
+}
+
+func TestBlockerListIsCappedButTheTotalIsNot(t *testing.T) {
+	hs, db, ctx := newFixture(t)
+	w, err := hs.Create(ctx, CreateInput{Type: model.EntityLocation, Name: "上海仓库"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 12; i++ {
+		if _, err := db.WriteDBForTest().ExecContext(ctx,
+			`INSERT INTO assets (id, sn, category_id, status, owner_id, holder_type, holder_id, attrs, created_at, updated_at)
+			 VALUES (?, ?, 'cat', 'in_stock', 'u1', 'entity', ?, '{}', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+			string(rune('a'+i)), "SN-"+string(rune('A'+i)), w.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	blockers, total, err := hs.Blockers(ctx, w.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 12 {
+		t.Errorf("total = %d, want 12", total)
+	}
+	if len(blockers) != blockerLimit {
+		t.Errorf("the listed sample should be capped at %d, got %d", blockerLimit, len(blockers))
+	}
+	// The message has to say the list is partial, or it reads as the whole set.
+	msg := describeBlockers("上海仓库", blockers, total)
+	if !strings.Contains(msg, "仅列出前") {
+		t.Errorf("the message should say the list is truncated: %s", msg)
+	}
+}

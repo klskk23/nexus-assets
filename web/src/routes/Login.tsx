@@ -42,7 +42,7 @@ export function Login() {
       .then((u) => {
         signIn(token, u)
         window.location.hash = ""
-        navigate("/assets", { replace: true })
+        navigate("/", { replace: true })
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : zh.common.error))
   }, [signIn, navigate])
@@ -54,7 +54,7 @@ export function Login() {
     try {
       const res = await api.post<LoginResponse>("/auth/login", { email, password })
       signIn(res.token, res.user)
-      navigate("/assets", { replace: true })
+      navigate("/", { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : zh.common.error)
     } finally {

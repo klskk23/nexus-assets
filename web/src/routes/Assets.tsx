@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react"
-import { useNavigate } from "react-router"
+import { useNavigate, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 
 import { api } from "@/lib/api"
 import type { AssetPage, Category, CategorySchema } from "@/lib/types"
-import { zh } from "@/i18n/zh"
+import { zh, zhImport, zhTransfer } from "@/i18n/zh"
 import { StateBoundary } from "@/components/StateBoundary"
 import { useColumnSelection } from "@/features/assets/useColumns"
+import { ActionBar } from "@/features/assets/ActionBar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -25,17 +26,35 @@ export function Assets() {
   const navigate = useNavigate()
   const searchRef = useRef<HTMLInputElement>(null)
 
+  // The overview links here with a filter already chosen, so the URL seeds the
+  // initial state rather than the page opening blank and then jumping.
+  const [searchParams] = useSearchParams()
   const [q, setQ] = useState("")
-  const [categoryId, setCategoryId] = useState("")
-  const [includeDescendants, setIncludeDescendants] = useState(true)
-  const [status, setStatus] = useState("")
+  const [categoryId, setCategoryId] = useState(searchParams.get("category_id") ?? "")
+  const [includeDescendants, setIncludeDescendants] = useState(
+    searchParams.get("include_descendants") !== "false",
+  )
+  const [status, setStatus] = useState(searchParams.get("status") ?? "")
   const { keys: extraColumns, toggle } = useColumnSelection()
+  const [selected, setSelected] = useState<string[]>([])
+  const [done, setDone] = useState<string | null>(null)
+
+  const toggleSelected = (id: string) =>
+    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
 
   // A barcode scanner types into whatever has focus. Without this the operator
   // has to click the box first, and "the scanner just works" stops being true.
   useEffect(() => {
     searchRef.current?.focus()
   }, [])
+
+  const params = new URLSearchParams()
+  if (q) params.set("q", q)
+  if (categoryId) {
+    params.set("category_id", categoryId)
+    params.set("include_descendants", String(includeDescendants))
+  }
+  if (status) params.set("status", status)
 
   const categories = useQuery({
     queryKey: ["categories"],
@@ -47,14 +66,6 @@ export function Assets() {
     queryFn: () => api.get<CategorySchema>(`/categories/${categoryId}/schema`),
     enabled: categoryId !== "",
   })
-
-  const params = new URLSearchParams()
-  if (q) params.set("q", q)
-  if (categoryId) {
-    params.set("category_id", categoryId)
-    params.set("include_descendants", String(includeDescendants))
-  }
-  if (status) params.set("status", status)
 
   const assets = useQuery({
     queryKey: ["assets", params.toString()],
@@ -68,12 +79,17 @@ export function Assets() {
     }
   }, [assets.data?.exact_match_id, navigate])
 
-  const available = schema.data?.fields.filter((f) => f.type !== "computed") ?? []
+  const available = schema.data?.fields?.filter((f) => f.type !== "computed") ?? []
 
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-end gap-3">
         <h1 className="mr-auto text-xl font-semibold">{zh.assets.title}</h1>
+        <Button variant="outline" asChild>
+          <a href={`/api/export.csv?${params.toString()}`} download title={zhImport.exportHint}>
+            {zhImport.export}
+          </a>
+        </Button>
         <Button onClick={() => navigate("/assets/new")}>{zh.assets.newAsset}</Button>
       </div>
 
@@ -165,6 +181,9 @@ export function Assets() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <span className="sr-only">{zh.common.select}</span>
+                  </TableHead>
                   <TableHead>{zh.assets.sn}</TableHead>
                   <TableHead>{zh.assets.statusLabel}</TableHead>
                   <TableHead>{zh.assets.holder}</TableHead>
@@ -176,12 +195,20 @@ export function Assets() {
               </TableHeader>
               <TableBody>
                 {(assets.data?.items ?? []).map((a) => (
-                  <TableRow
-                    key={a.id}
-                    className="cursor-pointer"
-                    onClick={() => navigate(`/assets/${a.id}`)}
-                  >
-                    <TableCell className="font-mono">{a.sn}</TableCell>
+                  <TableRow key={a.id} className="cursor-pointer">
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        aria-label={zh.common.selectOne(a.sn)}
+                        checked={selected.includes(a.id)}
+                        onCheckedChange={() => toggleSelected(a.id)}
+                      />
+                    </TableCell>
+                    <TableCell
+                      className="font-mono"
+                      onClick={() => navigate(`/assets/${a.id}`)}
+                    >
+                      {a.sn}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{zh.status[a.status] ?? a.status}</Badge>
                     </TableCell>
@@ -197,6 +224,18 @@ export function Assets() {
           </div>
         </>
       </StateBoundary>
+
+      {done && (
+        <p role="status" className="rounded-md border bg-secondary px-3 py-2 text-sm">
+          {done}
+        </p>
+      )}
+
+      <ActionBar
+        selected={selected}
+        onClear={() => setSelected([])}
+        onDone={(n) => setDone(zhTransfer.actions.done(n))}
+      />
     </div>
   )
 }
