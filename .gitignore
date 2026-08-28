@@ -13,13 +13,16 @@ vendor/
 
 # Node / frontend
 node_modules/
+*.tsbuildinfo
 web/dist/*
 !web/dist/.gitkeep
 *.log
 
-# Env
+# Env — the real file holds the JWT secret and the bootstrap password;
+# the example is committed so a new checkout knows what to fill in.
 .env
 .env.*
+!.env.example
 
 # Editors / OS
 .DS_Store

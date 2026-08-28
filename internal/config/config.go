@@ -46,12 +46,17 @@ func (c *Config) AllowsDomain(domain string) bool {
 	return false
 }
 
-// Load reads configuration from the environment.
+// Load reads configuration from the environment, after folding in a .env file
+// when one is present.
 //
 // It deliberately fails when NEXUS_JWT_SECRET is absent instead of generating a
 // random key: a generated key would change on every restart, silently logging
 // every user out and costing an hour to diagnose.
 func Load() (*Config, error) {
+	if err := LoadEnvFile(os.Getenv(EnvFileVar)); err != nil {
+		return nil, err
+	}
+
 	c := &Config{
 		DBPath:           envOr("NEXUS_DB_PATH", "./nexus.db"),
 		Addr:             envOr("NEXUS_ADDR", ":8080"),

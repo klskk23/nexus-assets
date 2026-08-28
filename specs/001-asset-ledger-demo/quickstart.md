@@ -14,11 +14,26 @@
 
 ## 配置
 
-全部从环境变量读取。**`NEXUS_JWT_SECRET` 缺失时程序拒绝启动**，不自动生成随机密钥 ——
+配置来自 `.env` 文件与环境变量。**真实环境变量优先于 `.env`** —— 容器、CI 或一次性的
+`NEXUS_ADDR=:9000 ./nexus` 都能覆盖文件里的值而不必改文件。没有 `.env` 也能跑，纯用
+环境变量即可，CI 就是这么做的。
+
+```bash
+cp .env.example .env && chmod 600 .env
+```
+
+`.env` 在 `.gitignore` 里，`.env.example` 入库。文件里放着 JWT 密钥与初始管理员密码，
+权限过宽时程序会在 stderr 告警（不阻断）。`.env` 解析失败则拒绝启动并指出行号 ——
+带着一半配置跑起来比不跑更糟。
+
+用 `NEXUS_ENV_FILE` 指定其他路径，便于同机跑多个实例。
+
+**`NEXUS_JWT_SECRET` 缺失时程序拒绝启动**，不自动生成随机密钥 ——
 否则每次重启所有人掉线，且很难查出原因。
 
 | 变量 | 必填 | 说明 |
 |------|:----:|------|
+| `NEXUS_ENV_FILE` | 否 | 配置文件路径，默认 `./.env` |
 | `NEXUS_DB_PATH` | 否 | 默认 `./nexus.db` |
 | `NEXUS_JWT_SECRET` | **是** | JWT 签名密钥 |
 | `NEXUS_ALLOWED_EMAIL_DOMAINS` | **是** | 逗号分隔，如 `yourcompany.com` |
@@ -35,12 +50,8 @@
 按下面的顺序走一遍，就能录入第一台设备：
 
 ```bash
-export NEXUS_JWT_SECRET=dev-only-change-me
-export NEXUS_ALLOWED_EMAIL_DOMAINS=yourcompany.com
-export NEXUS_ADMIN_EMAIL=admin@yourcompany.com
-export NEXUS_ADMIN_PASSWORD=dev-only-change-me
-
-go run ./cmd/nexus            # 自动执行迁移，监听 :8080
+cp .env.example .env && chmod 600 .env   # 或 make dev 自动完成这一步
+go run ./cmd/nexus                        # 自动执行迁移，监听 :8080
 ```
 
 1. 用初始管理员账号登录
@@ -59,7 +70,7 @@ go run ./cmd/nexus            # 自动执行迁移，监听 :8080
 前后端分开跑，Vite 代理 `/api` 到 Gin：
 
 ```bash
-go run ./cmd/nexus                     # 终端 1，:8080
+make dev                               # 终端 1，:8080（缺 .env 时从样例生成）
 cd web && npm run dev                  # 终端 2，:5173，代理 /api → :8080
 ```
 

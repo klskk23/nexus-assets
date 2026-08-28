@@ -3,8 +3,13 @@
 GO ?= go
 BIN ?= nexus
 
-dev:
+# Settings come from .env; copy .env.example if it is missing.
+dev: .env
 	$(GO) run ./cmd/nexus
+
+.env:
+	@cp .env.example .env && chmod 600 .env
+	@echo "created .env from .env.example — edit it before using this anywhere real"
 
 web-build:
 	cd web && npm ci && npm run build
