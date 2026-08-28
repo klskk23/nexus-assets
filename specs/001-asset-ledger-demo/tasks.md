@@ -109,7 +109,7 @@ DAG 环检测这一整套机器 —— 它们无法拆进任何单个用户故�
 ### 认证
 
 - [X] T044 [P] Implement JWT issue and verify with 8h TTL and no refresh in `internal/auth/jwt.go`
-- [ ] T045 Implement Google OIDC flow in `internal/auth/oidc.go` — verify signature, `email_verified`, then `hd` claim or email suffix per `NEXUS_OIDC_REQUIRE_HD` (research.md D5)
+- [X] T045 Implement Google OIDC flow in `internal/auth/oidc.go` — verify signature, `email_verified`, then `hd` claim or email suffix per `NEXUS_OIDC_REQUIRE_HD` (research.md D5)
 - [X] T046 [P] Implement local password authentication in `internal/auth/local.go`
 - [X] T047 Implement auth middleware in `internal/auth/middleware.go`
 - [X] T048 [P] Implement bootstrap admin creation when the users table is empty in `internal/auth/bootstrap.go`
@@ -141,11 +141,11 @@ DAG 环检测这一整套机器 —— 它们无法拆进任何单个用户故�
 - [X] T065 [P] Implement the `renderWithProviders` test helper with a fresh QueryClient, `retry: false`, `gcTime: 0` in `web/src/test/renderWithProviders.tsx` (research.md D8)
 - [X] T066 [P] Implement the loading/empty/error three-state boundary in `web/src/components/StateBoundary.tsx` (章程原则 III)
 - [X] T067 [P] Create all Chinese user-facing strings in `web/src/i18n/zh.ts`
-- [ ] T068 [P] Implement the app shell and navigation in `web/src/routes/AppShell.tsx`
+- [X] T068 [P] Implement the app shell and navigation in `web/src/routes/AppShell.tsx`
 - [X] T069 Implement the recursive tree using shadcn/ui `Collapsible` in `web/src/features/tree/CollapsibleTree.tsx` — **不引入自定义树组件**；若该方案在深层树下不可接受，暂停并与开发者确认 (research.md D7)
 - [X] T070 [P] DOM test three-level expand, collapse and selection in `web/tests/tree.test.tsx`
-- [ ] T071 Implement metadata management pages in `web/src/routes/Fields.tsx`, `Models.tsx`, `Holders.tsx`, `Users.tsx`
-- [ ] T072 [P] DOM tests for the four metadata pages in `web/tests/metadata.test.tsx`
+- [X] T071 Implement metadata management pages in `web/src/routes/Fields.tsx`, `Models.tsx`, `Holders.tsx`, `Users.tsx`
+- [X] T072 [P] DOM tests for the four metadata pages in `web/tests/metadata.test.tsx`
 
 **Checkpoint**: 基础就绪 —— US1 至 US6 可以开始并行开工
 
@@ -168,7 +168,7 @@ Excel 和记忆里」变成「设备有账可查」。
 - [X] T075 [P] [US1] Integration test that correcting the MAC regenerates the SN, archives the old one, and that the old SN still resolves, in `internal/asset/sn_test.go`
 - [X] T076 [P] [US1] Integration test that a unique exact `q` match returns `exact_match_id`, and a partial model name returns a list, in `internal/httpapi/assets_test.go`
 - [X] T077 [P] [US1] Integration test that a stale `version` yields `409 version_conflict` in `internal/httpapi/assets_test.go`
-- [ ] T078 [P] [US1] Integration test that listing 50 assets issues a constant number of SQL statements regardless of row count in `internal/asset/list_test.go` (无 N+1，章程原则 IV)
+- [X] T078 [P] [US1] Integration test that listing 50 assets issues a constant number of SQL statements regardless of row count in `internal/asset/list_test.go` (无 N+1，章程原则 IV)
 
 ### Implementation for User Story 1
 
@@ -187,14 +187,14 @@ Excel 和记忆里」变成「设备有账可查」。
 
 ### Frontend for User Story 1
 
-- [ ] T091 [P] [US1] Implement the login page with local form and Google button in `web/src/routes/Login.tsx`
-- [ ] T092 [P] [US1] DOM test login form validation and redirect on success in `web/tests/login.test.tsx`
+- [X] T091 [P] [US1] Implement the login page with local form and Google button in `web/src/routes/Login.tsx`
+- [X] T092 [P] [US1] DOM test login form validation and redirect on success in `web/tests/login.test.tsx`
 - [X] T093 [US1] Implement the schema-driven dynamic form in `web/src/features/assets/DynamicForm.tsx` — all ten field types rendered from `/categories/:id/schema`
 - [X] T094 [US1] DOM test that the dynamic form renders every field type and maps `error.fields` to the right input in `web/tests/dynamicForm.test.tsx`
-- [ ] T095 [US1] Implement the asset list page with filters, column selector persisted to `localStorage`, and **search box autofocus on mount** in `web/src/routes/Assets.tsx` (FR-066)
-- [ ] T096 [US1] DOM test filtering, column selector persistence and search autofocus in `web/tests/assets.test.tsx`
-- [ ] T097 [US1] Implement the asset detail page with an archived-fields collapsible section in `web/src/routes/AssetDetail.tsx`
-- [ ] T098 [US1] DOM test the detail page and the 409 conflict prompt in `web/tests/assetDetail.test.tsx`
+- [X] T095 [US1] Implement the asset list page with filters, column selector persisted to `localStorage`, and **search box autofocus on mount** in `web/src/routes/Assets.tsx` (FR-066)
+- [X] T096 [US1] DOM test filtering, column selector persistence and search autofocus in `web/tests/assets.test.tsx`
+- [X] T097 [US1] Implement the asset detail page with an archived-fields collapsible section in `web/src/routes/AssetDetail.tsx`
+- [X] T098 [US1] DOM test the detail page and the 409 conflict prompt in `web/tests/assetDetail.test.tsx`
 
 **Checkpoint**: US1 独立可用 —— 可以录入、搜索、查看、编辑设备
 
@@ -380,8 +380,8 @@ Excel 和记忆里」变成「设备有账可查」。
 - [X] T171 Add `nexus verify` to the CI workflow in `.github/workflows/ci.yml`
 - [ ] T172 Add a 10,000-asset seed generator in `cmd/nexus/seed.go` for performance verification (dev-only, not shipped as demo data — FR-062)
 - [ ] T173 Measure and assert list p95 < 200ms and single read/write p95 < 100ms on the 10k seed in `internal/httpapi/perf_test.go` (章程原则 IV)
-- [ ] T174 [P] Add an initial-chunk size check (< 500KB gzip) to `.github/workflows/ci.yml`
-- [ ] T175 [P] Add route-level code splitting for management pages in `web/src/routes/router.tsx`
+- [X] T174 [P] Add an initial-chunk size check (< 500KB gzip) to `.github/workflows/ci.yml`
+- [X] T175 [P] Add route-level code splitting for management pages in `web/src/routes/router.tsx`
 - [X] T176 [P] Verify core pipeline package coverage ≥ 80% in the CI workflow for `internal/schema`, `internal/asset`, `internal/compute`
 - [ ] T177 [P] Audit keyboard reachability and visible focus across all eleven routes in `web/tests/a11y.test.tsx` (章程原则 III)
 - [ ] T178 [P] Verify every user-facing string lives in `web/src/i18n/zh.ts` or `internal/httpapi/messages.go`, none inline (章程原则 V)

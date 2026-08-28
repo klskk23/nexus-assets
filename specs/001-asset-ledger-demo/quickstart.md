@@ -124,3 +124,9 @@ cd web && npx vitest run                   # 4（触及 UI 时必须有新增/�
    "字段级清晰报错"退化成"提交时的 busy 错误"。同样有回读断言。
 3. **MAC 规范化的位置**：必须在唯一性校验**之前**。顺序反了，同一张网卡的三种写法会被
    当成三台不同设备，而且全部校验通过。
+4. **前端构建产物目录不能叫 `assets`**：那也是一条应用路由。同名时静态文件服务会把
+   `/assets` 301 重定向到目录，SPA fallback 根本轮不到，深链接直接坏掉。
+   `vite.config.ts` 里已设 `assetsDir: "static"`，别改回去。
+5. **区分「键缺失」与「显式 null」**：`PATCH /categories/:id` 的 `parent_id` 用
+   `json.RawMessage` 接收。反序列化 JSON null 到 `**string` 会把外层指针清成 nil，
+   于是「移到根」和「不动上级」变得无法区分 —— 移动护栏会静默不执行，还返回 200。
