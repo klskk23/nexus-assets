@@ -1,0 +1,636 @@
+openapi: 3.1.0
+info:
+  title: Nexus Assets API
+  version: 0.1.0
+  description: >
+    内部路由设备资产台账与流转系统。全局约定（认证、错误 envelope、分页、乐观锁）见 README.md。
+servers:
+  - url: /api
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: auth
+  - name: assets
+  - name: transfers
+  - name: metadata
+  - name: import
+  - name: overview
+
+paths:
+  # ---------------- auth ----------------
+  /auth/login:
+    post:
+      tags: [auth]
+      security: []
+      summary: 本地账号登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: "#/components/schemas/User" }
+          description: 签发 8h JWT
+        "401": { $ref: "#/components/responses/Error" }
+
+  /auth/oidc/start:
+    get:
+      tags: [auth]
+      security: []
+      summary: 发起 Google OIDC 登录
+      responses:
+        "302": { description: 重定向至 Google }
+
+  /auth/oidc/callback:
+    get:
+      tags: [auth]
+      security: []
+      summary: OIDC 回调。校验签名、email_verified 与域名白名单；域内首次登录自动建号
+      parameters:
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        "302": { description: 成功后重定向至首页并下发令牌 }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /me:
+    get:
+      tags: [auth]
+      summary: 当前登录账号
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+
+  # ---------------- overview ----------------
+  /overview:
+    get:
+      tags: [overview]
+      summary: 首页概览：状态计数、类别分布、最近流转
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_counts:
+                    type: object
+                    description: 五种状态各自的台数，含 retired
+                    additionalProperties: { type: integer }
+                  category_distribution:
+                    type: array
+                    description: 按顶层类别聚合，计数含全部子类别，排除 retired
+                    items:
+                      type: object
+                      properties:
+                        category_id: { type: string }
+                        name: { type: string }
+                        count: { type: integer }
+                  recent_transfers:
+                    type: array
+                    maxItems: 10
+                    description: 最近 10 条；同一 batch_id 折叠为一条
+                    items: { $ref: "#/components/schemas/TransferSummary" }
+
+  # ---------------- assets ----------------
+  /assets:
+    get:
+      tags: [assets]
+      summary: 资产列表。搜索精确优先、否则子串；支持任意 attr.<key> 等值筛选
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: 精确匹配 sn / 历史 sn / MAC；未命中则对型号名与备注子串匹配 }
+        - { name: category_id, in: query, schema: { type: string } }
+        - { name: include_descendants, in: query, schema: { type: boolean, default: true } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/AssetStatus" } }
+        - { name: owner_id, in: query, schema: { type: string } }
+        - { name: holder_type, in: query, schema: { type: string, enum: [user, entity] } }
+        - { name: holder_id, in: query, schema: { type: string } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Page"
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: "#/components/schemas/Asset" }
+                      exact_match_id:
+                        type: string
+                        nullable: true
+                        description: q 唯一精确命中时给出，前端据此直达详情页
+    post:
+      tags: [assets]
+      summary: 创建资产。跑完整保存管线并写 kind=create 流转事件
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssetWrite" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Asset" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /assets/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [assets]
+      summary: 资产详情。含已归档信息项的取值
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Asset" }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [assets]
+      summary: 修改属性或变更类别。必须带 version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/AssetWrite"
+                - type: object
+                  required: [version]
+                  properties:
+                    version: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Asset" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [assets]
+      summary: 硬删并级联流转历史。需带 confirm_sn 二次确认
+      parameters:
+        - { name: confirm_sn, in: query, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Deleted }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /assets/{id}/transfers:
+    get:
+      tags: [transfers]
+      summary: 该资产的完整流转时间线
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Transfer" }
+
+  # ---------------- transfers ----------------
+  /transfers:
+    post:
+      tags: [transfers]
+      summary: 单台或批量流转。多台时生成共享 batch_id，单事务写入
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [asset_ids]
+              properties:
+                asset_ids:
+                  type: array
+                  minItems: 1
+                  items: { type: string }
+                to_status: { $ref: "#/components/schemas/AssetStatus" }
+                to_holder_type: { type: string, enum: [user, entity] }
+                to_holder_id: { type: string }
+                to_owner_id: { type: string }
+                note: { type: string }
+                due_at: { type: string, format: date-time, nullable: true }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batch_id: { type: string, nullable: true }
+                  transfers:
+                    type: array
+                    items: { $ref: "#/components/schemas/Transfer" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /transfers/{id}:
+    patch:
+      tags: [transfers]
+      summary: 仅链尾事件可编辑；批量事件只能整批改；写入 edited_* 留痕
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to_status: { $ref: "#/components/schemas/AssetStatus" }
+                to_holder_type: { type: string, enum: [user, entity] }
+                to_holder_id: { type: string }
+                to_owner_id: { type: string }
+                note: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Transfer" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  # ---------------- metadata ----------------
+  /categories:
+    get: { tags: [metadata], summary: 类别树, responses: { "200": { description: OK } } }
+    post: { tags: [metadata], summary: 新建类别, responses: { "201": { description: Created } } }
+
+  /categories/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: 改名 / 改 sn_template / 移动位置。子树下有资产时拒绝移动
+      responses:
+        "200": { description: OK }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /categories/{id}/schema:
+    get:
+      tags: [metadata]
+      summary: 该类别的有效信息项集（祖先并集、必填、排序、options）与生效的 sn_template
+      description: 动态表单、筛选器与 CSV 模板的唯一数据源
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sn_template: { type: string, nullable: true }
+                  fields:
+                    type: array
+                    items: { $ref: "#/components/schemas/FieldSchema" }
+
+  /categories/{id}/recompute-sn:
+    post:
+      tags: [metadata]
+      summary: 重算该类别存量资产的编号
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: dry_run, in: query, schema: { type: boolean, default: true } }
+      responses:
+        "200":
+          description: dry_run 时返回影响面与冲突清单；执行时任一冲突即整体回滚
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  affected: { type: integer }
+                  conflicts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        sn: { type: string }
+                        asset_ids: { type: array, items: { type: string } }
+                  applied: { type: boolean }
+
+  /categories/{id}/import-template.csv:
+    get:
+      tags: [import]
+      summary: 双行表头的导入模板（首行中文 label，次行机器 key）
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            text/csv:
+              schema: { type: string }
+
+  /fields:
+    get: { tags: [metadata], summary: 全局信息项库, responses: { "200": { description: OK } } }
+    post: { tags: [metadata], summary: 新建信息项定义, responses: { "201": { description: Created } } }
+
+  /fields/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: 修改或停用。被计算项 / sn_template 引用时拒绝停用
+      responses:
+        "200": { description: OK }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /models:
+    get: { tags: [metadata], summary: 型号列表, responses: { "200": { description: OK } } }
+    post: { tags: [metadata], summary: 新建型号, responses: { "201": { description: Created } } }
+
+  /holders:
+    get: { tags: [metadata], summary: 持有方实体树, responses: { "200": { description: OK } } }
+    post: { tags: [metadata], summary: 新建持有方实体, responses: { "201": { description: Created } } }
+
+  /holders/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: 修改 / 标记默认库存点 / 停用。被持有或被引用时拒绝停用
+      responses:
+        "200": { description: OK }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /users:
+    get: { tags: [metadata], summary: 账号列表, responses: { "200": { description: OK } } }
+    post: { tags: [metadata], summary: 新建本地账号, responses: { "201": { description: Created } } }
+
+  /users/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: 停用账号。名下仍有资产时拒绝
+      responses:
+        "200": { description: OK }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /audit:
+    get:
+      tags: [metadata]
+      summary: 元数据变更流水
+      parameters:
+        - { name: target_type, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+      responses:
+        "200": { description: OK }
+
+  # ---------------- import / export ----------------
+  /import/preview:
+    post:
+      tags: [import]
+      summary: 上传 CSV 逐行校验，不写入任何数据
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                category_id: { type: string }
+                file: { type: string, format: binary }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string, description: 预览句柄，commit 时回传 }
+                  total: { type: integer }
+                  ok: { type: integer }
+                  rows:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        line: { type: integer }
+                        status: { type: string, enum: [ok, error] }
+                        fields:
+                          type: object
+                          additionalProperties: { type: string }
+
+  /import/commit:
+    post:
+      tags: [import]
+      summary: 确认导入。单事务，任一行失败即全部回滚。每行写一条 kind=create 事件，共享 batch_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  created: { type: integer }
+                  batch_id: { type: string }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /export.csv:
+    get:
+      tags: [import]
+      summary: 按当前筛选条件导出。查询参数与 GET /assets 一致
+      responses:
+        "200":
+          description: OK
+          content:
+            text/csv:
+              schema: { type: string }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Error:
+      description: 统一错误 envelope
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, description: 英文 snake_case }
+            message: { type: string, description: 中文，用户可见 }
+            fields:
+              type: object
+              additionalProperties: { type: string }
+
+    Page:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        total: { type: integer }
+        offset: { type: integer }
+        limit: { type: integer }
+
+    AssetStatus:
+      type: string
+      enum: [in_stock, in_use, in_repair, lost, retired]
+
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        name: { type: string }
+        auth_type: { type: string, enum: [oidc, local] }
+        status: { type: string, enum: [active, disabled] }
+
+    HolderRef:
+      type: object
+      required: [type, id]
+      properties:
+        type: { type: string, enum: [user, entity] }
+        id: { type: string }
+        name: { type: string, readOnly: true }
+        entity_type:
+          type: string
+          nullable: true
+          description: type=entity 时给出 company / location / department
+
+    Asset:
+      type: object
+      properties:
+        id: { type: string }
+        sn: { type: string }
+        category_id: { type: string }
+        model_id: { type: string, nullable: true }
+        status: { $ref: "#/components/schemas/AssetStatus" }
+        owner: { $ref: "#/components/schemas/User" }
+        holder: { $ref: "#/components/schemas/HolderRef" }
+        attrs:
+          type: object
+          additionalProperties: true
+        archived_attrs:
+          type: object
+          description: 不属于当前有效信息项集的孤儿键，只读展示
+          additionalProperties: true
+        version: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AssetWrite:
+      type: object
+      required: [category_id, owner_id, holder_type, holder_id]
+      properties:
+        category_id: { type: string }
+        model_id: { type: string, nullable: true }
+        owner_id: { type: string }
+        holder_type: { type: string, enum: [user, entity] }
+        holder_id: { type: string }
+        status: { $ref: "#/components/schemas/AssetStatus" }
+        attrs:
+          type: object
+          description: 不含 computed 项，由服务端求值
+          additionalProperties: true
+
+    FieldSchema:
+      type: object
+      properties:
+        key: { type: string }
+        label: { type: string, description: 中文，用户可见 }
+        type:
+          type: string
+          enum: [text, number, boolean, date, enum, reference, mac, ip, url, computed]
+        required: { type: boolean }
+        is_unique: { type: boolean }
+        sort: { type: integer }
+        inherited_from:
+          type: string
+          nullable: true
+          description: 继承自哪一级类别，本级绑定时为 null
+        options:
+          type: object
+          description: 形状由 type 决定，见 data-model.md
+          additionalProperties: true
+
+    TransferSummary:
+      type: object
+      properties:
+        batch_id: { type: string, nullable: true }
+        kind: { type: string }
+        asset_count: { type: integer }
+        actor: { $ref: "#/components/schemas/User" }
+        created_at: { type: string, format: date-time }
+
+    Transfer:
+      type: object
+      properties:
+        id: { type: string }
+        asset_id: { type: string }
+        batch_id: { type: string, nullable: true }
+        kind:
+          type: string
+          enum: [create, checkout, checkin, transfer, reassign, status_change]
+        from_status: { type: string, nullable: true }
+        from_holder: { $ref: "#/components/schemas/HolderRef" }
+        from_owner_id: { type: string, nullable: true }
+        to_status: { $ref: "#/components/schemas/AssetStatus" }
+        to_holder: { $ref: "#/components/schemas/HolderRef" }
+        to_owner_id: { type: string }
+        note: { type: string, nullable: true }
+        due_at: { type: string, format: date-time, nullable: true }
+        actor: { $ref: "#/components/schemas/User" }
+        created_at: { type: string, format: date-time }
+        edited_at: { type: string, format: date-time, nullable: true }
+        edited_by: { type: string, nullable: true }
