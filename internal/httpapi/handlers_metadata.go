@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -45,17 +46,31 @@ func (s *Server) createCategory(c *gin.Context) {
 
 func (s *Server) patchCategory(c *gin.Context) {
 	var req struct {
-		Name       *string  `json:"name"`
-		SNTemplate *string  `json:"sn_template"`
-		ParentID   **string `json:"parent_id"`
+		Name       *string `json:"name"`
+		SNTemplate *string `json:"sn_template"`
+		// RawMessage, not **string: unmarshalling JSON null into a double
+		// pointer clears the outer one, so "move to the root" would be
+		// indistinguishable from "leave the parent alone" and the guard on
+		// moving a populated category would never run.
+		ParentID json.RawMessage `json:"parent_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
 		return
 	}
-	out, err := s.schema.UpdateCategory(c.Request.Context(), c.Param("id"), schema.UpdateCategoryInput{
-		Name: req.Name, SNTemplate: req.SNTemplate, ParentID: req.ParentID,
-	})
+
+	in := schema.UpdateCategoryInput{Name: req.Name, SNTemplate: req.SNTemplate}
+	if len(req.ParentID) > 0 {
+		var parent *string
+		if err := json.Unmarshal(req.ParentID, &parent); err != nil {
+			Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest,
+				map[string]string{"parent_id": "上级类别必须是 id 或 null"})
+			return
+		}
+		in.ParentID = &parent
+	}
+
+	out, err := s.schema.UpdateCategory(c.Request.Context(), c.Param("id"), in)
 	if err != nil {
 		FailErr(c, err)
 		return

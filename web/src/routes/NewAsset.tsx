@@ -1,0 +1,143 @@
+import { useState } from "react"
+import { useNavigate } from "react-router"
+import { useMutation, useQuery } from "@tanstack/react-query"
+
+import { api, ApiError, type FieldErrors } from "@/lib/api"
+import type { Asset, Category, CategorySchema, HolderEntity } from "@/lib/types"
+import { zh } from "@/i18n/zh"
+import { useAuth } from "@/features/auth/useAuth"
+import { DynamicForm } from "@/features/assets/DynamicForm"
+import { StateBoundary } from "@/components/StateBoundary"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+
+export function NewAsset() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [categoryId, setCategoryId] = useState("")
+  const [holderId, setHolderId] = useState("")
+  const [values, setValues] = useState<Record<string, unknown>>({})
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [banner, setBanner] = useState<string | null>(null)
+
+  const categories = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => api.get<Category[]>("/categories"),
+  })
+  const holders = useQuery({
+    queryKey: ["holders"],
+    queryFn: () => api.get<HolderEntity[]>("/holders"),
+  })
+  const schema = useQuery({
+    queryKey: ["schema", categoryId],
+    queryFn: () => api.get<CategorySchema>(`/categories/${categoryId}/schema`),
+    enabled: categoryId !== "",
+  })
+
+  const locations = (holders.data ?? []).filter((h) => h.type === "location")
+
+  const create = useMutation({
+    mutationFn: () =>
+      api.post<Asset>("/assets", {
+        category_id: categoryId,
+        owner_id: user?.id,
+        // Nothing exists yet on a fresh install, so the first asset may be held
+        // by the person recording it rather than by a location.
+        holder_type: holderId ? "entity" : "user",
+        holder_id: holderId || user?.id,
+        status: holderId ? "in_stock" : "in_use",
+        attrs: values,
+      }),
+    onSuccess: (a) => navigate(`/assets/${a.id}`, { replace: true }),
+    onError: (err) => {
+      if (err instanceof ApiError) {
+        setFieldErrors(err.fields ?? {})
+        setBanner(err.message)
+      }
+    },
+  })
+
+  return (
+    <div className="grid max-w-2xl gap-6">
+      <h1 className="text-xl font-semibold">{zh.assets.newAsset}</h1>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{zh.assets.selectCategory}</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="new-category">{zh.assets.category}</Label>
+            <select
+              id="new-category"
+              className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+            >
+              <option value="">—</option>
+              {(categories.data ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="new-holder">{zh.assets.holder}</Label>
+            <select
+              id="new-holder"
+              className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+              value={holderId}
+              onChange={(e) => setHolderId(e.target.value)}
+            >
+              <option value="">{user?.name ?? zh.common.none}</option>
+              {locations.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name}
+                  {h.is_default_stock ? "（默认库存点）" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {categoryId && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{schema.data?.category.name ?? zh.common.loading}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-6">
+            <StateBoundary isLoading={schema.isLoading} error={schema.error as Error | null}>
+              <>
+                <p className="text-sm text-muted-foreground">{zh.assets.generatedSN}</p>
+                {schema.data && (
+                  <DynamicForm
+                    fields={schema.data.fields}
+                    values={values}
+                    errors={fieldErrors}
+                    onChange={(k, v) => setValues((cur) => ({ ...cur, [k]: v }))}
+                  />
+                )}
+              </>
+            </StateBoundary>
+
+            {banner && (
+              <p role="alert" className="text-sm text-destructive">
+                {banner}
+              </p>
+            )}
+
+            <div>
+              <Button onClick={() => create.mutate()} disabled={create.isPending}>
+                {create.isPending ? zh.assets.saving : zh.assets.save}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}

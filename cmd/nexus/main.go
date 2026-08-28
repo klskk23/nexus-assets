@@ -93,7 +93,18 @@ func (a *app) serve() error {
 		return fmt.Errorf("mount embedded frontend: %w", err)
 	}
 	issuer := auth.NewIssuer(a.cfg.JWTSecret, a.cfg.JWTTTL)
-	srv := httpapi.NewServer(a.cfg, issuer, a.users, a.schema, a.holders, a.assets, webFS)
+
+	checker := auth.DomainChecker{Allowed: a.cfg.AllowedDomains, RequireHD: a.cfg.OIDCRequireHD}
+	oidcFlow, err := auth.NewOIDC(context.Background(), a.cfg.OIDCIssuer,
+		a.cfg.OIDCClientID, a.cfg.OIDCClientSecret, a.cfg.OIDCRedirectURL, checker)
+	if err != nil {
+		return fmt.Errorf("configure Google sign-in: %w", err)
+	}
+	if oidcFlow == nil {
+		log.Print("Google sign-in is not configured; local accounts only")
+	}
+
+	srv := httpapi.NewServer(a.cfg, issuer, a.users, a.schema, a.holders, a.assets, oidcFlow, webFS)
 
 	log.Printf("listening on %s (database %s)", a.cfg.Addr, a.cfg.DBPath)
 	return srv.Router().Run(a.cfg.Addr)

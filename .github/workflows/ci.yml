@@ -82,6 +82,6 @@ jobs:
       - name: bundle budget
         run: |
           max=512000
-          largest=$(find web/dist/assets -name 'index-*.js' -exec gzip -c {} \; | wc -c)
+          largest=$(find web/dist/static -name 'index-*.js' -exec gzip -c {} \; | wc -c)
           echo "initial chunk gzip size: $largest bytes (budget $max)"
           [ "$largest" -le "$max" ] || exit 1

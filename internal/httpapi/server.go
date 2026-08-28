@@ -22,14 +22,16 @@ type Server struct {
 	schema  *schema.Store
 	holders *holder.Store
 	assets  *asset.Service
+	oidc    *auth.OIDC
 	webFS   fs.FS
 }
 
 // NewServer builds the API server.
 func NewServer(cfg *config.Config, issuer *auth.Issuer, users *auth.Store,
-	sch *schema.Store, holders *holder.Store, assets *asset.Service, webFS fs.FS) *Server {
+	sch *schema.Store, holders *holder.Store, assets *asset.Service,
+	oidcFlow *auth.OIDC, webFS fs.FS) *Server {
 	return &Server{cfg: cfg, issuer: issuer, users: users, schema: sch,
-		holders: holders, assets: assets, webFS: webFS}
+		holders: holders, assets: assets, oidc: oidcFlow, webFS: webFS}
 }
 
 // Router builds the gin engine.
@@ -39,6 +41,8 @@ func (s *Server) Router() *gin.Engine {
 
 	api := r.Group("/api")
 	api.POST("/auth/login", s.login)
+	api.GET("/auth/oidc/start", s.oidcStart)
+	api.GET("/auth/oidc/callback", s.oidcCallback)
 
 	authed := api.Group("")
 	authed.Use(auth.Middleware(s.issuer, s.users, func(c *gin.Context) {

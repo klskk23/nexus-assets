@@ -40,14 +40,18 @@ func Open(path string) (*Store, error) {
 }
 
 func open(path string, busyMS int) (*Store, error) {
-	write, err := sql.Open("sqlite", dsn(path, busyMS, true))
+	return openWith("sqlite", path, busyMS)
+}
+
+func openWith(driverName, path string, busyMS int) (*Store, error) {
+	write, err := sql.Open(driverName, dsn(path, busyMS, true))
 	if err != nil {
 		return nil, fmt.Errorf("open write pool: %w", err)
 	}
 	// Constitution: the write pool is exactly one connection.
 	write.SetMaxOpenConns(1)
 
-	read, err := sql.Open("sqlite", dsn(path, busyMS, false))
+	read, err := sql.Open(driverName, dsn(path, busyMS, false))
 	if err != nil {
 		_ = write.Close()
 		return nil, fmt.Errorf("open read pool: %w", err)
