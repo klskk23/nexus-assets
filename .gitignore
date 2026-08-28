@@ -1,0 +1,34 @@
+# Go
+*.exe
+*.test
+*.out
+/nexus
+/nexus-*
+vendor/
+
+# SQLite
+*.db
+*.db-wal
+*.db-shm
+
+# Node / frontend
+node_modules/
+web/dist/*
+!web/dist/.gitkeep
+*.log
+
+# Env
+.env
+.env.*
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+.idea/
+.vscode/
+
+# Coverage
+coverage/
+c.out
