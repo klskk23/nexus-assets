@@ -1,0 +1,243 @@
+openapi: 3.1.0
+info:
+  title: Nexus Assets API — 003 增量
+  version: 0.3.0
+  description: >
+    信息项生命周期与型号归属带来的契约变化。**这是一份增量，不是全量。**
+    完整的端点清单见 specs/001-asset-ledger-demo/contracts/openapi.yaml（已就地更新）；
+    本文件只列出新增与变化的路径，变化的动机见同目录 README.md。
+servers:
+  - url: /api
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: metadata
+
+paths:
+  # ---------------- 新增：删除信息项 ----------------
+  /fields/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [metadata]
+      summary: 删除信息项。有引用或有资产取值时拒绝
+      description: >
+        取代此前的 `PATCH /fields/{id}` + `archive: true`。停用机制从信息项上移除：
+        一个刚建错、没人用过的信息项应当能被删干净，而一个已经产生了数据的信息项
+        应当无法删除 —— 这个区别系统自己判断得出，不必让管理员记住两个按钮的差别。
+        删除成功时一并移除它在全部类别上的绑定，以及资产 attrs 中可能残留的空值。
+      responses:
+        "204": { description: Deleted }
+        "409":
+          description: >
+            三种拒绝共用此码，但附带的结构化数据不同：被表达式键读取或被选作显示编号时
+            附 referrers；有资产填了值时附 blockers 与 total
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BlockedEnvelope" }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [metadata]
+      summary: 修改信息项。不再接受 archive
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label: { type: string }
+                options: { type: object, additionalProperties: true }
+              # archive 已移除：停用不再是信息项的一种状态
+      responses:
+        "200": { description: OK }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  # ---------------- 新增：解绑 ----------------
+  /categories/{id}/bindings/{field_id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: field_id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [metadata]
+      summary: 把信息项从类别上解绑。存量取值保留为孤儿键
+      description: >
+        护栏自 002 起就写好了（被表达式键读取、或被选作显示编号时拒绝），
+        但一直没有任何调用者。移除停用之后，解绑成为「不再需要某个字段」的唯一路径，
+        因此本轮补齐端点。存量资产上的取值保留、可查看、不再参与校验与唯一性。
+      responses:
+        "204": { description: Unbound }
+        "409":
+          description: 被表达式键读取，或被某类别选作显示编号
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  # ---------------- 型号：多对多 ----------------
+  /models:
+    get:
+      tags: [metadata]
+      summary: 型号列表
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ProductModel" }
+    post:
+      tags: [metadata]
+      summary: 新建型号。可同时关联多个类别
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                vendor:
+                  type: string
+                  description: >
+                    可省略，服务端存为空串。参与重名判定 —— 空厂商是一个独立的命名空间，
+                    两个都没填厂商的同名型号仍然互斥
+                category_ids:
+                  type: array
+                  items: { type: string }
+                  description: 可为空数组；此时该型号不出现在任何录入表单里，等同草稿
+                attr_defaults:
+                  type: object
+                  additionalProperties: true
+                  description: >
+                    键不做存在性校验。型号关联多个类别时，某个键可能在其中一个类别上
+                    不存在 —— 套用时静默跳过。默认值是「能填则填」，不是承诺
+      responses:
+        "201": { description: Created }
+        "409":
+          description: 同一厂商下已有同名型号
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  # ---------------- 行为变化，请求形态不变 ----------------
+  /holders/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: 设为默认库存点 / 停用。停用失败时的 blockers 现在会被前端渲染
+      description: >
+        服务端行为不变 —— blockers 一直都在响应里。变化在前端：此前 ApiError
+        只解析 referrers，把 blockers 扔掉了，于是页面只显示一句概括。
+      responses:
+        "200": { description: OK }
+        "409":
+          description: 仍被资产使用，或它是当前默认库存点
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BlockedEnvelope" }
+        "422": { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  responses:
+    Error:
+      description: 错误
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      description: 结构见 001 的 README.md。message 中不含用于程序判定的英文标识
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            fields:
+              type: object
+              additionalProperties: { type: string }
+
+    BlockedEnvelope:
+      type: object
+      description: >
+        引用类拒绝的响应。referrers 与 blockers 至多出现其一，
+        取决于挡住这次操作的是配置还是数据
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, examples: [reference_blocked] }
+            message: { type: string }
+            referrers:
+              type: array
+              description: 配置层面的引用：表达式键，或把它选作显示编号的类别
+              items:
+                type: object
+                properties:
+                  kind: { type: string, enum: [field, display_key] }
+                  id: { type: string }
+                  label: { type: string }
+            blockers:
+              type: array
+              description: 数据层面的阻挡：仍在使用它的设备，仅前若干台
+              items:
+                type: object
+                properties:
+                  asset_id: { type: string }
+                  name: { type: string, description: 该设备的显示编号 }
+                  reason: { type: string, description: 持有方场景下为 holder / reference }
+            total:
+              type: integer
+              description: 阻挡对象的总数；blockers 只是其中的前若干条
+
+    FieldDefinition:
+      type: object
+      description: 相对 002，去掉 archived_at —— 停用不再是信息项的一种状态
+      properties:
+        id: { type: string }
+        key: { type: string }
+        label: { type: string }
+        type:
+          type: string
+          enum: [text, number, boolean, date, enum, reference, mac, ip, url, computed]
+        options: { type: object, additionalProperties: true }
+        is_unique: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ProductModel:
+      type: object
+      description: 相对 001，category_id 变为 category_ids；vendor 保证非 null 且参与重名判定
+      properties:
+        id: { type: string }
+        name: { type: string }
+        vendor: { type: string, description: 服务端保证非 null，可能为空串 }
+        image_url: { type: string, nullable: true }
+        category_ids:
+          type: array
+          items: { type: string }
+          description: >
+            该型号出现在哪些类别的录入表单里。录入时的候选范围是
+            「关联到本类别或其任一祖先」—— 与字段继承同一套心智模型；
+            关联在子孙上的型号，父类的资产看不见
+        attr_defaults: { type: object, additionalProperties: true }
+        archived_at:
+          type: string
+          nullable: true
+          description: >
+            型号仍可停用 —— 一款停产设备不该再出现在下拉里，但存量资产上的引用要保留。
+            这与信息项不同：信息项改成了可删除
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
