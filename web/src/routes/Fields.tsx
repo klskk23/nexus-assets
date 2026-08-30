@@ -57,14 +57,11 @@ export function Fields() {
         },
         {
           header: "",
-          cell: (f) =>
-            f.archived_at ? (
-              <Badge variant="secondary">{zhConfig.field.archived}</Badge>
-            ) : (
-              <Button variant="ghost" size="sm" onClick={() => setEditing(f)}>
-                {zhConfig.field.edit}
-              </Button>
-            ),
+          cell: (f) => (
+            <Button variant="ghost" size="sm" onClick={() => setEditing(f)}>
+              {zhConfig.field.edit}
+            </Button>
+          ),
         },
       ]}
       form={

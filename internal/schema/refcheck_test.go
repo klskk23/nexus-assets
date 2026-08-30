@@ -39,7 +39,7 @@ func TestReferrersFindsExpressionKeys(t *testing.T) {
 
 // The second way to be referenced: a category showing the field as its
 // identifier. Archiving it would blank that category's first column.
-func TestArchiveRefusedWhileAFieldIsADisplayKey(t *testing.T) {
+func TestDeleteRefusedWhileAFieldIsADisplayKey(t *testing.T) {
 	s, ctx := newStore(t)
 	root, _ := tree(t, s, ctx)
 
@@ -57,7 +57,7 @@ func TestArchiveRefusedWhileAFieldIsADisplayKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	refs, err := s.ArchiveField(ctx, tag.ID)
+	refs, _, _, err := s.DeleteField(ctx, tag.ID)
 	if !errors.Is(err, ErrFieldReferenced) {
 		t.Fatalf("want ErrFieldReferenced, got %v", err)
 	}
@@ -105,7 +105,7 @@ func TestReferrersIgnoresStringLiteralsAndFindsNestedCalls(t *testing.T) {
 	}
 }
 
-func TestArchiveFieldRefusedWhileReferenced(t *testing.T) {
+func TestDeleteFieldRefusedWhileReferenced(t *testing.T) {
 	s, ctx := newStore(t)
 	tree(t, s, ctx)
 
@@ -122,7 +122,7 @@ func TestArchiveFieldRefusedWhileReferenced(t *testing.T) {
 
 	// Archiving mac would make every asset in that category unsaveable, since
 	// the expression key over it could no longer be evaluated.
-	refs, err := s.ArchiveField(ctx, mac.ID)
+	refs, _, _, err := s.DeleteField(ctx, mac.ID)
 	if !errors.Is(err, ErrFieldReferenced) {
 		t.Fatalf("want ErrFieldReferenced, got %v", err)
 	}
@@ -133,29 +133,21 @@ func TestArchiveFieldRefusedWhileReferenced(t *testing.T) {
 		t.Errorf("the message should name what is referencing it, got: %v", err)
 	}
 
-	still, err := s.GetField(ctx, mac.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if still.ArchivedAt != nil {
-		t.Error("the field must not have been archived")
+	if _, err := s.GetField(ctx, mac.ID); err != nil {
+		t.Errorf("the field must still exist after a refused delete: %v", err)
 	}
 }
 
-func TestArchiveFieldSucceedsOnceNothingReadsIt(t *testing.T) {
+func TestDeleteFieldSucceedsOnceNothingReadsIt(t *testing.T) {
 	s, ctx := newStore(t)
 	f, err := s.CreateField(ctx, CreateFieldInput{Key: "spare", Label: "备用", Type: model.FieldText})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.ArchiveField(ctx, f.ID); err != nil {
-		t.Fatalf("archive: %v", err)
+	if _, _, _, err := s.DeleteField(ctx, f.ID); err != nil {
+		t.Fatalf("delete: %v", err)
 	}
-	got, err := s.GetField(ctx, f.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.ArchivedAt == nil {
-		t.Error("the field should be archived")
+	if _, err := s.GetField(ctx, f.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("the field should be gone, got %v", err)
 	}
 }

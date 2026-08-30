@@ -8,14 +8,15 @@ export interface FieldDefinitionRow {
   type: FieldType
   options: FieldOptions
   is_unique: boolean
-  archived_at?: string | null
 }
 
 export interface ProductModelRow {
   id: string
-  category_id: string
+  /** Every category whose entry form offers this model; may be empty. */
+  category_ids: string[]
   name: string
-  vendor?: string
+  /** Never null: it takes part in the duplicate-name check. */
+  vendor: string
   attr_defaults: Record<string, unknown>
   archived_at?: string | null
 }

@@ -92,14 +92,17 @@ func TestPathHelpers(t *testing.T) {
 	}
 }
 
-func TestActiveFieldsDropsArchived(t *testing.T) {
-	now := timeNow()
+// Information items no longer have an inactive state, so ActiveFields has
+// nothing to drop. The call sites are kept because each one is saying "the
+// fields in effect right now" -- this pins that it is a pass-through and not a
+// filter someone forgot to finish.
+func TestActiveFieldsPassesEverythingThrough(t *testing.T) {
 	fields := []model.BoundField{
 		{FieldDefinition: def("a", model.FieldText)},
-		{FieldDefinition: model.FieldDefinition{Key: "b", ArchivedAt: &now}},
+		{FieldDefinition: def("b", model.FieldText)},
 	}
 	got := ActiveFields(fields)
-	if len(got) != 1 || got[0].Key != "a" {
-		t.Errorf("ActiveFields = %+v, want only a", got)
+	if len(got) != 2 {
+		t.Errorf("ActiveFields = %+v, want both", got)
 	}
 }

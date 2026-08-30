@@ -16,7 +16,7 @@ vi.mock("@/lib/api", async () => {
 })
 
 const categories = [
-  { id: "rt", code: "RT", name: "SDWAN 路由器", parent_id: null, path: "/rt/", sn_template: "x" },
+  { id: "rt", code: "RT", name: "SDWAN 路由器", parent_id: null, path: "/rt/", display_key: "" },
 ]
 
 const fetchMock = vi.fn()

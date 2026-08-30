@@ -12,15 +12,14 @@ import (
 	"github.com/klskk23/nexus-assets/internal/store"
 )
 
-const fieldCols = `id, key, label, type, options, is_unique, archived_at, created_at, updated_at`
+const fieldCols = `id, key, label, type, options, is_unique, created_at, updated_at`
 
 func scanField(row interface{ Scan(...any) error }) (model.FieldDefinition, error) {
 	var f model.FieldDefinition
 	var opts string
-	var archived sql.NullString
 	var created, updated string
 	var isUnique int
-	if err := row.Scan(&f.ID, &f.Key, &f.Label, &f.Type, &opts, &isUnique, &archived, &created, &updated); err != nil {
+	if err := row.Scan(&f.ID, &f.Key, &f.Label, &f.Type, &opts, &isUnique, &created, &updated); err != nil {
 		return f, err
 	}
 	f.IsUnique = isUnique == 1
@@ -28,9 +27,6 @@ func scanField(row interface{ Scan(...any) error }) (model.FieldDefinition, erro
 		return f, fmt.Errorf("decode options for field %q: %w", f.Key, err)
 	}
 	var err error
-	if f.ArchivedAt, err = store.ScanTime(archived); err != nil {
-		return f, err
-	}
 	if f.CreatedAt, err = store.ParseTime(created); err != nil {
 		return f, err
 	}
@@ -116,7 +112,6 @@ func (s *Store) CreateField(ctx context.Context, in CreateFieldInput) (model.Fie
 type UpdateFieldInput struct {
 	Label   *string
 	Options *model.FieldOptions
-	Archive *bool
 }
 
 // UpdateField changes or archives a field. Archiving is guarded elsewhere by
@@ -144,26 +139,14 @@ func (s *Store) UpdateField(ctx context.Context, id string, in UpdateFieldInput)
 			cur.Options = *in.Options
 		}
 		now := time.Now().UTC()
-		var archived any
-		if in.Archive != nil {
-			if *in.Archive {
-				cur.ArchivedAt = &now
-				archived = store.FormatTime(now)
-			} else {
-				cur.ArchivedAt = nil
-				archived = nil
-			}
-		} else {
-			archived = store.NullTime(cur.ArchivedAt)
-		}
 		opts, err := json.Marshal(cur.Options)
 		if err != nil {
 			return err
 		}
 		cur.UpdatedAt = now
 		if _, err := tx.ExecContext(ctx,
-			`UPDATE field_definitions SET label = ?, options = ?, archived_at = ?, updated_at = ? WHERE id = ?`,
-			cur.Label, string(opts), archived, store.FormatTime(now), id); err != nil {
+			`UPDATE field_definitions SET label = ?, options = ?, updated_at = ? WHERE id = ?`,
+			cur.Label, string(opts), store.FormatTime(now), id); err != nil {
 			return err
 		}
 		// Re-run the dependency gate after the write, so the check reads the
@@ -219,6 +202,34 @@ func recheckBoundCategories(ctx context.Context, tx *sql.Tx, key string) error {
 	for _, b := range targets {
 		if err := checkBindDeps(ctx, tx, b.path, key); err != nil {
 			return fmt.Errorf("%w（类别「%s」）", err, b.name)
+		}
+	}
+	return nil
+}
+
+// DeleteField removes an information item outright.
+//
+// This replaces archiving. "Only disable, never delete" exists to protect
+// configuration that has already produced data; an item nobody ever filled in
+// is not that, and the system can tell the two apart on its own rather than
+// asking an administrator to remember which button means what.
+//
+// Deleting takes the bindings and any residual key with it, so nothing in the
+// database still refers to a definition that is gone.
+func (s *Store) deleteFieldTx(ctx context.Context, tx *sql.Tx, id, key string) error {
+	for _, stmt := range []struct {
+		q    string
+		args []any
+	}{
+		{`DELETE FROM category_fields WHERE field_id = ?`, []any{id}},
+		// Only ever empty residue: a non-empty value would have been refused
+		// upstream. This is what makes "delete" mean what it says.
+		{`UPDATE assets SET attrs = json_remove(attrs, '$.' || ?) WHERE json_extract(attrs, '$.' || ?) IS NOT NULL`,
+			[]any{key, key}},
+		{`DELETE FROM field_definitions WHERE id = ?`, []any{id}},
+	} {
+		if _, err := tx.ExecContext(ctx, stmt.q, stmt.args...); err != nil {
+			return fmt.Errorf("delete field: %w", err)
 		}
 	}
 	return nil

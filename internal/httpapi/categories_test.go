@@ -3,6 +3,7 @@ package httpapi
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/klskk23/nexus-assets/internal/asset"
@@ -48,9 +49,9 @@ func TestCyclicExpressionKeyRefusedAtBindTime(t *testing.T) {
 	}
 }
 
-// Archiving a field an expression key reads would make every asset in that
+// Deleting a field an expression key reads would make every asset in that
 // category impossible to save, so it is refused with the referrers listed.
-func TestArchivingAReferencedFieldIsRefusedWithReferrers(t *testing.T) {
+func TestDeletingAReferencedFieldIsRefusedWithReferrers(t *testing.T) {
 	h := newHarness(t)
 
 	fields := decode[[]map[string]any](t, h.get(t, "/api/fields"))
@@ -64,7 +65,7 @@ func TestArchivingAReferencedFieldIsRefusedWithReferrers(t *testing.T) {
 		t.Fatal("the fixture should have a mac field")
 	}
 
-	rec := h.patch(t, "/api/fields/"+macID, `{"archive":true}`)
+	rec := h.do(t, http.MethodDelete, "/api/fields/"+macID, "")
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("want 409, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -197,8 +198,8 @@ func TestErrorMessagesReachTheUserWithoutTheEnglishSentinel(t *testing.T) {
 		rec  func() *httptest.ResponseRecorder
 		want string
 	}{
-		{"archive a referenced field", func() *httptest.ResponseRecorder {
-			return h.patch(t, "/api/fields/"+macID, `{"archive":true}`)
+		{"delete a referenced field", func() *httptest.ResponseRecorder {
+			return h.do(t, http.MethodDelete, "/api/fields/"+macID, "")
 		}, "field is still referenced"},
 		{"display key that is not unique", func() *httptest.ResponseRecorder {
 			h.post(t, "/api/fields", `{"key":"note","label":"备注","type":"text"}`)
@@ -228,4 +229,102 @@ func TestErrorMessagesReachTheUserWithoutTheEnglishSentinel(t *testing.T) {
 			}
 		})
 	}
+}
+
+// With archiving gone, unbinding is the only way to retire a field that assets
+// already carry values for -- and until now the guard behind it had no caller.
+func TestUnbindEndpointDetachesAFieldAndKeepsStoredValues(t *testing.T) {
+	h := newHarness(t)
+	h.seed(t, 0, 1)
+
+	rec := h.post(t, "/api/fields", `{"key":"rack","label":"机柜","type":"text"}`)
+	rackID := decode[map[string]any](t, rec)["id"].(string)
+	if rec := h.post(t, "/api/categories/"+h.catID+"/bindings",
+		`{"field_id":"`+rackID+`"}`); rec.Code != http.StatusNoContent {
+		t.Fatalf("bind: %s", rec.Body.String())
+	}
+
+	id := h.firstAssetID(t)
+	asset := decode[map[string]any](t, h.get(t, "/api/assets/"+id))["asset"].(map[string]any)
+	if rec := h.patch(t, "/api/assets/"+id, `{"category_id":"`+h.catID+
+		`","status":"in_stock","owner_id":"`+h.userID+
+		`","holder_type":"entity","holder_id":"`+h.locID+
+		`","attrs":{"mac":"001A2B3C0001","rack":"R-01"},"version":`+
+		jsonNumber(asset["version"])+`}`); rec.Code != http.StatusOK {
+		t.Fatalf("fill rack: %s", rec.Body.String())
+	}
+
+	if rec := h.do(t, http.MethodDelete,
+		"/api/categories/"+h.catID+"/bindings/"+rackID, ""); rec.Code != http.StatusNoContent {
+		t.Fatalf("unbind: %d %s", rec.Code, rec.Body.String())
+	}
+
+	// Gone from the form the next device will be recorded with...
+	schema := decode[map[string]any](t, h.get(t, "/api/categories/"+h.catID+"/schema"))
+	for _, f := range schema["fields"].([]any) {
+		if f.(map[string]any)["key"] == "rack" {
+			t.Error("the unbound field should have left the category schema")
+		}
+	}
+	// ...but the value recorded before it left is still readable.
+	after := decode[map[string]any](t, h.get(t, "/api/assets/"+id))["asset"].(map[string]any)
+	archived, _ := after["archived_attrs"].(map[string]any)
+	if archived["rack"] != "R-01" {
+		t.Errorf("the stored value should survive as an archived attribute, got %#v", after["archived_attrs"])
+	}
+}
+
+func TestUnbindEndpointHonoursTheExistingGuards(t *testing.T) {
+	h := newHarness(t)
+
+	fields := decode[[]map[string]any](t, h.get(t, "/api/fields"))
+	var macID string
+	for _, f := range fields {
+		if f["key"] == "mac" {
+			macID = f["id"].(string)
+		}
+	}
+	rec := h.do(t, http.MethodDelete, "/api/categories/"+h.catID+"/bindings/"+macID, "")
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("want 409, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !contains(rec.Body.String(), "设备编号") {
+		t.Errorf("the refusal should name what reads it, got %s", rec.Body.String())
+	}
+}
+
+// Two kinds of refusal, two payloads: configuration is fixed by editing the
+// configuration, stored data by unbinding instead.
+func TestDeleteFieldEndpointCarriesTheRightPayload(t *testing.T) {
+	h := newHarness(t)
+	h.seed(t, 0, 2)
+
+	rec := h.post(t, "/api/fields", `{"key":"rack","label":"机柜","type":"text"}`)
+	rackID := decode[map[string]any](t, rec)["id"].(string)
+
+	// Nothing points at it yet.
+	if rec := h.do(t, http.MethodDelete, "/api/fields/"+rackID, ""); rec.Code != http.StatusNoContent {
+		t.Fatalf("an unused field must delete: %d %s", rec.Code, rec.Body.String())
+	}
+
+	// A field assets carry values for is refused, with the devices named.
+	fields := decode[[]map[string]any](t, h.get(t, "/api/fields"))
+	var macID string
+	for _, f := range fields {
+		if f["key"] == "mac" {
+			macID = f["id"].(string)
+		}
+	}
+	// mac is read by the sn expression key, so it hits the configuration check
+	// first -- which is the intended order: cheapest and most actionable first.
+	rec = h.do(t, http.MethodDelete, "/api/fields/"+macID, "")
+	if rec.Code != http.StatusConflict || !contains(rec.Body.String(), "referrers") {
+		t.Fatalf("want 409 with referrers, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// jsonNumber renders a decoded JSON number back into a literal for a request
+// body, without dragging in a struct just to carry one field.
+func jsonNumber(v any) string {
+	return strconv.FormatFloat(v.(float64), 'f', -1, 64)
 }

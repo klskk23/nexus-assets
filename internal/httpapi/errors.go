@@ -77,6 +77,13 @@ func FailErr(c *gin.Context, err error) {
 	case errors.Is(err, schema.ErrKeyConflict):
 		Fail(c, http.StatusConflict, CodeUniqueConflict, userText(err, schema.ErrKeyConflict), nil)
 
+	case errors.Is(err, schema.ErrModelDuplicate):
+		Fail(c, http.StatusConflict, CodeUniqueConflict, userText(err, schema.ErrModelDuplicate), nil)
+
+	case errors.Is(err, schema.ErrModelAmbiguous):
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
+			userText(err, schema.ErrModelAmbiguous), nil)
+
 	// Configuration mistakes carry their own explanation of what to fix first,
 	// so the message is passed through rather than flattened to a generic one.
 	case errors.Is(err, schema.ErrDependenciesUnmet):

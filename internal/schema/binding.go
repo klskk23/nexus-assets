@@ -26,7 +26,7 @@ var ErrFieldDependedOn = errors.New("field is still read by something bound here
 // than a per-request join.
 func (s *Store) BindingsByCategory(ctx context.Context) (map[string][]Binding, error) {
 	q := `SELECT cf.category_id, cf.required, cf.sort, ` +
-		`f.id, f.key, f.label, f.type, f.options, f.is_unique, f.archived_at, f.created_at, f.updated_at
+		`f.id, f.key, f.label, f.type, f.options, f.is_unique, f.created_at, f.updated_at
 		 FROM category_fields cf JOIN field_definitions f ON f.id = cf.field_id`
 	rows, err := s.db.ReadDB().QueryContext(ctx, q)
 	if err != nil {
@@ -39,12 +39,11 @@ func (s *Store) BindingsByCategory(ctx context.Context) (map[string][]Binding, e
 		var b Binding
 		var required int
 		var opts string
-		var archived sql.NullString
 		var created, updated string
 		var isUnique int
 		if err := rows.Scan(&b.CategoryID, &required, &b.Sort,
 			&b.Field.ID, &b.Field.Key, &b.Field.Label, &b.Field.Type, &opts, &isUnique,
-			&archived, &created, &updated); err != nil {
+			&created, &updated); err != nil {
 			return nil, err
 		}
 		b.Required = required == 1
@@ -52,7 +51,7 @@ func (s *Store) BindingsByCategory(ctx context.Context) (map[string][]Binding, e
 		if err := decodeOptions(opts, &b.Field.Options); err != nil {
 			return nil, err
 		}
-		if err := fillTimes(&b.Field, archived, created, updated); err != nil {
+		if err := fillTimes(&b.Field, created, updated); err != nil {
 			return nil, err
 		}
 		out[b.CategoryID] = append(out[b.CategoryID], b)
@@ -169,7 +168,7 @@ type chainBinding struct {
 // dependency walk can follow an expression key into the ones it reads.
 func loadLibrary(ctx context.Context, tx *sql.Tx) (map[string]model.FieldDefinition, error) {
 	rows, err := tx.QueryContext(ctx,
-		`SELECT id, key, label, type, options FROM field_definitions WHERE archived_at IS NULL`)
+		`SELECT id, key, label, type, options FROM field_definitions`)
 	if err != nil {
 		return nil, fmt.Errorf("load field library: %w", err)
 	}
@@ -196,7 +195,7 @@ func loadChain(ctx context.Context, tx *sql.Tx, path string) (map[string]chainBi
 	           FROM category_fields cf
 	           JOIN categories c ON c.id = cf.category_id
 	           JOIN field_definitions f ON f.id = cf.field_id
-	           WHERE ? LIKE c.path || '%' AND f.archived_at IS NULL`
+	           WHERE ? LIKE c.path || '%'`
 	rows, err := tx.QueryContext(ctx, q, path)
 	if err != nil {
 		return nil, fmt.Errorf("load chain bindings: %w", err)
@@ -289,7 +288,7 @@ func checkUnbindSafe(ctx context.Context, tx *sql.Tx, path, key, fieldID string)
 	           FROM category_fields cf
 	           JOIN categories c ON c.id = cf.category_id
 	           JOIN field_definitions f ON f.id = cf.field_id
-	           WHERE f.type = ? AND f.archived_at IS NULL AND cf.field_id != ?
+	           WHERE f.type = ? AND cf.field_id != ?
 	             AND (? LIKE c.path || '%' OR c.path LIKE ? || '%')`
 	rows, err := tx.QueryContext(ctx, q, string(model.FieldComputed), fieldID, path, path)
 	if err != nil {

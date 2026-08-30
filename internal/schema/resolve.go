@@ -89,14 +89,13 @@ func Resolve(path string, bindingsByCategory map[string][]Binding) ([]model.Boun
 	return out, nil
 }
 
-// ActiveFields drops archived definitions. Archived fields keep their stored
-// values but take no part in validation or search.
+// ActiveFields returns the fields currently in effect for a category.
+//
+// Since information items lost their archived state it has nothing to filter,
+// and every caller could drop it. It is kept anyway: each call site is
+// expressing "the fields in effect right now", and that is the one place a
+// future notion of an inactive field would attach. Removing it would scatter
+// that meaning across a dozen call sites and make it a rewrite to reintroduce.
 func ActiveFields(fields []model.BoundField) []model.BoundField {
-	out := make([]model.BoundField, 0, len(fields))
-	for _, f := range fields {
-		if f.ArchivedAt == nil {
-			out = append(out, f)
-		}
-	}
-	return out
+	return fields
 }

@@ -18,7 +18,7 @@ vi.mock("@/lib/api", async () => {
 })
 
 const categories = [
-  { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", sn_template: "" },
+  { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", display_key: "" },
 ]
 
 const overview = {

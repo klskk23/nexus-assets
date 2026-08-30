@@ -154,7 +154,6 @@ func (s *Server) patchField(c *gin.Context) {
 	var req struct {
 		Label   *string             `json:"label"`
 		Options *model.FieldOptions `json:"options"`
-		Archive *bool               `json:"archive"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
@@ -163,29 +162,6 @@ func (s *Server) patchField(c *gin.Context) {
 	ctx := c.Request.Context()
 	before, _ := s.schema.GetField(ctx, c.Param("id"))
 
-	// Archiving goes through the reference check: a field a template reads may
-	// not be taken away, or every asset in that category becomes unsaveable.
-	if req.Archive != nil && *req.Archive {
-		referrers, err := s.schema.ArchiveField(ctx, c.Param("id"))
-		if err != nil {
-			if errors.Is(err, schema.ErrFieldReferenced) {
-				c.AbortWithStatusJSON(http.StatusConflict, gin.H{
-					"error": gin.H{
-						"code":      CodeReferenceBlocked,
-						"message":   userText(err, schema.ErrFieldReferenced),
-						"referrers": referrers,
-					},
-				})
-				return
-			}
-			FailErr(c, err)
-			return
-		}
-		if !s.record(c, audit.ActionArchive, audit.TargetField, c.Param("id"), before, nil) {
-			return
-		}
-	}
-
 	out, err := s.schema.UpdateField(ctx, c.Param("id"), schema.UpdateFieldInput{
 		Label: req.Label, Options: req.Options,
 	})
@@ -193,7 +169,7 @@ func (s *Server) patchField(c *gin.Context) {
 		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, err.Error(), nil)
 		return
 	}
-	if req.Archive == nil || !*req.Archive {
+	{
 		if !s.record(c, audit.ActionUpdate, audit.TargetField, out.ID, before, out) {
 			return
 		}
@@ -235,7 +211,7 @@ func (s *Server) listModels(c *gin.Context) {
 
 func (s *Server) createModel(c *gin.Context) {
 	var req struct {
-		CategoryID   string         `json:"category_id" binding:"required"`
+		CategoryIDs  []string       `json:"category_ids"`
 		Name         string         `json:"name" binding:"required"`
 		Vendor       string         `json:"vendor"`
 		ImageURL     string         `json:"image_url"`
@@ -246,7 +222,7 @@ func (s *Server) createModel(c *gin.Context) {
 		return
 	}
 	out, err := s.schema.CreateModel(c.Request.Context(), schema.CreateModelInput{
-		CategoryID: req.CategoryID, Name: req.Name, Vendor: req.Vendor,
+		CategoryIDs: req.CategoryIDs, Name: req.Name, Vendor: req.Vendor,
 		ImageURL: req.ImageURL, AttrDefaults: req.AttrDefaults,
 	})
 	if err != nil {
@@ -395,4 +371,67 @@ func (s *Server) failHolder(c *gin.Context, err error) {
 			"blockers": blockers,
 		},
 	})
+}
+
+// deleteField removes an information item.
+//
+// Two kinds of refusal, and they carry different payloads because the user has
+// to do different things about them: a configuration reference is fixed by
+// editing that configuration, while stored data is fixed by unbinding instead.
+func (s *Server) deleteField(c *gin.Context) {
+	ctx := c.Request.Context()
+	before, err := s.schema.GetField(ctx, c.Param("id"))
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+
+	referrers, blockers, total, err := s.schema.DeleteField(ctx, c.Param("id"))
+	switch {
+	case errors.Is(err, schema.ErrFieldReferenced):
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+			"error": gin.H{
+				"code":      CodeReferenceBlocked,
+				"message":   userText(err, schema.ErrFieldReferenced),
+				"referrers": referrers,
+			},
+		})
+		return
+	case errors.Is(err, schema.ErrFieldInUse):
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+			"error": gin.H{
+				"code":     CodeReferenceBlocked,
+				"message":  userText(err, schema.ErrFieldInUse),
+				"blockers": blockers,
+				"total":    total,
+			},
+		})
+		return
+	case err != nil:
+		FailErr(c, err)
+		return
+	}
+
+	if !s.record(c, audit.ActionDelete, audit.TargetField, before.ID, before, nil) {
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// unbindField detaches an information item from one category.
+//
+// The guard behind this has existed since the expression-key work and never
+// had a caller. It matters now: with archiving gone, unbinding is the only way
+// to retire a field that assets already carry values for.
+func (s *Server) unbindField(c *gin.Context) {
+	ctx := c.Request.Context()
+	if err := s.schema.Unbind(ctx, c.Param("id"), c.Param("field_id")); err != nil {
+		FailErr(c, err)
+		return
+	}
+	if !s.record(c, audit.ActionUpdate, audit.TargetBinding, c.Param("id"),
+		gin.H{"field_id": c.Param("field_id")}, nil) {
+		return
+	}
+	c.Status(http.StatusNoContent)
 }

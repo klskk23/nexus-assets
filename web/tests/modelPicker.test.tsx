@@ -21,10 +21,13 @@ const categories = [
 ]
 
 const models = [
-  { id: "m1", category_id: "rt", name: "X100", vendor: "Acme", attr_defaults: { firmware: "3.0.0", ports: "8" } },
-  { id: "m2", category_id: "net", name: "通用机", vendor: "", attr_defaults: {} },
-  { id: "m3", category_id: "sw", name: "S24", vendor: "Acme", attr_defaults: {} },
-  { id: "m4", category_id: "rt", name: "旧款", vendor: "", attr_defaults: {}, archived_at: "2026-01-01T00:00:00Z" },
+  { id: "m1", category_ids: ["rt"], name: "X100", vendor: "Acme", attr_defaults: { firmware: "3.0.0", ports: "8" } },
+  { id: "m2", category_ids: ["net"], name: "通用机", vendor: "", attr_defaults: {} },
+  { id: "m3", category_ids: ["sw"], name: "S24", vendor: "Acme", attr_defaults: {} },
+  { id: "m4", category_ids: ["rt"], name: "旧款", vendor: "", attr_defaults: {}, archived_at: "2026-01-01T00:00:00Z" },
+  // Serves two unrelated branches at once -- the thing a single category_id
+  // could not express without entering the same device twice.
+  { id: "m5", category_ids: ["rt", "sw"], name: "两用机", vendor: "Acme", attr_defaults: {} },
 ]
 
 beforeEach(() => {
@@ -49,6 +52,7 @@ describe("ModelPicker", () => {
 
     expect(labels).toContain("Acme X100")
     expect(labels).toContain("通用机")
+    expect(labels).toContain("Acme 两用机")
     expect(labels).not.toContain("Acme S24")
     // Archived models are not choices either.
     expect(labels.some((l) => l?.includes("旧款"))).toBe(false)
@@ -130,5 +134,34 @@ describe("ModelPicker", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     expect(onChange).toHaveBeenCalledWith("m2", {})
+  })
+})
+
+// A model reaches every category below the ones it is associated with, matching
+// how bound fields are inherited -- and stops there. Attaching a model to a
+// child does not make it appear on the parent.
+describe("ModelPicker inheritance", () => {
+  it("does not offer a model attached to a child category to its parent", async () => {
+    renderWithProviders(
+      <ModelPicker categoryID="net" value={null} values={{}} onChange={vi.fn()} />,
+    )
+    await screen.findByRole("option", { name: "通用机" })
+    const labels = within(screen.getByLabelText("设备型号"))
+      .getAllByRole("option")
+      .map((o) => o.textContent)
+
+    expect(labels).toContain("通用机")
+    expect(labels).not.toContain("Acme X100")
+    expect(labels).not.toContain("Acme 两用机")
+  })
+
+  it("offers a model associated with several categories under each of them", async () => {
+    for (const cat of ["rt", "sw"]) {
+      const view = renderWithProviders(
+        <ModelPicker categoryID={cat} value={null} values={{}} onChange={vi.fn()} />,
+      )
+      await screen.findByRole("option", { name: "Acme 两用机" })
+      view.unmount()
+    }
   })
 })

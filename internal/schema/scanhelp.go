@@ -1,7 +1,6 @@
 package schema
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 
@@ -19,11 +18,8 @@ func decodeOptions(raw string, into *model.FieldOptions) error {
 	return nil
 }
 
-func fillTimes(f *model.FieldDefinition, archived sql.NullString, created, updated string) error {
+func fillTimes(f *model.FieldDefinition, created, updated string) error {
 	var err error
-	if f.ArchivedAt, err = store.ScanTime(archived); err != nil {
-		return err
-	}
 	if f.CreatedAt, err = store.ParseTime(created); err != nil {
 		return err
 	}

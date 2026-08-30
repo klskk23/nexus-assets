@@ -18,13 +18,11 @@ vi.mock("@/lib/api", async () => {
 })
 
 const categories = [
-  { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", sn_template: "" },
+  { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", display_key: "" },
 ]
 
 const schema = {
   category: categories[0],
-  sn_template: "{{ .attrs.mac | hex2dec }}",
-  sn_template_from: "net",
   fields: [
     { id: "f1", key: "mac", label: "基准 MAC", type: "mac", options: {}, is_unique: true, required: true, sort: 10 },
     { id: "f2", key: "firmware", label: "固件版本", type: "text", options: {}, is_unique: false, required: false, sort: 20 },

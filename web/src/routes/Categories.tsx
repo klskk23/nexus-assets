@@ -7,6 +7,7 @@ import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import { zh, zhMeta } from "@/i18n/zh"
 import { StateBoundary } from "@/components/StateBoundary"
 import { CollapsibleTree, buildTree } from "@/features/tree/CollapsibleTree"
+import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { DisplayKeyEditor } from "@/features/categories/DisplayKeyEditor"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -37,6 +38,17 @@ export function Categories() {
     queryKey: ["schema", selected],
     queryFn: () => api.get<CategorySchema>(`/categories/${selected}/schema`),
     enabled: selected !== "",
+  })
+
+  const unbind = useMutation({
+    mutationFn: (fieldID: string) =>
+      api.del(`/categories/${selected}/bindings/${fieldID}`),
+    onSuccess: () => {
+      setBanner(null)
+      queryClient.invalidateQueries({ queryKey: ["schema", selected] })
+      queryClient.invalidateQueries({ queryKey: ["category-schema", selected] })
+    },
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : zh.common.error),
   })
 
   const create = useMutation({
@@ -192,11 +204,27 @@ export function Categories() {
                     <span className="font-mono text-muted-foreground">{f.key}</span>
                     <span>{f.label}</span>
                     {f.required && <Badge variant="outline">{zhMeta.categories.required}</Badge>}
-                    {f.inherited_from && (
+                    {f.inherited_from ? (
                       <Badge variant="secondary">
                         {zhMeta.categories.inheritedFrom}
                         {(categories.data ?? []).find((c) => c.id === f.inherited_from)?.name ?? ""}
                       </Badge>
+                    ) : (
+                      // Unbinding is how a field that assets already carry
+                      // values for gets retired -- deleting it would be
+                      // refused, and there is no longer an archive to fall
+                      // back on. Only bindings made here can be removed here.
+                      <ConfirmDialog
+                        trigger={
+                          <Button variant="ghost" size="sm" className="ml-auto">
+                            {zhMeta.categories.unbind}
+                          </Button>
+                        }
+                        title={zhMeta.categories.unbindTitle}
+                        description={zhMeta.categories.unbindHint(f.label)}
+                        confirmLabel={zhMeta.categories.unbind}
+                        onConfirm={() => unbind.mutate(f.id)}
+                      />
                     )}
                   </li>
                 ))}

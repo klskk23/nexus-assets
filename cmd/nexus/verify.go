@@ -172,7 +172,7 @@ func verifyUniqueValues(ctx context.Context, db *sql.DB) (int, error) {
 		JOIN categories cc ON c.path LIKE cc.path || '%'
 		JOIN category_fields cf ON cf.category_id = cc.id
 		JOIN field_definitions f ON f.id = cf.field_id
-		WHERE f.is_unique = 1 AND f.archived_at IS NULL
+		WHERE f.is_unique = 1
 		  AND coalesce(trim(json_extract(a.attrs, '$.' || f.key)), '') != ''
 		  AND NOT EXISTS (
 		        SELECT 1 FROM asset_unique_values uv

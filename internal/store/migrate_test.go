@@ -21,8 +21,8 @@ func TestMigrateUpAndDown(t *testing.T) {
 
 	want := []string{
 		"users", "holder_entities", "categories", "field_definitions",
-		"category_fields", "product_models", "assets", "asset_unique_values",
-		"asset_transfers", "audit_log",
+		"category_fields", "product_models", "product_model_categories",
+		"assets", "asset_unique_values", "asset_transfers", "audit_log",
 	}
 	for _, table := range want {
 		var n int
@@ -47,12 +47,24 @@ func TestMigrateUpAndDown(t *testing.T) {
 		}
 	}
 
-	// Rolling back one revision must restore the pre-002 shape exactly, so a
+	// The information item's own lifecycle: archiving is gone, so the column is
+	// gone with it. A column with no way to set it only confuses the next reader.
+	var archived int
+	if err := s.read.QueryRowContext(ctx,
+		`SELECT count(*) FROM pragma_table_info('field_definitions') WHERE name = 'archived_at'`).
+		Scan(&archived); err != nil {
+		t.Fatalf("check field_definitions.archived_at: %v", err)
+	}
+	if archived != 0 {
+		t.Error("field_definitions should no longer carry archived_at")
+	}
+
+	// Rolling back one revision must restore the pre-003 shape exactly, so a
 	// half-applied upgrade can be undone rather than requiring a fresh file.
 	if err := s.MigrateDown(ctx); err != nil {
 		t.Fatalf("MigrateDown: %v", err)
 	}
-	for table, wantN := range map[string]int{"asset_unique_values": 0, "asset_sn_history": 1} {
+	for table, wantN := range map[string]int{"product_model_categories": 0, "asset_unique_values": 1} {
 		var n int
 		if err := s.read.QueryRowContext(ctx,
 			`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&n); err != nil {
@@ -62,15 +74,54 @@ func TestMigrateUpAndDown(t *testing.T) {
 			t.Errorf("after down, table %s count = %d, want %d", table, n, wantN)
 		}
 	}
-	for col, wantN := range map[string]int{"sn_template": 1, "display_key": 0} {
+	for spec, wantN := range map[[2]string]int{
+		{"field_definitions", "archived_at"}: 1,
+		{"product_models", "category_id"}:    1,
+	} {
 		var n int
 		if err := s.read.QueryRowContext(ctx,
-			`SELECT count(*) FROM pragma_table_info('categories') WHERE name = ?`, col).Scan(&n); err != nil {
-			t.Fatalf("check categories.%s after down: %v", col, err)
+			`SELECT count(*) FROM pragma_table_info(?) WHERE name = ?`, spec[0], spec[1]).Scan(&n); err != nil {
+			t.Fatalf("check %s.%s after down: %v", spec[0], spec[1], err)
 		}
 		if n != wantN {
-			t.Errorf("after down, categories.%s count = %d, want %d", col, n, wantN)
+			t.Errorf("after down, %s.%s count = %d, want %d", spec[0], spec[1], n, wantN)
 		}
+	}
+}
+
+// The uniqueness of a model name is scoped to its vendor, and that only works
+// because vendor is NOT NULL: SQLite treats NULLs as distinct inside a UNIQUE
+// index, so a nullable vendor would let any number of same-named models coexist
+// while the schema still looked constrained.
+func TestModelNameIsUniquePerVendorIncludingTheEmptyOne(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pm.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+	if err := s.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	const ts = "2026-01-01T00:00:00Z"
+	ins := `INSERT INTO product_models (id, name, vendor, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+	if _, err := s.write.ExecContext(ctx, ins, "m1", "X100", "Acme", ts, ts); err != nil {
+		t.Fatalf("first model: %v", err)
+	}
+	if _, err := s.write.ExecContext(ctx, ins, "m2", "X100", "Beta", ts, ts); err != nil {
+		t.Fatalf("two vendors may share a product name: %v", err)
+	}
+	if _, err := s.write.ExecContext(ctx, ins, "m3", "X100", "Acme", ts, ts); err == nil {
+		t.Fatal("the same vendor must not have two products with one name")
+	}
+	// The empty vendor is a namespace like any other, not an escape hatch.
+	if _, err := s.write.ExecContext(ctx, ins, "m4", "S24", "", ts, ts); err != nil {
+		t.Fatalf("an empty vendor is allowed: %v", err)
+	}
+	if _, err := s.write.ExecContext(ctx, ins, "m5", "S24", "", ts, ts); err == nil {
+		t.Fatal("two same-named models with no vendor must still collide")
 	}
 }
 

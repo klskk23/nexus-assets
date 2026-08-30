@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
-import { api, ApiError } from "@/lib/api"
+import { api, ApiError, type Blocker } from "@/lib/api"
 import type { HolderEntity } from "@/lib/types"
 import { zh, zhMeta } from "@/i18n/zh"
 import { CrudPage } from "@/features/metadata/CrudPage"
@@ -16,14 +16,28 @@ export function Holders() {
   const queryClient = useQueryClient()
 
   const [banner, setBanner] = useState<string | null>(null)
+  // The server has attached the blocking devices since the first version; the
+  // client used to parse only `referrers` and drop these on the floor, leaving
+  // the page with a count and no way to act on it.
+  const [blockers, setBlockers] = useState<Blocker[]>([])
+  const [blockerTotal, setBlockerTotal] = useState(0)
 
   const setDefault = useMutation({
     mutationFn: (id: string) => api.patch(`/holders/${id}`, { is_default_stock: true }),
     onSuccess: () => {
       setBanner(null)
+      setBlockers([])
       queryClient.invalidateQueries({ queryKey: ["holders"] })
     },
-    onError: (e) => setBanner(e instanceof ApiError ? e.message : zh.common.error),
+    onError: (e) => {
+      if (e instanceof ApiError) {
+        setBanner(e.message)
+        setBlockers(e.blockers ?? [])
+        setBlockerTotal(e.total ?? 0)
+      } else {
+        setBanner(zh.common.error)
+      }
+    },
   })
 
   return (
@@ -61,9 +75,22 @@ export function Holders() {
       form={
         <div className="grid gap-4 sm:grid-cols-2">
           {banner && (
-            <p role="alert" className="text-sm text-destructive sm:col-span-2">
-              {banner}
-            </p>
+            <div role="alert" className="grid gap-1 text-sm text-destructive sm:col-span-2">
+              <p>{banner}</p>
+              {blockers.length > 0 && (
+                <>
+                  <p className="text-xs">{zhMeta.holders.blockedBy}</p>
+                  <ul className="grid gap-0.5 font-mono text-xs">
+                    {blockers.map((b) => (
+                      <li key={b.asset_id}>{b.name}</li>
+                    ))}
+                    {blockerTotal > blockers.length && (
+                      <li>{zhMeta.holders.blockedMore(blockerTotal)}</li>
+                    )}
+                  </ul>
+                </>
+              )}
+            </div>
           )}
           <div className="grid gap-1.5">
             <Label htmlFor="h-name">{zhMeta.holders.name}</Label>

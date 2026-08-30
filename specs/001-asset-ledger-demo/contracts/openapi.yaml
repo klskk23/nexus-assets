@@ -376,9 +376,78 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     patch:
       tags: [metadata]
-      summary: 修改或停用。被表达式键引用、或被某类别选作显示编号时拒绝停用
+      summary: 修改信息项。不再接受 archive —— 停用机制已移除
       responses:
         "200": { description: OK }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [metadata]
+      summary: 删除信息项。有引用或有资产取值时拒绝
+      description: >
+        取代停用。被表达式键引用或被某类别选作显示编号时返回 409 并附 referrers；
+        有资产填了非空值时返回 409 并附 blockers 与 total，提示改为从类别上解绑。
+      responses:
+        "204": { description: Deleted }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /fields/{id}/referrers:
+    get:
+      tags: [metadata]
+      summary: 列出正在引用该信息项的表达式键与类别显示编号
+      description: 供界面在用户尝试删除之前就把阻挡对象摆出来，而不是等操作被拒绝
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    kind: { type: string, enum: [field, display_key] }
+                    id: { type: string }
+                    label: { type: string }
+
+  /categories/{id}/bindings:
+    post:
+      tags: [metadata]
+      summary: 绑定信息项到类别
+      description: >
+        绑定表达式键时递归校验依赖闭包：闭包内每一项都必须已绑定，其中的静态键
+        还必须已标为必填，否则 422 并分类列出要先改什么。
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [field_id]
+              properties:
+                field_id: { type: string }
+                required: { type: boolean, default: false }
+                sort: { type: integer, default: 0 }
+      responses:
+        "204": { description: Bound }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /categories/{id}/bindings/{field_id}:
+    delete:
+      tags: [metadata]
+      summary: 从类别解绑信息项。存量取值保留为孤儿键
+      description: >
+        信息项没有停用机制，所以解绑是「不再需要某个字段但要留住存量数据」的唯一路径。
+        沿用绑定侧的护栏：被表达式键读取、或被选作显示编号时拒绝。
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: field_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Unbound }
         "409": { $ref: "#/components/responses/Error" }
 
   /models:
@@ -608,6 +677,21 @@ components:
           description: >
             指向该类别有效字段集内某个标为唯一的信息项 key，空串表示未设置。
             不沿祖先链继承；未设置时资产以 UUID 前 8 位指代
+
+    ProductModel:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        vendor: { type: string, description: 非 null，可为空串。与 name 一起构成重名判定 }
+        category_ids:
+          type: array
+          items: { type: string }
+          description: >
+            该型号出现在哪些类别的录入表单里。候选范围是「关联到本类别或其任一祖先」，
+            与字段继承同一套心智模型；关联在子孙上的型号，父类的资产看不见
+        attr_defaults: { type: object, additionalProperties: true }
+        archived_at: { type: string, nullable: true }
 
     FieldSchema:
       type: object

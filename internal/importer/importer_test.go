@@ -85,7 +85,7 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	if _, err := sch.CreateModel(ctx, schema.CreateModelInput{
-		CategoryID: cat.ID, Name: "SDWAN-X100", Vendor: "Acme",
+		CategoryIDs: []string{cat.ID}, Name: "SDWAN-X100", Vendor: "Acme",
 	}); err != nil {
 		t.Fatal(err)
 	}

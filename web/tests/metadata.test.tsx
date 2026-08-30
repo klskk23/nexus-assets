@@ -26,8 +26,8 @@ vi.mock("@/lib/api", async () => {
 })
 
 const categories = [
-  { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", sn_template: "" },
-  { id: "rt", code: "RT", name: "SDWAN 路由器", parent_id: "net", path: "/net/rt/", sn_template: "x" },
+  { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", display_key: "" },
+  { id: "rt", code: "RT", name: "SDWAN 路由器", parent_id: "net", path: "/net/rt/", display_key: "" },
 ]
 
 const fields = [
@@ -48,8 +48,6 @@ const users = [
 
 const schema = {
   category: categories[1],
-  sn_template: "x",
-  sn_template_from: "rt",
   fields: [
     { ...fields[0], required: true, sort: 10, inherited_from: "net" },
     { ...fields[1], required: false, sort: 20 },
@@ -209,4 +207,34 @@ describe("Categories page", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/already bound/)
   })
+})
+
+// The server has attached the blocking devices since the first version. The
+// client parsed only `referrers` and dropped these, leaving the page with a
+// count and no way to act on it.
+it("lists the blocking devices when a holder cannot be archived", async () => {
+  patch.mockRejectedValueOnce(
+    new ApiError(
+      409,
+      "reference_blocked",
+      "「上海仓库」仍被 7 台设备使用，请先转移或改绑后再停用",
+      undefined,
+      undefined,
+      [
+        { asset_id: "a1", name: "112394521950", reason: "holder" },
+        { asset_id: "a2", name: "112394521951", reason: "reference" },
+      ],
+      7,
+    ),
+  )
+  const user = userEvent.setup()
+  renderWithProviders(<Holders />)
+  const warehouse = await screen.findByRole("row", { name: /上海仓库/ })
+  await user.click(within(warehouse).getByRole("button", { name: "设为默认库存点" }))
+
+  const alert = await screen.findByRole("alert")
+  expect(alert).toHaveTextContent("112394521950")
+  expect(alert).toHaveTextContent("112394521951")
+  // Two of seven were sent, so the page has to say the list is partial.
+  expect(alert).toHaveTextContent("等共 7 台")
 })

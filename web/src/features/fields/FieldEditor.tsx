@@ -1,21 +1,16 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import { api, ApiError } from "@/lib/api"
+import { api, ApiError, type Blocker, type Referrer } from "@/lib/api"
 import type { EnumChoice, FieldOptions } from "@/lib/types"
 import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import { zh, zhConfig, zhMeta } from "@/i18n/zh"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-
-interface Referrer {
-  kind: "field" | "category"
-  id: string
-  label: string
-}
 
 interface Props {
   field: FieldDefinitionRow
@@ -34,7 +29,10 @@ export function FieldEditor({ field, onClose }: Props) {
   const [label, setLabel] = useState(field.label)
   const [options, setOptions] = useState<FieldOptions>(field.options ?? {})
   const [banner, setBanner] = useState<string | null>(null)
-  const [blockers, setBlockers] = useState<Referrer[]>([])
+  // Two kinds of thing can stand in the way, and the user does something
+  // different about each: configuration is edited, data is unbound instead.
+  const [refBlockers, setRefBlockers] = useState<Referrer[]>([])
+  const [assetBlockers, setAssetBlockers] = useState<Blocker[]>([])
 
   const referrers = useQuery({
     queryKey: ["referrers", field.id],
@@ -52,18 +50,21 @@ export function FieldEditor({ field, onClose }: Props) {
     onError: (e) => setBanner(e instanceof ApiError ? e.message : zh.common.error),
   })
 
-  const archive = useMutation({
-    mutationFn: () => api.patch(`/fields/${field.id}`, { archive: true }),
+  const remove = useMutation({
+    mutationFn: () => api.del(`/fields/${field.id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fields"] })
+      queryClient.invalidateQueries({ queryKey: ["categories"] })
       onClose()
     },
     onError: (e) => {
-      // The refusal carries the list of templates that read this field, which
-      // is exactly what the user needs in order to fix it.
+      // The refusal carries whatever is standing in the way -- templates that
+      // read the field, or the devices that already hold values for it. Either
+      // list is exactly what the user needs in order to act.
       if (e instanceof ApiError) {
         setBanner(e.message)
-        setBlockers((e.referrers as Referrer[] | undefined) ?? referrers.data ?? [])
+        setRefBlockers(e.referrers ?? (e.blockers ? [] : referrers.data ?? []))
+        setAssetBlockers(e.blockers ?? [])
       } else {
         setBanner(zh.common.error)
       }
@@ -240,12 +241,22 @@ export function FieldEditor({ field, onClose }: Props) {
         {banner && (
           <div role="alert" className="grid gap-1 text-sm text-destructive">
             <p>{banner}</p>
-            {blockers.length > 0 && (
+            {refBlockers.length > 0 && (
               <ul className="grid gap-0.5 text-xs">
-                {blockers.map((b) => (
+                {refBlockers.map((b) => (
                   <li key={b.id}>{b.label}</li>
                 ))}
               </ul>
+            )}
+            {assetBlockers.length > 0 && (
+              <>
+                <p className="text-xs">{zhConfig.field.blockedByAssets}</p>
+                <ul className="grid gap-0.5 font-mono text-xs">
+                  {assetBlockers.map((b) => (
+                    <li key={b.asset_id}>{b.name}</li>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         )}
@@ -254,9 +265,17 @@ export function FieldEditor({ field, onClose }: Props) {
           <Button onClick={() => save.mutate()} disabled={save.isPending}>
             {save.isPending ? zhConfig.field.saving : zhConfig.field.save}
           </Button>
-          <Button variant="outline" onClick={() => archive.mutate()} disabled={archive.isPending}>
-            {zhConfig.field.archive}
-          </Button>
+          <ConfirmDialog
+            trigger={
+              <Button variant="destructive" disabled={remove.isPending}>
+                {zhConfig.field.delete}
+              </Button>
+            }
+            title={zhConfig.field.deleteTitle}
+            description={zhConfig.field.deleteHint(field.label)}
+            confirmLabel={zhConfig.field.delete}
+            onConfirm={() => remove.mutate()}
+          />
           <Button variant="ghost" onClick={onClose}>
             {zh.common.cancel}
           </Button>

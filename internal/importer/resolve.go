@@ -13,10 +13,15 @@ import (
 // lookups caches the name-to-id maps one file needs, so a 500-row import does
 // not issue 500 lookups.
 type lookups struct {
-	modelsByName  map[string]string
-	holdersByName map[string]model.HolderEntity
-	usersByName   map[string]string
-	fieldByKey    map[string]model.BoundField
+	modelsByName map[string]string
+	// ambiguousModels holds names carried by more than one vendor. Names are
+	// unique per vendor, not globally, so a file naming just the model can be
+	// genuinely undecidable -- and picking one would attach the wrong hardware
+	// to a device without ever saying so.
+	ambiguousModels map[string]bool
+	holdersByName   map[string]model.HolderEntity
+	usersByName     map[string]string
+	fieldByKey      map[string]model.BoundField
 	// displayKey is the category's nominated identifier, so a preview row can
 	// show the same label the asset will carry once it exists.
 	displayKey string
@@ -24,10 +29,11 @@ type lookups struct {
 
 func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups, error) {
 	l := &lookups{
-		modelsByName:  map[string]string{},
-		holdersByName: map[string]model.HolderEntity{},
-		usersByName:   map[string]string{},
-		fieldByKey:    map[string]model.BoundField{},
+		modelsByName:    map[string]string{},
+		ambiguousModels: map[string]bool{},
+		holdersByName:   map[string]model.HolderEntity{},
+		usersByName:     map[string]string{},
+		fieldByKey:      map[string]model.BoundField{},
 	}
 
 	cat, err := s.schema.GetCategory(ctx, categoryID)
@@ -36,14 +42,20 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 	}
 	l.displayKey = cat.DisplayKey
 
-	models, err := s.schema.ListModels(ctx)
+	// Only the models this category can actually offer. That also cuts down on
+	// ambiguity: two vendors sharing a product name matter only if both models
+	// are reachable from here.
+	models, err := s.schema.CandidateModels(ctx, cat.Path)
 	if err != nil {
 		return nil, err
 	}
 	for _, m := range models {
-		if m.ArchivedAt == nil {
-			l.modelsByName[strings.TrimSpace(m.Name)] = m.ID
+		name := strings.TrimSpace(m.Name)
+		if _, dup := l.modelsByName[name]; dup {
+			l.ambiguousModels[name] = true
+			continue
 		}
+		l.modelsByName[name] = m.ID
 	}
 
 	entities, err := s.holders.List(ctx)
@@ -85,6 +97,9 @@ func (l *lookups) resolveModel(name string) (string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return "", nil
+	}
+	if l.ambiguousModels[name] {
+		return "", fmt.Errorf("型号「%s」有多个厂商的同名产品，请写成「厂商 型号」", name)
 	}
 	id, ok := l.modelsByName[name]
 	if !ok {

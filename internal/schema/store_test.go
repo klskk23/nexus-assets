@@ -193,26 +193,6 @@ func TestUnbindLeavesTheDefinitionAlone(t *testing.T) {
 	}
 }
 
-func TestArchiveFieldRemovesItFromTheActiveSet(t *testing.T) {
-	s, ctx := newStore(t)
-	root, _ := tree(t, s, ctx)
-	f, _ := s.CreateField(ctx, CreateFieldInput{Key: "legacy", Label: "旧字段", Type: model.FieldText})
-	if err := s.Bind(ctx, root.ID, f.ID, false, 10); err != nil {
-		t.Fatal(err)
-	}
-	yes := true
-	if _, err := s.UpdateField(ctx, f.ID, UpdateFieldInput{Archive: &yes}); err != nil {
-		t.Fatalf("archive: %v", err)
-	}
-	fields, _ := s.EffectiveFields(ctx, root.ID)
-	if len(ActiveFields(fields)) != 0 {
-		t.Error("an archived field must drop out of the active set")
-	}
-	if len(fields) != 1 {
-		t.Error("but the binding itself is still there, so stored values keep their meaning")
-	}
-}
-
 func TestCreateFieldRejectsInvalidTemplate(t *testing.T) {
 	s, ctx := newStore(t)
 	_, err := s.CreateField(ctx, CreateFieldInput{
@@ -228,7 +208,7 @@ func TestModelDefaultsRoundTrip(t *testing.T) {
 	s, ctx := newStore(t)
 	_, child := tree(t, s, ctx)
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		CategoryID: child.ID, Name: "SDWAN-X100", Vendor: "Acme",
+		CategoryIDs: []string{child.ID}, Name: "SDWAN-X100", Vendor: "Acme",
 		AttrDefaults: map[string]any{"ports": float64(8)},
 	})
 	if err != nil {
@@ -242,12 +222,16 @@ func TestModelDefaultsRoundTrip(t *testing.T) {
 		t.Errorf("defaults did not round-trip, got %#v", got.AttrDefaults)
 	}
 
+	if len(got.CategoryIDs) != 1 || got.CategoryIDs[0] != child.ID {
+		t.Errorf("the association did not round-trip, got %v", got.CategoryIDs)
+	}
+
 	// Import resolves models by name rather than id.
-	byName, err := s.ModelByName(ctx, child.ID, "SDWAN-X100")
+	byName, err := s.ModelByName(ctx, "SDWAN-X100")
 	if err != nil || byName.ID != m.ID {
 		t.Errorf("ModelByName = %v, %v", byName.ID, err)
 	}
-	if _, err := s.ModelByName(ctx, child.ID, "ghost"); !errors.Is(err, ErrNotFound) {
+	if _, err := s.ModelByName(ctx, "ghost"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("an unknown model name must not be auto-created, got %v", err)
 	}
 }
@@ -258,7 +242,7 @@ func TestListFieldsAndModelsReturnEverything(t *testing.T) {
 	if _, err := s.CreateField(ctx, CreateFieldInput{Key: "a", Label: "A", Type: model.FieldText}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.CreateModel(ctx, CreateModelInput{CategoryID: child.ID, Name: "M1"}); err != nil {
+	if _, err := s.CreateModel(ctx, CreateModelInput{CategoryIDs: []string{child.ID}, Name: "M1"}); err != nil {
 		t.Fatal(err)
 	}
 	fields, err := s.ListFields(ctx)

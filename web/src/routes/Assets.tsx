@@ -22,6 +22,13 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+/** Renders one custom attribute. Booleans read as words, not as true/false. */
+function cellText(v: unknown): string {
+  if (v === true) return zh.common.yes
+  if (v === false) return zh.common.no
+  return String(v ?? "")
+}
+
 export function Assets() {
   const navigate = useNavigate()
   const searchRef = useRef<HTMLInputElement>(null)
@@ -215,7 +222,7 @@ export function Assets() {
                     <TableCell>{a.holder.name ?? zh.common.none}</TableCell>
                     <TableCell>{a.owner?.name ?? zh.common.none}</TableCell>
                     {extraColumns.map((k) => (
-                      <TableCell key={k}>{String(a.attrs[k] ?? "")}</TableCell>
+                      <TableCell key={k}>{cellText(a.attrs[k])}</TableCell>
                     ))}
                   </TableRow>
                 ))}

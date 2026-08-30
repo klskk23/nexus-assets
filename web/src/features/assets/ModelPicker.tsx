@@ -57,10 +57,14 @@ export function ModelPicker({ categoryID, value, onChange, values, confirmOverwr
     queryFn: () => api.get<ProductModelRow[]>("/models"),
   })
 
+  // A model reaches every category below the ones it is associated with, the
+  // same way bound fields are inherited. It does not climb back up: a model
+  // attached to a child is not offered to the parent. Now that a model can
+  // carry several categories, making it visible somewhere is an explicit act.
   const self = (categories.data ?? []).find((c) => c.id === categoryID)
   const chain = new Set((self?.path ?? "").split("/").filter(Boolean))
   const candidates = (models.data ?? []).filter(
-    (m) => !m.archived_at && chain.has(m.category_id),
+    (m) => !m.archived_at && (m.category_ids ?? []).some((id) => chain.has(id)),
   )
 
   const defaultsOf = (id: string) => candidates.find((m) => m.id === id)?.attr_defaults ?? {}

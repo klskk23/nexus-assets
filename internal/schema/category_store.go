@@ -248,23 +248,19 @@ func validateDisplayKey(ctx context.Context, tx *sql.Tx, path, key string) error
 	if key == "" {
 		return nil
 	}
-	const q = `SELECT f.label, f.is_unique, f.archived_at
+	const q = `SELECT f.label, f.is_unique
 	           FROM category_fields cf
 	           JOIN categories c ON c.id = cf.category_id
 	           JOIN field_definitions f ON f.id = cf.field_id
 	           WHERE f.key = ? AND ? LIKE c.path || '%'`
 	var label string
 	var isUnique int
-	var archived sql.NullString
-	err := tx.QueryRowContext(ctx, q, key, path).Scan(&label, &isUnique, &archived)
+	err := tx.QueryRowContext(ctx, q, key, path).Scan(&label, &isUnique)
 	if errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("%w: 信息项 %q 未绑定到该类别，请先绑定再设为显示编号", ErrDisplayKeyInvalid, key)
 	}
 	if err != nil {
 		return err
-	}
-	if archived.Valid {
-		return fmt.Errorf("%w: 信息项「%s」已停用，不能用作显示编号", ErrDisplayKeyInvalid, label)
 	}
 	if isUnique != 1 {
 		return fmt.Errorf("%w: 信息项「%s」未标为唯一，两台设备可能显示同一个编号；请先将它标为唯一",

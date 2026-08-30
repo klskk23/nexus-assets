@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { screen, waitFor } from "@testing-library/react"
+import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { FieldEditor } from "@/features/fields/FieldEditor"
@@ -10,11 +10,17 @@ import type { FieldType } from "@/lib/types"
 
 const get = vi.fn()
 const patch = vi.fn()
+const del = vi.fn()
 vi.mock("@/lib/api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api")
   return {
     ...actual,
-    api: { get: (p: string) => get(p), post: vi.fn(), patch: (p: string, b: unknown) => patch(p, b), del: vi.fn() },
+    api: {
+      get: (p: string) => get(p),
+      post: vi.fn(),
+      patch: (p: string, b: unknown) => patch(p, b),
+      del: (p: string) => del(p),
+    },
   }
 })
 
@@ -25,6 +31,7 @@ function field(type: FieldType, over: Partial<FieldDefinitionRow> = {}): FieldDe
 beforeEach(() => {
   get.mockReset().mockResolvedValue([])
   patch.mockReset().mockResolvedValue({})
+  del.mockReset().mockResolvedValue(undefined)
 })
 
 describe("FieldEditor", () => {
@@ -84,28 +91,81 @@ describe("FieldEditor", () => {
     expect((body as { options: { choices: unknown[] } }).options.choices).toHaveLength(2)
   })
 
-  it("lists what reads the field before anyone tries to disable it", async () => {
-    get.mockResolvedValue([{ kind: "category", id: "rt", label: "SDWAN 路由器" }])
+  it("lists what reads the field before anyone tries to remove it", async () => {
+    get.mockResolvedValue([{ kind: "field", id: "sn", label: "设备编号" }])
     renderWithProviders(<FieldEditor field={field("mac")} onClose={vi.fn()} />)
-    expect(await screen.findByText(/SDWAN 路由器/)).toBeInTheDocument()
+    expect(await screen.findByText(/设备编号/)).toBeInTheDocument()
   })
 
-  it("surfaces the referrer list when disabling is refused", async () => {
-    patch.mockRejectedValue(
+  // Configuration standing in the way: the fix is to edit that configuration,
+  // so the refusal names it.
+  it("surfaces the referrer list when deletion is refused by configuration", async () => {
+    del.mockRejectedValue(
       new ApiError(
         409,
         "reference_blocked",
-        'field is still referenced: 类别「SDWAN 路由器」的编号生成规则 正在引用「基准 MAC」，请先修改它们',
+        "表达式键「设备编号」正在引用「基准 MAC」，请先修改它们",
         undefined,
-        [{ kind: "category", id: "rt", label: "SDWAN 路由器" }],
+        [{ kind: "field", id: "sn", label: "设备编号" }],
       ),
     )
     const user = userEvent.setup()
     renderWithProviders(<FieldEditor field={field("mac", { label: "基准 MAC" })} onClose={vi.fn()} />)
 
-    await user.click(screen.getByRole("button", { name: "停用" }))
-    const alert = await screen.findByRole("alert")
-    expect(alert).toHaveTextContent("编号生成规则")
-    expect(alert).toHaveTextContent("SDWAN 路由器")
+    await user.click(screen.getByRole("button", { name: "删除信息项" }))
+    const dialog = await screen.findByRole("alertdialog")
+    await user.click(within(dialog).getByRole("button", { name: "删除信息项" }))
+
+    const alerts = await screen.findAllByRole("alert")
+    const text = alerts.map((a) => a.textContent).join(" ")
+    expect(text).toContain("表达式键")
+    expect(text).toContain("设备编号")
+  })
+
+  // Data standing in the way: editing configuration will not help, so the
+  // refusal names the devices and points at unbinding instead.
+  it("lists the blocking devices when assets still carry a value", async () => {
+    del.mockRejectedValue(
+      new ApiError(
+        409,
+        "reference_blocked",
+        "仍有 2 台设备填写了「基准 MAC」。要下线它，请改为从类别上解绑",
+        undefined,
+        undefined,
+        [
+          { asset_id: "a1", name: "112394521950" },
+          { asset_id: "a2", name: "112394521951" },
+        ],
+        2,
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<FieldEditor field={field("mac", { label: "基准 MAC" })} onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole("button", { name: "删除信息项" }))
+    const dialog = await screen.findByRole("alertdialog")
+    await user.click(within(dialog).getByRole("button", { name: "删除信息项" }))
+
+    const alerts = await screen.findAllByRole("alert")
+    const text = alerts.map((a) => a.textContent).join(" ")
+    expect(text).toContain("112394521950")
+    expect(text).toContain("112394521951")
+    expect(text).toContain("解绑")
+  })
+
+  it("deletes the field when nothing stands in the way", async () => {
+    del.mockResolvedValue(undefined)
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    renderWithProviders(
+      <FieldEditor field={field("text", { id: "spare", label: "备用" })} onClose={onClose} />,
+    )
+
+    await user.click(screen.getByRole("button", { name: "删除信息项" }))
+    const dialog = await screen.findByRole("alertdialog")
+    await user.click(within(dialog).getByRole("button", { name: "删除信息项" }))
+
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/fields/spare"))
+    expect(onClose).toHaveBeenCalled()
   })
 })

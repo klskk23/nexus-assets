@@ -189,6 +189,15 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 			prev = &p
 		}
 
+		// Values whose field has since left the category are carried over
+		// untouched. ValidateAttrs rebuilds attrs from the effective field set,
+		// so without this an ordinary edit would silently drop them -- and
+		// unbinding is the only way to retire a field that assets already hold
+		// values for, which makes "the data is kept" the whole point of it.
+		if prev != nil {
+			clean = carryOrphans(prep.Fields, prev.Attrs, clean)
+		}
+
 		// 6. uniqueness: probe first so a collision can name the other device
 		if err := probeUnique(ctx, tx, prep.Fields, prep.Unique, prep.ID); err != nil {
 			return out, err
@@ -301,4 +310,25 @@ func evalComputed(fields []model.BoundField, ctx compute.Context) (map[string]an
 		attrs[key] = v // later fields may read this one
 	}
 	return out, nil
+}
+
+// carryOrphans copies across the stored keys that no longer belong to the
+// category's field set.
+//
+// They are kept exactly as they were: never validated, never normalised, never
+// part of a uniqueness check. The category stopped asking for them, but what
+// somebody recorded is still what happened.
+func carryOrphans(fields []model.BoundField, prev, next map[string]any) map[string]any {
+	live := make(map[string]bool, len(fields))
+	for _, f := range fields {
+		live[f.Key] = true
+	}
+	for k, v := range prev {
+		if !live[k] {
+			if _, taken := next[k]; !taken {
+				next[k] = v
+			}
+		}
+	}
+	return next
 }

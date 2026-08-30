@@ -3,6 +3,20 @@ import { zh } from "@/i18n/zh"
 /** Field-level messages keyed by field key, straight from the error envelope. */
 export type FieldErrors = Record<string, string>
 
+/** A configuration object standing in the way: an expression key, or a category. */
+export interface Referrer {
+  kind: string
+  id: string
+  label: string
+}
+
+/** A device standing in the way, named the way a person would refer to it. */
+export interface Blocker {
+  asset_id: string
+  name: string
+  reason?: string
+}
+
 /** The single error shape every non-2xx response uses. */
 export class ApiError extends Error {
   constructor(
@@ -10,8 +24,16 @@ export class ApiError extends Error {
     readonly code: string,
     message: string,
     readonly fields?: FieldErrors,
-    /** Extra payload some refusals carry, such as what is blocking an archive. */
-    readonly referrers?: { kind: string; id: string; label: string }[],
+    /** Configuration pointing at the target: expression keys, display keys. */
+    readonly referrers?: Referrer[],
+    /**
+     * Devices standing in the way. The server has attached these since the
+     * first version so a page could show exactly what is blocking; until now
+     * the client parsed only `referrers` and threw them away.
+     */
+    readonly blockers?: Blocker[],
+    /** How many are blocking in total; `blockers` is only the first few. */
+    readonly total?: number,
   ) {
     super(message)
     this.name = "ApiError"
@@ -61,7 +83,15 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
   if (!res.ok) {
     const e = payload?.error ?? {}
-    throw new ApiError(res.status, e.code ?? "internal_error", e.message ?? zh.common.requestFailed, e.fields, e.referrers)
+    throw new ApiError(
+      res.status,
+      e.code ?? "internal_error",
+      e.message ?? zh.common.requestFailed,
+      e.fields,
+      e.referrers,
+      e.blockers,
+      e.total,
+    )
   }
   return payload as T
 }

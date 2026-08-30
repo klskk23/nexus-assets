@@ -82,6 +82,16 @@ func runSeed(ctx context.Context, a *app, count int) error {
 		return err
 	}
 
+	// A model that actually carries defaults and serves both categories: the
+	// picker was empty on a fresh database, so the whole feature looked broken.
+	if _, err := a.schema.CreateModel(ctx, schema.CreateModelInput{
+		Name: "SDWAN-X100", Vendor: "Acme",
+		CategoryIDs:  []string{root.ID, child.ID},
+		AttrDefaults: map[string]any{"firmware": "2.2.1"},
+	}); err != nil {
+		return fmt.Errorf("create model: %w", err)
+	}
+
 	owner, err := ownerID(ctx, a)
 	if err != nil {
 		return err

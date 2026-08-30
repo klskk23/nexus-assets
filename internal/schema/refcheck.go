@@ -2,6 +2,7 @@ package schema
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"slices"
@@ -9,10 +10,14 @@ import (
 
 	"github.com/klskk23/nexus-assets/internal/compute"
 	"github.com/klskk23/nexus-assets/internal/model"
+	"github.com/klskk23/nexus-assets/internal/store"
 )
 
-// ErrFieldReferenced blocks archiving a field something still reads.
+// ErrFieldReferenced blocks deleting a field something still reads.
 var ErrFieldReferenced = errors.New("field is still referenced")
+
+// ErrFieldInUse blocks deleting a field that assets carry values for.
+var ErrFieldInUse = errors.New("field still holds data on existing assets")
 
 // Referrer names one expression key that reads a field.
 type Referrer struct {
@@ -47,7 +52,7 @@ func (s *Store) ReferrersOf(ctx context.Context, key string) ([]Referrer, error)
 		return nil, err
 	}
 	for _, f := range fields {
-		if f.Type != model.FieldComputed || f.ArchivedAt != nil || f.Key == key {
+		if f.Type != model.FieldComputed || f.Key == key {
 			continue
 		}
 		refs, err := templateRefs(f.Key, f.Options.Template)
@@ -73,25 +78,83 @@ func templateRefs(name, text string) ([]string, error) {
 	return compute.AttrReferences(t.Tree.Root), nil
 }
 
-// ArchiveField disables a field, refusing while anything still reads it.
+// Blocker names one asset standing in the way of deleting a field.
+type Blocker struct {
+	AssetID string `json:"asset_id"`
+	Name    string `json:"name"`
+}
+
+// blockerLimit caps how many assets are listed. Enough to show what is going
+// on without turning an error message into a report.
+const blockerLimit = 5
+
+// AssetsUsing reports the assets carrying a non-empty value for the key.
 //
-// This is the same rule as for holder entities and accounts: referenced means
-// refused. One behaviour to remember rather than three.
-func (s *Store) ArchiveField(ctx context.Context, id string) ([]Referrer, error) {
+// This has to be a full scan: attrs is a JSON column and the key is decided at
+// runtime, so a parameterised json_extract cannot use an index. Deleting is a
+// rare, deliberate act, and what the scan buys is that deleting never loses
+// data -- an approximation here would mean a silent loss there.
+//
+// Emptiness is judged after trimming rather than by IS NOT NULL. A field that
+// was once filled in and later cleared leaves an empty string behind, and
+// treating that as "in use" would make it undeletable for ever while the screen
+// shows the column as blank.
+func (s *Store) AssetsUsing(ctx context.Context, key string) ([]Blocker, int, error) {
+	const pred = `coalesce(trim(json_extract(a.attrs, '$.' || ?)), '') != ''`
+
+	var total int
+	if err := s.db.ReadDB().QueryRowContext(ctx,
+		`SELECT count(*) FROM assets a WHERE `+pred, key).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count assets using %q: %w", key, err)
+	}
+	if total == 0 {
+		return nil, 0, nil
+	}
+
+	rows, err := s.db.ReadDB().QueryContext(ctx,
+		`SELECT a.id, a.attrs, coalesce(c.display_key, '')
+		 FROM assets a JOIN categories c ON c.id = a.category_id
+		 WHERE `+pred+` ORDER BY a.created_at, a.id LIMIT ?`, key, blockerLimit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list assets using %q: %w", key, err)
+	}
+	defer rows.Close()
+	var out []Blocker
+	for rows.Next() {
+		var b Blocker
+		var attrsJSON, displayKey string
+		if err := rows.Scan(&b.AssetID, &attrsJSON, &displayKey); err != nil {
+			return nil, 0, err
+		}
+		attrs, err := store.UnmarshalJSONMap(attrsJSON)
+		if err != nil {
+			return nil, 0, err
+		}
+		b.Name = model.AssetDisplayName(b.AssetID, attrs, displayKey)
+		out = append(out, b)
+	}
+	return out, total, rows.Err()
+}
+
+// DeleteField removes a field, refusing while anything still points at it.
+//
+// Three checks, cheapest first: an expression key that reads it, a category
+// that shows it as the asset identifier, then the full scan for stored values.
+// The first two are configuration and the third is data; both kinds of refusal
+// name what is in the way, because "cannot delete" without that is a dead end.
+func (s *Store) DeleteField(ctx context.Context, id string) ([]Referrer, []Blocker, int, error) {
 	f, err := s.GetField(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, nil, 0, err
 	}
+
 	referrers, err := s.ReferrersOf(ctx, f.Key)
 	if err != nil {
-		return nil, err
+		return nil, nil, 0, err
 	}
-	// A category nominating this field as its display key is the second way to
-	// be referenced: archiving it would leave that category's assets falling
-	// back to a short UUID with no warning.
 	users, err := s.categoriesUsingDisplayKey(ctx, f.Key)
 	if err != nil {
-		return nil, err
+		return nil, nil, 0, err
 	}
 	referrers = append(referrers, users...)
 	if len(referrers) > 0 {
@@ -99,14 +162,28 @@ func (s *Store) ArchiveField(ctx context.Context, id string) ([]Referrer, error)
 		for _, r := range referrers {
 			names = append(names, r.String())
 		}
-		return referrers, fmt.Errorf("%w：%s正在引用「%s」，请先修改它们",
+		return referrers, nil, 0, fmt.Errorf("%w：%s正在引用「%s」，请先修改它们",
 			ErrFieldReferenced, strings.Join(names, "、"), f.Label)
 	}
-	yes := true
-	if _, err := s.UpdateField(ctx, id, UpdateFieldInput{Archive: &yes}); err != nil {
-		return nil, err
+
+	blockers, total, err := s.AssetsUsing(ctx, f.Key)
+	if err != nil {
+		return nil, nil, 0, err
 	}
-	return nil, nil
+	if total > 0 {
+		partial := ""
+		if len(blockers) < total {
+			partial = fmt.Sprintf("，此处仅列出前 %d 台", len(blockers))
+		}
+		return nil, blockers, total, fmt.Errorf(
+			"%w：仍有 %d 台设备填写了「%s」%s。要下线它，请改为从类别上解绑",
+			ErrFieldInUse, total, f.Label, partial)
+	}
+
+	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		return s.deleteFieldTx(ctx, tx, f.ID, f.Key)
+	})
+	return nil, nil, 0, err
 }
 
 // categoriesUsingDisplayKey lists categories whose display key is this field.

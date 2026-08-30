@@ -27,10 +27,10 @@ const entries: AuditEntry[] = [
     id: 2,
     actor_name: "管理员",
     action: "update",
-    target_type: "category",
-    target_id: "rt",
-    before: { sn_template: "{{ .attrs.mac | hex2dec }}" },
-    after: { sn_template: '{{ printf "%s-%s" .category.code .attrs.mac }}' },
+    target_type: "field",
+    target_id: "sn",
+    before: { options: { template: "{{ .attrs.mac | hex2dec }}" } },
+    after: { options: { template: '{{ printf "%s-%s" .category.code .attrs.mac }}' } },
     created_at: "2026-08-28T09:00:00Z",
   },
   {
@@ -57,7 +57,7 @@ describe("Audit page", () => {
     renderWithProviders(<Audit />)
     const row = await screen.findByRole("row", { name: /管理员/ })
     expect(within(row).getByText("修改")).toBeInTheDocument()
-    expect(within(row).getByText("类别")).toBeInTheDocument()
+    expect(within(row).getByText("信息项")).toBeInTheDocument()
   })
 
   it("filters by target type", async () => {
