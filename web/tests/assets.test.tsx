@@ -99,6 +99,14 @@ describe("Assets list", () => {
     await waitFor(() => expect(screen.getByLabelText(/搜索资产/)).toHaveFocus())
   })
 
+  // The list is read across categories whenever the filter is off, and a
+  // number alone does not say what kind of thing it is on.
+  it("names each device's category", async () => {
+    renderWithProviders(<Assets />)
+    const row = await screen.findByRole("row", { name: /112394521950/ })
+    expect(within(row).getByText("网络设备")).toBeInTheDocument()
+  })
+
   it("shows the total and the fixed columns", async () => {
     renderWithProviders(<Assets />)
     expect(await screen.findByText(/共 1 条/)).toBeInTheDocument()

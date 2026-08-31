@@ -158,6 +158,9 @@ export function Assets() {
     queryFn: () => api.get<Category[]>("/categories"),
   })
 
+  const categoryName = (id: string) =>
+    (categories.data ?? []).find((c) => c.id === id)?.name ?? t.common.none
+
   const users = useQuery({
     queryKey: ["users"],
     queryFn: () => api.get<User[]>("/users"),
@@ -374,6 +377,7 @@ export function Assets() {
                     <span className="sr-only">{t.common.select}</span>
                   </TableHead>
                   <TableHead>{t.assets.sn}</TableHead>
+                  <TableHead>{t.assets.category}</TableHead>
                   <TableHead>{t.assets.statusLabel}</TableHead>
                   <TableHead>{t.assets.holder}</TableHead>
                   <TableHead>{t.assets.owner}</TableHead>
@@ -402,6 +406,9 @@ export function Assets() {
                           />
                         </TableCell>
                         <TableCell className="font-mono">{a.display_name}</TableCell>
+                        {/* Named, not the id: the list is read across
+                            categories whenever the filter is off. */}
+                        <TableCell>{categoryName(a.category_id)}</TableCell>
                         <TableCell>
                           <StatusBadge status={a.status} />
                         </TableCell>
