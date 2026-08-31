@@ -95,12 +95,34 @@ describe("ConfirmDialog copying", () => {
     expect(await within(dialog).findByText("已复制")).toBeInTheDocument()
   })
 
-  // A browser with no clipboard must leave a usable dialog behind, not a
-  // rejected promise nobody catches.
-  it("says nothing and breaks nothing when there is no clipboard", async () => {
+  // Served over plain http on a LAN address -- which is how this runs --
+  // navigator.clipboard is undefined, and the button did nothing at all.
+  it("selects the text and copies the selection when there is no clipboard API", async () => {
+    const user = userEvent.setup()
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true })
+    const exec = vi.fn().mockReturnValue(true)
+    Object.defineProperty(document, "execCommand", { value: exec, configurable: true })
+
+    render(vi.fn(), "112394521950")
+    await user.click(screen.getByRole("button", { name: "删除" }))
+    const dialog = await screen.findByRole("alertdialog")
+    await user.click(within(dialog).getByRole("button", { name: "复制待输入的内容" }))
+
+    expect(exec).toHaveBeenCalledWith("copy")
+    expect(document.getSelection()?.toString()).toBe("112394521950")
+    expect(await within(dialog).findByText("已复制")).toBeInTheDocument()
+  })
+
+  // A button that quietly does nothing reads as broken -- which is what the
+  // first version was on every non-secure origin.
+  it("says so, with the text selected, when the browser will not copy at all", async () => {
     const user = userEvent.setup()
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+      configurable: true,
+    })
+    Object.defineProperty(document, "execCommand", {
+      value: vi.fn().mockReturnValue(false),
       configurable: true,
     })
 
@@ -109,8 +131,8 @@ describe("ConfirmDialog copying", () => {
     const dialog = await screen.findByRole("alertdialog")
     await user.click(within(dialog).getByRole("button", { name: "复制待输入的内容" }))
 
+    expect(await within(dialog).findByText(/按 Ctrl\+C/)).toBeInTheDocument()
     // Still typeable, which is the way it always worked.
-    expect(within(dialog).queryByText("已复制")).not.toBeInTheDocument()
     await user.type(screen.getByLabelText(/请输入 112394521950/), "112394521950")
     expect(within(dialog).getByRole("button", { name: "删除" })).toBeEnabled()
   })

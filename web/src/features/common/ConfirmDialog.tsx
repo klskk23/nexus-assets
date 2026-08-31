@@ -1,5 +1,5 @@
 import { CheckIcon, CopyIcon } from "lucide-react"
-import { useState, type ReactNode } from "react"
+import { useRef, useState, type ReactNode } from "react"
 
 import {
   AlertDialog,
@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { copyText } from "@/lib/clipboard"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -52,7 +53,10 @@ export function ConfirmDialog({
   onConfirm,
 }: Props) {
   const [typed, setTyped] = useState("")
-  const [copied, setCopied] = useState(false)
+  // null = not tried, true = on the clipboard, false = the browser would not,
+  // and the text is selected so it can be copied by hand.
+  const [copied, setCopied] = useState<boolean | null>(null)
+  const phraseRef = useRef<HTMLElement>(null)
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
 
   const isControlled = controlledOpen !== undefined
@@ -71,7 +75,7 @@ export function ConfirmDialog({
         setOpen(next)
         if (!next) {
           setTyped("")
-          setCopied(false)
+          setCopied(null)
         }
       }}
     >
@@ -92,7 +96,10 @@ export function ConfirmDialog({
                 dialog is not made safer by that. Copying it still costs a
                 deliberate press on the thing being deleted. */}
             <div className="flex items-center gap-2">
-              <code className="bg-muted rounded px-2 py-1 font-mono text-sm break-all">
+              <code
+                ref={phraseRef}
+                className="bg-muted rounded px-2 py-1 font-mono text-sm break-all"
+              >
                 {requirePhrase}
               </code>
               <Button
@@ -101,19 +108,18 @@ export function ConfirmDialog({
                 size="sm"
                 aria-label={tConfirm.copyPhrase}
                 onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(requirePhrase)
-                    setCopied(true)
-                  } catch {
-                    // No clipboard (an insecure origin, a locked-down browser):
-                    // the text is selectable, which is what it was before.
-                  }
+                  setCopied(await copyText(requirePhrase, phraseRef.current))
                 }}
               >
-                {copied ? <CheckIcon /> : <CopyIcon />}
-                {copied ? tConfirm.copied : tConfirm.copy}
+                {copied === true ? <CheckIcon /> : <CopyIcon />}
+                {copied === true ? tConfirm.copied : tConfirm.copy}
               </Button>
             </div>
+            {/* Reporting the failure rather than swallowing it: a button that
+                does nothing reads as broken, which is exactly what it was. */}
+            {copied === false && (
+              <p className="text-muted-foreground text-xs">{tConfirm.copyFailed}</p>
+            )}
             <Input
               id="confirm-phrase"
               className="font-mono"

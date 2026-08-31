@@ -419,6 +419,7 @@ export const enConfirm: typeof zhConfirm = {
   copy: "Copy",
   copied: "Copied",
   copyPhrase: "Copy the phrase to type",
+  copyFailed: "The browser would not copy it. The text is selected — press Ctrl+C.",
 }
 
 export const enOverview: typeof zhOverview = {

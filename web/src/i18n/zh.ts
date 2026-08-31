@@ -394,6 +394,7 @@ export const zhConfirm = {
   copy: "复制",
   copied: "已复制",
   copyPhrase: "复制待输入的内容",
+  copyFailed: "浏览器不允许自动复制，内容已选中，按 Ctrl+C 即可。",
 }
 
 export const zhOverview = {
