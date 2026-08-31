@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
-import { cn } from "@/lib/utils"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Asset, AssetPage, Category, CategorySchema, HolderEntity, User } from "@/lib/types"
 import { t, tImport, tTransfer } from "@/i18n"
@@ -13,6 +12,7 @@ import { useStatuses } from "@/features/statuses/useStatuses"
 import { StateBoundary } from "@/components/StateBoundary"
 import { useColumnSelection } from "@/features/assets/useColumns"
 import { ActionBar } from "@/features/assets/ActionBar"
+import { PAGE_SIZES, Pager } from "@/features/common/Pager"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import {
   TransferDialog,
@@ -21,15 +21,6 @@ import {
 } from "@/features/transfers/TransferDialog"
 import { NewAssetDialog } from "@/features/assets/NewAssetDialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -69,8 +60,6 @@ import {
 } from "@/components/ui/table"
 
 /** Offered page sizes. The first is the default. */
-const PAGE_SIZES: number[] = [20, 50, 100]
-
 /**
  * The page numbers to draw: always the first and last, always the current and
  * its neighbours, an ellipsis for whatever is skipped. `null` marks a gap.
@@ -78,24 +67,6 @@ const PAGE_SIZES: number[] = [20, 50, 100]
  * A row of ten thousand buttons is not navigation, and neither is a bare
  * "next" -- somebody looking for the end of the list needs to be able to jump.
  */
-function pageWindow(current: number, count: number): (number | null)[] {
-  if (count <= 7) return Array.from({ length: count }, (_, i) => i)
-
-  const keep = new Set([0, count - 1, current, current - 1, current + 1])
-  const out: (number | null)[] = []
-  let gap = false
-  for (let i = 0; i < count; i++) {
-    if (keep.has(i)) {
-      out.push(i)
-      gap = false
-    } else if (!gap) {
-      out.push(null)
-      gap = true
-    }
-  }
-  return out
-}
-
 /** Renders one custom attribute. Booleans read as words, not as true/false. */
 function cellText(v: unknown): string {
   if (v === true) return t.common.yes
@@ -215,7 +186,6 @@ export function Assets() {
 
   const available = schema.data?.fields?.filter((f) => f.type !== "computed") ?? []
   const total = assets.data?.total ?? 0
-  const pageCount = Math.max(1, Math.ceil(total / pageSize))
 
   return (
     <div className="grid gap-5">
@@ -376,37 +346,14 @@ export function Assets() {
         onRetry={() => assets.refetch()}
       >
         <>
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-sm text-muted-foreground">
-              {t.assets.rangeOf(
-                total === 0 ? 0 : page * pageSize + 1,
-                Math.min((page + 1) * pageSize, total),
-                total,
-              )}
-            </p>
-            <Field orientation="horizontal" className="ml-auto w-auto">
-              <FieldLabel htmlFor="page-size" className="text-sm text-muted-foreground">
-                {t.assets.perPage}
-              </FieldLabel>
-              <Select
-                value={String(pageSize)}
-                onValueChange={(v) => setPageSize(Number(v))}
-              >
-                <SelectTrigger id="page-size" size="sm" className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {PAGE_SIZES.map((n) => (
-                      <SelectItem key={n} value={String(n)}>
-                        {t.assets.perPageUnit(n)}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
+          <Pager
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onPage={setPage}
+            onPageSize={setPageSize}
+          />
+
           <div className="overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
@@ -474,57 +421,6 @@ export function Assets() {
               </TableBody>
             </Table>
           </div>
-
-          {pageCount > 1 && (
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    aria-label={t.assets.prevPage}
-                    aria-disabled={page === 0}
-                    className={cn(page === 0 && "pointer-events-none opacity-50")}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setPage((p) => Math.max(0, p - 1))
-                    }}
-                  />
-                </PaginationItem>
-                {pageWindow(page, pageCount).map((n, i) =>
-                  n === null ? (
-                    <PaginationItem key={`gap-${i}`}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={n}>
-                      <PaginationLink
-                        href="#"
-                        isActive={n === page}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          setPage(n)
-                        }}
-                      >
-                        {n + 1}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ),
-                )}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    aria-label={t.assets.nextPage}
-                    aria-disabled={page >= pageCount - 1}
-                    className={cn(page >= pageCount - 1 && "pointer-events-none opacity-50")}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setPage((p) => Math.min(pageCount - 1, p + 1))
-                    }}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          )}
         </>
       </StateBoundary>
 

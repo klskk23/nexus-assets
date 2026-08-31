@@ -44,8 +44,10 @@ const (
 
 // Entry is one recorded change.
 type Entry struct {
-	ID         int64      `json:"id"`
-	ActorID    string     `json:"-"`
+	ID int64 `json:"id"`
+	// ActorID ships alongside the name so the screen can offer "only this
+	// person" -- names repeat and get renamed, the id is what the filter needs.
+	ActorID    string     `json:"actor_id"`
 	ActorName  string     `json:"actor_name"`
 	Action     Action     `json:"action"`
 	TargetType TargetType `json:"target_type"`
@@ -105,10 +107,13 @@ func encode(v any) (any, error) {
 type Filter struct {
 	TargetType string
 	TargetID   string
-	From       *time.Time
-	To         *time.Time
-	Offset     int
-	Limit      int
+	// ActorID answers "what did this person change", which is a question an
+	// audit log exists for and could not be asked until now.
+	ActorID string
+	From    *time.Time
+	To      *time.Time
+	Offset  int
+	Limit   int
 }
 
 // Page is one page of entries plus the total.
@@ -132,6 +137,10 @@ func (s *Store) List(ctx context.Context, f Filter) (Page, error) {
 	if f.TargetID != "" {
 		where = append(where, "a.target_id = ?")
 		args = append(args, f.TargetID)
+	}
+	if f.ActorID != "" {
+		where = append(where, "a.actor_id = ?")
+		args = append(args, f.ActorID)
 	}
 	if f.From != nil {
 		where = append(where, "a.created_at >= ?")

@@ -18,6 +18,7 @@ func (s *Server) listAudit(c *gin.Context) {
 	f := audit.Filter{
 		TargetType: c.Query("target_type"),
 		TargetID:   c.Query("target_id"),
+		ActorID:    c.Query("actor_id"),
 		Offset:     offset,
 		Limit:      limit,
 	}

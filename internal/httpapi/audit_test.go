@@ -210,3 +210,35 @@ func TestDeletingAnAssetNeedsTheMatchingNumber(t *testing.T) {
 		t.Errorf("the asset should be gone, total = %d", got)
 	}
 }
+
+// "What did this person change" is a question an audit log exists to answer,
+// and the screen offers it from the row menu -- which needs the actor's id to
+// travel with the entry, not just their name.
+func TestAuditFiltersByActor(t *testing.T) {
+	h := newHarness(t)
+	if rec := h.post(t, "/api/holders", `{"type":"company","name":"客户甲"}`); rec.Code != http.StatusCreated {
+		t.Fatal(rec.Body.String())
+	}
+
+	all := decode[audit.Page](t, h.get(t, "/api/audit"))
+	if all.Total == 0 {
+		t.Fatal("no entries recorded at all")
+	}
+	for _, e := range all.Items {
+		if e.ActorID != h.userID {
+			t.Fatalf("entry %d has actor %q, want %q", e.ID, e.ActorID, h.userID)
+		}
+	}
+
+	mine := decode[audit.Page](t, h.get(t, "/api/audit?actor_id="+h.userID))
+	if mine.Total != all.Total {
+		t.Errorf("filtering by the only actor = %d entries, want %d", mine.Total, all.Total)
+	}
+
+	// A id nobody acted under must come back empty rather than unfiltered --
+	// the difference between a filter that works and one that is ignored.
+	none := decode[audit.Page](t, h.get(t, "/api/audit?actor_id=nobody"))
+	if none.Total != 0 {
+		t.Errorf("filtering by a stranger = %d entries, want 0", none.Total)
+	}
+}

@@ -77,6 +77,24 @@ if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
 }
 
 /**
+ * vaul also reads the drawer's transform when the pointer is released, and
+ * falls back to the vendor-prefixed names when it is empty. jsdom reports ""
+ * for transform and has no prefixed properties at all, so vaul ends up calling
+ * .match on undefined and throws out of an event handler, where no test can
+ * catch it. Reporting the CSS initial value is both honest and enough.
+ */
+if (typeof window !== "undefined") {
+  const computed = window.getComputedStyle.bind(window)
+  window.getComputedStyle = ((el: Element, pseudo?: string | null) => {
+    const style = computed(el, pseudo ?? undefined)
+    if (!style.transform) {
+      Object.defineProperty(style, "transform", { value: "none", configurable: true })
+    }
+    return style
+  }) as typeof window.getComputedStyle
+}
+
+/**
  * jsdom lays nothing out, so every element measures 0x0 and a chart's
  * responsive container concludes there is no room to draw in. A stub that only
  * swallows the calls leaves recharts rendering an empty SVG -- the assertions
