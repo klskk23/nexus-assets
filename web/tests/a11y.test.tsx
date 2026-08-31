@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event"
 
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { DynamicForm } from "@/features/assets/DynamicForm"
-import { CollapsibleTree, buildTree } from "@/features/tree/CollapsibleTree"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { Timeline } from "@/features/transfers/Timeline"
 import { StateBoundary } from "@/components/StateBoundary"
@@ -57,38 +56,6 @@ describe("keyboard reachability and labelling", () => {
     expect(screen.getByLabelText(/备注/)).toHaveFocus()
   })
 
-  it("gives every tree control a name and reaches them by keyboard", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(
-      <CollapsibleTree
-        nodes={buildTree([
-          { id: "net", name: "网络设备", parent_id: null },
-          { id: "rt", name: "路由器", parent_id: "net" },
-        ])}
-      />,
-    )
-    // The expander is an icon; without a name it is a mystery button.
-    expect(screen.getByRole("button", { name: /收起 网络设备|展开 网络设备/ })).toBeInTheDocument()
-
-    await user.tab()
-    expect(document.activeElement).toHaveAccessibleName()
-  })
-
-  it("marks tree structure for assistive technology", () => {
-    renderWithProviders(
-      <CollapsibleTree
-        nodes={buildTree([
-          { id: "net", name: "网络设备", parent_id: null },
-          { id: "rt", name: "路由器", parent_id: "net" },
-        ])}
-        selectedId="net"
-      />,
-    )
-    expect(screen.getByRole("tree")).toBeInTheDocument()
-    const items = screen.getAllByRole("treeitem")
-    expect(items[0]).toHaveAttribute("aria-expanded")
-    expect(items[0]).toHaveAttribute("aria-selected", "true")
-  })
 
   it("labels the confirmation dialog and its input", async () => {
     const user = userEvent.setup()

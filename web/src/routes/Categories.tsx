@@ -4,11 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError, blockerKey, type Blocker } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
-import type { Category, CategorySchema } from "@/lib/types"
+import type { BoundField, Category, CategorySchema } from "@/lib/types"
 import type { FieldDefinitionRow, ProductModelRow } from "@/lib/metaTypes"
 import { t, tMeta } from "@/i18n"
 import { StateBoundary } from "@/components/StateBoundary"
-import { CollapsibleTree, buildTree } from "@/features/tree/CollapsibleTree"
+import { CategoryTable } from "@/features/categories/CategoryTable"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { DisplayKeyEditor } from "@/features/categories/DisplayKeyEditor"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -25,6 +25,20 @@ import { Spinner } from "@/components/ui/spinner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -49,6 +63,11 @@ export function Categories() {
   const [createOpen, setCreateOpen] = useState(false)
   const [removeBanner, setRemoveBanner] = useState<string | null>(null)
   const [removeBlockers, setRemoveBlockers] = useState<Blocker[]>([])
+  // The row a menu action is aimed at. The menu closes as it fires, so the
+  // dialog it opens has to be rendered outside it and told which row it is on.
+  const [editing, setEditing] = useState<Category | null>(null)
+  const [deleting, setDeleting] = useState<Category | null>(null)
+  const [unbinding, setUnbinding] = useState<BoundField | null>(null)
 
   const categories = useQuery({
     queryKey: ["categories"],
@@ -77,13 +96,14 @@ export function Categories() {
 
   const selectedCategory = (categories.data ?? []).find((c) => c.id === selected)
 
-  // Deleting detaches these rather than refusing on them, so the confirmation
-  // has to say which before it happens rather than after.
   const models = useQuery({
     queryKey: ["models"],
     queryFn: () => api.get<ProductModelRow[]>("/models"),
   })
-  const detaching = (models.data ?? []).filter((m) => (m.category_ids ?? []).includes(selected))
+  // Deleting detaches these rather than refusing on them, so the confirmation
+  // names them before it happens rather than after.
+  const detachedBy = (categoryID: string) =>
+    (models.data ?? []).filter((m) => (m.category_ids ?? []).includes(categoryID))
 
   const create = useMutation({
     mutationFn: () =>
@@ -100,11 +120,11 @@ export function Categories() {
   })
 
   const remove = useMutation({
-    mutationFn: () => api.del(`/categories/${selected}`),
-    onSuccess: () => {
+    mutationFn: (id: string) => api.del(`/categories/${id}`),
+    onSuccess: (_data, id) => {
       setRemoveBanner(null)
       setRemoveBlockers([])
-      setSelected("")
+      if (id === selected) setSelected("")
       queryClient.invalidateQueries({ queryKey: ["categories"] })
     },
     // The refusal carries the children, assets or models holding it -- without
@@ -125,6 +145,16 @@ export function Categories() {
     setParentId("")
     create.reset()
   }
+
+  const update = useMutation({
+    mutationFn: (patch: { name?: string; parent_id?: string | null }) =>
+      api.patch(`/categories/${editing?.id}`, patch),
+    onSuccess: () => {
+      setEditing(null)
+      queryClient.invalidateQueries({ queryKey: ["categories"] })
+    },
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
+  })
 
   const bind = useMutation({
     mutationFn: () =>
@@ -224,77 +254,61 @@ export function Categories() {
         </Alert>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>{tMeta.categories.title}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StateBoundary
-              isLoading={categories.isLoading}
-              error={categories.error as Error | null}
-              isEmpty={categories.data?.length === 0}
-              emptyTitle={tMeta.categories.empty}
-              emptyHint={tMeta.categories.emptyHint}
-            >
-              <CollapsibleTree
-                nodes={buildTree(categories.data ?? [])}
-                selectedId={selected}
-                onSelect={setSelected}
-              />
-            </StateBoundary>
-          </CardContent>
-        </Card>
+      <p className="text-muted-foreground text-sm">{tMeta.categories.selectHint}</p>
 
-        {selected && (
-          <div className="grid gap-6">
-            {selectedCategory && (
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-medium">{selectedCategory.name}</h2>
-                <ConfirmDialog
-                  trigger={
-                    <Button variant="destructive" size="sm" className="ml-auto">
-                      {tMeta.categories.delete}
-                    </Button>
-                  }
-                  title={tMeta.categories.deleteTitle}
-                  description={
-                    tMeta.categories.deleteHint(selectedCategory.name) +
-                    (detaching.length > 0
-                      ? tMeta.categories.deleteDetaches(detaching.map((m) => m.name).join("、"))
-                      : "")
-                  }
-                  confirmLabel={tMeta.categories.delete}
-                  requirePhrase={selectedCategory.name}
-                  onConfirm={() => remove.mutate()}
-                />
-              </div>
-            )}
+      <StateBoundary
+        isLoading={categories.isLoading}
+        error={categories.error as Error | null}
+        isEmpty={categories.data?.length === 0}
+        emptyTitle={tMeta.categories.empty}
+        emptyHint={tMeta.categories.emptyHint}
+      >
+        <CategoryTable
+          categories={categories.data ?? []}
+          selectedId={selected}
+          onSelect={setSelected}
+          onCreateChild={(c) => {
+            setParentId(c.id)
+            setCreateOpen(true)
+          }}
+          onEdit={(c) => {
+            setName(c.name)
+            setParentId(c.parent_id ?? "")
+            setEditing(c)
+          }}
+          onDelete={(c) => setDeleting(c)}
+        />
+      </StateBoundary>
 
-            {(removeBanner || removeBlockers.length > 0) && (
-              <Alert variant="destructive">
-                <AlertCircleIcon />
-                <AlertDescription className="grid gap-1">
-                  {removeBanner}
-                  {removeBlockers.length > 0 && (
-                    <ul className="grid gap-0.5 text-xs">
-                      {removeBlockers.map((b) => (
-                        <li key={blockerKey(b)}>{b.name}</li>
-                      ))}
-                    </ul>
-                  )}
-                </AlertDescription>
-              </Alert>
+      {(removeBanner || removeBlockers.length > 0) && (
+        <Alert variant="destructive">
+          <AlertCircleIcon />
+          <AlertDescription className="grid gap-1">
+            {removeBanner}
+            {removeBlockers.length > 0 && (
+              <ul className="grid gap-0.5 text-xs">
+                {removeBlockers.map((b) => (
+                  <li key={blockerKey(b)}>{b.name}</li>
+                ))}
+              </ul>
             )}
+          </AlertDescription>
+        </Alert>
+      )}
 
-            {schema.data && (
-              <DisplayKeyEditor
-                key={selected}
-                categoryID={selected}
-                displayKey={schema.data.category.display_key}
-                fields={schema.data.fields}
-              />
-            )}
+      {selected && selectedCategory && (
+        <div className="grid gap-6">
+          <h2 className="text-lg font-medium">{selectedCategory.name}</h2>
+
+          {schema.data && (
+            <DisplayKeyEditor
+              key={selected}
+              categoryID={selected}
+              displayKey={schema.data.category.display_key}
+              fields={schema.data.fields}
+            />
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>{tMeta.categories.fields}</CardTitle>
@@ -326,51 +340,152 @@ export function Categories() {
                   />
                   <FieldLabel htmlFor="c-required">{tMeta.categories.required}</FieldLabel>
                 </Field>
-                <Button
-                  className="mb-0.5"
-                  onClick={() => bind.mutate()}
-                  disabled={bindField === ""}
-                >
+                <Button className="mb-0.5" onClick={() => bind.mutate()} disabled={bindField === ""}>
                   {tMeta.categories.bind}
                 </Button>
               </div>
 
-              <ul className="grid gap-2">
-                {(schema.data?.fields ?? []).map((f) => (
-                  <li key={f.key} aria-label={f.label} className="flex items-center gap-2 text-sm">
-                    <span className="font-mono text-muted-foreground">{f.key}</span>
-                    <span>{f.label}</span>
-                    {f.required && <Badge variant="outline">{tMeta.categories.required}</Badge>}
-                    {f.inherited_from ? (
-                      <Badge variant="secondary">
-                        {tMeta.categories.inheritedFrom}
-                        {(categories.data ?? []).find((c) => c.id === f.inherited_from)?.name ?? ""}
-                      </Badge>
-                    ) : (
-                      // Unbinding is how a field that assets already carry
-                      // values for gets retired -- deleting it would be
-                      // refused, and there is no longer an archive to fall
-                      // back on. Only bindings made here can be removed here.
-                      <ConfirmDialog
-                        trigger={
-                          <Button variant="ghost" size="sm" className="ml-auto">
+              {/* The same table shape as everything else, so unbinding is
+                  where every other row action is: the menu. An inherited
+                  binding was not made here and cannot be removed here, so the
+                  item is disabled rather than missing. */}
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{tMeta.fields.key}</TableHead>
+                      <TableHead>{tMeta.fields.label}</TableHead>
+                      <TableHead>{tMeta.categories.required}</TableHead>
+                      <TableHead>{tMeta.categories.inheritedFrom}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(schema.data?.fields ?? []).map((f) => (
+                      <ContextMenu key={f.key}>
+                        <ContextMenuTrigger asChild>
+                          <TableRow aria-label={f.label}>
+                            <TableCell className="text-muted-foreground font-mono">
+                              {f.key}
+                            </TableCell>
+                            <TableCell>{f.label}</TableCell>
+                            <TableCell>
+                              {f.required && (
+                                <Badge variant="outline">{tMeta.categories.required}</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {f.inherited_from && (
+                                <Badge variant="secondary">
+                                  {(categories.data ?? []).find((c) => c.id === f.inherited_from)
+                                    ?.name ?? ""}
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent>
+                          <ContextMenuItem
+                            variant="destructive"
+                            disabled={Boolean(f.inherited_from)}
+                            onSelect={() => setUnbinding(f)}
+                          >
                             {tMeta.categories.unbind}
-                          </Button>
-                        }
-                        title={tMeta.categories.unbindTitle}
-                        description={tMeta.categories.unbindHint(f.label)}
-                        confirmLabel={tMeta.categories.unbind}
-                        onConfirm={() => unbind.mutate(f.id)}
-                      />
-                    )}
-                  </li>
-                ))}
-              </ul>
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Rendered outside the menus that open them: a context menu closes as
+          it fires, taking any dialog nested inside it with it. */}
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(next) => !next && setDeleting(null)}
+        title={tMeta.categories.deleteTitle}
+        description={
+          deleting
+            ? tMeta.categories.deleteHint(deleting.name) +
+              (detachedBy(deleting.id).length > 0
+                ? tMeta.categories.deleteDetaches(
+                    detachedBy(deleting.id)
+                      .map((m) => m.name)
+                      .join("、"),
+                  )
+                : "")
+            : ""
+        }
+        confirmLabel={tMeta.categories.delete}
+        requirePhrase={deleting?.name}
+        onConfirm={() => deleting && remove.mutate(deleting.id)}
+      />
+
+      <ConfirmDialog
+        open={unbinding !== null}
+        onOpenChange={(next) => !next && setUnbinding(null)}
+        title={tMeta.categories.unbindTitle}
+        description={unbinding ? tMeta.categories.unbindHint(unbinding.label) : ""}
+        confirmLabel={tMeta.categories.unbind}
+        onConfirm={() => unbinding && unbind.mutate(unbinding.id)}
+      />
+
+      <Dialog open={editing !== null} onOpenChange={(next) => !next && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{tMeta.categories.editTitle}</DialogTitle>
+          </DialogHeader>
+
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="ce-name">{tMeta.categories.name}</FieldLabel>
+              <Input id="ce-name" value={name} onChange={(e) => setName(e.target.value)} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="ce-parent">{tMeta.categories.parent}</FieldLabel>
+              <Select value={toNone(parentId)} onValueChange={(v) => setParentId(fromNone(v))}>
+                <SelectTrigger id="ce-parent">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value={NONE}>{tMeta.categories.noParent}</SelectItem>
+                    {(categories.data ?? [])
+                      // Neither itself nor anything beneath it: a category
+                      // cannot be its own ancestor.
+                      .filter(
+                        (c) => editing !== null && !c.path.startsWith(editing.path),
+                      )
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+          </FieldGroup>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost">{t.common.cancel}</Button>
+            </DialogClose>
+            <Button
+              onClick={() => update.mutate({ name, parent_id: parentId || null })}
+              disabled={name === "" || update.isPending}
+            >
+              {update.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+              {tMeta.categories.save}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }

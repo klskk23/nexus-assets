@@ -5,9 +5,11 @@ import userEvent from "@testing-library/user-event"
 import { Categories } from "@/routes/Categories"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { ApiError } from "@/lib/api"
+import { chooseFromMenu, openMenu } from "@/test/menu"
 
 const get = vi.fn()
 const post = vi.fn()
+const patch = vi.fn()
 const del = vi.fn()
 vi.mock("@/lib/api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api")
@@ -16,7 +18,7 @@ vi.mock("@/lib/api", async () => {
     api: {
       get: (p: string) => get(p),
       post: (p: string, b: unknown) => post(p, b),
-      patch: vi.fn().mockResolvedValue({}),
+      patch: (p: string, b: unknown) => patch(p, b),
       del: (p: string) => del(p),
     },
   }
@@ -53,11 +55,17 @@ function route(p: string) {
 beforeEach(() => {
   get.mockReset().mockImplementation(route)
   post.mockReset().mockResolvedValue(undefined)
+  patch.mockReset().mockResolvedValue({})
   del.mockReset().mockResolvedValue(undefined)
 })
 
+/** The category row, which is what a person clicks to work on it. */
+function categoryRow(name = /SDWAN 路由器/) {
+  return screen.findByRole("row", { name })
+}
+
 async function selectCategory(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole("button", { name: /SDWAN 路由器/ }))
+  await user.click(await categoryRow())
 }
 
 describe("Categories page", () => {
@@ -69,8 +77,8 @@ describe("Categories page", () => {
     renderWithProviders(<Categories />)
     await selectCategory(user)
 
-    const row = await screen.findByRole("listitem", { name: "机柜" })
-    await user.click(within(row).getByRole("button", { name: "解绑" }))
+    const row = await screen.findByRole("row", { name: /机柜/ })
+    await chooseFromMenu(user, row, "解绑")
 
     const dialog = await screen.findByRole("alertdialog")
     // The confirmation has to say what survives, or it reads like a delete.
@@ -80,13 +88,19 @@ describe("Categories page", () => {
     await waitFor(() => expect(del).toHaveBeenCalledWith("/categories/rt/bindings/f1"))
   })
 
-  it("offers no unbind control for a field inherited from an ancestor", async () => {
+  // Disabled rather than missing: an item that vanishes reads as a bug, while
+  // one that is greyed out says the action exists and not here.
+  it("disables unbinding for a field inherited from an ancestor", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
     await selectCategory(user)
 
-    const row = await screen.findByRole("listitem", { name: "基准 MAC" })
-    expect(within(row).queryByRole("button", { name: "解绑" })).not.toBeInTheDocument()
+    const row = await screen.findByRole("row", { name: /基准 MAC/ })
+    const menu = await openMenu(user, row)
+    expect(within(menu).getByRole("menuitem", { name: "解绑" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
   })
 
   it("surfaces the guard when something still reads the field", async () => {
@@ -97,8 +111,8 @@ describe("Categories page", () => {
     renderWithProviders(<Categories />)
     await selectCategory(user)
 
-    const row = await screen.findByRole("listitem", { name: "机柜" })
-    await user.click(within(row).getByRole("button", { name: "解绑" }))
+    const row = await screen.findByRole("row", { name: /机柜/ })
+    await chooseFromMenu(user, row, "解绑")
     const dialog = await screen.findByRole("alertdialog")
     await user.click(within(dialog).getByRole("button", { name: "解绑" }))
 
@@ -113,7 +127,7 @@ describe("Categories create dialog", () => {
   it("keeps the form behind a button", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
-    await screen.findByRole("button", { name: /SDWAN 路由器/ })
+    await categoryRow()
 
     expect(screen.queryByLabelText(/代号/)).not.toBeInTheDocument()
     await user.click(screen.getAllByRole("button", { name: "新建类别" })[0])
@@ -124,7 +138,7 @@ describe("Categories create dialog", () => {
   it("creates a category and closes", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
-    await screen.findByRole("button", { name: /SDWAN 路由器/ })
+    await categoryRow()
 
     await user.click(screen.getAllByRole("button", { name: "新建类别" })[0])
     const dialog = await screen.findByRole("dialog")
@@ -147,7 +161,7 @@ describe("Categories create dialog", () => {
   it("reopens blank after a successful create", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
-    await screen.findByRole("button", { name: /SDWAN 路由器/ })
+    await categoryRow()
 
     await user.click(screen.getAllByRole("button", { name: "新建类别" })[0])
     let dialog = await screen.findByRole("dialog")
@@ -168,7 +182,7 @@ describe("Categories create dialog", () => {
     post.mockRejectedValue(new ApiError(409, "unique_conflict", "类别编码已存在"))
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
-    await screen.findByRole("button", { name: /SDWAN 路由器/ })
+    await categoryRow()
 
     await user.click(screen.getAllByRole("button", { name: "新建类别" })[0])
     const dialog = await screen.findByRole("dialog")
@@ -187,9 +201,8 @@ describe("Categories delete", () => {
   it("requires the category name to be typed out", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
-    await user.click(await screen.findByRole("button", { name: /SDWAN 路由器/ }))
+    await chooseFromMenu(user, await categoryRow(), "删除类别")
 
-    await user.click(await screen.findByRole("button", { name: "删除类别" }))
     const dialog = await screen.findByRole("alertdialog")
     const confirm = within(dialog).getByRole("button", { name: "删除类别" })
     expect(confirm).toBeDisabled()
@@ -218,9 +231,8 @@ describe("Categories delete", () => {
     )
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
-    await user.click(await screen.findByRole("button", { name: /SDWAN 路由器/ }))
+    await chooseFromMenu(user, await categoryRow(), "删除类别")
 
-    await user.click(await screen.findByRole("button", { name: "删除类别" }))
     const dialog = await screen.findByRole("alertdialog")
     await user.type(screen.getByLabelText(/请输入/), "SDWAN 路由器")
     await user.click(within(dialog).getByRole("button", { name: "删除类别" }))
@@ -238,12 +250,89 @@ describe("Categories delete", () => {
 it("names the models that will be detached before asking to confirm", async () => {
   const user = userEvent.setup()
   renderWithProviders(<Categories />)
-  await user.click(await screen.findByRole("button", { name: /SDWAN 路由器/ }))
+  await chooseFromMenu(user, await categoryRow(), "删除类别")
 
-  await user.click(await screen.findByRole("button", { name: "删除类别" }))
   const dialog = await screen.findByRole("alertdialog")
   expect(dialog).toHaveTextContent("以下型号将不再关联到该类别")
   expect(dialog).toHaveTextContent("X100")
   // A model attached elsewhere is not this category's business.
   expect(dialog).not.toHaveTextContent("别的机")
+})
+
+// The tree became the table every other list on this product is, so the
+// hierarchy has to survive in the order, the indent and the row menu.
+describe("Categories table", () => {
+  it("lists a child under its parent, and folds it away from the row menu", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+
+    const names = () =>
+      screen.getAllByRole("row").slice(1).map((r) => r.textContent ?? "")
+    await waitFor(() => expect(names()).toHaveLength(2))
+    expect(names()[0]).toContain("网络设备")
+    expect(names()[1]).toContain("SDWAN 路由器")
+
+    await chooseFromMenu(user, await screen.findByRole("row", { name: /^网络设备/ }), "折叠子类别")
+    await waitFor(() => expect(names()).toHaveLength(1))
+    expect(screen.queryByRole("row", { name: /SDWAN 路由器/ })).not.toBeInTheDocument()
+
+    await chooseFromMenu(user, await screen.findByRole("row", { name: /^网络设备/ }), "展开子类别")
+    await waitFor(() => expect(names()).toHaveLength(2))
+  })
+
+  // Folding a leaf is not a thing; the item says so rather than doing nothing.
+  it("disables folding on a category with no children", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+
+    const menu = await openMenu(user, await screen.findByRole("row", { name: /SDWAN 路由器/ }))
+    expect(within(menu).getByRole("menuitem", { name: "折叠子类别" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
+  })
+
+  it("opens the create form on the row it was asked from, with the parent filled in", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+
+    await chooseFromMenu(user, await screen.findByRole("row", { name: /^网络设备/ }), "新建子类别")
+    const dialog = await screen.findByRole("dialog")
+    expect(within(dialog).getByRole("combobox", { name: "上级类别" })).toHaveTextContent("网络设备")
+
+    await user.type(within(dialog).getByLabelText(/代号/), "SW")
+    await user.type(within(dialog).getByLabelText("名称"), "交换机")
+    await user.click(within(dialog).getByRole("button", { name: "新建类别" }))
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/categories", {
+        code: "SW",
+        name: "交换机",
+        parent_id: "net",
+      }),
+    )
+  })
+
+  it("renames a category and moves it, without offering itself as its own parent", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+
+    await chooseFromMenu(user, await screen.findByRole("row", { name: /^网络设备/ }), "编辑类别")
+    const dialog = await screen.findByRole("dialog")
+    expect(within(dialog).getByLabelText("名称")).toHaveValue("网络设备")
+
+    // Its own subtree is not a destination: that would make it its own ancestor.
+    await user.click(within(dialog).getByRole("combobox", { name: "上级类别" }))
+    const options = (await screen.findAllByRole("option")).map((o) => o.textContent)
+    expect(options).not.toContain("网络设备")
+    expect(options).not.toContain("SDWAN 路由器")
+    await user.keyboard("{Escape}")
+
+    await user.clear(within(dialog).getByLabelText("名称"))
+    await user.type(within(dialog).getByLabelText("名称"), "网络")
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/categories/net", { name: "网络", parent_id: null }),
+    )
+  })
 })

@@ -286,19 +286,19 @@ describe("Users page", () => {
 })
 
 describe("Categories page", () => {
-  it("renders the tree and shows which ancestor a field came from", async () => {
+  it("lists a category's fields and shows which ancestor each came from", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
 
-    await user.click(await screen.findByRole("button", { name: "SDWAN 路由器" }))
+    await user.click(await screen.findByRole("row", { name: /^SDWAN 路由器/ }))
 
-    // The label also appears in the bind dropdown, so scope to the field list.
-    const inherited = await screen.findByRole("listitem", { name: /基准 MAC/ })
-    expect(within(inherited).getByText("继承自网络设备")).toBeInTheDocument()
+    // The label also appears in the bind dropdown, so scope to the field row.
+    const inherited = await screen.findByRole("row", { name: /基准 MAC/ })
+    expect(within(inherited).getByText("网络设备")).toBeInTheDocument()
     expect(within(inherited).getByText("必填")).toBeInTheDocument()
 
-    const own = screen.getByRole("listitem", { name: /固件版本/ })
-    expect(within(own).queryByText(/继承自/)).not.toBeInTheDocument()
+    const own = screen.getByRole("row", { name: /固件版本/ })
+    expect(within(own).queryByText("网络设备")).not.toBeInTheDocument()
   })
 
   it("surfaces a binding conflict rather than swallowing it", async () => {
@@ -308,7 +308,7 @@ describe("Categories page", () => {
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
 
-    await user.click(await screen.findByRole("button", { name: "SDWAN 路由器" }))
+    await user.click(await screen.findByRole("row", { name: /^SDWAN 路由器/ }))
     await chooseByLabel(user, "绑定字段", "基准 MAC")
     await user.click(screen.getByRole("button", { name: "绑定字段" }))
 
