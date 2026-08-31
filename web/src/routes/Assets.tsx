@@ -1,18 +1,24 @@
 import { InfoIcon, SearchIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import { api } from "@/lib/api"
+import { api, ApiError } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { NONE, fromNone, toNone } from "@/lib/select"
-import type { AssetPage, Category, CategorySchema, HolderEntity, User } from "@/lib/types"
-import { t, tImport } from "@/i18n"
+import type { Asset, AssetPage, Category, CategorySchema, HolderEntity, User } from "@/lib/types"
+import { t, tImport, tTransfer } from "@/i18n"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { StateBoundary } from "@/components/StateBoundary"
 import { useColumnSelection } from "@/features/assets/useColumns"
 import { ActionBar } from "@/features/assets/ActionBar"
+import { ConfirmDialog } from "@/features/common/ConfirmDialog"
+import {
+  TransferDialog,
+  transferActions,
+  type TransferAction,
+} from "@/features/transfers/TransferDialog"
 import { NewAssetDialog } from "@/features/assets/NewAssetDialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
@@ -26,6 +32,13 @@ import {
 } from "@/components/ui/pagination"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 import {
   InputGroup,
   InputGroupAddon,
@@ -92,6 +105,7 @@ function cellText(v: unknown): string {
 
 export function Assets() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const statuses = useStatuses()
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -113,6 +127,20 @@ export function Assets() {
   // The overview's quick-entry card links here with a category already picked.
   const [creating, setCreating] = useState(searchParams.get("new") === "1")
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
+  // A context menu closes as it fires, so what it starts is parked here and
+  // rendered outside the table.
+  const [rowTransfer, setRowTransfer] = useState<{ id: string; action: TransferAction } | null>(null)
+  const [deleting, setDeleting] = useState<Asset | null>(null)
+
+  const removeOne = useMutation({
+    mutationFn: (a: Asset) =>
+      api.del<void>(`/assets/${a.id}?confirm=${encodeURIComponent(a.display_name)}`),
+    onSuccess: () => {
+      setDeleting(null)
+      queryClient.invalidateQueries({ queryKey: ["assets"] })
+    },
+    onError: (e) => setDone(e instanceof ApiError ? e.message : t.common.error),
+  })
 
   const toggleSelected = (id: string) =>
     setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
@@ -397,29 +425,51 @@ export function Assets() {
               </TableHeader>
               <TableBody>
                 {(assets.data?.items ?? []).map((a) => (
-                  <TableRow key={a.id} className="cursor-pointer">
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        aria-label={t.common.selectOne(a.display_name)}
-                        checked={selected.includes(a.id)}
-                        onCheckedChange={() => toggleSelected(a.id)}
-                      />
-                    </TableCell>
-                    <TableCell
-                      className="font-mono"
-                      onClick={() => navigate(`/assets/${a.id}`)}
-                    >
-                      {a.display_name}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={a.status} />
-                    </TableCell>
-                    <TableCell>{a.holder.name ?? t.common.none}</TableCell>
-                    <TableCell>{a.owner?.name ?? t.common.none}</TableCell>
-                    {extraColumns.map((k) => (
-                      <TableCell key={k}>{cellText(a.attrs[k])}</TableCell>
-                    ))}
-                  </TableRow>
+                  <ContextMenu key={a.id}>
+                    <ContextMenuTrigger asChild>
+                      {/* The whole row opens the device. It used to carry the
+                          pointer cursor while only the number cell listened,
+                          so four columns out of five looked clickable and
+                          were not. */}
+                      <TableRow
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/assets/${a.id}`)}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            aria-label={t.common.selectOne(a.display_name)}
+                            checked={selected.includes(a.id)}
+                            onCheckedChange={() => toggleSelected(a.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-mono">{a.display_name}</TableCell>
+                        <TableCell>
+                          <StatusBadge status={a.status} />
+                        </TableCell>
+                        <TableCell>{a.holder.name ?? t.common.none}</TableCell>
+                        <TableCell>{a.owner?.name ?? t.common.none}</TableCell>
+                        {extraColumns.map((k) => (
+                          <TableCell key={k}>{cellText(a.attrs[k])}</TableCell>
+                        ))}
+                      </TableRow>
+                    </ContextMenuTrigger>
+                    {/* The same actions the selection bar offers, reachable on
+                        one device without ticking it first. */}
+                    <ContextMenuContent>
+                      {transferActions().map(([action, label]) => (
+                        <ContextMenuItem
+                          key={action}
+                          onSelect={() => setRowTransfer({ id: a.id, action })}
+                        >
+                          {label}
+                        </ContextMenuItem>
+                      ))}
+                      <ContextMenuSeparator />
+                      <ContextMenuItem variant="destructive" onSelect={() => setDeleting(a)}>
+                        {t.assets.delete}
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
                 ))}
               </TableBody>
             </Table>
@@ -496,6 +546,31 @@ export function Assets() {
         onClear={() => setSelected([])}
         onDone={setDone}
       />
+
+      {/* Driven by the context menu, which has already closed by the time
+          either of these should appear. */}
+      <TransferDialog
+        assetIDs={rowTransfer ? [rowTransfer.id] : []}
+        open={rowTransfer !== null}
+        onOpenChange={(open) => !open && setRowTransfer(null)}
+        initialAction={rowTransfer?.action ?? null}
+        onDone={(n) => {
+          setDone(tTransfer.actions.done(n))
+          setRowTransfer(null)
+        }}
+      />
+
+      {deleting && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setDeleting(null)}
+          title={t.assets.deleteTitle}
+          description={t.assets.deleteHint(deleting.display_name)}
+          confirmLabel={t.assets.delete}
+          requirePhrase={deleting.display_name}
+          onConfirm={() => removeOne.mutate(deleting)}
+        />
+      )}
     </div>
   )
 }

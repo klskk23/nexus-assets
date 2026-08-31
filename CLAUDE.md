@@ -1,17 +1,17 @@
 <!-- SPECKIT START -->
-当前计划：`specs/009-field-rename-and-entry-owner/spec.md`
+当前计划：`specs/010-asset-row-gestures/spec.md`
 
 开工前必读，按优先级：
 
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
-2. `specs/009-field-rename-and-entry-owner/` —— 本轮特性的规格与检查清单
+2. `specs/010-asset-row-gestures/` —— 本轮特性的规格与检查清单
 3. `docs/design-baseline-v5.md`（决策 61–63）—— 状态不再约束持有方。
-   **冲突时以最新一版为准：009 > 008 > 007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
+   **冲突时以最新一版为准：010 > 009 > 008 > 007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
 4. `docs/design-baseline-v4.md`（决策 53–60）—— 状态成为可配置的数据
 5. `docs/design-baseline-v3.md`（决策 41–52）—— 字段可删除、型号多对多
 6. `docs/design-baseline-v2.md`（决策 25–40）—— 编号模型、依赖门禁、流转
 7. `docs/design-baseline.md` —— 原始设计基线（决策 1–24）
-8. `specs/001-asset-ledger-demo/` ~ `specs/008-field-dialog-and-chart/` —— 前八轮特性。
+8. `specs/001-asset-ledger-demo/` ~ `specs/009-field-rename-and-entry-owner/` —— 前九轮特性。
    001 的 `contracts/openapi.yaml` 仍是**全量**端点清单
 
 **最容易违反的十条硬规则**
@@ -60,6 +60,8 @@
 - **元数据表格：点击行编辑，右键出操作菜单。** 不留成列的操作按钮。
   不适用的菜单项**禁用而不是隐藏**。破坏性操作要 `confirm` 并输入该行标识。
   约定集中在 `CrudPage` 的 `onRowClick` / `rowActions`，不要在页面里各写一遍。
+  **资产表格是手写的**（勾选、分页、动态列），不走 `CrudPage` —— 改这条约定时
+  要记得它也要跟上；007 定规范时就漏了它一次。
   **类别页有意不套用** —— 它是树不是列表。
   右键菜单在触发时关闭，所以确认框必须渲染在菜单之外（`ConfirmDialog` 有受控模式）。
   **元数据的编辑器一律是 `Dialog`**，不是内联展开的 `Card` —— 那会把整张表推下去。

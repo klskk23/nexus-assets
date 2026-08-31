@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { Assets } from "@/routes/Assets"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { chooseFromMenu, openMenu } from "@/test/menu"
 import { statusRoute } from "./fixtures/statuses"
 import { chooseByLabel } from "@/test/choose"
 
@@ -329,5 +330,81 @@ describe("Assets holder filter", () => {
     await chooseByLabel(user, "持有方", "上海仓库")
     const href = screen.getByRole("link", { name: "导出 CSV" }).getAttribute("href")!
     expect(new URLSearchParams(href.split("?")[1]).get("holder_id")).toBe("loc")
+  })
+})
+
+describe("Assets row gestures", () => {
+  beforeEach(() => {
+    navigate.mockReset()
+    get.mockReset().mockImplementation(route)
+    localStorage.clear()
+  })
+
+  // The row carried the pointer cursor while only the number cell listened, so
+  // four columns out of five looked clickable and were not.
+  it("opens the device from anywhere in the row", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    const row = await screen.findByRole("row", { name: /112394521950/ })
+
+    for (const cell of ["在库", "上海仓库", "管理员"]) {
+      navigate.mockReset()
+      await user.click(within(row).getByText(cell))
+      expect(navigate).toHaveBeenCalledWith("/assets/a1")
+    }
+  })
+
+  // Ticking a row is a different act from opening it, so the checkbox keeps
+  // the click to itself.
+  it("does not open the device when the checkbox is ticked", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    const row = await screen.findByRole("row", { name: /112394521950/ })
+
+    await user.click(within(row).getByRole("checkbox"))
+    expect(navigate).not.toHaveBeenCalled()
+    expect(screen.getByText("已选 1 台")).toBeInTheDocument()
+  })
+
+  // The same actions the selection bar offers, on one device, without ticking
+  // it first.
+  it("offers the transfer actions and delete on right-click", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    const row = await screen.findByRole("row", { name: /112394521950/ })
+
+    await openMenu(user, row)
+    for (const label of ["签出", "归还", "转移", "改负责人", "改状态", "删除"]) {
+      expect(screen.getByRole("menuitem", { name: label })).toBeInTheDocument()
+    }
+  })
+
+  it("starts a transfer for the row it was opened on", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    const row = await screen.findByRole("row", { name: /112394521950/ })
+
+    await chooseFromMenu(user, row, "改状态")
+    const dialog = await screen.findByRole("dialog")
+    expect(dialog).toHaveTextContent("已选 1 台")
+    // Opening a dialog must not have navigated away underneath it.
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it("deletes one device only after its number has been typed out", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    const row = await screen.findByRole("row", { name: /112394521950/ })
+
+    await chooseFromMenu(user, row, "删除")
+    const dialog = await screen.findByRole("alertdialog")
+    const confirm = within(dialog).getByRole("button", { name: "删除" })
+    expect(confirm).toBeDisabled()
+
+    await user.type(within(dialog).getByRole("textbox"), "112394521950")
+    await user.click(confirm)
+    await waitFor(() =>
+      expect(del).toHaveBeenCalledWith("/assets/a1?confirm=112394521950"),
+    )
   })
 })
