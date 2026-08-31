@@ -181,13 +181,14 @@ func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, lang i18n.Lang, cate
 		}
 	}
 
+	// Any holder will do. This used to insist on a location, which was the
+	// same rule the status column carried and is gone with it -- an import
+	// that refused what the transfer dialog allows was one behaviour in two
+	// places, disagreeing.
 	entity, err := look.resolveHolder(row.byKey[ColHolder])
 	if err != nil {
 		res.Fields[ColHolder] = i18n.Text(err, lang)
 	} else {
-		if entity.Type != model.EntityLocation {
-			res.Fields[ColHolder] = i18n.M(i18n.KeyImportNotLocation, entity.Name).In(lang)
-		}
 		in.Holder = model.Holder{Type: model.HolderTypeEntity, ID: entity.ID}
 	}
 

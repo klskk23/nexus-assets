@@ -344,38 +344,6 @@ func TestSubtreeFilterIncludesDescendants(t *testing.T) {
 	}
 }
 
-// The constraint is off for every status out of the box (005), and still bites
-// for a status that asks for it. Both halves matter: the first is the change,
-// the second is what keeps it a feature rather than a deletion.
-func TestLocationConstraintAppliesOnlyWhereItIsSet(t *testing.T) {
-	f := newFixture(t)
-	statuses, err := f.schema.StatusSet(f.ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	held := model.Holder{Type: model.HolderTypeUser, ID: f.userID}
-	if err := ValidateHolderForStatus(statuses, model.StatusInStock, held, ""); err != nil {
-		t.Fatalf("in_stock no longer constrains the holder: %v", err)
-	}
-
-	yes := true
-	if _, err := f.schema.UpdateStatus(f.ctx, string(model.StatusInStock),
-		schema.UpdateStatusInput{RequiresLocation: &yes}); err != nil {
-		t.Fatal(err)
-	}
-	statuses, err = f.schema.StatusSet(f.ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ValidateHolderForStatus(statuses, model.StatusInStock, held, "")
-	if err == nil {
-		t.Fatal("a status that asks for a location must still refuse a person")
-	}
-	if !strings.Contains(err.Error(), "位置") {
-		t.Errorf("message should explain the rule, got %v", err)
-	}
-}
-
 // A computed field that feeds another computed field, evaluated in order.
 func TestComputedChainEvaluatesInDependencyOrder(t *testing.T) {
 	f := newFixture(t)

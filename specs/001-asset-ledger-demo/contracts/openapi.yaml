@@ -793,13 +793,9 @@ components:
           description: 色板槽位名，不是像素值。两套主题各自决定它长什么样
           enum: [slate, green, blue, amber, red, violet, teal, rose]
         sort: { type: integer }
-        builtin: { type: boolean, description: 内置五个为真；不可删除，行为开关不可改 }
-        requires_location:
-          type: boolean
-          description: >
-            持有方必须是位置实体。005 起这是一条**策略**而非规则：只有持有方校验读它，
-            因此任何状态（含内置）都可以开关。内置的 in_stock 出厂为关 ——
-            库存可以交给公司或部门保管
+        builtin: { type: boolean, description: 内置五个为真；不可删除，两个行为开关不可改 }
+        # requires_location 自 007 移除：状态不再约束持有方的种类。
+        # 默认库存点仍必须是位置 —— 那是另一条规则，归还需要指向具体的地方
 
         counts_as_available: { type: boolean, description: 计入首页的类别分布 }
         terminal: { type: boolean, description: 终态，不能再转出 }

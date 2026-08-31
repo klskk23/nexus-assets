@@ -33,7 +33,6 @@ func (s *Server) createStatus(c *gin.Context) {
 		Key               string `json:"key" binding:"required"`
 		Label             string `json:"label" binding:"required"`
 		Color             string `json:"color"`
-		RequiresLocation  bool   `json:"requires_location"`
 		CountsAsAvailable *bool  `json:"counts_as_available"`
 		Terminal          bool   `json:"terminal"`
 	}
@@ -53,8 +52,7 @@ func (s *Server) createStatus(c *gin.Context) {
 
 	out, err := s.schema.CreateStatus(c.Request.Context(), schema.CreateStatusInput{
 		Key: req.Key, Label: req.Label, Color: req.Color,
-		RequiresLocation: req.RequiresLocation, CountsAsAvailable: counts,
-		Terminal: req.Terminal,
+		CountsAsAvailable: counts, Terminal: req.Terminal,
 	})
 	if err != nil {
 		FailErr(c, err)
@@ -71,7 +69,6 @@ func (s *Server) patchStatus(c *gin.Context) {
 		Label             *string `json:"label"`
 		Color             *string `json:"color"`
 		Sort              *int    `json:"sort"`
-		RequiresLocation  *bool   `json:"requires_location"`
 		CountsAsAvailable *bool   `json:"counts_as_available"`
 		Terminal          *bool   `json:"terminal"`
 	}
@@ -88,8 +85,7 @@ func (s *Server) patchStatus(c *gin.Context) {
 
 	out, err := s.schema.UpdateStatus(ctx, c.Param("key"), schema.UpdateStatusInput{
 		Label: req.Label, Color: req.Color, Sort: req.Sort,
-		RequiresLocation: req.RequiresLocation, CountsAsAvailable: req.CountsAsAvailable,
-		Terminal: req.Terminal,
+		CountsAsAvailable: req.CountsAsAvailable, Terminal: req.Terminal,
 	})
 	if err != nil {
 		FailErr(c, err)

@@ -70,25 +70,18 @@ func TestMigrateUpAndDown(t *testing.T) {
 	if builtins != 5 {
 		t.Errorf("builtin statuses = %d, want 5", builtins)
 	}
-	var stockNeedsLocation, retiredTerminal, retiredCounts int
+	var retiredTerminal, retiredCounts int
 	if err := s.read.QueryRowContext(ctx,
-		`SELECT (SELECT requires_location FROM statuses WHERE key = 'in_stock'),
-		        (SELECT terminal FROM statuses WHERE key = 'retired'),
+		`SELECT (SELECT terminal FROM statuses WHERE key = 'retired'),
 		        (SELECT counts_as_available FROM statuses WHERE key = 'retired')`).
-		Scan(&stockNeedsLocation, &retiredTerminal, &retiredCounts); err != nil {
+		Scan(&retiredTerminal, &retiredCounts); err != nil {
 		t.Fatalf("read builtin flags: %v", err)
-	}
-	// 005 clears the location constraint on in_stock: stock can legitimately
-	// sit in a department's custody. The other two still say what they said.
-	if stockNeedsLocation != 0 {
-		t.Error("005 should have cleared in_stock.requires_location")
 	}
 	if retiredTerminal != 1 || retiredCounts != 0 {
 		t.Errorf("retired's flags no longer match the behaviour they replace: %d %d",
 			retiredTerminal, retiredCounts)
 	}
 
-	// The holder side: note arrived with 005, archiving left with 006.
 	column := func(table, name string) int {
 		t.Helper()
 		var n int
@@ -98,16 +91,28 @@ func TestMigrateUpAndDown(t *testing.T) {
 		}
 		return n
 	}
+	// note arrived with 005; archiving left with 006; the location constraint
+	// left with 007.
 	if column("holder_entities", "note") != 1 {
 		t.Error("holder_entities should carry note after 005")
 	}
 	if column("holder_entities", "archived_at") != 0 {
 		t.Error("holder_entities should have lost archived_at in 006 -- a column nothing can set is worse than none")
 	}
+	if column("statuses", "requires_location") != 0 {
+		t.Error("statuses should have lost requires_location in 007, for the same reason")
+	}
 
 	// Rolling back one revision at a time must restore each earlier shape
 	// exactly, so a half-applied upgrade can be undone rather than requiring a
 	// fresh file.
+	if err := s.MigrateDown(ctx); err != nil {
+		t.Fatalf("MigrateDown 007: %v", err)
+	}
+	if column("statuses", "requires_location") != 1 {
+		t.Error("down from 007 should have restored requires_location")
+	}
+
 	if err := s.MigrateDown(ctx); err != nil {
 		t.Fatalf("MigrateDown 006: %v", err)
 	}
@@ -120,14 +125,6 @@ func TestMigrateUpAndDown(t *testing.T) {
 	}
 	if column("holder_entities", "note") != 0 {
 		t.Error("down from 005 should have dropped holder_entities.note")
-	}
-	if err := s.read.QueryRowContext(ctx,
-		`SELECT requires_location FROM statuses WHERE key = 'in_stock'`).
-		Scan(&stockNeedsLocation); err != nil {
-		t.Fatalf("read in_stock after down: %v", err)
-	}
-	if stockNeedsLocation != 1 {
-		t.Error("down from 005 should have restored in_stock.requires_location")
 	}
 
 	// One more revision back takes the statuses table with it.

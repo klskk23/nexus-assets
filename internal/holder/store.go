@@ -173,7 +173,8 @@ func (s *Store) SetDefaultStock(ctx context.Context, id string) error {
 			return err
 		}
 		if model.EntityType(typ) != model.EntityLocation {
-			return fmt.Errorf("only a location can be the default stock point, %s is a %s", id, typ)
+			return i18n.Wrap(ErrNotALocation, i18n.KeyDefaultStockNotLocation,
+				typeLabel(model.EntityType(typ)))
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE holder_entities SET is_default_stock = 0 WHERE is_default_stock = 1`); err != nil {
 			return err
@@ -182,6 +183,14 @@ func (s *Store) SetDefaultStock(ctx context.Context, id string) error {
 		return err
 	})
 }
+
+// ErrNotALocation blocks marking anything else as the default stock point.
+//
+// A sentinel rather than a bare error: without one this arrived as a 500,
+// telling the operator the server broke rather than that their choice needs
+// one edit. Unrelated to the status constraint removed in 007 -- check-in has
+// to name somewhere specific to return to, and a company is not a place.
+var ErrNotALocation = errors.New("only a location can be the default stock point")
 
 // ErrHasChildren blocks removing an entity something hangs from.
 var ErrHasChildren = errors.New("holder entity still has children")

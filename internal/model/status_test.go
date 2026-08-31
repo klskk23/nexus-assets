@@ -10,7 +10,7 @@ import (
 func builtins() StatusSet {
 	return NewStatusSet([]Status{
 		{Key: StatusInStock, Label: "在库", Color: "green", Sort: 10, Builtin: true,
-			RequiresLocation: true, CountsAsAvailable: true},
+			CountsAsAvailable: true},
 		{Key: StatusInUse, Label: "已签出", Color: "blue", Sort: 20, Builtin: true,
 			CountsAsAvailable: true},
 		{Key: StatusInRepair, Label: "维修中", Color: "amber", Sort: 30, Builtin: true,
@@ -80,18 +80,6 @@ func TestLostCannotGoStraightToInUse(t *testing.T) {
 func TestUnknownStatusRejected(t *testing.T) {
 	if err := builtins().ValidateTransition(StatusInStock, AssetStatus("nonsense")); err == nil {
 		t.Fatal("unknown target status must be rejected")
-	}
-}
-
-func TestRequiresLocationHolder(t *testing.T) {
-	set := builtins()
-	if !set.RequiresLocationHolder(StatusInStock) {
-		t.Error("in_stock must require a location holder")
-	}
-	for _, s := range []AssetStatus{StatusInUse, StatusInRepair, StatusLost, StatusRetired} {
-		if set.RequiresLocationHolder(s) {
-			t.Errorf("%s must not constrain the holder", s)
-		}
 	}
 }
 

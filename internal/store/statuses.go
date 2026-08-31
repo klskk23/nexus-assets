@@ -21,19 +21,18 @@ type Queryer interface {
 }
 
 // StatusColumns is the column list, shared so the scan order cannot drift.
-const StatusColumns = `key, label, color, sort, builtin, requires_location, counts_as_available, terminal, created_at, updated_at`
+const StatusColumns = `key, label, color, sort, builtin, counts_as_available, terminal, created_at, updated_at`
 
 // ScanStatus reads one status row.
 func ScanStatus(row interface{ Scan(...any) error }) (model.Status, error) {
 	var s model.Status
-	var builtin, reqLoc, counts, terminal int
+	var builtin, counts, terminal int
 	var created, updated string
 	if err := row.Scan(&s.Key, &s.Label, &s.Color, &s.Sort,
-		&builtin, &reqLoc, &counts, &terminal, &created, &updated); err != nil {
+		&builtin, &counts, &terminal, &created, &updated); err != nil {
 		return s, err
 	}
 	s.Builtin = builtin == 1
-	s.RequiresLocation = reqLoc == 1
 	s.CountsAsAvailable = counts == 1
 	s.Terminal = terminal == 1
 	var err error

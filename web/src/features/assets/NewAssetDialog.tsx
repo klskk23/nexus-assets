@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import { Field, FieldLabel } from "@/components/ui/field"
 import {
   Select,
   SelectContent,
@@ -81,26 +81,31 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
     enabled: open && categoryId !== "",
   })
 
-  const locations = (holders.data ?? []).filter((h) => h.type === "location")
-  // In stock means the device is in a warehouse, so the server refuses any
-  // other kind of holder. With no location on file that status is unreachable.
-  const canStock = locations.length > 0
-  const requiresLocation = status === "in_stock"
+  // Every holder is on offer. A status no longer constrains the kind, so a
+  // new device can start out in a company's or a department's custody just as
+  // legitimately as on a warehouse shelf.
+  const entities = holders.data ?? []
 
   // Opening resets the form. The holders query settles after the dialog is
   // already open, so this runs again when it arrives and lands the defaults on
   // the stock point rather than on whatever was first in the list.
   useEffect(() => {
     if (!open) return
-    const locs = (holders.data ?? []).filter((h) => h.type === "location")
-    const stock = locs.find((h) => h.is_default_stock) ?? locs[0]
+    const all = holders.data ?? []
+    // The default stock point first: a device being recorded has usually just
+    // arrived at one. Any other holder beats none.
+    const stock = all.find((h) => h.is_default_stock) ?? all[0]
 
     setCategoryId(initialCategoryID ?? "")
     setModelId(null)
     setValues({})
     setFieldErrors({})
     setBanner(null)
-    setStatus(stock ? "in_stock" : "in_use")
+    // Always in stock: a device being recorded has just arrived. It used to
+    // fall back to "checked out" when no location existed, because in stock
+    // demanded one -- that constraint is gone, so the honest default holds
+    // whatever holders are on file.
+    setStatus("in_stock")
     setHolderId(stock ? stock.id : SELF)
   }, [open, initialCategoryID, holders.data])
 
@@ -175,20 +180,13 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
               <SelectContent>
                 <SelectGroup>
                   {statuses.statuses.map((s) => (
-                    <SelectItem
-                      key={s.key}
-                      value={s.key}
-                      // A status that insists on a location is unreachable
-                      // until one exists.
-                      disabled={s.requires_location && !canStock}
-                    >
+                    <SelectItem key={s.key} value={s.key}>
                       {s.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
-            {!canStock && <FieldDescription>{t.assets.noLocationYet}</FieldDescription>}
           </Field>
 
           <Field className="sm:col-span-2">
@@ -199,12 +197,8 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {/* In stock has to be a location, so the account is not on
-                      offer while that status is chosen. */}
-                  <SelectItem value={SELF} disabled={requiresLocation}>
-                    {user?.name ?? t.common.none}
-                  </SelectItem>
-                  {locations.map((h) => (
+                  <SelectItem value={SELF}>{user?.name ?? t.common.none}</SelectItem>
+                  {entities.map((h) => (
                     <SelectItem key={h.id} value={h.id}>
                       {h.name}
                       {h.is_default_stock ? t.common.defaultStockSuffix : ""}
@@ -213,7 +207,6 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
                 </SelectGroup>
               </SelectContent>
             </Select>
-            {requiresLocation && <FieldDescription>{t.assets.inStockNeedsLocation}</FieldDescription>}
           </Field>
         </div>
 

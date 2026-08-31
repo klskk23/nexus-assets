@@ -85,8 +85,6 @@ export const en: typeof zh = {
     deleteManyHint: (n: number) =>
       `This cannot be undone. It deletes the ${n} selected device(s) and their whole transfer history.`,
     generatedSN: "The number is derived from this category's display key; leave it alone",
-    inStockNeedsLocation: "A device in this status must sit in a location",
-    noLocationYet: "No locations on file yet, so this status is unreachable. Create one first.",
     transfer: "Transfer",
     backToList: "Back to assets",
   },
@@ -429,8 +427,6 @@ export const enStatuses: typeof zhStatuses = {
   builtin: "Built in",
   custom: "Custom",
   behaviour: "Behaviour",
-  requiresLocation: "Holder must be a location",
-  requiresLocationHint: "Suits a status that means “on a shelf in a warehouse”.",
   countsAsAvailable: "Counts towards the category totals",
   countsAsAvailableHint:
     "Turn it off and devices in this status stay out of the overview's per-category count.",

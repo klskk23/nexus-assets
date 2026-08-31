@@ -140,11 +140,6 @@ func editOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, id strin
 			return cur, err
 		}
 	}
-	if err := checkHolderForStatus(ctx, tx, statuses, model.AssetState{
-		Status: cur.ToStatus, Holder: cur.ToHolder, OwnerID: cur.ToOwner,
-	}); err != nil {
-		return cur, err
-	}
 
 	// Only keep the first correction's original; a second edit must not erase
 	// what the event said when it was first written.

@@ -58,7 +58,6 @@ export function Statuses() {
   const [key, setKey] = useState("")
   const [label, setLabel] = useState("")
   const [color, setColor] = useState("slate")
-  const [requiresLocation, setRequiresLocation] = useState(false)
   const [countsAsAvailable, setCountsAsAvailable] = useState(true)
   const [terminal, setTerminal] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -77,16 +76,6 @@ export function Statuses() {
     onError: (e) => setNotice(e instanceof ApiError ? e.message : t.common.error),
   })
 
-  // The location constraint is the one switch a built-in will accept, because
-  // nothing but the holder check reads it -- it is a policy, and 005 turned it
-  // off for in_stock. Editable here so turning it back on does not need an API
-  // call, and so the change is visible rather than buried in a migration.
-  const setLocationRule = useMutation({
-    mutationFn: (v: { key: string; on: boolean }) =>
-      api.patch(`/statuses/${v.key}`, { requires_location: v.on }),
-    onSuccess: invalidate,
-    onError: (e) => setNotice(e instanceof ApiError ? e.message : t.common.error),
-  })
 
   const remove = useMutation({
     mutationFn: (k: string) => api.del(`/statuses/${k}`),
@@ -110,7 +99,6 @@ export function Statuses() {
         setKey("")
         setLabel("")
         setColor("slate")
-        setRequiresLocation(false)
         setCountsAsAvailable(true)
         setTerminal(false)
       }}
@@ -119,7 +107,6 @@ export function Statuses() {
           key,
           label,
           color,
-          requires_location: requiresLocation,
           counts_as_available: countsAsAvailable,
           terminal,
         })
@@ -173,22 +160,6 @@ export function Statuses() {
         {
           header: tStatuses.kind,
           cell: (s) => (s.builtin ? tStatuses.builtin : tStatuses.custom),
-        },
-        {
-          header: tStatuses.requiresLocation,
-          cell: (s) => (
-            <Field orientation="horizontal" className="w-auto">
-              <Checkbox
-                id={`loc-${s.key}`}
-                checked={s.requires_location}
-                disabled={setLocationRule.isPending}
-                onCheckedChange={(v) => setLocationRule.mutate({ key: s.key, on: v === true })}
-              />
-              <FieldLabel htmlFor={`loc-${s.key}`} className="sr-only">
-                {`${s.label} ${tStatuses.requiresLocation}`}
-              </FieldLabel>
-            </Field>
-          ),
         },
         {
           header: tStatuses.behaviour,
@@ -297,15 +268,6 @@ export function Statuses() {
           <FieldSet className="sm:col-span-3">
             <FieldLegend variant="label">{tStatuses.behaviour}</FieldLegend>
             <FieldGroup className="gap-3">
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="st-loc"
-                  checked={requiresLocation}
-                  onCheckedChange={(v) => setRequiresLocation(v === true)}
-                />
-                <FieldLabel htmlFor="st-loc">{tStatuses.requiresLocation}</FieldLabel>
-              </Field>
-              <FieldDescription>{tStatuses.requiresLocationHint}</FieldDescription>
               <Field orientation="horizontal">
                 <Checkbox
                   id="st-counts"

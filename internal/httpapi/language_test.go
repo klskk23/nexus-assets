@@ -114,7 +114,7 @@ func TestCSVHeadersFollowTheLanguage(t *testing.T) {
 
 	tmpl := h.doLang(t, "en", http.MethodGet,
 		"/api/categories/"+h.catID+"/import-template.csv", "").Body.String()
-	if !strings.Contains(tmpl, "Holder (location name)") {
+	if !strings.Contains(tmpl, "Holder (name)") {
 		t.Errorf("english template header: %q", firstLine(tmpl))
 	}
 	if !strings.Contains(tmpl, "holder") {

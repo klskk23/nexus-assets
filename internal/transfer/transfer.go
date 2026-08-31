@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/klskk23/nexus-assets/internal/holder"
-	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
@@ -27,14 +26,6 @@ var (
 	ErrNoDefaultStock   = errors.New("no default stock point is set; choose a location to return to")
 	ErrHolderRequired   = errors.New("a transfer needs a destination")
 	ErrBatchPartialEdit = errors.New("a batch event can only be edited as a whole")
-	// ErrHolderKind is the status's location constraint refusing a holder.
-	//
-	// A sentinel so the message can be attached to the field the operator
-	// actually touched. It used to be recognised by sniffing for 「位置」 in the
-	// text and reported against `to_status` -- so choosing a department in the
-	// transfer dialog came back as a complaint about a status nobody had
-	// changed.
-	ErrHolderKind = errors.New("holder kind is not allowed by the target status")
 )
 
 // Service performs transfers.
@@ -167,10 +158,6 @@ func applyOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, assetID
 		return nil, nil
 	}
 
-	if err := checkHolderForStatus(ctx, tx, statuses, to); err != nil {
-		return nil, err
-	}
-
 	id := store.NewID()
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO asset_transfers
@@ -205,29 +192,4 @@ func applyOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, assetID
 		ToStatus: to.Status, ToHolder: to.Holder, ToOwner: to.OwnerID,
 		Note: req.Note, DueAt: req.DueAt, ActorID: req.ActorID, CreatedAt: now,
 	}, nil
-}
-
-// checkHolderForStatus enforces a status's location constraint inside the
-// transaction, where the holder's type can be read consistently.
-func checkHolderForStatus(ctx context.Context, tx *sql.Tx, statuses model.StatusSet,
-	to model.AssetState) error {
-
-	if !statuses.RequiresLocationHolder(to.Status) {
-		return nil
-	}
-	if to.Holder.Type != model.HolderTypeEntity {
-		return i18n.Wrap(ErrHolderKind, i18n.KeyHolderMustBeLoc, statuses.Label(to.Status))
-	}
-	var typ string
-	if err := tx.QueryRowContext(ctx,
-		`SELECT type FROM holder_entities WHERE id = ?`, to.Holder.ID).Scan(&typ); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("%w: %s", holder.ErrNotFound, to.Holder.ID)
-		}
-		return err
-	}
-	if model.EntityType(typ) != model.EntityLocation {
-		return i18n.Wrap(ErrHolderKind, i18n.KeyHolderMustBeLoc, statuses.Label(to.Status))
-	}
-	return nil
 }

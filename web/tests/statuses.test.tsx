@@ -31,7 +31,6 @@ const onLoan = {
   color: "violet",
   sort: 60,
   builtin: false,
-  requires_location: false,
   counts_as_available: true,
   terminal: false,
 }
@@ -84,21 +83,6 @@ describe("Statuses page", () => {
     expect(within(custom).getByRole("button", { name: "删除" })).toBeInTheDocument()
   })
 
-  // The one switch a built-in accepts: nothing but the holder check reads it,
-  // so it is a policy an operator is entitled to set -- and 005 turned it off.
-  it("switches the location constraint from the row, built-ins included", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Statuses />)
-
-    await screen.findByText("在库")
-    const box = screen.getByLabelText("在库 持有方必须是位置")
-    expect(box).not.toBeChecked()
-
-    await user.click(box)
-    await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith("/statuses/in_stock", { requires_location: true }),
-    )
-  })
 
   it("recolours a status from the row", async () => {
     const user = userEvent.setup()
@@ -127,8 +111,7 @@ describe("Statuses page", () => {
         key: "on_loan",
         label: "外借中",
         color: "violet",
-        requires_location: false,
-        counts_as_available: true,
+              counts_as_available: true,
         terminal: true,
       }),
     )

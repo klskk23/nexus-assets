@@ -199,12 +199,6 @@ func failTransfer(c *gin.Context, err error) {
 			map[string]string{"to_holder_id": i18n.M(i18n.KeyNoDefaultStock).In(LangOf(c))})
 	case errors.Is(err, transfer.ErrNotFound), errors.Is(err, transfer.ErrAssetNotFound):
 		FailMsg(c, http.StatusNotFound, CodeNotFound, i18n.KeyNotFound)
-	case errors.Is(err, transfer.ErrHolderKind):
-		// Tagged to the field that was actually chosen. Reporting a holder
-		// problem against to_status is what made this refusal unactionable.
-		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
-			userText(c, err),
-			map[string]string{"to_holder_id": userText(c, err)})
 	case isTransitionError(err):
 		Fail(c, http.StatusUnprocessableEntity, CodeIllegalTransition, err.Error(),
 			map[string]string{"to_status": err.Error()})

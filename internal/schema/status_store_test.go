@@ -35,17 +35,6 @@ func TestMigrationSeedsTheFiveBuiltinsWithTheirBehaviour(t *testing.T) {
 	}
 
 	set := model.NewStatusSet(list)
-	// 005 clears the location constraint: stock lives in more than one place,
-	// and it can sit in a department's custody. The switch survives for any
-	// status that does want it.
-	for _, k := range []model.AssetStatus{
-		model.StatusInStock, model.StatusInUse, model.StatusInRepair,
-		model.StatusLost, model.StatusRetired,
-	} {
-		if set.RequiresLocationHolder(k) {
-			t.Errorf("%s should not constrain the holder out of the box", k)
-		}
-	}
 	if set.CountsAsAvailable(model.StatusRetired) {
 		t.Error("retired must still be excluded from the distribution")
 	}
@@ -114,28 +103,8 @@ func TestBuiltinStatusCannotBeDeleted(t *testing.T) {
 	}
 }
 
-// The location constraint is a policy: only the holder check reads it, so an
-// operator may set it on any status, built-in included.
-func TestLocationConstraintIsEditableOnABuiltin(t *testing.T) {
-	s, ctx := newStore(t)
-
-	yes, label := true, "在库中"
-	out, err := s.UpdateStatus(ctx, string(model.StatusInStock), UpdateStatusInput{
-		Label: &label, RequiresLocation: &yes,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if out.Label != label {
-		t.Errorf("a built-in must still be renameable, got %q", out.Label)
-	}
-	if !out.RequiresLocation {
-		t.Error("an operator who wants the location constraint back must be able to set it")
-	}
-}
-
-// The other two are not policy: the overview and the transition matrix are
-// written against what they mean for these five.
+// A built-in may be relabelled and recoloured; its behaviour may not, because
+// the overview and the transition matrix are written against what it means.
 func TestBuiltinCountingAndTerminalCannotBeRewired(t *testing.T) {
 	s, ctx := newStore(t)
 

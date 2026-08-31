@@ -111,13 +111,6 @@ func (set StatusSet) ValidateTransition(from, to AssetStatus) error {
 	return fmt.Errorf("transition %s -> %s is not allowed", from, to)
 }
 
-// RequiresLocationHolder reports whether a status constrains the holder to a
-// location entity.
-func (set StatusSet) RequiresLocationHolder(k AssetStatus) bool {
-	s, ok := set.byKey[k]
-	return ok && s.RequiresLocation
-}
-
 // CountsAsAvailable reports whether a status belongs in the category
 // distribution. An unknown status counts: leaving it out would understate the
 // total without saying so.

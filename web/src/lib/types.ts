@@ -15,7 +15,6 @@ export interface Status {
   color: string
   sort: number
   builtin: boolean
-  requires_location: boolean
   counts_as_available: boolean
   terminal: boolean
 }

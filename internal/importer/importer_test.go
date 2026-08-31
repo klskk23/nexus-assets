@@ -216,23 +216,26 @@ func TestUnknownModelOrHolderErrorsInsteadOfBeingCreated(t *testing.T) {
 	file := csvOf(
 		"幽灵型号,上海仓库,,001A2B3C4D01,",
 		"SDWAN-X100,不存在的仓库,,001A2B3C4D02,",
-		"SDWAN-X100,XX 集团,,001A2B3C4D03,", // a company, not a location
+		"SDWAN-X100,XX 集团,,001A2B3C4D03,", // a company, which is now fine
 	)
 	report, err := f.svc.Preview(f.ctx, i18n.ZH, f.catID, f.userID, file)
 	if err != nil {
 		t.Fatalf("preview: %v", err)
 	}
-	if report.OK != 0 {
-		t.Fatalf("none of these rows may pass: %+v", report.Rows)
-	}
 	if !strings.Contains(report.Rows[0].Fields[ColModel], "找不到型号") {
 		t.Errorf("row 1 should report the missing model: %+v", report.Rows[0].Fields)
 	}
 	if !strings.Contains(report.Rows[1].Fields[ColHolder], "找不到持有方") {
-		t.Errorf("row 2 should report the missing location: %+v", report.Rows[1].Fields)
+		t.Errorf("row 2 should report the missing holder: %+v", report.Rows[1].Fields)
 	}
-	if !strings.Contains(report.Rows[2].Fields[ColHolder], "不是位置") {
-		t.Errorf("row 3 should reject a company as an in-stock holder: %+v", report.Rows[2].Fields)
+	// A company is a perfectly good holder. The import used to refuse it,
+	// which was the same rule the status column carried in a second place --
+	// so the import disagreed with the transfer dialog.
+	if report.Rows[2].Status != "ok" {
+		t.Errorf("a company is a valid holder: %+v", report.Rows[2].Fields)
+	}
+	if report.OK != 1 {
+		t.Errorf("only the two unresolvable rows may fail: %+v", report.Rows)
 	}
 
 	models, _ := f.schema.ListModels(f.ctx)

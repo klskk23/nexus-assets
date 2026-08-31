@@ -293,9 +293,9 @@ func TestIllegalTransitionsRefused(t *testing.T) {
 	})
 }
 
-// Stock is not confined to a location any more -- a company has several
-// warehouses, and may hand stock to a department. What used to be a rule is a
-// switch, and it is off.
+// Stock is not confined to a location -- a company has several warehouses, and
+// may hand stock to a department or to a person. The rule that said otherwise
+// is gone, switch and all.
 func TestInStockAcceptsAnyHolder(t *testing.T) {
 	f := newFixture(t)
 	id := f.newAsset(t, 1)[0]
@@ -310,30 +310,6 @@ func TestInStockAcceptsAnyHolder(t *testing.T) {
 		ToHolder: &model.Holder{Type: model.HolderTypeUser, ID: f.otherID}, ActorID: f.userID,
 	}); err != nil {
 		t.Fatalf("in stock, held by a person, is now allowed: %v", err)
-	}
-}
-
-// Turning the switch back on restores the old behaviour exactly, and the
-// refusal now carries a sentinel so it can be reported against the holder
-// field rather than against a status nobody changed.
-func TestLocationConstraintStillBitesWhenSwitchedOn(t *testing.T) {
-	f := newFixture(t)
-	id := f.newAsset(t, 1)[0]
-	yes := true
-	if _, err := f.schema.UpdateStatus(f.ctx, string(model.StatusInStock),
-		schema.UpdateStatusInput{RequiresLocation: &yes}); err != nil {
-		t.Fatal(err)
-	}
-
-	_, err := f.svc.Apply(f.ctx, Request{
-		AssetIDs: []string{id}, ToStatus: status(model.StatusInStock),
-		ToHolder: &model.Holder{Type: model.HolderTypeUser, ID: f.otherID}, ActorID: f.userID,
-	})
-	if !errors.Is(err, ErrHolderKind) {
-		t.Fatalf("want ErrHolderKind, got %v", err)
-	}
-	if !strings.Contains(err.Error(), "位置") {
-		t.Errorf("message should explain the rule, got %v", err)
 	}
 }
 

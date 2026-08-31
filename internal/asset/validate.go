@@ -145,24 +145,6 @@ func validateOne(f model.BoundField, raw any) (any, error) {
 	}
 }
 
-// ValidateHolderForStatus enforces the coupling between status and holder.
-//
-// in_stock means the device is sitting in a warehouse. Allowing "in stock but
-// held by a person" would leave the stocktake question -- which warehouse is it
-// in -- unanswerable. Which statuses carry that constraint is now a column, so
-// a custom status can say the same thing about itself.
-func ValidateHolderForStatus(statuses model.StatusSet, status model.AssetStatus,
-	holder model.Holder, entityType model.EntityType) error {
-
-	if !statuses.RequiresLocationHolder(status) {
-		return nil
-	}
-	if holder.Type != model.HolderTypeEntity || entityType != model.EntityLocation {
-		return i18n.M(i18n.KeyHolderMustBeLoc, statuses.Label(status))
-	}
-	return nil
-}
-
 // SplitAttrs separates values that still belong to the effective field set from
 // orphan keys left behind by an unbound field or a category change. Orphans are
 // kept and shown read-only; nothing is silently destroyed.

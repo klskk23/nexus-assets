@@ -149,6 +149,10 @@ func FailErr(c *gin.Context, err error) {
 	case errors.Is(err, holder.ErrReferenced):
 		Fail(c, http.StatusConflict, CodeReferenceBlocked, i18n.Text(err, lang), nil)
 
+	case errors.Is(err, holder.ErrNotALocation):
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, i18n.Text(err, lang),
+			map[string]string{"is_default_stock": i18n.Text(err, lang)})
+
 	case errors.Is(err, holder.ErrHasChildren):
 		Fail(c, http.StatusConflict, CodeReferenceBlocked, i18n.Text(err, lang), nil)
 

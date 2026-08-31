@@ -106,9 +106,9 @@ describe("NewAssetDialog", () => {
     )
   })
 
-  // In stock means the device is in a warehouse; the server refuses any other
-  // holder, so the account is not on offer while that status is chosen.
-  it("keeps the account off the holder list while in stock", async () => {
+  // No status constrains the kind of holder any more, so every holder on file
+  // is on offer -- and a device can start out in a company's custody.
+  it("offers every holder, and the account, whatever the status", async () => {
     const user = userEvent.setup()
     renderWithProviders(<NewAssetDialog open onOpenChange={vi.fn()} />)
     await waitFor(() =>
@@ -116,22 +116,27 @@ describe("NewAssetDialog", () => {
     )
 
     await user.click(screen.getByRole("combobox", { name: "持有方" }))
-    const self = (await screen.findAllByRole("option")).find((o) =>
-      /仓库/.test(o.textContent ?? "") === false,
-    )
-    expect(self).toHaveAttribute("aria-disabled", "true")
+    const options = await screen.findAllByRole("option")
+    for (const o of options) {
+      expect(o).not.toHaveAttribute("aria-disabled", "true")
+    }
+    // Signed out in this harness, so the account reads as the "none" label --
+    // what matters is that it is offered and not disabled.
+    expect(options.map((o) => o.textContent)).toContain("无")
   })
 
-  // A fresh install has no locations at all, and the first device still has to
+  // A fresh install has no holders at all, and the first device still has to
   // be recordable -- held by the person recording it.
-  it("falls back to the account when no location exists yet", async () => {
+  it("falls back to the account when no holder exists yet", async () => {
     get.mockImplementation((p: string) => route(p, []))
     renderWithProviders(<NewAssetDialog open onOpenChange={vi.fn()} />)
 
+    // In stock is still the default: the status no longer cares where it sits,
+    // so an install with no holders at all still records its first device.
     await waitFor(() =>
-      expect(screen.getByRole("combobox", { name: "状态" })).not.toHaveTextContent("在库"),
+      expect(screen.getByRole("combobox", { name: "状态" })).toHaveTextContent("在库"),
     )
-    expect(screen.getByText(/还没有任何位置/)).toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "持有方" })).toHaveTextContent("无")
   })
 
   it("goes to the new device after recording it", async () => {

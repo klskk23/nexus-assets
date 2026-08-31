@@ -79,36 +79,6 @@ func TestInStockAssetCanBeHandedToADepartment(t *testing.T) {
 	}
 }
 
-// Turning the switch back on restores the refusal -- and it now names the
-// holder field, not the status the operator never touched.
-func TestLocationConstraintRefusalNamesTheHolderField(t *testing.T) {
-	h := newHarness(t)
-	h.seed(t, 1, 1)
-
-	if res := h.do(t, http.MethodPatch, "/api/statuses/in_stock",
-		`{"requires_location":true}`); res.Code != http.StatusOK {
-		t.Fatalf("switch the constraint on: %d %s", res.Code, res.Body)
-	}
-	res := h.do(t, http.MethodPost, "/api/holders", `{"type":"company","name":"XX 集团"}`)
-	var co model.HolderEntity
-	if err := json.Unmarshal(res.Body.Bytes(), &co); err != nil {
-		t.Fatal(err)
-	}
-
-	res = h.do(t, http.MethodPost, "/api/transfers",
-		`{"asset_ids":["`+h.firstAssetID(t)+`"],"to_holder_type":"entity","to_holder_id":"`+co.ID+`"}`)
-	if res.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("got %d, want 422: %s", res.Code, res.Body)
-	}
-	body := res.Body.String()
-	if !strings.Contains(body, "to_holder_id") {
-		t.Errorf("refusal should be tagged to the holder field, got %s", body)
-	}
-	if strings.Contains(body, "to_status") {
-		t.Errorf("refusal must not blame the status nobody changed, got %s", body)
-	}
-}
-
 // Checking out to an entity may name who is responsible for it.
 func TestCheckoutToAnEntityCanNameAnOwner(t *testing.T) {
 	h := newHarness(t)
@@ -201,5 +171,31 @@ func TestDeletingAParentIsRefusedAndNamesTheCount(t *testing.T) {
 	}
 	if !strings.Contains(res.Body.String(), "下级") {
 		t.Errorf("the refusal should say what is in the way, got %s", res.Body)
+	}
+}
+
+// Check-in has to name somewhere specific to return to, so the default stock
+// point is still required to be a location -- unrelated to the status
+// constraint 007 removed. It used to arrive as a 500, which told the operator
+// the server broke rather than that their choice needs one edit.
+func TestOnlyALocationCanBeTheDefaultStockPoint(t *testing.T) {
+	h := newHarness(t)
+
+	res := h.do(t, http.MethodPost, "/api/holders", `{"type":"company","name":"XX 集团"}`)
+	var co model.HolderEntity
+	if err := json.Unmarshal(res.Body.Bytes(), &co); err != nil {
+		t.Fatal(err)
+	}
+
+	res = h.do(t, http.MethodPatch, "/api/holders/"+co.ID, `{"is_default_stock":true}`)
+	if res.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("got %d, want 422: %s", res.Code, res.Body)
+	}
+	body := res.Body.String()
+	if strings.Contains(body, "内部错误") {
+		t.Errorf("this is the operator's to fix in one edit, got %s", body)
+	}
+	if !strings.Contains(body, "is_default_stock") {
+		t.Errorf("the refusal should name the field, got %s", body)
 	}
 }

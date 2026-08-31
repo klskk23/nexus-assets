@@ -52,10 +52,6 @@ type Status struct {
 	Color   string `json:"color"`
 	Sort    int    `json:"sort"`
 	Builtin bool   `json:"builtin"`
-	// RequiresLocation constrains the holder to a location entity. Being "in
-	// this status but held by a person" would make the stocktake question --
-	// which warehouse is it in -- unanswerable.
-	RequiresLocation bool `json:"requires_location"`
 	// CountsAsAvailable keeps it in the category distribution. "How many
 	// routers do we have" means working ones.
 	CountsAsAvailable bool `json:"counts_as_available"`

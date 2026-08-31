@@ -86,8 +86,6 @@ export const zh = {
     deleteManyHint: (n: number) =>
       `此操作不可撤销，将删除选中的 ${n} 台设备及其全部流转历史。`,
     generatedSN: "编号由该类别的显示编号字段推导，无需填写",
-    inStockNeedsLocation: "在库的设备必须放在某个位置",
-    noLocationYet: "还没有任何位置，暂时无法设为在库。可先建一个位置。",
     transfer: "流转",
     backToList: "返回资产列表",
   },
@@ -414,8 +412,6 @@ export const zhStatuses = {
   builtin: "内置",
   custom: "自定义",
   behaviour: "行为",
-  requiresLocation: "持有方必须是位置",
-  requiresLocationHint: "适合表示「放在库房里」的状态。",
   countsAsAvailable: "计入类别分布",
   countsAsAvailableHint: "关掉后，处于该状态的设备不计入首页的类别可用量。",
   notCounted: "不计入类别分布",

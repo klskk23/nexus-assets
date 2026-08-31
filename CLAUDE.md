@@ -5,12 +5,13 @@
 
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
 2. `specs/006-bilingual-and-holder-lifecycle/` —— 本轮特性的规格、计划、决策与任务
-3. `docs/design-baseline-v4.md`（决策 53–60）—— 状态成为可配置的数据。
-   **冲突时以最新一版为准：006 > 005 的 research.md > v4 > v3 > v2 > v1**
-4. `docs/design-baseline-v3.md`（决策 41–52）—— 信息项可删除、型号多对多
-5. `docs/design-baseline-v2.md`（决策 25–40）—— 编号模型、依赖门禁、流转
-6. `docs/design-baseline.md` —— 原始设计基线（决策 1–24）
-7. `specs/001-asset-ledger-demo/` ~ `specs/005-holder-hierarchy-and-custody/` —— 前五轮特性。
+3. `docs/design-baseline-v5.md`（决策 61–63）—— 状态不再约束持有方。
+   **冲突时以最新一版为准：v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
+4. `docs/design-baseline-v4.md`（决策 53–60）—— 状态成为可配置的数据
+5. `docs/design-baseline-v3.md`（决策 41–52）—— 信息项可删除、型号多对多
+6. `docs/design-baseline-v2.md`（决策 25–40）—— 编号模型、依赖门禁、流转
+7. `docs/design-baseline.md` —— 原始设计基线（决策 1–24）
+8. `specs/001-asset-ledger-demo/` ~ `specs/006-bilingual-and-holder-lifecycle/` —— 前六轮特性。
    001 的 `contracts/openapi.yaml` 仍是**全量**端点清单
 
 **最容易违反的九条硬规则**
@@ -41,8 +42,10 @@
   标签**不在** `zh.status`（已撤销）—— 前端一律走 `useStatuses()`，
   服务端一律走 `model.StatusSet`。写事务里的判定必须从 `tx` 读状态集，不从连接池读。
   转换规则**内置对内置沿用原 5×5 矩阵**，涉及自定义才放行，这是为了不放松任何既有护栏。
-  三个行为开关里，`requires_location` 自 005 起是**策略**（任何状态可改，出厂全关），
-  `counts_as_available` 与 `terminal` 仍对内置锁死 —— 判据是「除了约束本身还有谁在读它」。
+  状态只剩两个行为开关（`counts_as_available`、`terminal`），且对内置锁死。
+  **状态不再约束持有方的种类**（007 移除了 `requires_location`）—— 在库可以由公司、
+  部门或某个人持有。唯一还要求「必须是位置」的是**默认库存点**，那是另一条规则：
+  归还需要指向一个具体的地方。
 - **持有方是一棵有规则的树，且可编辑可删除。** 部门必须属于公司，位置可挂公司或部门、
   也可不挂，公司无上级。规则写在 `internal/holder` 的 `allowedParents` 表里，
   前端有同形一份（`web/src/lib/types.ts`）**只用于不提供非法选项**，把关的仍然是服务端。

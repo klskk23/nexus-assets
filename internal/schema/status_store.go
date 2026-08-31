@@ -63,7 +63,6 @@ type CreateStatusInput struct {
 	Key               string
 	Label             string
 	Color             string
-	RequiresLocation  bool
 	CountsAsAvailable bool
 	Terminal          bool
 }
@@ -85,8 +84,8 @@ func (s *Store) CreateStatus(ctx context.Context, in CreateStatusInput) (model.S
 	now := time.Now().UTC()
 	st := model.Status{
 		Key: model.AssetStatus(key), Label: in.Label, Color: color,
-		RequiresLocation: in.RequiresLocation, CountsAsAvailable: in.CountsAsAvailable,
-		Terminal: in.Terminal, CreatedAt: now, UpdatedAt: now,
+		CountsAsAvailable: in.CountsAsAvailable, Terminal: in.Terminal,
+		CreatedAt: now, UpdatedAt: now,
 	}
 	err := s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		// New statuses sort after everything already there.
@@ -95,9 +94,9 @@ func (s *Store) CreateStatus(ctx context.Context, in CreateStatusInput) (model.S
 			return err
 		}
 		_, err := tx.ExecContext(ctx,
-			`INSERT INTO statuses (`+store.StatusColumns+`) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+			`INSERT INTO statuses (`+store.StatusColumns+`) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)`,
 			string(st.Key), st.Label, st.Color, st.Sort,
-			boolInt(st.RequiresLocation), boolInt(st.CountsAsAvailable), boolInt(st.Terminal),
+			boolInt(st.CountsAsAvailable), boolInt(st.Terminal),
 			store.FormatTime(now), store.FormatTime(now))
 		return err
 	})
@@ -112,18 +111,13 @@ func (s *Store) CreateStatus(ctx context.Context, in CreateStatusInput) (model.S
 
 // UpdateStatusInput carries the mutable parts of a status.
 //
-// A built-in may be relabelled, recoloured and reordered. Of its three
-// switches only `requires_location` is editable: nothing but the holder check
-// reads it, so it is a policy an operator is entitled to set -- and a company
-// with several warehouses, or one that hands stock to a department, is
-// entitled to say no. `counts_as_available` and `terminal` stay fixed on the
-// built-ins, because the rest of the system is written against what those two
-// mean for these five.
+// A built-in may be relabelled, recoloured and reordered; its two behaviour
+// switches stay fixed, because the overview and the transition matrix are
+// written against what they mean for these five.
 type UpdateStatusInput struct {
 	Label             *string
 	Color             *string
 	Sort              *int
-	RequiresLocation  *bool
 	CountsAsAvailable *bool
 	Terminal          *bool
 }
@@ -149,9 +143,6 @@ func (s *Store) UpdateStatus(ctx context.Context, key string, in UpdateStatusInp
 	if in.Sort != nil {
 		cur.Sort = *in.Sort
 	}
-	if in.RequiresLocation != nil {
-		cur.RequiresLocation = *in.RequiresLocation
-	}
 	if !cur.Builtin {
 		if in.CountsAsAvailable != nil {
 			cur.CountsAsAvailable = *in.CountsAsAvailable
@@ -165,11 +156,10 @@ func (s *Store) UpdateStatus(ctx context.Context, key string, in UpdateStatusInp
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
 			`UPDATE statuses SET label = ?, color = ?, sort = ?,
-			                     requires_location = ?, counts_as_available = ?, terminal = ?,
-			                     updated_at = ?
+			                     counts_as_available = ?, terminal = ?, updated_at = ?
 			 WHERE key = ?`,
 			cur.Label, cur.Color, cur.Sort,
-			boolInt(cur.RequiresLocation), boolInt(cur.CountsAsAvailable), boolInt(cur.Terminal),
+			boolInt(cur.CountsAsAvailable), boolInt(cur.Terminal),
 			store.FormatTime(cur.UpdatedAt), key)
 		return err
 	})
