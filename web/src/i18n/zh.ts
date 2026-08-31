@@ -19,6 +19,8 @@ export const zh = {
     importPage: "导入",
     audit: "审计",
     signOut: "退出登录",
+    toLight: "切换到浅色",
+    toDark: "切换到深色",
   },
 
   login: {
@@ -40,9 +42,17 @@ export const zh = {
 
   assets: {
     title: "资产",
-    search: "搜索编号、MAC、序列号或型号",
+    // The label is read out, the placeholder is what people see -- the long
+    // form belonged in neither.
+    search: "搜索资产",
+    searchPlaceholder: "搜索",
+    perPage: "每页",
+    perPageUnit: (n: number) => `${n} 条`,
+    rangeOf: (from: number, to: number, total: number) =>
+      `第 ${from}–${to} 条，共 ${total.toLocaleString("zh-CN")} 条`,
+    prevPage: "上一页",
+    nextPage: "下一页",
     newAsset: "录入设备",
-    total: (n: number) => `共 ${n.toLocaleString("zh-CN")} 条`,
     columns: "显示列",
     includeDescendants: "含子类别",
     allCategories: "全部类别",

@@ -1,6 +1,8 @@
+import { MoonIcon, SunIcon } from "lucide-react"
 import { NavLink, Navigate, Outlet } from "react-router"
 
 import { useAuth } from "@/features/auth/useAuth"
+import { useTheme } from "@/features/theme/useTheme"
 import { zh } from "@/i18n/zh"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -21,6 +23,7 @@ const links = [
 /** Chrome around every signed-in page, and the gate that keeps them signed in. */
 export function AppShell() {
   const { user, isLoading, signOut } = useAuth()
+  const { theme, toggle } = useTheme()
 
   if (isLoading) {
     return (
@@ -55,6 +58,14 @@ export function AppShell() {
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
             <span className="text-muted-foreground">{user.name}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={theme === "dark" ? zh.nav.toLight : zh.nav.toDark}
+              onClick={toggle}
+            >
+              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+            </Button>
             <Button variant="ghost" size="sm" onClick={signOut}>
               {zh.nav.signOut}
             </Button>

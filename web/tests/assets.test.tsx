@@ -68,12 +68,12 @@ describe("Assets list", () => {
 
   it("focuses the search box on mount so a scanner can type straight away", async () => {
     renderWithProviders(<Assets />)
-    await waitFor(() => expect(screen.getByLabelText(/搜索编号/)).toHaveFocus())
+    await waitFor(() => expect(screen.getByLabelText(/搜索资产/)).toHaveFocus())
   })
 
   it("shows the total and the fixed columns", async () => {
     renderWithProviders(<Assets />)
-    expect(await screen.findByText("共 1 条")).toBeInTheDocument()
+    expect(await screen.findByText(/共 1 条/)).toBeInTheDocument()
     const row = screen.getByRole("row", { name: /112394521950/ })
     expect(within(row).getByText("在库")).toBeInTheDocument()
     expect(within(row).getByText("上海仓库")).toBeInTheDocument()
@@ -83,7 +83,7 @@ describe("Assets list", () => {
   it("passes the category filter and the descendants switch to the query", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText("共 1 条")
+    await screen.findByText(/共 1 条/)
 
     await chooseByLabel(user, "类别", "网络设备")
     await waitFor(() =>
@@ -99,7 +99,7 @@ describe("Assets list", () => {
   it("adds a custom-field column and remembers the choice in localStorage", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText("共 1 条")
+    await screen.findByText(/共 1 条/)
 
     await chooseByLabel(user, "类别", "网络设备")
     const toggle = await screen.findByLabelText("固件版本")
@@ -135,5 +135,92 @@ describe("Assets list", () => {
     renderWithProviders(<Assets />)
     expect(await screen.findByRole("alert")).toHaveTextContent("网络不可用")
     expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument()
+  })
+})
+
+// Before this the list fetched one server-default page and stopped: the total
+// said 1,847 and there was no way to reach the 51st device.
+describe("Assets paging", () => {
+  const many = { ...page, total: 137 }
+
+  beforeEach(() => {
+    navigate.mockReset()
+    get.mockReset().mockImplementation((p: string) =>
+      p.startsWith("/assets") ? Promise.resolve(many) : route(p),
+    )
+    localStorage.clear()
+  })
+
+  function lastAssetCall() {
+    const calls = get.mock.calls.map((c) => c[0] as string).filter((p) => p.startsWith("/assets"))
+    return new URLSearchParams(calls[calls.length - 1].split("?")[1])
+  }
+
+  it("asks for twenty rows by default", async () => {
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 137 条/)
+
+    expect(lastAssetCall().get("limit")).toBe("20")
+    expect(lastAssetCall().get("offset")).toBe("0")
+    expect(screen.getByText("第 1–20 条，共 137 条")).toBeInTheDocument()
+  })
+
+  it("moves through the pages", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 137 条/)
+
+    await user.click(screen.getByRole("link", { name: "3" }))
+    await waitFor(() => expect(lastAssetCall().get("offset")).toBe("40"))
+    expect(screen.getByText("第 41–60 条，共 137 条")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("link", { name: "上一页" }))
+    await waitFor(() => expect(lastAssetCall().get("offset")).toBe("20"))
+  })
+
+  it("offers 20, 50 and 100 rows a page", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 137 条/)
+
+    await user.click(screen.getByRole("combobox", { name: "每页" }))
+    const sizes = (await screen.findAllByRole("option")).map((o) => o.textContent)
+    expect(sizes).toEqual(["20 条", "50 条", "100 条"])
+
+    await user.click(screen.getByRole("option", { name: "100 条" }))
+    await waitFor(() => expect(lastAssetCall().get("limit")).toBe("100"))
+  })
+
+  // Page 7 of a different question is not a place anyone meant to be.
+  it("returns to the first page when the filter changes", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 137 条/)
+
+    await user.click(screen.getByRole("link", { name: "2" }))
+    await waitFor(() => expect(lastAssetCall().get("offset")).toBe("20"))
+
+    await chooseByLabel(user, "状态", "在库")
+    await waitFor(() => expect(lastAssetCall().get("offset")).toBe("0"))
+  })
+
+  // A CSV of whichever page you happened to be looking at would be a trap.
+  it("keeps paging out of the export link", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 137 条/)
+    await user.click(screen.getByRole("link", { name: "2" }))
+
+    const href = screen.getByRole("link", { name: "导出 CSV" }).getAttribute("href")!
+    const params = new URLSearchParams(href.split("?")[1])
+    expect(params.get("limit")).toBeNull()
+    expect(params.get("offset")).toBeNull()
+  })
+
+  it("draws no pager when everything fits on one page", async () => {
+    get.mockImplementation(route)
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 1 条/)
+    expect(screen.queryByRole("link", { name: "下一页" })).not.toBeInTheDocument()
   })
 })

@@ -1,9 +1,10 @@
-import { InfoIcon } from "lucide-react"
+import { InfoIcon, SearchIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 
 import { api } from "@/lib/api"
+import { cn } from "@/lib/utils"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { AssetPage, Category, CategorySchema } from "@/lib/types"
 import { zh, zhImport, zhTransfer } from "@/i18n/zh"
@@ -12,9 +13,22 @@ import { useColumnSelection } from "@/features/assets/useColumns"
 import { ActionBar } from "@/features/assets/ActionBar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group"
 import {
   Field,
   FieldGroup,
@@ -39,6 +53,34 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+/** Offered page sizes. The first is the default. */
+const PAGE_SIZES: number[] = [20, 50, 100]
+
+/**
+ * The page numbers to draw: always the first and last, always the current and
+ * its neighbours, an ellipsis for whatever is skipped. `null` marks a gap.
+ *
+ * A row of ten thousand buttons is not navigation, and neither is a bare
+ * "next" -- somebody looking for the end of the list needs to be able to jump.
+ */
+function pageWindow(current: number, count: number): (number | null)[] {
+  if (count <= 7) return Array.from({ length: count }, (_, i) => i)
+
+  const keep = new Set([0, count - 1, current, current - 1, current + 1])
+  const out: (number | null)[] = []
+  let gap = false
+  for (let i = 0; i < count; i++) {
+    if (keep.has(i)) {
+      out.push(i)
+      gap = false
+    } else if (!gap) {
+      out.push(null)
+      gap = true
+    }
+  }
+  return out
+}
+
 /** Renders one custom attribute. Booleans read as words, not as true/false. */
 function cellText(v: unknown): string {
   if (v === true) return zh.common.yes
@@ -62,6 +104,8 @@ export function Assets() {
   const { keys: extraColumns, toggle } = useColumnSelection()
   const [selected, setSelected] = useState<string[]>([])
   const [done, setDone] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
 
   const toggleSelected = (id: string) =>
     setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
@@ -72,6 +116,8 @@ export function Assets() {
     searchRef.current?.focus()
   }, [])
 
+  // Export takes the filters and nothing else: a CSV of whichever page you
+  // happened to be looking at would be a trap.
   const params = new URLSearchParams()
   if (q) params.set("q", q)
   if (categoryId) {
@@ -79,6 +125,17 @@ export function Assets() {
     params.set("include_descendants", String(includeDescendants))
   }
   if (status) params.set("status", status)
+
+  const listParams = new URLSearchParams(params)
+  listParams.set("limit", String(pageSize))
+  listParams.set("offset", String(page * pageSize))
+
+  // Any change to what is being asked for puts you back on the first page --
+  // page 7 of a different question is not a place anyone meant to be.
+  const filterKey = params.toString()
+  useEffect(() => {
+    setPage(0)
+  }, [filterKey, pageSize])
 
   const categories = useQuery({
     queryKey: ["categories"],
@@ -92,8 +149,9 @@ export function Assets() {
   })
 
   const assets = useQuery({
-    queryKey: ["assets", params.toString()],
-    queryFn: () => api.get<AssetPage>(`/assets?${params.toString()}`),
+    queryKey: ["assets", listParams.toString()],
+    queryFn: () => api.get<AssetPage>(`/assets?${listParams.toString()}`),
+    placeholderData: (prev) => prev,
   })
 
   // A unique exact hit means the operator scanned a specific device.
@@ -104,6 +162,8 @@ export function Assets() {
   }, [assets.data?.exact_match_id, navigate])
 
   const available = schema.data?.fields?.filter((f) => f.type !== "computed") ?? []
+  const total = assets.data?.total ?? 0
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
 
   return (
     <div className="grid gap-5">
@@ -117,22 +177,34 @@ export function Assets() {
         <Button onClick={() => navigate("/assets/new")}>{zh.assets.newAsset}</Button>
       </div>
 
-      <div className="flex flex-wrap items-end gap-4">
-        <Field>
-          <FieldLabel htmlFor="q">{zh.assets.search}</FieldLabel>
-          <Input
-            id="q"
-            ref={searchRef}
-            className="w-72"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
+      {/* One row. The labels are read out but not drawn: each control already
+          shows what it is -- the magnifier, "全部类别", "全部状态" -- so drawing
+          a caption above each one only pushed the filters onto three lines. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Field className="w-auto">
+          <FieldLabel htmlFor="q" className="sr-only">
+            {zh.assets.search}
+          </FieldLabel>
+          <InputGroup className="w-64">
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              id="q"
+              ref={searchRef}
+              placeholder={zh.assets.searchPlaceholder}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </InputGroup>
         </Field>
 
-        <Field>
-          <FieldLabel htmlFor="category">{zh.assets.category}</FieldLabel>
+        <Field className="w-auto">
+          <FieldLabel htmlFor="category" className="sr-only">
+            {zh.assets.category}
+          </FieldLabel>
           <Select value={toNone(categoryId)} onValueChange={(v) => setCategoryId(fromNone(v))}>
-            <SelectTrigger id="category" className="w-48">
+            <SelectTrigger id="category" className="w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -148,21 +220,12 @@ export function Assets() {
           </Select>
         </Field>
 
-        {categoryId && (
-          <Field orientation="horizontal" className="pb-2">
-            <Checkbox
-              id="descendants"
-              checked={includeDescendants}
-              onCheckedChange={(v) => setIncludeDescendants(v === true)}
-            />
-            <FieldLabel htmlFor="descendants">{zh.assets.includeDescendants}</FieldLabel>
-          </Field>
-        )}
-
-        <Field>
-          <FieldLabel htmlFor="status">{zh.assets.statusLabel}</FieldLabel>
+        <Field className="w-auto">
+          <FieldLabel htmlFor="status" className="sr-only">
+            {zh.assets.statusLabel}
+          </FieldLabel>
           <Select value={toNone(status)} onValueChange={(v) => setStatus(fromNone(v))}>
-            <SelectTrigger id="status" className="w-40">
+            <SelectTrigger id="status" className="w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -177,6 +240,17 @@ export function Assets() {
             </SelectContent>
           </Select>
         </Field>
+
+        {categoryId && (
+          <Field orientation="horizontal" className="w-auto">
+            <Checkbox
+              id="descendants"
+              checked={includeDescendants}
+              onCheckedChange={(v) => setIncludeDescendants(v === true)}
+            />
+            <FieldLabel htmlFor="descendants">{zh.assets.includeDescendants}</FieldLabel>
+          </Field>
+        )}
       </div>
 
       {available.length > 0 && (
@@ -206,7 +280,37 @@ export function Assets() {
         onRetry={() => assets.refetch()}
       >
         <>
-          <p className="text-sm text-muted-foreground">{zh.assets.total(assets.data?.total ?? 0)}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm text-muted-foreground">
+              {zh.assets.rangeOf(
+                total === 0 ? 0 : page * pageSize + 1,
+                Math.min((page + 1) * pageSize, total),
+                total,
+              )}
+            </p>
+            <Field orientation="horizontal" className="ml-auto w-auto">
+              <FieldLabel htmlFor="page-size" className="text-sm text-muted-foreground">
+                {zh.assets.perPage}
+              </FieldLabel>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(v) => setPageSize(Number(v))}
+              >
+                <SelectTrigger id="page-size" size="sm" className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {PAGE_SIZES.map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {zh.assets.perPageUnit(n)}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
           <div className="overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
@@ -252,6 +356,57 @@ export function Assets() {
               </TableBody>
             </Table>
           </div>
+
+          {pageCount > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    aria-label={zh.assets.prevPage}
+                    aria-disabled={page === 0}
+                    className={cn(page === 0 && "pointer-events-none opacity-50")}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setPage((p) => Math.max(0, p - 1))
+                    }}
+                  />
+                </PaginationItem>
+                {pageWindow(page, pageCount).map((n, i) =>
+                  n === null ? (
+                    <PaginationItem key={`gap-${i}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={n}>
+                      <PaginationLink
+                        href="#"
+                        isActive={n === page}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          setPage(n)
+                        }}
+                      >
+                        {n + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ),
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    aria-label={zh.assets.nextPage}
+                    aria-disabled={page >= pageCount - 1}
+                    className={cn(page >= pageCount - 1 && "pointer-events-none opacity-50")}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setPage((p) => Math.min(pageCount - 1, p + 1))
+                    }}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
         </>
       </StateBoundary>
 
