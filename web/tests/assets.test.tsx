@@ -26,6 +26,7 @@ vi.mock("@/lib/api", async () => {
 
 const categories = [
   { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", display_key: "" },
+  { id: "srv", code: "SRV", name: "服务器", parent_id: null, path: "/srv/", display_key: "" },
 ]
 
 const schema = {
@@ -33,6 +34,15 @@ const schema = {
   fields: [
     { id: "f1", key: "mac", label: "基准 MAC", type: "mac", options: {}, is_unique: true, required: true, sort: 10 },
     { id: "f2", key: "firmware", label: "固件版本", type: "text", options: {}, is_unique: false, required: false, sort: 20 },
+  ],
+}
+
+// A category with entirely different fields, which is what makes a column
+// chosen under one of them meaningless under the other.
+const serverSchema = {
+  category: categories[1],
+  fields: [
+    { id: "f3", key: "rack", label: "机柜位", type: "text", options: {}, is_unique: false, required: false, sort: 10 },
   ],
 }
 
@@ -81,7 +91,9 @@ function route(path: string) {
   if (path === "/categories") return Promise.resolve(categories)
   if (path === "/holders") return Promise.resolve(holders)
   if (path === "/users") return Promise.resolve(users)
-  if (path.endsWith("/schema")) return Promise.resolve(schema)
+  if (path.endsWith("/schema")) {
+    return Promise.resolve(path.includes("/srv/") ? serverSchema : schema)
+  }
   if (path.startsWith("/assets")) return Promise.resolve(page)
   return Promise.resolve([])
 }
@@ -105,6 +117,52 @@ describe("Assets list", () => {
     renderWithProviders(<Assets />)
     const row = await screen.findByRole("row", { name: /112394521950/ })
     expect(within(row).getByText("网络设备")).toBeInTheDocument()
+  })
+
+  // The picker offers this category's fields, so a choice made under one
+  // category is meaningless under the next -- it used to come back anyway, as
+  // a header with the raw key on it and an empty cell in every row.
+  it("keeps each category's columns to itself", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 1 条/)
+
+    await chooseByLabel(user, "类别", "网络设备")
+    await user.click(await screen.findByRole("button", { name: "显示列" }))
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: "固件版本" }))
+    await user.keyboard("{Escape}")
+    expect(await screen.findByRole("columnheader", { name: "固件版本" })).toBeInTheDocument()
+
+    await chooseByLabel(user, "类别", "服务器")
+    await waitFor(() =>
+      expect(screen.queryByRole("columnheader", { name: "固件版本" })).not.toBeInTheDocument(),
+    )
+    // Nor under its raw key, which is what a header with no field behind it
+    // fell back to.
+    expect(screen.queryByRole("columnheader", { name: "firmware" })).not.toBeInTheDocument()
+
+    // Back where it was chosen, it is still chosen.
+    await chooseByLabel(user, "类别", "网络设备")
+    expect(await screen.findByRole("columnheader", { name: "固件版本" })).toBeInTheDocument()
+  })
+
+  it("shows no field columns at all with the category filter off", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 1 条/)
+
+    await chooseByLabel(user, "类别", "网络设备")
+    await user.click(await screen.findByRole("button", { name: "显示列" }))
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: "固件版本" }))
+    await user.keyboard("{Escape}")
+    await screen.findByRole("columnheader", { name: "固件版本" })
+
+    await chooseByLabel(user, "类别", "全部类别")
+    await waitFor(() =>
+      expect(screen.queryByRole("columnheader", { name: "固件版本" })).not.toBeInTheDocument(),
+    )
+    // With no category there are no custom fields to offer either.
+    expect(screen.queryByRole("button", { name: "显示列" })).not.toBeInTheDocument()
   })
 
   it("shows the total and the fixed columns", async () => {
@@ -145,7 +203,8 @@ describe("Assets list", () => {
       expect(screen.getByRole("columnheader", { name: "固件版本" })).toBeInTheDocument(),
     )
     expect(screen.getByRole("cell", { name: "2.1.3" })).toBeInTheDocument()
-    expect(JSON.parse(localStorage.getItem("nexus.assetColumns")!)).toContain("firmware")
+    // Remembered against the category it was chosen under.
+    expect(JSON.parse(localStorage.getItem("nexus.assetColumns")!).net).toContain("firmware")
 
     // The menu stays open: picking columns is several decisions in a row, and
     // closing after each one would make it one trip per column.

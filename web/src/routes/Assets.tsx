@@ -94,7 +94,7 @@ export function Assets() {
   const [status, setStatus] = useState(searchParams.get("status") ?? "")
   const [ownerId, setOwnerId] = useState(searchParams.get("owner_id") ?? "")
   const [holderId, setHolderId] = useState(searchParams.get("holder_id") ?? "")
-  const { keys: extraColumns, toggle } = useColumnSelection()
+  const { keys: chosenColumns, toggle } = useColumnSelection(categoryId)
   const [selected, setSelected] = useState<string[]>([])
   const [done, setDone] = useState<string | null>(null)
   const [page, setPage] = useState(0)
@@ -191,6 +191,11 @@ export function Assets() {
   }, [assets.data?.exact_match_id, navigate])
 
   const available = schema.data?.fields?.filter((f) => f.type !== "computed") ?? []
+  // Only what this category actually has. The stored choice is per category
+  // already, but a field can be unbound after it was chosen, and the schema
+  // has not arrived yet on the first render after a category change -- either
+  // way a header with no field behind it is a column of empty cells.
+  const extraColumns = chosenColumns.filter((k) => available.some((f) => f.key === k))
   const total = assets.data?.total ?? 0
 
   return (
