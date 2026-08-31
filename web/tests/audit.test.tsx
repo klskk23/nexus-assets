@@ -49,6 +49,21 @@ const entries: AuditEntry[] = [
   },
 ]
 
+/**
+ * The day button for a date in the visible month.
+ *
+ * By data-day rather than by name: the button's accessible name is a
+ * fully localised date, and pinning a test to that wording would break the
+ * day someone changes the calendar's language.
+ */
+function day(n: number): HTMLElement {
+  const now = new Date()
+  const iso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(n).padStart(2, "0")}`
+  const cell = document.querySelector(`[data-day="${iso}"]:not([data-outside]) button`)
+  if (!cell) throw new Error(`no day button for ${iso}`)
+  return cell as HTMLElement
+}
+
 function page(items: AuditEntry[] = entries) {
   return { items, total: items.length, offset: 0, limit: 50 }
 }
@@ -77,26 +92,46 @@ describe("Audit page", () => {
     })
   })
 
-  it("turns a date range into the RFC3339 the API expects", async () => {
+  it("turns a picked range into the RFC3339 the API expects", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Audit />)
     await screen.findByRole("row", { name: /管理员/ })
 
-    await user.type(screen.getByLabelText("起始时间"), "2026-08-01")
-    await user.type(screen.getByLabelText("结束时间"), "2026-08-28")
+    await user.click(screen.getByRole("button", { name: "日期范围" }))
+    await screen.findAllByRole("grid")
+    await user.click(day(1))
+    await user.click(day(5))
 
     await waitFor(() => {
       const last = get.mock.calls[get.mock.calls.length - 1][0] as string
       const params = new URLSearchParams(last.split("?")[1])
       // The end of the range has to cover the whole day, or today's entries
       // vanish the moment someone filters "up to today".
-      expect(params.get("from")).toBe("2026-08-01T00:00:00Z")
-      expect(params.get("to")).toBe("2026-08-28T23:59:59Z")
+      expect(params.get("from")).toMatch(/-01T00:00:00Z$/)
+      expect(params.get("to")).toMatch(/-05T23:59:59Z$/)
+    })
+  })
+
+  it("takes a single day as a range of one", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Audit />)
+    await screen.findByRole("row", { name: /管理员/ })
+
+    await user.click(screen.getByRole("button", { name: "日期范围" }))
+    await screen.findAllByRole("grid")
+    await user.click(day(9))
+
+    await waitFor(() => {
+      const params = new URLSearchParams(
+        (get.mock.calls[get.mock.calls.length - 1][0] as string).split("?")[1],
+      )
+      expect(params.get("from")).toMatch(/-09T00:00:00Z$/)
+      expect(params.get("to")).toMatch(/-09T23:59:59Z$/)
     })
   })
 
   // Knowing what the rule said before is what makes the entry worth keeping.
-  it("reveals the before and after values on demand", async () => {
+  it("opens the before and after values in a dialog", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Audit />)
     const row = await screen.findByRole("row", { name: /管理员/ })
@@ -104,9 +139,12 @@ describe("Audit page", () => {
     expect(screen.queryByText(/hex2dec/)).not.toBeInTheDocument()
     await user.click(row)
 
-    expect(await screen.findByText("变更前")).toBeInTheDocument()
-    expect(screen.getByText(/hex2dec/)).toBeInTheDocument()
-    expect(screen.getByText(/category\.code/)).toBeInTheDocument()
+    const dialog = await screen.findByRole("dialog")
+    expect(within(dialog).getByText("变更前")).toBeInTheDocument()
+    expect(within(dialog).getByText(/hex2dec/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/category\.code/)).toBeInTheDocument()
+    // The entry it belongs to, so the values are not floating free of context.
+    expect(within(dialog).getByText(/管理员/)).toBeInTheDocument()
   })
 
   it("says so, rather than opening nothing, when an entry has no values", async () => {
@@ -116,9 +154,9 @@ describe("Audit page", () => {
     renderWithProviders(<Audit />)
     const user = userEvent.setup()
     const row = await screen.findByRole("row", { name: /管理员/ })
-    expect(within(row).getByText("这条记录没有前后值")).toBeInTheDocument()
+    expect(within(row).getByText("没有前后值")).toBeInTheDocument()
     await user.click(row)
-    expect(screen.queryByText("变更前")).not.toBeInTheDocument()
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
   it("pages, and asks for the page it is on", async () => {
