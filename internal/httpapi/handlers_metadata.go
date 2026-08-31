@@ -252,6 +252,7 @@ func (s *Server) createHolder(c *gin.Context) {
 		Type     model.EntityType `json:"type" binding:"required"`
 		Name     string           `json:"name" binding:"required"`
 		ParentID *string          `json:"parent_id"`
+		Note     string           `json:"note"`
 		Attrs    map[string]any   `json:"attrs"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -259,7 +260,8 @@ func (s *Server) createHolder(c *gin.Context) {
 		return
 	}
 	out, err := s.holders.Create(c.Request.Context(), holder.CreateInput{
-		Type: req.Type, Name: req.Name, ParentID: req.ParentID, Attrs: req.Attrs,
+		Type: req.Type, Name: req.Name, ParentID: req.ParentID,
+		Note: req.Note, Attrs: req.Attrs,
 	})
 	if err != nil {
 		FailErr(c, err)
@@ -273,8 +275,14 @@ func (s *Server) createHolder(c *gin.Context) {
 
 func (s *Server) patchHolder(c *gin.Context) {
 	var req struct {
-		DefaultStock *bool `json:"is_default_stock"`
-		Archive      *bool `json:"archive"`
+		DefaultStock *bool   `json:"is_default_stock"`
+		Archive      *bool   `json:"archive"`
+		Name         *string `json:"name"`
+		Note         *string `json:"note"`
+		// RawMessage, not **string: unmarshalling JSON null into a double
+		// pointer clears the outer one, so "detach from the parent" would be
+		// indistinguishable from "leave the parent alone".
+		ParentID json.RawMessage `json:"parent_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
@@ -282,6 +290,23 @@ func (s *Server) patchHolder(c *gin.Context) {
 	}
 	ctx := c.Request.Context()
 	before, _ := s.holders.Get(ctx, c.Param("id"))
+
+	if req.Name != nil || req.Note != nil || len(req.ParentID) > 0 {
+		in := holder.UpdateInput{Name: req.Name, Note: req.Note}
+		if len(req.ParentID) > 0 {
+			var parent *string
+			if err := json.Unmarshal(req.ParentID, &parent); err != nil {
+				Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest,
+					map[string]string{"parent_id": "上级必须是 id 或 null"})
+				return
+			}
+			in.ParentID = &parent
+		}
+		if _, err := s.holders.Update(ctx, c.Param("id"), in); err != nil {
+			FailErr(c, err)
+			return
+		}
+	}
 
 	if req.DefaultStock != nil {
 		// Saying false used to be accepted and then quietly ignored, so a

@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { NONE, fromNone, toNone } from "@/lib/select"
-import type { AssetPage, Category, CategorySchema, User } from "@/lib/types"
+import type { AssetPage, Category, CategorySchema, HolderEntity, User } from "@/lib/types"
 import { zh, zhImport } from "@/i18n/zh"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { useStatuses } from "@/features/statuses/useStatuses"
@@ -105,6 +105,7 @@ export function Assets() {
   )
   const [status, setStatus] = useState(searchParams.get("status") ?? "")
   const [ownerId, setOwnerId] = useState(searchParams.get("owner_id") ?? "")
+  const [holderId, setHolderId] = useState(searchParams.get("holder_id") ?? "")
   const { keys: extraColumns, toggle } = useColumnSelection()
   const [selected, setSelected] = useState<string[]>([])
   const [done, setDone] = useState<string | null>(null)
@@ -132,6 +133,12 @@ export function Assets() {
   }
   if (status) params.set("status", status)
   if (ownerId) params.set("owner_id", ownerId)
+  if (holderId) {
+    // The kind travels with the id: the server filters on the pair, and an id
+    // without one would match a user and an entity that happened to share it.
+    params.set("holder_type", "entity")
+    params.set("holder_id", holderId)
+  }
 
   const listParams = new URLSearchParams(params)
   listParams.set("limit", String(pageSize))
@@ -152,6 +159,11 @@ export function Assets() {
   const users = useQuery({
     queryKey: ["users"],
     queryFn: () => api.get<User[]>("/users"),
+  })
+
+  const holders = useQuery({
+    queryKey: ["holders"],
+    queryFn: () => api.get<HolderEntity[]>("/holders"),
   })
 
   const schema = useQuery({
@@ -271,6 +283,27 @@ export function Assets() {
                       {u.name}
                     </SelectItem>
                   ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field className="w-auto">
+          <FieldLabel htmlFor="holder" className="sr-only">
+            {zh.assets.holderFilter}
+          </FieldLabel>
+          <Select value={toNone(holderId)} onValueChange={(v) => setHolderId(fromNone(v))}>
+            <SelectTrigger id="holder" className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={NONE}>{zh.assets.allHolders}</SelectItem>
+                {(holders.data ?? []).map((h) => (
+                  <SelectItem key={h.id} value={h.id}>
+                    {h.name}
+                  </SelectItem>
+                ))}
               </SelectGroup>
             </SelectContent>
           </Select>

@@ -101,12 +101,35 @@ export interface User {
   status: "active" | "disabled"
 }
 
+export type EntityType = "company" | "location" | "department"
+
 export interface HolderEntity {
   id: string
-  type: "company" | "location" | "department"
+  type: EntityType
   name: string
+  /** A department belongs to a company; a location may sit under either. */
   parent_id: string | null
+  /** Whatever the operator needs to remember: a rack range, a contact. */
+  note: string
   is_default_stock: boolean
+}
+
+/**
+ * What each kind of holder may hang from. The server enforces the same table;
+ * this copy exists so the form can offer only valid parents rather than let
+ * you pick one and then refuse it.
+ */
+export const ALLOWED_PARENTS: Record<EntityType, EntityType[]> = {
+  company: [],
+  department: ["company"],
+  location: ["company", "department"],
+}
+
+/** Kinds that cannot stand alone. */
+export const PARENT_REQUIRED: Record<EntityType, boolean> = {
+  company: false,
+  department: true,
+  location: false,
 }
 
 export interface Holder {

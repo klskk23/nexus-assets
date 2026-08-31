@@ -35,12 +35,16 @@ func TestMigrationSeedsTheFiveBuiltinsWithTheirBehaviour(t *testing.T) {
 	}
 
 	set := model.NewStatusSet(list)
-	// The three columns must reproduce exactly what the constants used to say.
-	if !set.RequiresLocationHolder(model.StatusInStock) {
-		t.Error("in_stock must still require a location")
-	}
-	if set.RequiresLocationHolder(model.StatusInUse) {
-		t.Error("in_use must not constrain the holder")
+	// 005 clears the location constraint: stock lives in more than one place,
+	// and it can sit in a department's custody. The switch survives for any
+	// status that does want it.
+	for _, k := range []model.AssetStatus{
+		model.StatusInStock, model.StatusInUse, model.StatusInRepair,
+		model.StatusLost, model.StatusRetired,
+	} {
+		if set.RequiresLocationHolder(k) {
+			t.Errorf("%s should not constrain the holder out of the box", k)
+		}
 	}
 	if set.CountsAsAvailable(model.StatusRetired) {
 		t.Error("retired must still be excluded from the distribution")
@@ -110,13 +114,14 @@ func TestBuiltinStatusCannotBeDeleted(t *testing.T) {
 	}
 }
 
-func TestBuiltinBehaviourCannotBeRewired(t *testing.T) {
+// The location constraint is a policy: only the holder check reads it, so an
+// operator may set it on any status, built-in included.
+func TestLocationConstraintIsEditableOnABuiltin(t *testing.T) {
 	s, ctx := newStore(t)
 
-	no := false
-	label := "在库中"
+	yes, label := true, "在库中"
 	out, err := s.UpdateStatus(ctx, string(model.StatusInStock), UpdateStatusInput{
-		Label: &label, RequiresLocation: &no,
+		Label: &label, RequiresLocation: &yes,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -125,7 +130,27 @@ func TestBuiltinBehaviourCannotBeRewired(t *testing.T) {
 		t.Errorf("a built-in must still be renameable, got %q", out.Label)
 	}
 	if !out.RequiresLocation {
-		t.Error("in_stock's location rule must not be switchable off: the rest of the system depends on it")
+		t.Error("an operator who wants the location constraint back must be able to set it")
+	}
+}
+
+// The other two are not policy: the overview and the transition matrix are
+// written against what they mean for these five.
+func TestBuiltinCountingAndTerminalCannotBeRewired(t *testing.T) {
+	s, ctx := newStore(t)
+
+	yes, no := true, false
+	out, err := s.UpdateStatus(ctx, string(model.StatusRetired), UpdateStatusInput{
+		CountsAsAvailable: &yes, Terminal: &no,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.CountsAsAvailable {
+		t.Error("retired must stay out of the category distribution")
+	}
+	if !out.Terminal {
+		t.Error("retired must stay terminal")
 	}
 }
 

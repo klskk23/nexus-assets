@@ -77,6 +77,17 @@ export function Statuses() {
     onError: (e) => setNotice(e instanceof ApiError ? e.message : zh.common.error),
   })
 
+  // The location constraint is the one switch a built-in will accept, because
+  // nothing but the holder check reads it -- it is a policy, and 005 turned it
+  // off for in_stock. Editable here so turning it back on does not need an API
+  // call, and so the change is visible rather than buried in a migration.
+  const setLocationRule = useMutation({
+    mutationFn: (v: { key: string; on: boolean }) =>
+      api.patch(`/statuses/${v.key}`, { requires_location: v.on }),
+    onSuccess: invalidate,
+    onError: (e) => setNotice(e instanceof ApiError ? e.message : zh.common.error),
+  })
+
   const remove = useMutation({
     mutationFn: (k: string) => api.del(`/statuses/${k}`),
     onSuccess: () => {
@@ -164,10 +175,27 @@ export function Statuses() {
           cell: (s) => (s.builtin ? zhStatuses.builtin : zhStatuses.custom),
         },
         {
+          header: zhStatuses.requiresLocation,
+          cell: (s) => (
+            <Field orientation="horizontal" className="w-auto">
+              <Checkbox
+                id={`loc-${s.key}`}
+                checked={s.requires_location}
+                disabled={setLocationRule.isPending}
+                onCheckedChange={(v) => setLocationRule.mutate({ key: s.key, on: v === true })}
+              />
+              <FieldLabel htmlFor={`loc-${s.key}`} className="sr-only">
+                {`${s.label} ${zhStatuses.requiresLocation}`}
+              </FieldLabel>
+            </Field>
+          ),
+        },
+        {
           header: zhStatuses.behaviour,
           cell: (s) => {
+            // The other two are fixed on the built-ins, so they are shown, not
+            // offered.
             const on = [
-              s.requires_location && zhStatuses.requiresLocation,
               s.terminal && zhStatuses.terminal,
               !s.counts_as_available && zhStatuses.notCounted,
             ].filter(Boolean) as string[]

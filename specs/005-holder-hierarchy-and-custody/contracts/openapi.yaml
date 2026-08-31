@@ -1,0 +1,158 @@
+openapi: 3.1.0
+info:
+  title: Nexus Assets API — 005 增量
+  version: 0.5.0
+  description: >
+    持有方层级与保管责任带来的契约变化。**这是一份增量，不是全量。**
+    完整的端点清单见 specs/001-asset-ledger-demo/contracts/openapi.yaml（已就地更新）；
+    本文件只列出变化的路径。本轮**没有新增端点** —— 变的是既有端点接受与返回的内容。
+servers:
+  - url: /api
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: metadata
+  - name: transfers
+
+paths:
+  # ---------------- 变化：持有方带上备注与受校验的上级 ----------------
+  /holders:
+    post:
+      tags: [metadata]
+      summary: 新建持有方实体
+      description: >
+        `parent_id` 从 001 起就存在，但从未被校验也从未被读取 —— 一个看起来能用、
+        实际什么都不保证的字段。本轮给它规则：部门必须属于一个公司；
+        位置可以属于公司或部门，也可以不属于；公司不能有上级。
+        迁移**不回填**存量数据：没有公司可指的部门保持原样，编一个比留空更糟。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, name]
+              properties:
+                type: { type: string, enum: [company, department, location] }
+                name: { type: string }
+                note: { type: string, description: 货架区间、联系人、用途 }
+                parent_id:
+                  type: [string, "null"]
+                  description: 部门必填；位置可选；公司必须为空
+      responses:
+        "201": { description: Created }
+        "422":
+          description: 上级缺失或类型不符，消息挂在 parent_id 上
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /holders/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: 改名 / 改备注 / 移动 / 标记默认库存点 / 停用
+      description: >
+        `parent_id` 用 JSON null 表示「脱离上级」，字段缺席表示「不动」。
+        二者必须可区分，否则一次改备注会顺手把上级清掉 ——
+        与类别的 parent_id 用同一套 RawMessage 处理。
+        移动时同样按类型校验，并拒绝成环：环会让祖先遍历不终止。
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                note: { type: string }
+                parent_id: { type: [string, "null"] }
+                is_default_stock: { type: boolean, description: 只接受 true；标记可移动不可清除 }
+                archive: { type: boolean }
+      responses:
+        "200": { description: OK }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  # ---------------- 变化：内置状态的位置约束不再被忽略 ----------------
+  /statuses/{key}:
+    parameters:
+      - { name: key, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: （已存在）修改状态。本轮 requires_location 的可编辑范围有变
+      description: >
+        004 对内置状态静默忽略三个行为开关，理由是「系统其他部分写死了它们的含义」。
+        核对读取点后，这条理由只对其中两个成立：`counts_as_available` 被概览读、
+        `terminal` 被转换矩阵读，而 `requires_location` 除了持有方校验自己没有第二个读者。
+        因此它降级为**策略**，对任何状态可编辑，包括内置；另外两个仍然对内置忽略。
+        005 的迁移把 `in_stock` 的这一项置为 0。
+      responses:
+        "200": { description: OK }
+
+  # ---------------- 变化：拒绝的字段归属 ----------------
+  /transfers:
+    post:
+      tags: [transfers]
+      summary: （已存在）流转。本轮 to_owner_id 的用法与一条拒绝的字段归属有变
+      description: >
+        请求形状未变。`to_owner_id` 自 001 就在，但前端只在「改负责人」时填过它；
+        现在签出、转移、归还在目标是实体时也填 —— 把设备交给一个公司不会让
+        「找谁问」这个问题消失。省略该字段仍然表示「负责人不变」。
+
+        状态的位置约束触发的拒绝，此前是 `illegal_transition` 且挂在 `to_status` 上，
+        识别方式是在错误文本里找「位置」两个字。操作者动的是持有方，
+        收到的却是一句关于状态的话。现在由 `transfer.ErrHolderKind` 哨兵驱动，
+        返回 `validation_failed` 并挂在 `to_holder_id` 上。
+      responses:
+        "200": { description: OK }
+        "422":
+          description: 目标状态不存在，或该状态的位置约束拒绝了这个持有方
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+components:
+  schemas:
+    HolderEntity:
+      type: object
+      required: [id, type, name, parent_id, note, is_default_stock]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [company, department, location] }
+        name: { type: string }
+        parent_id:
+          type: [string, "null"]
+          description: 部门必须有；位置可有可无；公司恒为 null
+        note: { type: string }
+        is_default_stock: { type: boolean }
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            fields:
+              type: object
+              additionalProperties: { type: string }
+              description: 逐字段的消息，挂在操作者实际动过的那个字段上
+
+  responses:
+    Error:
+      description: 统一错误 envelope
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

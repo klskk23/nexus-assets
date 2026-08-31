@@ -15,7 +15,9 @@ export const statusList: Status[] = [
     color: "green",
     sort: 10,
     builtin: true,
-    requires_location: true,
+    // 005 cleared it: stock lives in more than one place, and may sit in a
+    // department's custody.
+    requires_location: false,
     counts_as_available: true,
     terminal: false,
   },

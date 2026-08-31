@@ -199,6 +199,12 @@ func failTransfer(c *gin.Context, err error) {
 			map[string]string{"to_holder_id": MsgNoDefaultStock})
 	case errors.Is(err, transfer.ErrNotFound), errors.Is(err, transfer.ErrAssetNotFound):
 		Fail(c, http.StatusNotFound, CodeNotFound, MsgNotFound, nil)
+	case errors.Is(err, transfer.ErrHolderKind):
+		// Tagged to the field that was actually chosen. Reporting a holder
+		// problem against to_status is what made this refusal unactionable.
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
+			userText(err, transfer.ErrHolderKind),
+			map[string]string{"to_holder_id": userText(err, transfer.ErrHolderKind)})
 	case isTransitionError(err):
 		Fail(c, http.StatusUnprocessableEntity, CodeIllegalTransition, err.Error(),
 			map[string]string{"to_status": err.Error()})
@@ -211,7 +217,7 @@ func failTransfer(c *gin.Context, err error) {
 // which arrive as plain errors from the model layer.
 func isTransitionError(err error) bool {
 	msg := err.Error()
-	for _, marker := range []string{"terminal", "checked back in", "not allowed", "位置", "unknown status"} {
+	for _, marker := range []string{"terminal", "checked back in", "not allowed", "unknown status"} {
 		if len(msg) >= len(marker) && indexOfString(msg, marker) >= 0 {
 			return true
 		}

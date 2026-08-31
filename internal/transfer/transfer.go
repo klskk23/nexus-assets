@@ -26,6 +26,14 @@ var (
 	ErrNoDefaultStock   = errors.New("no default stock point is set; choose a location to return to")
 	ErrHolderRequired   = errors.New("a transfer needs a destination")
 	ErrBatchPartialEdit = errors.New("a batch event can only be edited as a whole")
+	// ErrHolderKind is the status's location constraint refusing a holder.
+	//
+	// A sentinel so the message can be attached to the field the operator
+	// actually touched. It used to be recognised by sniffing for 「位置」 in the
+	// text and reported against `to_status` -- so choosing a department in the
+	// transfer dialog came back as a complaint about a status nobody had
+	// changed.
+	ErrHolderKind = errors.New("holder kind is not allowed by the target status")
 )
 
 // Service performs transfers.
@@ -207,7 +215,7 @@ func checkHolderForStatus(ctx context.Context, tx *sql.Tx, statuses model.Status
 		return nil
 	}
 	if to.Holder.Type != model.HolderTypeEntity {
-		return fmt.Errorf("在库状态的持有方必须是一个位置")
+		return fmt.Errorf("%w：「%s」状态的持有方必须是一个位置", ErrHolderKind, statuses.Label(to.Status))
 	}
 	var typ string
 	if err := tx.QueryRowContext(ctx,
@@ -218,7 +226,7 @@ func checkHolderForStatus(ctx context.Context, tx *sql.Tx, statuses model.Status
 		return err
 	}
 	if model.EntityType(typ) != model.EntityLocation {
-		return fmt.Errorf("在库状态的持有方必须是一个位置")
+		return fmt.Errorf("%w：「%s」状态的持有方必须是一个位置", ErrHolderKind, statuses.Label(to.Status))
 	}
 	return nil
 }

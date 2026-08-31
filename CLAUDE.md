@@ -1,19 +1,19 @@
 <!-- SPECKIT START -->
-当前计划：`specs/004-configurable-statuses/plan.md`
+当前计划：`specs/005-holder-hierarchy-and-custody/plan.md`
 
 开工前必读，按优先级：
 
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
-2. `specs/004-configurable-statuses/` —— 本轮特性的规格、计划、决策与任务
+2. `specs/005-holder-hierarchy-and-custody/` —— 本轮特性的规格、计划、决策与任务
 3. `docs/design-baseline-v4.md`（决策 53–60）—— 状态成为可配置的数据。
-   **冲突时以最新一版为准：v4 > v3 > v2 > v1**
+   **冲突时以最新一版为准：005 的 research.md > v4 > v3 > v2 > v1**
 4. `docs/design-baseline-v3.md`（决策 41–52）—— 信息项可删除、型号多对多
 5. `docs/design-baseline-v2.md`（决策 25–40）—— 编号模型、依赖门禁、流转
 6. `docs/design-baseline.md` —— 原始设计基线（决策 1–24）
-7. `specs/001-asset-ledger-demo/` ~ `specs/003-field-lifecycle-and-models/` —— 前三轮特性。
+7. `specs/001-asset-ledger-demo/` ~ `specs/004-configurable-statuses/` —— 前四轮特性。
    001 的 `contracts/openapi.yaml` 仍是**全量**端点清单
 
-**最容易违反的七条硬规则**
+**最容易违反的八条硬规则**
 
 - **组件必须来自 shadcn/ui。** 不存在时必须先与开发者确认才能自定义，**不接受事后补批**。
   类别树用 `Collapsible` 递归组合，不引入树组件。
@@ -34,6 +34,12 @@
   标签**不在** `zh.status`（已撤销）—— 前端一律走 `useStatuses()`，
   服务端一律走 `model.StatusSet`。写事务里的判定必须从 `tx` 读状态集，不从连接池读。
   转换规则**内置对内置沿用原 5×5 矩阵**，涉及自定义才放行，这是为了不放松任何既有护栏。
+  三个行为开关里，`requires_location` 自 005 起是**策略**（任何状态可改，出厂全关），
+  `counts_as_available` 与 `terminal` 仍对内置锁死 —— 判据是「除了约束本身还有谁在读它」。
+- **持有方是一棵有规则的树。** 部门必须属于公司，位置可挂公司或部门、也可不挂，
+  公司无上级。规则写在 `internal/holder` 的 `allowedParents` 表里，前端有同形一份
+  （`web/src/lib/types.ts`）**只用于不提供非法选项**，把关的仍然是服务端。
+  移动要防成环。迁移**不回填**存量的无上级部门。
 - **信息项没有「停用」。** 只有删除（无关联时）与解绑（有存量数据时）。
   `archived_attrs` 是**解绑**产生的孤儿键，与停用无关，不要跟着一起清理掉 ——
   删掉它会让「解绑后仍能查看旧值」当场失效，且没有任何现有测试会失败。

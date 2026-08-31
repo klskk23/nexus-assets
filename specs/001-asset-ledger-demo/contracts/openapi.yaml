@@ -584,18 +584,39 @@ paths:
                     history: { type: integer }
 
   /holders:
-    get: { tags: [metadata], summary: 持有方实体树, responses: { "200": { description: OK } } }
-    post: { tags: [metadata], summary: 新建持有方实体, responses: { "201": { description: Created } } }
+    get:
+      tags: [metadata]
+      summary: 持有方实体树
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/HolderEntity" } }
+    post:
+      tags: [metadata]
+      summary: 新建持有方实体
+      description: >
+        `parent_id` 按类型校验：部门必须属于一个公司；位置可以属于公司或部门，也可以不属于；
+        公司不能有上级。不合规时 422，消息挂在 `parent_id` 上。
+      responses:
+        "201": { description: Created }
+        "422": { $ref: "#/components/responses/Error" }
 
   /holders/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
     patch:
       tags: [metadata]
-      summary: 修改 / 标记默认库存点 / 停用。被持有或被引用时拒绝停用
+      summary: 改名 / 改备注 / 移动 / 标记默认库存点 / 停用。被持有或被引用时拒绝停用
+      description: >
+        `name`、`note`、`parent_id` 可单独或一起提交。`parent_id` 用 JSON null 表示
+        「脱离上级」，字段缺席表示「不动」—— 二者必须可区分，否则改备注会顺手把上级清掉。
+        移动时同样校验类型，并拒绝成环。
       responses:
         "200": { description: OK }
         "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
 
   /users:
     get: { tags: [metadata], summary: 账号列表, responses: { "200": { description: OK } } }
@@ -710,6 +731,19 @@ components:
           schema: { $ref: "#/components/schemas/ErrorEnvelope" }
 
   schemas:
+    HolderEntity:
+      type: object
+      required: [id, type, name, parent_id, note, is_default_stock]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [company, department, location] }
+        name: { type: string }
+        parent_id:
+          type: [string, "null"]
+          description: 部门必须有；位置可有可无；公司恒为 null
+        note: { type: string, description: 货架区间、联系人、用途 —— 运维自己要记的东西 }
+        is_default_stock: { type: boolean }
+
     Status:
       type: object
       required: [key, label, color, sort, builtin]
@@ -722,7 +756,13 @@ components:
           enum: [slate, green, blue, amber, red, violet, teal, rose]
         sort: { type: integer }
         builtin: { type: boolean, description: 内置五个为真；不可删除，行为开关不可改 }
-        requires_location: { type: boolean, description: 持有方必须是位置实体 }
+        requires_location:
+          type: boolean
+          description: >
+            持有方必须是位置实体。005 起这是一条**策略**而非规则：只有持有方校验读它，
+            因此任何状态（含内置）都可以开关。内置的 in_stock 出厂为关 ——
+            库存可以交给公司或部门保管
+
         counts_as_available: { type: boolean, description: 计入首页的类别分布 }
         terminal: { type: boolean, description: 终态，不能再转出 }
 

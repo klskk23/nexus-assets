@@ -58,7 +58,6 @@ describe("Statuses page", () => {
     const row = screen.getByText("在库").closest("tr") as HTMLElement
     expect(within(row).getByText("in_stock")).toBeInTheDocument()
     expect(within(row).getByText("内置")).toBeInTheDocument()
-    expect(within(row).getByText("持有方必须是位置")).toBeInTheDocument()
 
     const retired = screen.getByText("已报废").closest("tr") as HTMLElement
     expect(within(retired).getByText("终态")).toBeInTheDocument()
@@ -83,6 +82,22 @@ describe("Statuses page", () => {
 
     const custom = screen.getByText("外借中").closest("tr") as HTMLElement
     expect(within(custom).getByRole("button", { name: "删除" })).toBeInTheDocument()
+  })
+
+  // The one switch a built-in accepts: nothing but the holder check reads it,
+  // so it is a policy an operator is entitled to set -- and 005 turned it off.
+  it("switches the location constraint from the row, built-ins included", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Statuses />)
+
+    await screen.findByText("在库")
+    const box = screen.getByLabelText("在库 持有方必须是位置")
+    expect(box).not.toBeChecked()
+
+    await user.click(box)
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/statuses/in_stock", { requires_location: true }),
+    )
   })
 
   it("recolours a status from the row", async () => {

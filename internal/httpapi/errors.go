@@ -110,6 +110,13 @@ func FailErr(c *gin.Context, err error) {
 		Fail(c, http.StatusConflict, CodeReferenceBlocked,
 			userText(err, holder.ErrDefaultStockRequired), nil)
 
+	case errors.Is(err, holder.ErrParentRequired),
+		errors.Is(err, holder.ErrParentInvalid):
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
+			userText(err, unwrapHolderParent(err)), map[string]string{
+				"parent_id": userText(err, unwrapHolderParent(err)),
+			})
+
 	case errors.Is(err, holder.ErrReferenced):
 		Fail(c, http.StatusConflict, CodeReferenceBlocked, userText(err, holder.ErrReferenced), nil)
 
@@ -140,4 +147,13 @@ func userText(err error, sentinel error) string {
 		return MsgValidationFailed
 	}
 	return rest
+}
+
+// unwrapHolderParent picks the sentinel so its English prefix can be stripped
+// from the Chinese message behind it.
+func unwrapHolderParent(err error) error {
+	if errors.Is(err, holder.ErrParentRequired) {
+		return holder.ErrParentRequired
+	}
+	return holder.ErrParentInvalid
 }

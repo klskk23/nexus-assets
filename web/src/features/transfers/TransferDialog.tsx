@@ -7,6 +7,8 @@ import type { AssetStatus, HolderEntity, User } from "@/lib/types"
 import type { TransferResult } from "@/lib/transferTypes"
 import { zh, zhTransfer } from "@/i18n/zh"
 import { useStatuses } from "@/features/statuses/useStatuses"
+import { useAuth } from "@/features/auth/useAuth"
+import { FieldDescription } from "@/components/ui/field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -31,6 +33,9 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 export type TransferAction = "checkout" | "checkin" | "transfer" | "reassign" | "status"
+
+/** "leave the owner alone". Radix reserves the empty string. */
+const KEEP = "__keep"
 
 export const transferActions: [TransferAction, string][] = [
   ["checkout", zhTransfer.actions.checkout],
@@ -60,10 +65,18 @@ interface Props {
 export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, onDone }: Props) {
   const queryClient = useQueryClient()
   const statuses = useStatuses()
+  const { user } = useAuth()
   const [action, setAction] = useState<TransferAction | null>(initialAction ?? null)
   const [holderType, setHolderType] = useState<"user" | "entity">("user")
   const [holderID, setHolderID] = useState("")
   const [ownerID, setOwnerID] = useState("")
+  // Who is answerable for the device after this move.
+  //
+  // Handing it to a person answers the question by itself. Handing it to a
+  // company, a department or a warehouse does not -- somebody still has to be
+  // the one you ask about it -- so those cases get a picker, defaulted to
+  // whoever is doing the handing.
+  const [responsibleID, setResponsibleID] = useState(KEEP)
   const [status, setStatus] = useState<AssetStatus>("in_repair")
   const [note, setNote] = useState("")
   const [banner, setBanner] = useState<string | null>(null)
@@ -73,8 +86,9 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
     if (open) {
       setAction(initialAction ?? null)
       setBanner(null)
+      setResponsibleID(user?.id ?? KEEP)
     }
-  }, [open, initialAction])
+  }, [open, initialAction, user?.id])
 
   const users = useQuery({
     queryKey: ["users"],
@@ -95,16 +109,19 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
           body.to_status = "in_use"
           body.to_holder_type = holderType
           body.to_holder_id = holderID
+          if (needsResponsible && responsibleID !== KEEP) body.to_owner_id = responsibleID
           break
         case "checkin":
           body.to_status = "in_stock"
           // No destination named: the server uses the default stock point, and
           // says so if none is marked rather than failing opaquely.
           body.check_in = true
+          if (responsibleID !== KEEP) body.to_owner_id = responsibleID
           break
         case "transfer":
           body.to_holder_type = holderType
           body.to_holder_id = holderID
+          if (needsResponsible && responsibleID !== KEEP) body.to_owner_id = responsibleID
           break
         case "reassign":
           body.to_owner_id = ownerID
@@ -128,6 +145,10 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
   })
 
   const needsHolder = action === "checkout" || action === "transfer"
+  // Check-in always lands on an entity -- the default stock point -- so it
+  // asks too, without a holder picker of its own.
+  const needsResponsible =
+    (needsHolder && holderType === "entity") || action === "checkin"
   const canSubmit =
     action !== null &&
     (!needsHolder || holderID !== "") &&
@@ -202,6 +223,32 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
                 </Select>
               </Field>
             </>
+          )}
+
+          {needsResponsible && (
+            <Field>
+              <FieldLabel htmlFor="td-responsible">{zhTransfer.actions.owner}</FieldLabel>
+              <Select value={responsibleID} onValueChange={setResponsibleID}>
+                <SelectTrigger id="td-responsible">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {/* Leaving it alone has to be sayable: a warehouse-to-
+                        warehouse move need not change who is answerable. */}
+                    <SelectItem value={KEEP}>{zhTransfer.actions.keepOwner}</SelectItem>
+                    {(users.data ?? [])
+                      .filter((u) => u.status === "active")
+                      .map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name}
+                        </SelectItem>
+                      ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <FieldDescription>{zhTransfer.actions.ownerHint}</FieldDescription>
+            </Field>
           )}
 
           {action === "reassign" && (

@@ -111,10 +111,13 @@ func (s *Store) CreateStatus(ctx context.Context, in CreateStatusInput) (model.S
 
 // UpdateStatusInput carries the mutable parts of a status.
 //
-// A built-in may be relabelled, recoloured and reordered; its three flags are
-// not offered, because the rest of the system is written against what they
-// mean. Turning off the location constraint on in_stock would not make the
-// stocktake question answerable, it would only stop the system asking it.
+// A built-in may be relabelled, recoloured and reordered. Of its three
+// switches only `requires_location` is editable: nothing but the holder check
+// reads it, so it is a policy an operator is entitled to set -- and a company
+// with several warehouses, or one that hands stock to a department, is
+// entitled to say no. `counts_as_available` and `terminal` stay fixed on the
+// built-ins, because the rest of the system is written against what those two
+// mean for these five.
 type UpdateStatusInput struct {
 	Label             *string
 	Color             *string
@@ -145,10 +148,10 @@ func (s *Store) UpdateStatus(ctx context.Context, key string, in UpdateStatusInp
 	if in.Sort != nil {
 		cur.Sort = *in.Sort
 	}
+	if in.RequiresLocation != nil {
+		cur.RequiresLocation = *in.RequiresLocation
+	}
 	if !cur.Builtin {
-		if in.RequiresLocation != nil {
-			cur.RequiresLocation = *in.RequiresLocation
-		}
 		if in.CountsAsAvailable != nil {
 			cur.CountsAsAvailable = *in.CountsAsAvailable
 		}

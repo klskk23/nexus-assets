@@ -62,11 +62,23 @@ const users = [
   { id: "u3", email: "g@example.com", name: "离职的", auth_type: "local", status: "disabled" },
 ]
 
+const holders = [
+  {
+    id: "loc", type: "location", name: "上海仓库",
+    parent_id: null, note: "", is_default_stock: true,
+  },
+  {
+    id: "co", type: "company", name: "XX 集团",
+    parent_id: null, note: "", is_default_stock: false,
+  },
+]
+
 function route(path: string) {
   const st = statusRoute(path)
   if (st) return st
 
   if (path === "/categories") return Promise.resolve(categories)
+  if (path === "/holders") return Promise.resolve(holders)
   if (path === "/users") return Promise.resolve(users)
   if (path.endsWith("/schema")) return Promise.resolve(schema)
   if (path.startsWith("/assets")) return Promise.resolve(page)
@@ -284,5 +296,38 @@ describe("Assets owner filter", () => {
     await chooseByLabel(user, "负责人", "张三")
     const href = screen.getByRole("link", { name: "导出 CSV" }).getAttribute("href")!
     expect(new URLSearchParams(href.split("?")[1]).get("owner_id")).toBe("u2")
+  })
+})
+
+describe("Assets holder filter", () => {
+  beforeEach(() => {
+    navigate.mockReset()
+    get.mockReset().mockImplementation(route)
+    localStorage.clear()
+  })
+
+  it("filters by holder, sending the kind alongside the id", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 1 条/)
+
+    await chooseByLabel(user, "持有方", "XX 集团")
+    await waitFor(() => {
+      const asked = get.mock.calls.map((c) => c[0] as string).filter((p) => p.startsWith("/assets"))
+      const q = new URLSearchParams(asked[asked.length - 1].split("?")[1])
+      expect(q.get("holder_id")).toBe("co")
+      // Without the kind an id could match an account and an entity alike.
+      expect(q.get("holder_type")).toBe("entity")
+    })
+  })
+
+  it("carries the holder into the export link", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 1 条/)
+
+    await chooseByLabel(user, "持有方", "上海仓库")
+    const href = screen.getByRole("link", { name: "导出 CSV" }).getAttribute("href")!
+    expect(new URLSearchParams(href.split("?")[1]).get("holder_id")).toBe("loc")
   })
 })

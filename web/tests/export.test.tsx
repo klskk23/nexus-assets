@@ -24,6 +24,12 @@ const categories = [
 const users = [
   { id: "u1", email: "a@example.com", name: "管理员", auth_type: "local", status: "active" },
 ]
+const holders = [
+  {
+    id: "loc", type: "location", name: "上海仓库",
+    parent_id: null, note: "", is_default_stock: true,
+  },
+]
 const page = { items: [], total: 0, offset: 0, limit: 50 }
 const schema = {
   category: categories[0],
@@ -36,6 +42,7 @@ beforeEach(() => {
     if (st) return st
     if (p === "/categories") return Promise.resolve(categories)
     if (p === "/users") return Promise.resolve(users)
+    if (p === "/holders") return Promise.resolve(holders)
     if (p.endsWith("/schema")) return Promise.resolve(schema)
     return Promise.resolve(page)
   })

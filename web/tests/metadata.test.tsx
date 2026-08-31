@@ -277,7 +277,9 @@ describe("create dialog resets", () => {
     await user.click(within(dialog).getByRole("button", { name: "新建持有方" }))
 
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/holders", { type: "location", name: "北京仓库" }),
+      expect(post).toHaveBeenCalledWith("/holders", {
+        type: "location", name: "北京仓库", note: "", parent_id: null,
+      }),
     )
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
 

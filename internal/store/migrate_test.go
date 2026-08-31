@@ -78,15 +78,52 @@ func TestMigrateUpAndDown(t *testing.T) {
 		Scan(&stockNeedsLocation, &retiredTerminal, &retiredCounts); err != nil {
 		t.Fatalf("read builtin flags: %v", err)
 	}
-	if stockNeedsLocation != 1 || retiredTerminal != 1 || retiredCounts != 0 {
-		t.Errorf("the seeded flags do not match the behaviour they replace: %d %d %d",
-			stockNeedsLocation, retiredTerminal, retiredCounts)
+	// 005 clears the location constraint on in_stock: stock can legitimately
+	// sit in a department's custody. The other two still say what they said.
+	if stockNeedsLocation != 0 {
+		t.Error("005 should have cleared in_stock.requires_location")
+	}
+	if retiredTerminal != 1 || retiredCounts != 0 {
+		t.Errorf("retired's flags no longer match the behaviour they replace: %d %d",
+			retiredTerminal, retiredCounts)
 	}
 
-	// Rolling back one revision must restore the pre-004 shape exactly, so a
+	// The holder side of 005.
+	var note int
+	if err := s.read.QueryRowContext(ctx,
+		`SELECT count(*) FROM pragma_table_info('holder_entities') WHERE name = 'note'`).
+		Scan(&note); err != nil {
+		t.Fatalf("check holder_entities.note: %v", err)
+	}
+	if note != 1 {
+		t.Error("holder_entities should carry note after 005")
+	}
+
+	// Rolling back one revision must restore the pre-005 shape exactly, so a
 	// half-applied upgrade can be undone rather than requiring a fresh file.
 	if err := s.MigrateDown(ctx); err != nil {
 		t.Fatalf("MigrateDown: %v", err)
+	}
+	if err := s.read.QueryRowContext(ctx,
+		`SELECT count(*) FROM pragma_table_info('holder_entities') WHERE name = 'note'`).
+		Scan(&note); err != nil {
+		t.Fatalf("check holder_entities.note after down: %v", err)
+	}
+	if note != 0 {
+		t.Error("down should have dropped holder_entities.note")
+	}
+	if err := s.read.QueryRowContext(ctx,
+		`SELECT requires_location FROM statuses WHERE key = 'in_stock'`).
+		Scan(&stockNeedsLocation); err != nil {
+		t.Fatalf("read in_stock after down: %v", err)
+	}
+	if stockNeedsLocation != 1 {
+		t.Error("down should have restored in_stock.requires_location")
+	}
+
+	// One more revision back takes the statuses table with it.
+	if err := s.MigrateDown(ctx); err != nil {
+		t.Fatalf("second MigrateDown: %v", err)
 	}
 	for table, wantN := range map[string]int{"statuses": 0, "product_model_categories": 1} {
 		var n int

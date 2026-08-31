@@ -266,10 +266,16 @@ type ProductModel struct {
 
 // HolderEntity is anything other than an account that can hold an asset.
 type HolderEntity struct {
-	ID             string         `json:"id"`
-	Type           EntityType     `json:"type"`
-	Name           string         `json:"name"`
-	ParentID       *string        `json:"parent_id"`
+	ID   string     `json:"id"`
+	Type EntityType `json:"type"`
+	Name string     `json:"name"`
+	// ParentID places the entity in the org: a department belongs to a
+	// company, a location may sit under either or stand on its own. Null for a
+	// company, and for the departments that predate the rule.
+	ParentID *string `json:"parent_id"`
+	// Note is whatever the operator needs to remember about this holder --
+	// a floor and rack range, a contact, why it exists.
+	Note           string         `json:"note"`
 	IsDefaultStock bool           `json:"is_default_stock"`
 	Attrs          map[string]any `json:"attrs"`
 	ArchivedAt     *time.Time     `json:"archived_at,omitempty"`
