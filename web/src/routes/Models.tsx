@@ -41,6 +41,12 @@ export function Models() {
       list={() => api.get<ProductModelRow[]>("/models")}
       createLabel={zhMeta.models.create}
       createDisabled={name === ""}
+      onCreated={() => {
+        setName("")
+        setVendor("")
+        setCategoryIds([])
+        setDefaults([])
+      }}
       create={() =>
         api.post("/models", {
           category_ids: categoryIds,

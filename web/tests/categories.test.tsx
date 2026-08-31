@@ -99,3 +99,77 @@ describe("Categories page", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("设备编号")
   })
 })
+
+// The tree and its bindings are what the page is for; creating a category is
+// occasional, so the form waits behind a button instead of taking the top of
+// the screen on every visit.
+describe("Categories create dialog", () => {
+  it("keeps the form behind a button", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+    await screen.findByRole("button", { name: /SDWAN 路由器/ })
+
+    expect(screen.queryByLabelText(/代号/)).not.toBeInTheDocument()
+    await user.click(screen.getAllByRole("button", { name: "新建类别" })[0])
+    expect(await screen.findByRole("dialog")).toBeInTheDocument()
+    expect(screen.getByLabelText(/代号/)).toBeInTheDocument()
+  })
+
+  it("creates a category and closes", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+    await screen.findByRole("button", { name: /SDWAN 路由器/ })
+
+    await user.click(screen.getAllByRole("button", { name: "新建类别" })[0])
+    const dialog = await screen.findByRole("dialog")
+    await user.type(within(dialog).getByLabelText(/代号/), "SW")
+    await user.type(within(dialog).getByLabelText("名称"), "交换机")
+    await user.click(within(dialog).getByRole("button", { name: "新建类别" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/categories", {
+        code: "SW",
+        name: "交换机",
+        parent_id: null,
+      }),
+    )
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+  })
+
+  // Reopening onto the last thing you created is a trap: edit one field,
+  // submit, and you have quietly made a near-duplicate.
+  it("reopens blank after a successful create", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+    await screen.findByRole("button", { name: /SDWAN 路由器/ })
+
+    await user.click(screen.getAllByRole("button", { name: "新建类别" })[0])
+    let dialog = await screen.findByRole("dialog")
+    await user.type(within(dialog).getByLabelText(/代号/), "SW")
+    await user.type(within(dialog).getByLabelText("名称"), "交换机")
+    await user.click(within(dialog).getByRole("button", { name: "新建类别" }))
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+
+    await user.click(screen.getAllByRole("button", { name: "新建类别" })[0])
+    dialog = await screen.findByRole("dialog")
+    expect(within(dialog).getByLabelText(/代号/)).toHaveValue("")
+    expect(within(dialog).getByLabelText("名称")).toHaveValue("")
+  })
+
+  // A create failure belongs in the dialog; the page banner is for the binding
+  // actions in the panel below, which are a different place entirely.
+  it("shows a create failure inside the dialog", async () => {
+    post.mockRejectedValue(new ApiError(409, "unique_conflict", "类别编码已存在"))
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+    await screen.findByRole("button", { name: /SDWAN 路由器/ })
+
+    await user.click(screen.getAllByRole("button", { name: "新建类别" })[0])
+    const dialog = await screen.findByRole("dialog")
+    await user.type(within(dialog).getByLabelText(/代号/), "RT")
+    await user.type(within(dialog).getByLabelText("名称"), "重复")
+    await user.click(within(dialog).getByRole("button", { name: "新建类别" }))
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("类别编码已存在")
+  })
+})

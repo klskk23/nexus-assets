@@ -36,7 +36,22 @@ export function Users() {
       queryKey="users"
       list={() => api.get<User[]>("/users")}
       createLabel={zhMeta.users.create}
+      // Disabling an account is a row action; its refusal has to appear next
+      // to the rows rather than inside the create dialog.
+      notice={
+        banner && (
+          <Alert variant="destructive">
+            <AlertCircleIcon />
+            <AlertDescription>{banner}</AlertDescription>
+          </Alert>
+        )
+      }
       createDisabled={email === "" || password === ""}
+      onCreated={() => {
+        setEmail("")
+        setName("")
+        setPassword("")
+      }}
       create={() => api.post("/users", { email, name, password })}
       emptyTitle={zhMeta.users.empty}
       emptyHint={zhMeta.users.emptyHint}
@@ -83,12 +98,6 @@ export function Users() {
               />
             </div>
           </div>
-          {banner && (
-            <Alert variant="destructive">
-              <AlertCircleIcon />
-              <AlertDescription>{banner}</AlertDescription>
-            </Alert>
-          )}
         </>
       }
     />

@@ -70,6 +70,14 @@ beforeEach(() => {
   patch.mockReset().mockResolvedValue({})
 })
 
+/** Opens the create dialog. The trigger and the submit share a label, so the
+ *  one in the header is the one to press. */
+async function openCreate(user: ReturnType<typeof userEvent.setup>, label: string) {
+  const triggers = await screen.findAllByRole("button", { name: label })
+  await user.click(triggers[0])
+  await screen.findByRole("dialog")
+}
+
 describe("Fields page", () => {
   it("lists the global field library with its types", async () => {
     renderWithProviders(<Fields />)
@@ -83,9 +91,22 @@ describe("Fields page", () => {
     renderWithProviders(<Fields />)
     await screen.findByRole("row", { name: /基准 MAC/ })
 
+    await openCreate(user, "新建信息项")
     expect(screen.queryByLabelText("模板")).not.toBeInTheDocument()
     await chooseByLabel(user, "类型", "计算项")
     expect(screen.getByLabelText("模板")).toBeInTheDocument()
+  })
+
+  // The list is what the page is for; the form is behind a button so the
+  // records get the screen.
+  it("keeps the create form behind a button", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Fields />)
+    await screen.findByRole("row", { name: /基准 MAC/ })
+
+    expect(screen.queryByLabelText(/键名/)).not.toBeInTheDocument()
+    await openCreate(user, "新建信息项")
+    expect(screen.getByLabelText(/键名/)).toBeInTheDocument()
   })
 
   it("creates a field with the values typed in", async () => {
@@ -93,10 +114,11 @@ describe("Fields page", () => {
     renderWithProviders(<Fields />)
     await screen.findByRole("row", { name: /基准 MAC/ })
 
+    await openCreate(user, "新建信息项")
     await user.type(screen.getByLabelText(/键名/), "rack")
     await user.type(screen.getByLabelText(/显示名/), "机柜位")
     await user.click(screen.getByLabelText("全局唯一"))
-    await user.click(screen.getByRole("button", { name: "新建信息项" }))
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "新建信息项" }))
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/fields", {
@@ -238,4 +260,62 @@ it("lists the blocking devices when a holder cannot be archived", async () => {
   expect(alert).toHaveTextContent("112394521951")
   // Two of seven were sent, so the page has to say the list is partial.
   expect(alert).toHaveTextContent("等共 7 台")
+})
+
+// The wart the dialog made unavoidable: creating never cleared the form, so
+// reopening showed the last record you made and one edited field away from a
+// near-duplicate.
+describe("create dialog resets", () => {
+  it("reopens blank after creating a holder", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Holders />)
+    await screen.findByRole("row", { name: /上海仓库/ })
+
+    await openCreate(user, "新建持有方")
+    let dialog = await screen.findByRole("dialog")
+    await user.type(within(dialog).getByLabelText("名称"), "北京仓库")
+    await user.click(within(dialog).getByRole("button", { name: "新建持有方" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/holders", { type: "location", name: "北京仓库" }),
+    )
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+
+    await openCreate(user, "新建持有方")
+    dialog = await screen.findByRole("dialog")
+    expect(within(dialog).getByLabelText("名称")).toHaveValue("")
+  })
+
+  // Dismissing counts too: a half-typed record should not be waiting next time.
+  it("clears what was typed when the dialog is dismissed", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Users />)
+    await screen.findByRole("row", { name: /admin@example.com/ })
+
+    await openCreate(user, "新建本地账号")
+    let dialog = await screen.findByRole("dialog")
+    await user.type(within(dialog).getByLabelText("姓名"), "张三")
+    await user.click(within(dialog).getByRole("button", { name: "取消" }))
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+
+    await openCreate(user, "新建本地账号")
+    dialog = await screen.findByRole("dialog")
+    expect(within(dialog).getByLabelText("姓名")).toHaveValue("")
+  })
+
+  // A row action's refusal has to appear next to the rows, not inside a dialog
+  // the user has to open to find out what went wrong.
+  it("shows a row-action refusal outside the create dialog", async () => {
+    patch.mockRejectedValueOnce(
+      new ApiError(409, "reference_blocked", "「上海仓库」仍被 5 台设备使用"),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<Holders />)
+    const warehouse = await screen.findByRole("row", { name: /上海仓库/ })
+    await user.click(within(warehouse).getByRole("button", { name: "设为默认库存点" }))
+
+    const alert = await screen.findByRole("alert")
+    expect(alert).toHaveTextContent("仍被 5 台设备使用")
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+  })
 })

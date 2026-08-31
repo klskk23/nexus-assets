@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { AlertCircleIcon, PlusIcon } from "lucide-react"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -12,12 +12,22 @@ import { CollapsibleTree, buildTree } from "@/features/tree/CollapsibleTree"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { DisplayKeyEditor } from "@/features/categories/DisplayKeyEditor"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Spinner } from "@/components/ui/spinner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { Field, FieldLabel } from "@/components/ui/field"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import {
   Select,
   SelectContent,
@@ -36,6 +46,7 @@ export function Categories() {
   const [bindField, setBindField] = useState("")
   const [bindRequired, setBindRequired] = useState(false)
   const [banner, setBanner] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
 
   const categories = useQuery({
     queryKey: ["categories"],
@@ -70,13 +81,18 @@ export function Categories() {
         parent_id: parentId || null,
       }),
     onSuccess: () => {
-      setBanner(null)
-      setCode("")
-      setName("")
+      setCreateOpen(false)
+      resetCreateForm()
       queryClient.invalidateQueries({ queryKey: ["categories"] })
     },
-    onError: (e) => setBanner(e instanceof ApiError ? e.message : zh.common.error),
   })
+
+  const resetCreateForm = () => {
+    setCode("")
+    setName("")
+    setParentId("")
+    create.reset()
+  }
 
   const bind = useMutation({
     mutationFn: () =>
@@ -91,54 +107,90 @@ export function Categories() {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-xl font-semibold">{zhMeta.categories.title}</h1>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{zhMeta.categories.create}</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="c-code">{zhMeta.categories.code}</FieldLabel>
-              <Input id="c-code" value={code} onChange={(e) => setCode(e.target.value)} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="c-name">{zhMeta.categories.name}</FieldLabel>
-              <Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="c-parent">{zhMeta.categories.parent}</FieldLabel>
-              <Select value={toNone(parentId)} onValueChange={(v) => setParentId(fromNone(v))}>
-                <SelectTrigger id="c-parent">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value={NONE}>{zhMeta.categories.noParent}</SelectItem>
-                    {(categories.data ?? []).map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
-          {banner && (
-            <Alert variant="destructive">
-              <AlertCircleIcon />
-              <AlertDescription>{banner}</AlertDescription>
-            </Alert>
-          )}
-          <div>
-            <Button onClick={() => create.mutate()} disabled={code === "" || name === ""}>
+      {/* The tree and its bindings are what this page is for; creating a
+          category is occasional, so the form waits behind a button. */}
+      <div className="flex items-center gap-3">
+        <h1 className="text-xl font-semibold">{zhMeta.categories.title}</h1>
+        <Dialog
+          open={createOpen}
+          onOpenChange={(next) => {
+            setCreateOpen(next)
+            if (!next) resetCreateForm()
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button className="ml-auto">
+              <PlusIcon data-icon="inline-start" />
               {zhMeta.categories.create}
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{zhMeta.categories.create}</DialogTitle>
+            </DialogHeader>
+
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="c-code">{zhMeta.categories.code}</FieldLabel>
+                <Input id="c-code" value={code} onChange={(e) => setCode(e.target.value)} />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="c-name">{zhMeta.categories.name}</FieldLabel>
+                <Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="c-parent">{zhMeta.categories.parent}</FieldLabel>
+                <Select value={toNone(parentId)} onValueChange={(v) => setParentId(fromNone(v))}>
+                  <SelectTrigger id="c-parent">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value={NONE}>{zhMeta.categories.noParent}</SelectItem>
+                      {(categories.data ?? []).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </FieldGroup>
+
+            {create.error && (
+              <Alert variant="destructive">
+                <AlertCircleIcon />
+                <AlertDescription>
+                  {create.error instanceof ApiError ? create.error.message : zh.common.error}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="ghost">{zh.common.cancel}</Button>
+              </DialogClose>
+              <Button
+                onClick={() => create.mutate()}
+                disabled={code === "" || name === "" || create.isPending}
+              >
+                {create.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+                {zhMeta.categories.create}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Binding and unbinding happen in the panel below, so their failures
+          stay out here where those actions are. */}
+      {banner && (
+        <Alert variant="destructive">
+          <AlertCircleIcon />
+          <AlertDescription>{banner}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <Card>

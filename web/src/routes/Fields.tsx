@@ -46,6 +46,13 @@ export function Fields() {
       list={() => api.get<FieldDefinitionRow[]>("/fields")}
       createLabel={zhMeta.fields.create}
       createDisabled={key === "" || label === ""}
+      onCreated={() => {
+        setKey("")
+        setLabel("")
+        setType("text")
+        setIsUnique(false)
+        setTemplate("")
+      }}
       create={() =>
         api.post("/fields", {
           key,

@@ -56,7 +56,37 @@ export function Holders() {
       queryKey="holders"
       list={() => api.get<HolderEntity[]>("/holders")}
       createLabel={zhMeta.holders.create}
+      // Setting the default stock marker is a row action, so its refusal
+      // belongs beside the rows -- not inside the create dialog.
+      notice={
+        banner && (
+          <Alert variant="destructive">
+            <AlertCircleIcon />
+            <AlertTitle>{zhMeta.holders.blocked}</AlertTitle>
+            <AlertDescription className="grid gap-1">
+              {banner}
+              {blockers.length > 0 && (
+                <>
+                  <p className="text-xs">{zhMeta.holders.blockedBy}</p>
+                  <ul className="grid gap-0.5 font-mono text-xs">
+                    {blockers.map((b) => (
+                      <li key={b.asset_id}>{b.name}</li>
+                    ))}
+                    {blockerTotal > blockers.length && (
+                      <li>{zhMeta.holders.blockedMore(blockerTotal)}</li>
+                    )}
+                  </ul>
+                </>
+              )}
+            </AlertDescription>
+          </Alert>
+        )
+      }
       createDisabled={name === ""}
+      onCreated={() => {
+        setName("")
+        setType("location")
+      }}
       create={() => api.post("/holders", { type, name })}
       emptyTitle={zhMeta.holders.empty}
       emptyHint={zhMeta.holders.emptyHint}
@@ -84,28 +114,6 @@ export function Holders() {
       ]}
       form={
         <div className="grid gap-4 sm:grid-cols-2">
-          {banner && (
-            <Alert variant="destructive" className="sm:col-span-2">
-              <AlertCircleIcon />
-              <AlertTitle>{zhMeta.holders.blocked}</AlertTitle>
-              <AlertDescription className="grid gap-1">
-                {banner}
-                {blockers.length > 0 && (
-                  <>
-                    <p className="text-xs">{zhMeta.holders.blockedBy}</p>
-                    <ul className="grid gap-0.5 font-mono text-xs">
-                      {blockers.map((b) => (
-                        <li key={b.asset_id}>{b.name}</li>
-                      ))}
-                      {blockerTotal > blockers.length && (
-                        <li>{zhMeta.holders.blockedMore(blockerTotal)}</li>
-                      )}
-                    </ul>
-                  </>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
           <Field>
             <FieldLabel htmlFor="h-name">{zhMeta.holders.name}</FieldLabel>
             <Input id="h-name" value={name} onChange={(e) => setName(e.target.value)} />
