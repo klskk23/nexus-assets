@@ -81,7 +81,7 @@ type CreateFieldInput struct {
 // guarantee that structurally is to have exactly one definition per key.
 func (s *Store) CreateField(ctx context.Context, in CreateFieldInput) (model.FieldDefinition, error) {
 	if !in.Type.Valid() {
-		return model.FieldDefinition{}, fmt.Errorf("unknown field type %q", in.Type)
+		return model.FieldDefinition{}, i18n.M(i18n.KeyFieldTypeUnknown, string(in.Type))
 	}
 	if err := ValidateOptions(in.Type, in.Options); err != nil {
 		return model.FieldDefinition{}, err

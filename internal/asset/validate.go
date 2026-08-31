@@ -10,7 +10,6 @@ import (
 
 	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
-	"github.com/klskk23/nexus-assets/internal/schema"
 )
 
 // FieldErrors maps a field key to a message about it. It becomes the "fields"
@@ -122,23 +121,6 @@ func validateOne(f model.BoundField, raw any) (any, error) {
 			return nil, i18n.M(i18n.KeyFieldDateShape)
 		}
 		return s, nil
-
-	case model.FieldEnum:
-		if !schema.ChoiceExists(f.Options, s) {
-			return nil, i18n.M(i18n.KeyFieldNotAnOption)
-		}
-		if schema.IsDeprecatedChoice(f.Options, s) {
-			// A retired option stays readable on existing assets but may not be
-			// chosen anew, which is what separates "archive" from "delete".
-			return nil, i18n.M(i18n.KeyFieldOptionGone)
-		}
-		return s, nil
-
-	case model.FieldReference:
-		if s == "" {
-			return nil, i18n.M(i18n.KeyFieldRefRequired)
-		}
-		return s, nil // existence is checked against the database by the caller
 
 	default:
 		return nil, i18n.M(i18n.KeyFieldTypeUnknown, string(f.Type))

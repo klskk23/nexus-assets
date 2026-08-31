@@ -28,7 +28,7 @@ import {
 // what the system worked out from them. One enum in the database, two groups
 // here, because that is the distinction a person is actually choosing between.
 const staticTypes: FieldType[] = [
-  "text", "number", "boolean", "date", "enum", "reference", "mac", "ip", "url",
+  "text", "number", "boolean", "date", "mac", "ip", "url",
 ]
 const expressionTypes: FieldType[] = ["computed"]
 
@@ -41,6 +41,8 @@ export function Fields() {
   const [type, setType] = useState<FieldType>("text")
   const [isUnique, setIsUnique] = useState(false)
   const [template, setTemplate] = useState("")
+  const [regex, setRegex] = useState("")
+  const [regexHint, setRegexHint] = useState("")
 
   // The same delete the editor offers, reachable without opening it first --
   // which is the point of the context menu.
@@ -68,6 +70,8 @@ export function Fields() {
         setType("text")
         setIsUnique(false)
         setTemplate("")
+        setRegex("")
+        setRegexHint("")
       }}
       create={() =>
         api.post("/fields", {
@@ -75,7 +79,14 @@ export function Fields() {
           label,
           type,
           is_unique: isUnique,
-          options: type === "computed" ? { template } : {},
+          // Per type, and only what that type means: a regex on a computed
+          // field would be configuration nothing reads.
+          options:
+            type === "computed"
+              ? { template }
+              : type === "text"
+                ? { regex, regex_hint: regexHint }
+                : {},
         })
       }
       notice={
@@ -159,6 +170,32 @@ export function Fields() {
             />
             <FieldLabel htmlFor="f-unique">{tMeta.fields.unique}</FieldLabel>
           </Field>
+          {/* The pattern a value must match, and the sentence shown when it
+              does not. Both were editable only after the field existed, which
+              made creating a validated field a two-step job for no reason. */}
+          {type === "text" && (
+            <>
+              <Field>
+                <FieldLabel htmlFor="f-regex">{tConfig.field.regex}</FieldLabel>
+                <Input
+                  id="f-regex"
+                  className="font-mono"
+                  placeholder="^[A-Z]{2}-\d{4}$"
+                  value={regex}
+                  onChange={(e) => setRegex(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="f-regex-hint">{tConfig.field.regexHint}</FieldLabel>
+                <Input
+                  id="f-regex-hint"
+                  value={regexHint}
+                  onChange={(e) => setRegexHint(e.target.value)}
+                />
+              </Field>
+            </>
+          )}
+
           {type === "computed" && (
             <Field className="sm:col-span-2">
               <div className="flex items-center justify-between gap-2">

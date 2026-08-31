@@ -6,13 +6,14 @@
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
 2. `specs/011-expression-engine/` —— 本轮特性的规格与检查清单；
    调研与备选方案在 `docs/research-expr-engine.md`
-3. `docs/design-baseline-v5.md`（决策 61–63）—— 状态不再约束持有方。
-   **冲突时以最新一版为准：011 > 010 > 009 > 008 > 007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
-4. `docs/design-baseline-v4.md`（决策 53–60）—— 状态成为可配置的数据
-5. `docs/design-baseline-v3.md`（决策 41–52）—— 字段可删除、型号多对多
-6. `docs/design-baseline-v2.md`（决策 25–40）—— 编号模型、依赖门禁、流转
-7. `docs/design-baseline.md` —— 原始设计基线（决策 1–24）
-8. `specs/001-asset-ledger-demo/` ~ `specs/010-asset-row-gestures/` —— 前十轮特性。
+3. `docs/design-baseline-v6.md`（决策 64–66）—— 撤回单选与引用两种字段类型
+4. `docs/design-baseline-v5.md`（决策 61–63）—— 状态不再约束持有方。
+   **冲突时以最新一版为准：v6 > 011 > 010 > 009 > 008 > 007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
+5. `docs/design-baseline-v4.md`（决策 53–60）—— 状态成为可配置的数据
+6. `docs/design-baseline-v3.md`（决策 41–52）—— 字段可删除、型号多对多
+7. `docs/design-baseline-v2.md`（决策 25–40）—— 编号模型、依赖门禁、流转
+8. `docs/design-baseline.md` —— 原始设计基线（决策 1–24）
+9. `specs/001-asset-ledger-demo/` ~ `specs/010-asset-row-gestures/` —— 前十轮特性。
    001 的 `contracts/openapi.yaml` 仍是**全量**端点清单
 
 **最容易违反的十条硬规则**
@@ -108,6 +109,12 @@
   **动这个文件前先读 `docs/research-expr-engine.md`。**
 - **面向用户的错误一律走 `userText(c, err)`，不要用 `err.Error()`。**
   后者取的是默认语言，英文请求会收到中文。006 在七处漏过这一点，011 补齐。
+- **字段类型只剩八种**（v6 决策 64）：`text`、`number`、`boolean`、`date`、
+  `mac`、`ip`、`url`、`computed`。**`enum`（单选）与 `reference`（引用）已撤回** ——
+  领域层把它们当未知类型拒绝，不是只在界面里藏起来。存量字段由迁移 010
+  转成 `text` 并清空 options，值一个不丢。别再看到「选项/废弃/引用目标」就以为还在。
+  **每种类型只显示它自己的配置**：`text` 显示正则与校验提示（新建与编辑都要有），
+  `computed` 显示表达式。
 - **字段没有「停用」。** 只有删除（无关联时）与解绑（有存量数据时）。
   `archived_attrs` 是**解绑**产生的孤儿键，与停用无关，不要跟着一起清理掉 ——
   删掉它会让「解绑后仍能查看旧值」当场失效，且没有任何现有测试会失败。

@@ -118,7 +118,6 @@ export const en: typeof zh = {
     inherited: "Inherited",
     unique: "Unique",
     computedHint: "Derived from other fields; not filled in directly",
-    deprecatedSuffix: " (deprecated)",
     defaultStockSuffix: " (default stock point)",
     template: "Expression",
     requestFailed: "Request failed",
@@ -246,8 +245,8 @@ export const enMeta: typeof zhMeta = {
   },
   entityTypes: { company: "Company", location: "Location", department: "Department" },
   fieldTypes: {
-    text: "Text", number: "Number", boolean: "Yes/no", date: "Date", enum: "Choice",
-    reference: "Reference", mac: "MAC address", ip: "IP address", url: "URL", computed: "Expression",
+    text: "Text", number: "Number", boolean: "Yes/no", date: "Date",
+    mac: "MAC address", ip: "IP address", url: "URL", computed: "Expression",
   },
 }
 
@@ -338,18 +337,6 @@ export const enConfig: typeof zhConfig = {
     min: "Minimum",
     max: "Maximum",
     unit: "Unit",
-    choices: "Options",
-    addChoice: "Add an option",
-    choiceValue: "Value",
-    choiceLabel: "Display name",
-    deprecate: "Deprecate",
-    deprecated: "Deprecated",
-    restore: "Restore",
-    deprecateHint:
-      "A deprecated option still shows on existing assets but cannot be chosen for new ones.",
-    target: "Reference target",
-    targetUser: "Account",
-    targetEntity: "Holder entity",
     entityTypes: "Limit to types",
     template: "Expression",
     delete: "Delete field",

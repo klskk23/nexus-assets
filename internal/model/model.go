@@ -79,26 +79,24 @@ const (
 	EntityDepartment EntityType = "department"
 )
 
-// FieldType enumerates the ten supported custom field kinds.
+// FieldType enumerates the eight supported custom field kinds.
 type FieldType string
 
 const (
-	FieldText      FieldType = "text"
-	FieldNumber    FieldType = "number"
-	FieldBoolean   FieldType = "boolean"
-	FieldDate      FieldType = "date"
-	FieldEnum      FieldType = "enum"
-	FieldReference FieldType = "reference"
-	FieldMAC       FieldType = "mac"
-	FieldIP        FieldType = "ip"
-	FieldURL       FieldType = "url"
-	FieldComputed  FieldType = "computed"
+	FieldText     FieldType = "text"
+	FieldNumber   FieldType = "number"
+	FieldBoolean  FieldType = "boolean"
+	FieldDate     FieldType = "date"
+	FieldMAC      FieldType = "mac"
+	FieldIP       FieldType = "ip"
+	FieldURL      FieldType = "url"
+	FieldComputed FieldType = "computed"
 )
 
 // AllFieldTypes lists every supported field type.
 var AllFieldTypes = []FieldType{
-	FieldText, FieldNumber, FieldBoolean, FieldDate, FieldEnum,
-	FieldReference, FieldMAC, FieldIP, FieldURL, FieldComputed,
+	FieldText, FieldNumber, FieldBoolean, FieldDate,
+	FieldMAC, FieldIP, FieldURL, FieldComputed,
 }
 
 // Valid reports whether t is a known field type.
@@ -213,20 +211,8 @@ type FieldOptions struct {
 	Max       *float64 `json:"max,omitempty"`
 	Precision *int     `json:"precision,omitempty"`
 	Unit      string   `json:"unit,omitempty"`
-	// enum
-	Choices    []EnumChoice `json:"choices,omitempty"`
-	Deprecated []string     `json:"deprecated,omitempty"`
-	// reference
-	Target      string       `json:"target,omitempty"` // user | entity
-	EntityTypes []EntityType `json:"entity_types,omitempty"`
 	// computed
 	Template string `json:"template,omitempty"`
-}
-
-// EnumChoice is one selectable option.
-type EnumChoice struct {
-	Value string `json:"value"`
-	Label string `json:"label"`
 }
 
 // BoundField is a field definition together with its binding to one category.

@@ -949,7 +949,7 @@ components:
         label: { type: string, description: 中文，用户可见 }
         type:
           type: string
-          enum: [text, number, boolean, date, enum, reference, mac, ip, url, computed]
+          enum: [text, number, boolean, date, mac, ip, url, computed]
         required: { type: boolean }
         is_unique: { type: boolean }
         sort: { type: integer }

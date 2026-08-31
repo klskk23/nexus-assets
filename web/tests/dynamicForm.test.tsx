@@ -26,18 +26,20 @@ const allTypes: BoundField[] = [
   field("ports", "number", { label: "端口数" }),
   field("managed", "boolean", { label: "纳管" }),
   field("bought_on", "date", { label: "采购日期" }),
-  field("tier", "enum", {
-    label: "档次",
-    options: { choices: [{ value: "a", label: "A 档" }, { value: "b", label: "B 档" }], deprecated: ["b"] },
-  }),
-  field("site", "reference", { label: "安装位置", options: { target: "entity" } }),
   field("mgmt_ip", "ip", { label: "管理 IP" }),
   field("doc", "url", { label: "文档" }),
   field("sn_calc", "computed", { label: "推导编号", options: { template: "{{ .attrs.mac | hex2dec }}" } }),
 ]
 
+/** By key rather than by index: the list of types is not stable. */
+function byKey(key: string): BoundField {
+  const f = allTypes.find((x) => x.key === key)
+  if (!f) throw new Error(`no fixture field ${key}`)
+  return f
+}
+
 describe("DynamicForm", () => {
-  it("renders a labelled control for every one of the ten field types", () => {
+  it("renders a labelled control for every one of the eight field types", () => {
     renderWithProviders(<DynamicForm fields={allTypes} values={{}} onChange={vi.fn()} />)
 
     for (const f of allTypes) {
@@ -88,25 +90,10 @@ describe("DynamicForm", () => {
 
   it("makes a computed field read-only", () => {
     renderWithProviders(
-      <DynamicForm fields={[allTypes[9]]} values={{ sn_calc: "112394521950" }} onChange={vi.fn()} />,
+      <DynamicForm fields={[byKey("sn_calc")]} values={{ sn_calc: "112394521950" }} onChange={vi.fn()} />,
     )
     const input = screen.getByLabelText(/推导编号/)
     expect(input).toHaveAttribute("readonly")
     expect(input).toBeDisabled()
-  })
-
-  // The stored value stays readable on the asset that carries it, and the
-  // option is still listed -- just not choosable for anything new.
-  it("keeps a retired enum option visible but unselectable", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(
-      <DynamicForm fields={[allTypes[5]]} values={{ tier: "b" }} onChange={vi.fn()} />,
-    )
-    // The chosen value shows on the closed trigger.
-    expect(screen.getByRole("combobox", { name: /档次/ })).toHaveTextContent("B 档")
-
-    await user.click(screen.getByRole("combobox", { name: /档次/ }))
-    const retired = await screen.findByRole("option", { name: /B 档（已废弃）/ })
-    expect(retired).toHaveAttribute("aria-disabled", "true")
   })
 })

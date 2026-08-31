@@ -40,17 +40,10 @@ export type FieldType =
   | "number"
   | "boolean"
   | "date"
-  | "enum"
-  | "reference"
   | "mac"
   | "ip"
   | "url"
   | "computed"
-
-export interface EnumChoice {
-  value: string
-  label: string
-}
 
 export interface FieldOptions {
   regex?: string
@@ -58,10 +51,6 @@ export interface FieldOptions {
   min?: number
   max?: number
   unit?: string
-  choices?: EnumChoice[]
-  deprecated?: string[]
-  target?: "user" | "entity"
-  entity_types?: string[]
   template?: string
 }
 

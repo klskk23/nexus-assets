@@ -60,37 +60,6 @@ describe("FieldEditor", () => {
     expect(screen.getByLabelText("表达式")).toHaveValue("hex2dec(attrs.mac)")
   })
 
-  // Retiring an option keeps it visible on existing assets; deleting it would
-  // make their stored value unreadable.
-  it("retires an enum option instead of deleting it", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(
-      <FieldEditor
-        field={field("enum", {
-          options: { choices: [{ value: "v190", label: "1.9.0" }, { value: "v213", label: "2.1.3" }] },
-        })}
-        onClose={vi.fn()}
-      />,
-    )
-
-    const buttons = screen.getAllByRole("button", { name: "废弃" })
-    await user.click(buttons[0])
-    expect(screen.getByText("已废弃")).toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "保存" }))
-    await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith(
-        "/fields/f1",
-        expect.objectContaining({
-          options: expect.objectContaining({ deprecated: ["v190"] }),
-        }),
-      ),
-    )
-    // The choice itself must still be there.
-    const [, body] = patch.mock.calls[0]
-    expect((body as { options: { choices: unknown[] } }).options.choices).toHaveLength(2)
-  })
-
   it("lists what reads the field before anyone tries to remove it", async () => {
     get.mockResolvedValue([{ kind: "field", id: "sn", label: "设备编号" }])
     renderWithProviders(<FieldEditor field={field("mac")} onClose={vi.fn()} />)

@@ -46,17 +46,20 @@ const (
 	KeyFieldMax         = "field.max"
 	KeyFieldNotBool     = "field.not_bool"
 	KeyFieldDateShape   = "field.date_shape"
-	KeyFieldNotAnOption = "field.not_an_option"
-	KeyFieldOptionGone  = "field.option_deprecated"
-	KeyFieldRefRequired = "field.reference_required"
 	KeyFieldTypeUnknown = "field.type_unknown"
-	KeyFieldMACEmpty    = "field.mac_empty"
-	KeyFieldMACInvalid  = "field.mac_invalid"
-	KeyFieldIPInvalid   = "field.ip_invalid"
-	KeyFieldURLInvalid  = "field.url_invalid"
-	KeyFieldComputeFail = "field.compute_failed"
-	KeyFieldValueTaken  = "field.value_taken_by"
-	KeyFieldValuesTaken = "field.values_taken"
+	// Configuration a field's own definition got wrong. These reach the
+	// operator through the field editor, so they say what to change.
+	KeyOptRegexInvalid   = "options.regex_invalid"
+	KeyOptMinAboveMax    = "options.min_above_max"
+	KeyOptPrecisionRange = "options.precision_range"
+	KeyOptTemplateEmpty  = "options.template_empty"
+	KeyFieldMACEmpty     = "field.mac_empty"
+	KeyFieldMACInvalid   = "field.mac_invalid"
+	KeyFieldIPInvalid    = "field.ip_invalid"
+	KeyFieldURLInvalid   = "field.url_invalid"
+	KeyFieldComputeFail  = "field.compute_failed"
+	KeyFieldValueTaken   = "field.value_taken_by"
+	KeyFieldValuesTaken  = "field.values_taken"
 
 	// Statuses.
 	KeyStatusKeyShape   = "status.key_shape"
@@ -152,8 +155,6 @@ const (
 	KeyImportModelMissing = "import.model_missing"
 	KeyImportHolderEmpty  = "import.holder_empty"
 	KeyImportHolderMiss   = "import.holder_missing"
-	KeyImportUserMissing  = "import.user_missing"
-	KeyImportRefMissing   = "import.reference_missing"
 
 	// CSV column headers, shared by the export and the import template.
 	KeyColSN        = "csv.sn"

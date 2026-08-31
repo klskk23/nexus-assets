@@ -3,7 +3,7 @@ import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError, blockerKey, type Blocker, type Referrer } from "@/lib/api"
-import type { EnumChoice, FieldOptions } from "@/lib/types"
+import type { FieldOptions } from "@/lib/types"
 import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
 import { Badge } from "@/components/ui/badge"
@@ -22,14 +22,6 @@ import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { ExpressionHelp } from "@/features/fields/ExpressionHelp"
 import { Input } from "@/components/ui/input"
 import { Field, FieldLabel } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 interface Props {
   field: FieldDefinitionRow
@@ -89,19 +81,6 @@ export function FieldEditor({ field, onClose }: Props) {
       }
     },
   })
-
-  const toggleDeprecated = (value: string) => {
-    const cur = options.deprecated ?? []
-    set({ deprecated: cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value] })
-  }
-
-  const addChoice = () =>
-    set({ choices: [...(options.choices ?? []), { value: "", label: "" }] })
-
-  const setChoice = (i: number, patch: Partial<EnumChoice>) =>
-    set({
-      choices: (options.choices ?? []).map((c, j) => (j === i ? { ...c, ...patch } : c)),
-    })
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
@@ -170,75 +149,6 @@ export function FieldEditor({ field, onClose }: Props) {
               />
             </Field>
           </div>
-        )}
-
-        {field.type === "enum" && (
-          <div className="grid gap-3">
-            <FieldLabel>{tConfig.field.choices}</FieldLabel>
-            <p className="text-xs text-muted-foreground">{tConfig.field.deprecateHint}</p>
-            {(options.choices ?? []).map((c, i) => {
-              const retired = (options.deprecated ?? []).includes(c.value)
-              return (
-                <div key={i} className="flex flex-wrap items-end gap-2">
-                  <div className="grid gap-1">
-                    <FieldLabel htmlFor={`fe-choice-value-${i}`} className="text-xs">
-                      {tConfig.field.choiceValue}
-                    </FieldLabel>
-                    <Input
-                      id={`fe-choice-value-${i}`}
-                      className="w-40 font-mono"
-                      value={c.value}
-                      onChange={(e) => setChoice(i, { value: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-1">
-                    <FieldLabel htmlFor={`fe-choice-label-${i}`} className="text-xs">
-                      {tConfig.field.choiceLabel}
-                    </FieldLabel>
-                    <Input
-                      id={`fe-choice-label-${i}`}
-                      className="w-40"
-                      value={c.label}
-                      onChange={(e) => setChoice(i, { label: e.target.value })}
-                    />
-                  </div>
-                  {retired && <Badge variant="outline">{tConfig.field.deprecated}</Badge>}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleDeprecated(c.value)}
-                  >
-                    {retired ? tConfig.field.restore : tConfig.field.deprecate}
-                  </Button>
-                </div>
-              )
-            })}
-            <div>
-              <Button variant="outline" size="sm" onClick={addChoice}>
-                {tConfig.field.addChoice}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {field.type === "reference" && (
-          <Field>
-            <FieldLabel htmlFor="fe-target">{tConfig.field.target}</FieldLabel>
-            <Select
-              value={options.target ?? "user"}
-              onValueChange={(v) => set({ target: v as "user" | "entity" })}
-            >
-              <SelectTrigger id="fe-target" className="w-56">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="user">{tConfig.field.targetUser}</SelectItem>
-                  <SelectItem value="entity">{tConfig.field.targetEntity}</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
         )}
 
         {field.type === "computed" && (

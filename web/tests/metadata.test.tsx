@@ -127,7 +127,37 @@ describe("Fields page", () => {
         label: "机柜位",
         type: "text",
         is_unique: true,
-        options: {},
+        options: { regex: "", regex_hint: "" },
+      }),
+    )
+  })
+
+  // A validated text field took two steps: create it, reopen it, then set the
+  // pattern. The pattern belongs where the field is described.
+  it("takes the pattern and its hint while a text field is being created", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Fields />)
+    await screen.findByRole("row", { name: /基准 MAC/ })
+
+    await openCreate(user, "新建字段")
+    await user.type(screen.getByLabelText(/键名/), "rack")
+    await user.type(screen.getByLabelText(/显示名/), "机柜位")
+    await user.type(screen.getByLabelText("校验正则"), "^R-\\d+$")
+    await user.type(screen.getByLabelText(/校验提示/), "R- 加数字")
+
+    // Only text has a pattern; a number field's options are its own.
+    await chooseByLabel(user, "类型", "数字")
+    expect(screen.queryByLabelText("校验正则")).not.toBeInTheDocument()
+    await chooseByLabel(user, "类型", "文本")
+
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "新建字段" }))
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/fields", {
+        key: "rack",
+        label: "机柜位",
+        type: "text",
+        is_unique: false,
+        options: { regex: "^R-\\d+$", regex_hint: "R- 加数字" },
       }),
     )
   })

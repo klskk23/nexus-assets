@@ -19,7 +19,6 @@ type lookups struct {
 	// to a device without ever saying so.
 	ambiguousModels map[string]bool
 	holdersByName   map[string]model.HolderEntity
-	usersByName     map[string]string
 	fieldByKey      map[string]model.BoundField
 	// displayKey is the category's nominated identifier, so a preview row can
 	// show the same label the asset will carry once it exists.
@@ -31,7 +30,6 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 		modelsByName:    map[string]string{},
 		ambiguousModels: map[string]bool{},
 		holdersByName:   map[string]model.HolderEntity{},
-		usersByName:     map[string]string{},
 		fieldByKey:      map[string]model.BoundField{},
 	}
 
@@ -65,17 +63,6 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 	// that exists is one that can hold something.
 	for _, e := range entities {
 		l.holdersByName[strings.TrimSpace(e.Name)] = e
-	}
-
-	users, err := s.users.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, u := range users {
-		if u.Status == model.UserActive {
-			l.usersByName[strings.TrimSpace(u.Name)] = u.ID
-			l.usersByName[strings.TrimSpace(u.Email)] = u.ID
-		}
 	}
 
 	fields, err := s.schema.EffectiveFields(ctx, categoryID)
@@ -118,25 +105,4 @@ func (l *lookups) resolveHolder(name string) (model.HolderEntity, error) {
 		return model.HolderEntity{}, i18n.M(i18n.KeyImportHolderMiss, name)
 	}
 	return e, nil
-}
-
-// resolveReference maps the display name in a reference column to an id.
-func (l *lookups) resolveReference(f model.BoundField, name string) (string, error) {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return "", nil
-	}
-	switch f.Options.Target {
-	case "user":
-		if id, ok := l.usersByName[name]; ok {
-			return id, nil
-		}
-		return "", i18n.M(i18n.KeyImportUserMissing, name)
-	default:
-		e, ok := l.holdersByName[name]
-		if !ok {
-			return "", i18n.M(i18n.KeyImportRefMissing, name)
-		}
-		return e.ID, nil
-	}
 }

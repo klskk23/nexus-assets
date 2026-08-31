@@ -1,13 +1,4 @@
 import { t } from "@/i18n"
-import { fromNone, toNone } from "@/lib/select"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import {
@@ -18,7 +9,7 @@ import {
 } from "@/components/ui/field"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import type { BoundField, FieldOptions } from "@/lib/types"
+import type { BoundField } from "@/lib/types"
 import type { FieldErrors } from "@/lib/api"
 
 interface Props {
@@ -113,31 +104,6 @@ function FieldControl({
         />
       )
 
-    case "enum":
-      return (
-        <Select value={toNone(str)} onValueChange={(v) => onChange(field.key, fromNone(v))}>
-          <SelectTrigger id={id} aria-describedby={describedBy}>
-            <SelectValue placeholder={t.common.select} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {(field.options.choices ?? []).map((c) => (
-                <SelectItem
-                  key={c.value}
-                  value={c.value}
-                  // A retired choice stays visible on the assets that already
-                  // carry it, but cannot be picked anew.
-                  disabled={isDeprecated(field.options, c.value)}
-                >
-                  {c.label}
-                  {isDeprecated(field.options, c.value) ? t.common.deprecatedSuffix : ""}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      )
-
     case "number":
       return (
         <Input
@@ -171,10 +137,6 @@ function FieldControl({
         />
       )
   }
-}
-
-function isDeprecated(options: FieldOptions, value: string) {
-  return (options.deprecated ?? []).includes(value)
 }
 
 /** Small controlled-state helper so pages do not each reimplement it. */

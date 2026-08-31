@@ -26,18 +26,12 @@ func TestValidateAttrsPerType(t *testing.T) {
 		bf("ports", model.FieldNumber, model.FieldOptions{Min: f64p(1), Max: f64p(48)}, false),
 		bf("managed", model.FieldBoolean, model.FieldOptions{}, false),
 		bf("bought", model.FieldDate, model.FieldOptions{}, false),
-		bf("tier", model.FieldEnum, model.FieldOptions{
-			Choices:    []model.EnumChoice{{Value: "a"}, {Value: "old"}},
-			Deprecated: []string{"old"},
-		}, false),
-		bf("site", model.FieldReference, model.FieldOptions{Target: "entity"}, false),
 	}
 
 	t.Run("all valid", func(t *testing.T) {
 		out, errs := ValidateAttrs(fields, map[string]any{
 			"mac": "00:1a:2b:3c:4d:5e", "ip": "192.168.1.1", "doc": "https://example.com/a",
 			"tag": "AB-1234", "ports": "24", "managed": "true", "bought": "2026-08-28",
-			"tier": "a", "site": "loc-1",
 		})
 		if errs.Any() {
 			t.Fatalf("unexpected errors: %v", errs)
@@ -67,8 +61,6 @@ func TestValidateAttrsPerType(t *testing.T) {
 		{"not a number", "ports", map[string]any{"mac": "001A2B3C4D5E", "ports": "many"}, "数字"},
 		{"bad boolean", "managed", map[string]any{"mac": "001A2B3C4D5E", "managed": "maybe"}, "是或否"},
 		{"bad date", "bought", map[string]any{"mac": "001A2B3C4D5E", "bought": "28/08/2026"}, "YYYY-MM-DD"},
-		{"unknown enum", "tier", map[string]any{"mac": "001A2B3C4D5E", "tier": "ghost"}, "可选值"},
-		{"retired enum", "tier", map[string]any{"mac": "001A2B3C4D5E", "tier": "old"}, "已废弃"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

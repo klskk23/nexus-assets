@@ -124,6 +124,10 @@ func TestMigrateUpAndDown(t *testing.T) {
 	// exactly, so a half-applied upgrade can be undone rather than requiring a
 	// fresh file.
 	if err := s.MigrateDown(ctx); err != nil {
+		t.Fatalf("MigrateDown 010: %v", err)
+	}
+
+	if err := s.MigrateDown(ctx); err != nil {
 		t.Fatalf("MigrateDown 009: %v", err)
 	}
 
@@ -298,5 +302,62 @@ func TestDefaultStockPointIsUnique(t *testing.T) {
 	}
 	if _, err := s.write.ExecContext(ctx, ins, "c", "库房 C", 0); err != nil {
 		t.Fatalf("non-default locations must remain unrestricted: %v", err)
+	}
+}
+
+// 010 withdraws two field types. What it must not do is take the values with
+// them: the fields become text, and every attribute already stored under them
+// stays exactly where it was.
+func TestMigrateConvertsEnumAndReferenceFieldsToText(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "types.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	ctx := context.Background()
+	if err := s.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+	// Back to the revision before the withdrawal, so the rows can be written in
+	// the shape that revision allowed.
+	if err := s.MigrateDown(ctx); err != nil {
+		t.Fatalf("MigrateDown 010: %v", err)
+	}
+
+	now := "2026-08-31T00:00:00Z"
+	for _, f := range []struct{ id, key, typ, options string }{
+		{"f-enum", "grade", "enum", `{"choices":[{"value":"a","label":"甲"}]}`},
+		{"f-ref", "keeper", "reference", `{"target":"user"}`},
+		{"f-text", "note2", "text", `{"regex":"^N"}`},
+	} {
+		if _, err := s.write.ExecContext(ctx,
+			`INSERT INTO field_definitions (id, key, label, type, options, is_unique, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
+			f.id, f.key, f.key, f.typ, f.options, now, now); err != nil {
+			t.Fatalf("seed %s: %v", f.id, err)
+		}
+	}
+
+	if err := s.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate up again: %v", err)
+	}
+
+	for _, want := range []struct{ id, typ, options string }{
+		{"f-enum", "text", "{}"},
+		{"f-ref", "text", "{}"},
+		// An untouched field keeps its own configuration; the update must not
+		// have been a blanket one.
+		{"f-text", "text", `{"regex":"^N"}`},
+	} {
+		var typ, options string
+		if err := s.read.QueryRowContext(ctx,
+			`SELECT type, options FROM field_definitions WHERE id = ?`, want.id).Scan(&typ, &options); err != nil {
+			t.Fatalf("read %s: %v", want.id, err)
+		}
+		if typ != want.typ || options != want.options {
+			t.Errorf("%s = (%s, %s), want (%s, %s)", want.id, typ, options, want.typ, want.options)
+		}
 	}
 }

@@ -196,19 +196,9 @@ func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, lang i18n.Lang, cate
 		if key == ColModel || key == ColHolder || key == ColNote || raw == "" {
 			continue
 		}
-		f, known := look.fieldByKey[key]
-		if !known {
+		if _, known := look.fieldByKey[key]; !known {
 			// An unknown column is ignored rather than fatal: a template kept
 			// from before a field was unbound should still import.
-			continue
-		}
-		if f.Type == model.FieldReference {
-			id, err := look.resolveReference(f, raw)
-			if err != nil {
-				res.Fields[key] = err.Error()
-				continue
-			}
-			in.Attrs[key] = id
 			continue
 		}
 		in.Attrs[key] = raw
