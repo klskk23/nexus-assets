@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError, blockerKey, type Blocker } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
-import type { BoundField, Category, CategorySchema } from "@/lib/types"
+import type { AssetPage, BoundField, Category, CategorySchema } from "@/lib/types"
 import type { FieldDefinitionRow, ProductModelRow } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
@@ -86,6 +86,17 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
     queryKey: ["models"],
     queryFn: () => api.get<ProductModelRow[]>("/models"),
   })
+  // How many devices a new required field would land on. Asked for one row
+  // because only the total is wanted, and the subtree because a binding made
+  // here applies all the way down it.
+  const populated = useQuery({
+    queryKey: ["category-asset-count", category.id],
+    queryFn: () =>
+      api.get<AssetPage>(
+        `/assets?category_id=${category.id}&include_descendants=true&limit=1`,
+      ),
+  })
+  const existingAssets = populated.data?.total ?? 0
 
   const bound = schema.data?.fields ?? []
   // Only unique fields are offered as the number: one two devices can share is
@@ -256,6 +267,19 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
                 {tMeta.categories.bind}
               </Button>
             </div>
+
+            {/* Required is checked when an asset is written, not when the
+                field is bound, so the devices already recorded keep their gap
+                until someone edits one. That is worth saying out loud before
+                the box is ticked rather than discovering it on a refusal. */}
+            {bindRequired && existingAssets > 0 && (
+              <Alert>
+                <AlertCircleIcon />
+                <AlertDescription>
+                  {tMeta.categories.requiredWarning(existingAssets)}
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Unbinding is where every other row action is: the menu. An
                 inherited binding was not made here and cannot be removed here,

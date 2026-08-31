@@ -49,6 +49,7 @@ function route(p: string) {
     ])
   }
   if (p.endsWith("/schema")) return Promise.resolve(schema)
+  if (p.startsWith("/assets")) return Promise.resolve({ items: [], total: 3, offset: 0, limit: 1 })
   return Promise.resolve([])
 }
 
@@ -392,6 +393,66 @@ describe("Category editor", () => {
       expect(post).toHaveBeenCalledWith("/categories/rt/bindings", {
         field_id: "f9",
         required: false,
+      }),
+    )
+  })
+})
+
+// Required is checked when an asset is written, not when the field is bound.
+// Ticking the box on a category that already holds devices is therefore a
+// promise about their next edit, and the person ticking it should know.
+describe("Binding a required field to a populated category", () => {
+  it("says how many devices will have to be filled in on their next edit", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+    await user.click(await categoryRow())
+
+    const dialog = await screen.findByRole("dialog")
+    expect(within(dialog).queryByText(/已有 3 台设备/)).not.toBeInTheDocument()
+
+    await user.click(within(dialog).getByLabelText("必填"))
+    expect(await within(dialog).findByText(/已有 3 台设备/)).toBeInTheDocument()
+
+    await user.click(within(dialog).getByLabelText("必填"))
+    expect(within(dialog).queryByText(/已有 3 台设备/)).not.toBeInTheDocument()
+  })
+
+  it("says nothing on a category with no devices in it", async () => {
+    get.mockImplementation((p: string) =>
+      p.startsWith("/assets")
+        ? Promise.resolve({ items: [], total: 0, offset: 0, limit: 1 })
+        : route(p),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+    await user.click(await categoryRow())
+
+    const dialog = await screen.findByRole("dialog")
+    await user.click(within(dialog).getByLabelText("必填"))
+    expect(within(dialog).queryByText(/台设备/)).not.toBeInTheDocument()
+  })
+
+  // The point of the warning is that the binding still goes through.
+  it("binds it anyway", async () => {
+    get.mockImplementation((p: string) =>
+      p === "/fields"
+        ? Promise.resolve([{ id: "f9", key: "rack2", label: "机柜位", type: "text", options: {}, is_unique: false }])
+        : route(p),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+    await user.click(await categoryRow())
+
+    const dialog = await screen.findByRole("dialog")
+    await user.click(within(dialog).getByRole("combobox", { name: "绑定字段" }))
+    await user.click(await screen.findByRole("option", { name: "机柜位" }))
+    await user.click(within(dialog).getByLabelText("必填"))
+    await user.click(within(dialog).getByRole("button", { name: "绑定字段" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/categories/rt/bindings", {
+        field_id: "f9",
+        required: true,
       }),
     )
   })

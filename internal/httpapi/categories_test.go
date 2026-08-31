@@ -421,3 +421,71 @@ func TestFieldRecomputeRefusesAConflictWithoutWriting(t *testing.T) {
 		}
 	}
 }
+
+// Required is enforced when an asset is written, not when the field is bound.
+// That is deliberate -- refusing the binding would mean a category can never
+// gain a required field once it holds anything -- so the behaviour is pinned
+// here, and the category editor warns before the box is ticked.
+func TestRequiredFieldCanBeBoundToAPopulatedCategory(t *testing.T) {
+	h := newHarness(t)
+	h.seed(t, 0, 2)
+
+	rec := h.post(t, "/api/fields", `{"key":"rack","label":"机柜位","type":"text"}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatal(rec.Body.String())
+	}
+	fieldID := decode[struct {
+		ID string `json:"id"`
+	}](t, rec).ID
+
+	if b := h.post(t, "/api/categories/"+h.catID+"/bindings",
+		`{"field_id":"`+fieldID+`","required":true,"sort":30}`); b.Code != http.StatusNoContent {
+		t.Fatalf("binding a required field = %d %s", b.Code, b.Body.String())
+	}
+
+	// The devices already recorded keep their gap and stay readable.
+	list := decode[assetListResponse](t, h.get(t, "/api/assets"))
+	if list.Total != 2 {
+		t.Fatalf("assets after the binding = %d, want 2", list.Total)
+	}
+
+	// Until one of them is edited, which is what the warning promises.
+	id := h.firstAssetID(t)
+	one := decode[struct {
+		Asset struct {
+			CategoryID string `json:"category_id"`
+			Status     string `json:"status"`
+			Owner      struct {
+				ID string `json:"id"`
+			} `json:"owner"`
+			Holder struct {
+				Type string `json:"type"`
+				ID   string `json:"id"`
+			} `json:"holder"`
+			Attrs   map[string]any `json:"attrs"`
+			Version int            `json:"version"`
+		} `json:"asset"`
+	}](t, h.get(t, "/api/assets/"+id))
+	a := one.Asset
+
+	body := `{"category_id":"` + a.CategoryID + `","status":"` + a.Status +
+		`","owner_id":"` + a.Owner.ID + `","holder_type":"` + a.Holder.Type +
+		`","holder_id":"` + a.Holder.ID + `","version":` + strconv.Itoa(a.Version) +
+		`,"attrs":{"mac":"` + a.Attrs["mac"].(string) + `"}}`
+	edit := h.patch(t, "/api/assets/"+id, body)
+	if edit.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("editing without the new value = %d %s", edit.Code, edit.Body.String())
+	}
+	if !contains(edit.Body.String(), "rack") {
+		t.Errorf("the refusal should name the field, got %s", edit.Body.String())
+	}
+
+	// Filling it in saves.
+	filled := `{"category_id":"` + a.CategoryID + `","status":"` + a.Status +
+		`","owner_id":"` + a.Owner.ID + `","holder_type":"` + a.Holder.Type +
+		`","holder_id":"` + a.Holder.ID + `","version":` + strconv.Itoa(a.Version) +
+		`,"attrs":{"mac":"` + a.Attrs["mac"].(string) + `","rack":"A-01"}}`
+	if ok := h.patch(t, "/api/assets/"+id, filled); ok.Code != http.StatusOK {
+		t.Fatalf("filling the field in = %d %s", ok.Code, ok.Body.String())
+	}
+}

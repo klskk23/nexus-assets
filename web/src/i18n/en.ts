@@ -241,6 +241,9 @@ export const enMeta: typeof zhMeta = {
     inheritedFrom: "Inherited from",
     bind: "Bind a field",
     required: "Required",
+    requiredWarning: (n: number) =>
+      `${n} devices are already recorded here. They are not re-checked, but the next edit of any ` +
+      `of them will not save until this field is filled in.`,
     unbind: "Unbind",
     unbindTitle: "Unbind from this category",
     unbindHint: (label: string) =>

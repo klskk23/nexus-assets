@@ -225,6 +225,9 @@ export const zhMeta = {
     inheritedFrom: "继承自",
     bind: "绑定字段",
     required: "必填",
+    requiredWarning: (n: number) =>
+      `该类别下已有 ${n} 台设备。它们不会被回溯校验，但下次编辑其中任何一台时，` +
+      `必须补上这个字段才能保存。`,
     unbind: "解绑",
     unbindTitle: "从该类别解绑",
     unbindHint: (label: string) =>
