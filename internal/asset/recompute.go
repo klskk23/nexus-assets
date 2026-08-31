@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/klskk23/nexus-assets/internal/compute"
@@ -257,4 +258,103 @@ func sortConflicts(cs []Conflict) {
 		}
 		return cs[i].Value < cs[j].Value
 	})
+}
+
+// RecomputeField re-evaluates every asset a field's expression can reach.
+//
+// A binding covers the category it is made on and everything beneath it, so
+// the work is one subtree run per bound category, with descendants dropped --
+// an ancestor's run already covered them.
+//
+// The dry run over every subtree happens before any of them is applied. A
+// conflict in the third warehouse must stop the first two from being written,
+// for the same reason a single subtree is one transaction: half a renumbering
+// is worse than none.
+func (s *Service) RecomputeField(ctx context.Context, fieldID string, dryRun bool) (RecomputeReport, error) {
+	var merged RecomputeReport
+
+	roots, err := s.categoriesBinding(ctx, fieldID)
+	if err != nil {
+		return merged, err
+	}
+
+	for _, id := range roots {
+		r, err := s.Recompute(ctx, id, true)
+		if err != nil {
+			return merged, err
+		}
+		merge(&merged, r)
+	}
+	if dryRun || len(merged.Conflicts) > 0 || merged.Affected == 0 {
+		return merged, nil
+	}
+
+	// The second pass writes. Its numbers replace the dry run's rather than
+	// adding to them, or every asset would be counted twice.
+	var applied RecomputeReport
+	for _, id := range roots {
+		r, err := s.Recompute(ctx, id, false)
+		if err != nil {
+			return applied, err
+		}
+		merge(&applied, r)
+	}
+	applied.Applied = len(applied.Conflicts) == 0
+	return applied, nil
+}
+
+// categoriesBinding lists the categories whose own binding carries the field,
+// dropping any that another one already contains.
+func (s *Service) categoriesBinding(ctx context.Context, fieldID string) ([]string, error) {
+	bindings, err := s.schema.BindingsByCategory(ctx)
+	if err != nil {
+		return nil, err
+	}
+	categories, err := s.schema.ListCategories(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pathOf := make(map[string]string, len(categories))
+	for _, c := range categories {
+		pathOf[c.ID] = c.Path
+	}
+
+	var bound []string
+	for catID, bs := range bindings {
+		for _, b := range bs {
+			if b.Field.ID == fieldID {
+				bound = append(bound, catID)
+				break
+			}
+		}
+	}
+	sort.Slice(bound, func(i, j int) bool { return pathOf[bound[i]] < pathOf[bound[j]] })
+
+	var roots []string
+	for _, id := range bound {
+		covered := false
+		for _, r := range roots {
+			if strings.HasPrefix(pathOf[id], pathOf[r]) {
+				covered = true
+				break
+			}
+		}
+		if !covered {
+			roots = append(roots, id)
+		}
+	}
+	return roots, nil
+}
+
+// merge folds one subtree's report into the running total.
+func merge(into *RecomputeReport, r RecomputeReport) {
+	into.Affected += r.Affected
+	into.Total += r.Total
+	into.Conflicts = append(into.Conflicts, r.Conflicts...)
+	for _, s := range r.Samples {
+		if len(into.Samples) >= maxSamples {
+			break
+		}
+		into.Samples = append(into.Samples, s)
+	}
 }

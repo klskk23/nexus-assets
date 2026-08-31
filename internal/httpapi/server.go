@@ -74,6 +74,7 @@ func (s *Server) Router() *gin.Engine {
 	authed.POST("/categories/:id/bindings", s.bindField)
 	authed.DELETE("/categories/:id/bindings/:field_id", s.unbindField)
 	authed.GET("/fields/:id/referrers", s.listFieldReferrers)
+	authed.POST("/fields/:id/recompute", s.recomputeField)
 	authed.POST("/categories/:id/recompute", s.recompute)
 
 	authed.GET("/models", s.listModels)

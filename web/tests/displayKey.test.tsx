@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { screen, waitFor, within } from "@testing-library/react"
+import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { DisplayKeyEditor } from "@/features/categories/DisplayKeyEditor"
@@ -32,7 +32,6 @@ function render(over: Partial<Parameters<typeof DisplayKeyEditor>[0]> = {}) {
   return renderWithProviders(
     <DisplayKeyEditor
       categoryID="rt"
-      categoryName="SDWAN 路由器"
       displayKey="sn"
       fields={fields}
       {...over}
@@ -61,7 +60,10 @@ describe("DisplayKeyEditor", () => {
     expect(labels).toContain("未设置（显示 UUID 前 8 位）")
   })
 
-  it("keeps saving the choice separate from recomputing existing devices", async () => {
+  // Picking the number to show is a display choice; it must not renumber
+  // anything by itself. What recomputes is a changed expression, saved in the
+  // field editor.
+  it("saves the choice without touching a single asset", async () => {
     const user = userEvent.setup()
     render()
 
@@ -73,73 +75,5 @@ describe("DisplayKeyEditor", () => {
     )
     // Saving must not recompute anything on its own.
     expect(post).not.toHaveBeenCalled()
-  })
-
-  it("previews the blast radius before anything can be applied", async () => {
-    post.mockResolvedValue({
-      affected: 1847,
-      total: 2000,
-      conflicts: [],
-      applied: false,
-      samples: [{ asset: "112394521950", key: "sn", from: "112394521950", to: "RT-112394521950" }],
-    })
-    const user = userEvent.setup()
-    render()
-
-    await user.click(screen.getByRole("button", { name: "重算存量数据" }))
-
-    const preview = await screen.findByRole("region", { name: "重算预览" })
-    expect(within(preview).getByText("将影响 1847 台（该子树共 2000 台）")).toBeInTheDocument()
-    expect(
-      within(preview).getByText("112394521950：sn 112394521950 → RT-112394521950"),
-    ).toBeInTheDocument()
-    expect(post).toHaveBeenCalledWith("/categories/rt/recompute?dry_run=true", {})
-  })
-
-  it("blocks the apply button while the preview shows conflicts", async () => {
-    post.mockResolvedValue({
-      affected: 3,
-      total: 3,
-      conflicts: [{ key: "sn", value: "12345", assets: ["112394521950", "112394521951"] }],
-      applied: false,
-      samples: [],
-    })
-    const user = userEvent.setup()
-    render()
-
-    await user.click(screen.getByRole("button", { name: "重算存量数据" }))
-    expect(await screen.findByText("发现 1 处取值冲突")).toBeInTheDocument()
-    expect(
-      screen.getByText("sn = 12345 ← 112394521950、112394521951"),
-    ).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "确认重算" })).toBeDisabled()
-  })
-
-  it("applies only after the preview came back clean", async () => {
-    post
-      .mockResolvedValueOnce({ affected: 3, total: 3, conflicts: [], applied: false, samples: [] })
-      .mockResolvedValueOnce({ affected: 3, total: 3, conflicts: [], applied: true, samples: [] })
-    const user = userEvent.setup()
-    render()
-
-    await user.click(screen.getByRole("button", { name: "重算存量数据" }))
-    const apply = await screen.findByRole("button", { name: "确认重算" })
-    expect(apply).toBeEnabled()
-
-    await user.click(apply)
-    await waitFor(() =>
-      expect(post).toHaveBeenLastCalledWith("/categories/rt/recompute?dry_run=false", {}),
-    )
-    expect(await screen.findByRole("status")).toHaveTextContent("已重算 3 台，旧取值已归档")
-  })
-
-  it("says so when nothing would change", async () => {
-    post.mockResolvedValue({ affected: 0, total: 12, conflicts: [], applied: false, samples: [] })
-    const user = userEvent.setup()
-    render()
-
-    await user.click(screen.getByRole("button", { name: "重算存量数据" }))
-    expect(await screen.findByText("没有资产的取值会变化")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "确认重算" })).toBeDisabled()
   })
 })

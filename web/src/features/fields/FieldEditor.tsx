@@ -3,6 +3,7 @@ import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError, blockerKey, type Blocker, type Referrer } from "@/lib/api"
+import type { Conflict, RecomputeReport } from "@/lib/types"
 import type { FieldOptions } from "@/lib/types"
 import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
@@ -44,6 +45,11 @@ export function FieldEditor({ field, onClose }: Props) {
   // different about each: configuration is edited, data is unbound instead.
   const [refBlockers, setRefBlockers] = useState<Referrer[]>([])
   const [assetBlockers, setAssetBlockers] = useState<Blocker[]>([])
+  // Collisions the new rule would cause. Shown here because this is where the
+  // rule was changed, and the change has already been undone by the time they
+  // appear.
+  const [conflicts, setConflicts] = useState<Conflict[]>([])
+  const [confirming, setConfirming] = useState(false)
 
   const referrers = useQuery({
     queryKey: ["referrers", field.id],
@@ -52,14 +58,51 @@ export function FieldEditor({ field, onClose }: Props) {
 
   const set = (patch: Partial<FieldOptions>) => setOptions((o) => ({ ...o, ...patch }))
 
+  // Whether saving would leave stored values disagreeing with the rule that
+  // produced them. Only a changed expression can do that; renaming the field
+  // cannot.
+  const ruleChanged =
+    field.type === "computed" && (options.template ?? "") !== (field.options?.template ?? "")
+
   const save = useMutation({
-    mutationFn: () => api.patch(`/fields/${field.id}`, { label, options }),
-    onSuccess: () => {
+    mutationFn: async (): Promise<RecomputeReport | null> => {
+      await api.patch(`/fields/${field.id}`, { label, options })
+      if (!ruleChanged) return null
+
+      const report = await api.post<RecomputeReport>(
+        `/fields/${field.id}/recompute?dry_run=false`,
+        {},
+      )
+      if ((report.conflicts ?? []).length > 0) {
+        // Put the rule back. New devices numbered by the new rule while the
+        // old ones keep the old is exactly the split this flow exists to
+        // prevent, and the recompute wrote nothing.
+        await api.patch(`/fields/${field.id}`, { options: field.options ?? {} })
+      }
+      return report
+    },
+    onSuccess: (report) => {
       queryClient.invalidateQueries({ queryKey: ["fields"] })
+      if (report && (report.conflicts ?? []).length > 0) {
+        setConflicts(report.conflicts ?? [])
+        setBanner(tConfig.field.recomputeConflict)
+        return
+      }
+      if (report) queryClient.invalidateQueries({ queryKey: ["assets"] })
       onClose()
     },
     onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
   })
+
+  const submit = () => {
+    setConflicts([])
+    setBanner(null)
+    if (ruleChanged) {
+      setConfirming(true)
+      return
+    }
+    save.mutate()
+  }
 
   const remove = useMutation({
     mutationFn: () => api.del(`/fields/${field.id}`),
@@ -188,6 +231,15 @@ export function FieldEditor({ field, onClose }: Props) {
                   ))}
                 </ul>
               )}
+              {conflicts.length > 0 && (
+                <ul className="grid gap-0.5 font-mono text-xs">
+                  {conflicts.map((c, i) => (
+                    <li key={i}>
+                      {tConfig.field.conflictRow(c.key, c.value, c.assets.join("、"))}
+                    </li>
+                  ))}
+                </ul>
+              )}
               {assetBlockers.length > 0 && (
                 <>
                   <p className="text-xs">{tConfig.field.blockedByAssets}</p>
@@ -222,10 +274,23 @@ export function FieldEditor({ field, onClose }: Props) {
           <DialogClose asChild>
             <Button variant="ghost">{t.common.cancel}</Button>
           </DialogClose>
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>
+          <Button onClick={submit} disabled={save.isPending}>
             {save.isPending && <Spinner data-icon="inline-start" aria-hidden />}
             {save.isPending ? tConfig.field.saving : tConfig.field.save}
           </Button>
+
+          {/* Saving a changed rule and recomputing what it governs are one
+              decision, not two: leaving them apart is what let new devices be
+              numbered one way and old ones another. Declining recompute
+              therefore declines the save. */}
+          <ConfirmDialog
+            open={confirming}
+            onOpenChange={setConfirming}
+            title={tConfig.field.recomputeTitle}
+            description={tConfig.field.recomputeHint}
+            confirmLabel={tConfig.field.recomputeConfirm}
+            onConfirm={() => save.mutate()}
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>

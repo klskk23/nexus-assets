@@ -288,22 +288,6 @@ export const zhConfig = {
     hint: "只能选择标为唯一的字段。编号通常是一个表达式键，由 MAC 等静态键推导而来。",
     save: "保存",
     saved: "已保存",
-    recompute: "重算存量数据",
-    previewTitle: "重算预览",
-    previewing: "正在核算…",
-    affected: (n: number, total: number) => `将影响 ${n} 台（该子树共 ${total} 台）`,
-    noChange: "没有资产的取值会变化",
-    conflicts: (n: number) => `发现 ${n} 处取值冲突`,
-    conflictHint: "存在冲突时不会写入任何数据。请先修改表达式。",
-    conflictRow: (key: string, value: string, who: string) => `${key} = ${value} ← ${who}`,
-    samples: "示例",
-    sampleRow: (asset: string, key: string, from: string, to: string) =>
-      `${asset}：${key} ${from} → ${to}`,
-    apply: "确认重算",
-    applying: "重算中…",
-    applied: (n: number) => `已重算 ${n} 台，旧取值已归档为可搜索别名`,
-    cancel: "取消",
-    ruleChangedHint: "改动表达式只影响之后新建的资产。存量资产需要显式重算。",
   },
   field: {
     edit: "编辑字段",
@@ -316,7 +300,6 @@ export const zhConfig = {
     min: "最小值",
     max: "最大值",
     unit: "单位",
-    entityTypes: "限定类型",
     template: "表达式",
     delete: "删除字段",
     deleteTitle: "删除字段",
@@ -327,6 +310,12 @@ export const zhConfig = {
     referrers: "以下内容正在引用它：",
     save: "保存",
     saving: "保存中…",
+    recomputeTitle: "保存并重算存量资产",
+    recomputeHint:
+      "表达式改了。保存会立刻按新规则重算所有使用它的存量资产，旧取值归档为可搜索别名。不重算就不保存。",
+    recomputeConfirm: "保存并重算",
+    recomputeConflict: "新规则会让两台设备拿到相同的值，已放弃保存，规则维持原样：",
+    conflictRow: (key: string, value: string, assets: string) => `${key} = ${value}：${assets}`,
   },
 }
 

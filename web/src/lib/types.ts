@@ -163,3 +163,19 @@ export interface AssetPage {
   limit: number
   exact_match_id?: string
 }
+
+/** One collision a recompute would cause on a unique key. */
+export interface Conflict {
+  key: string
+  value: string
+  assets: string[]
+}
+
+/** What a recompute did, or would do. */
+export interface RecomputeReport {
+  affected: number
+  total: number
+  conflicts: Conflict[] | null
+  applied: boolean
+  samples: { asset: string; key: string; from: string; to: string }[] | null
+}

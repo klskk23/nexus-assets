@@ -291,7 +291,6 @@ export function Categories() {
               <DisplayKeyEditor
                 key={selected}
                 categoryID={selected}
-                categoryName={schema.data.category.name}
                 displayKey={schema.data.category.display_key}
                 fields={schema.data.fields}
               />

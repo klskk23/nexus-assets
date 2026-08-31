@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/klskk23/nexus-assets/internal/asset"
@@ -356,6 +357,67 @@ func TestDeleteCategoryEndpoint(t *testing.T) {
 	for _, c := range decode[[]map[string]any](t, h.get(t, "/api/categories")) {
 		if c["id"] == id {
 			t.Error("the category should be gone from the list")
+		}
+	}
+}
+
+// Editing an expression and leaving the stored values behind is the mismatch
+// the field editor now refuses to create: saving the rule recomputes what it
+// governs, wherever that is bound.
+func TestFieldRecomputeReachesEveryCategoryTheFieldIsBoundTo(t *testing.T) {
+	h := newHarness(t)
+	h.seed(t, 0, 2)
+
+	if rec := h.patch(t, "/api/fields/"+h.snFieldID,
+		`{"options":{"template":"category.code + \"-\" + hex2dec(attrs.mac)"}}`); rec.Code != http.StatusOK {
+		t.Fatalf("update rule: %s", rec.Body.String())
+	}
+
+	dry := decode[asset.RecomputeReport](t, h.post(t, "/api/fields/"+h.snFieldID+"/recompute?dry_run=true", ""))
+	if dry.Applied || dry.Affected != 2 || dry.Total != 2 {
+		t.Fatalf("dry run = %+v, want 2 of 2 and nothing applied", dry)
+	}
+
+	real := decode[asset.RecomputeReport](t, h.post(t, "/api/fields/"+h.snFieldID+"/recompute?dry_run=false", ""))
+	if !real.Applied || real.Affected != 2 {
+		t.Fatalf("apply report = %+v", real)
+	}
+	for _, a := range decode[assetListResponse](t, h.get(t, "/api/assets")).Items {
+		if !strings.HasPrefix(a.DisplayName, "RT-") {
+			t.Errorf("asset %s did not take the new rule", a.DisplayName)
+		}
+	}
+
+	// Nothing left to do is not a failure, and must not report as one.
+	again := decode[asset.RecomputeReport](t, h.post(t, "/api/fields/"+h.snFieldID+"/recompute?dry_run=false", ""))
+	if again.Affected != 0 || len(again.Conflicts) != 0 {
+		t.Errorf("a second run should find nothing to change, got %+v", again)
+	}
+}
+
+// A rule that would give two devices the same number is refused whole: the
+// editor reverts the rule rather than leaving new assets on one rule and old
+// ones on another.
+func TestFieldRecomputeRefusesAConflictWithoutWriting(t *testing.T) {
+	h := newHarness(t)
+	h.seed(t, 0, 3)
+
+	// A constant expression: every device would end up with the same number.
+	if rec := h.patch(t, "/api/fields/"+h.snFieldID,
+		`{"options":{"template":"category.code"}}`); rec.Code != http.StatusOK {
+		t.Fatalf("update rule: %s", rec.Body.String())
+	}
+
+	report := decode[asset.RecomputeReport](t, h.post(t, "/api/fields/"+h.snFieldID+"/recompute?dry_run=false", ""))
+	if report.Applied {
+		t.Fatal("a colliding recompute must not apply")
+	}
+	if len(report.Conflicts) == 0 {
+		t.Fatal("the report should name the collision")
+	}
+	for _, a := range decode[assetListResponse](t, h.get(t, "/api/assets")).Items {
+		if a.DisplayName == "RT" {
+			t.Errorf("asset %s was written despite the conflict", a.ID)
 		}
 	}
 }

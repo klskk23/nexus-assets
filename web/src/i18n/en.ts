@@ -306,23 +306,6 @@ export const enConfig: typeof zhConfig = {
       "Only fields marked unique may be chosen. The number is usually an expression key derived from a static one such as the MAC.",
     save: "Save",
     saved: "Saved",
-    recompute: "Recompute existing data",
-    previewTitle: "Recompute preview",
-    previewing: "Working it out…",
-    affected: (n: number, total: number) => `Would affect ${n} of ${total} in this subtree`,
-    noChange: "No asset's value would change",
-    conflicts: (n: number) => `${n} value conflict(s) found`,
-    conflictHint: "Nothing is written while conflicts remain. Change the expression first.",
-    conflictRow: (key: string, value: string, who: string) => `${key} = ${value} ← ${who}`,
-    samples: "Examples",
-    sampleRow: (asset: string, key: string, from: string, to: string) =>
-      `${asset}: ${key} ${from} → ${to}`,
-    apply: "Recompute",
-    applying: "Recomputing…",
-    applied: (n: number) => `Recomputed ${n}; the old values are archived as searchable aliases`,
-    cancel: "Cancel",
-    ruleChangedHint:
-      "Changing the expression only affects assets created afterwards. Existing ones need an explicit recompute.",
   },
   field: {
     edit: "Edit field",
@@ -337,7 +320,6 @@ export const enConfig: typeof zhConfig = {
     min: "Minimum",
     max: "Maximum",
     unit: "Unit",
-    entityTypes: "Limit to types",
     template: "Expression",
     delete: "Delete field",
     deleteTitle: "Delete field",
@@ -348,6 +330,13 @@ export const enConfig: typeof zhConfig = {
     referrers: "These are referencing it:",
     save: "Save",
     saving: "Saving…",
+    recomputeTitle: "Save and recompute existing assets",
+    recomputeHint:
+      "The expression changed. Saving recomputes every existing asset it governs, keeping each old value as a searchable alias. Declining leaves the rule unsaved.",
+    recomputeConfirm: "Save and recompute",
+    recomputeConflict:
+      "The new rule would give two devices the same value. Nothing was saved and the rule is unchanged:",
+    conflictRow: (key: string, value: string, assets: string) => `${key} = ${value}: ${assets}`,
   },
 }
 

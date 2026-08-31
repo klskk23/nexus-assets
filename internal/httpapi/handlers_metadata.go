@@ -462,6 +462,22 @@ func (s *Server) recompute(c *gin.Context) {
 	c.JSON(http.StatusOK, report)
 }
 
+// recomputeField re-derives every asset a field's expression can reach.
+//
+// The category endpoint asks "renumber this subtree"; this one asks "make the
+// stored values agree with the rule I just changed", which is the question the
+// field editor is in a position to ask.
+func (s *Server) recomputeField(c *gin.Context) {
+	dryRun := c.DefaultQuery("dry_run", "true") != "false"
+
+	report, err := s.assets.RecomputeField(c.Request.Context(), c.Param("id"), dryRun)
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, report)
+}
+
 // listFieldReferrers reports what reads a field, so the UI can warn before the
 // user tries to archive it.
 func (s *Server) listFieldReferrers(c *gin.Context) {

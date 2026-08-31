@@ -6,7 +6,7 @@
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
 2. `specs/011-expression-engine/` —— 本轮特性的规格与检查清单；
    调研与备选方案在 `docs/research-expr-engine.md`
-3. `docs/design-baseline-v6.md`（决策 64–66）—— 撤回单选与引用两种字段类型
+3. `docs/design-baseline-v6.md`（决策 64–68）—— 撤回单选与引用；改表达式即重算
 4. `docs/design-baseline-v5.md`（决策 61–63）—— 状态不再约束持有方。
    **冲突时以最新一版为准：v6 > 011 > 010 > 009 > 008 > 007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
 5. `docs/design-baseline-v4.md`（决策 53–60）—— 状态成为可配置的数据
@@ -109,6 +109,11 @@
   **动这个文件前先读 `docs/research-expr-engine.md`。**
 - **面向用户的错误一律走 `userText(c, err)`，不要用 `err.Error()`。**
   后者取的是默认语言，英文请求会收到中文。006 在七处漏过这一点，011 补齐。
+- **改表达式即重算**（v6 决策 68）。字段编辑器里保存一个表达式变了的计算项，
+  会先确认再 `PATCH` + `POST /fields/:id/recompute?dry_run=false`；**取消确认就不保存**。
+  冲突时一台也不写，前端把 `options` 改回原值并列出冲突 ——
+  否则留下的正是这套流程要消灭的状态：新设备按新规则、旧设备按旧规则。
+  类别页**没有**重算按钮，也不要再加回去。
 - **字段类型只剩八种**（v6 决策 64）：`text`、`number`、`boolean`、`date`、
   `mac`、`ip`、`url`、`computed`。**`enum`（单选）与 `reference`（引用）已撤回** ——
   领域层把它们当未知类型拒绝，不是只在界面里藏起来。存量字段由迁移 010

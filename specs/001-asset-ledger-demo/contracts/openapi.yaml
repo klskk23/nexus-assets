@@ -700,6 +700,16 @@ paths:
         "200": { description: OK }
 
   # ---------------- import / export ----------------
+  /fields/{id}/recompute:
+    post:
+      tags: [metadata]
+      summary: 让存量取值与该字段的表达式一致（覆盖所有绑定它的类别）
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: dry_run, in: query, schema: { type: boolean, default: true } }
+      responses:
+        "200": { description: OK，返回与类别重算相同的报告 }
+
   /import/preview:
     post:
       tags: [import]

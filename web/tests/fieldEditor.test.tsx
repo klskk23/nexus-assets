@@ -9,6 +9,7 @@ import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import type { FieldType } from "@/lib/types"
 
 const get = vi.fn()
+const post = vi.fn()
 const patch = vi.fn()
 const del = vi.fn()
 vi.mock("@/lib/api", async () => {
@@ -17,7 +18,7 @@ vi.mock("@/lib/api", async () => {
     ...actual,
     api: {
       get: (p: string) => get(p),
-      post: vi.fn(),
+      post: (p: string, b: unknown) => post(p, b),
       patch: (p: string, b: unknown) => patch(p, b),
       del: (p: string) => del(p),
     },
@@ -30,6 +31,7 @@ function field(type: FieldType, over: Partial<FieldDefinitionRow> = {}): FieldDe
 
 beforeEach(() => {
   get.mockReset().mockResolvedValue([])
+  post.mockReset().mockResolvedValue({ affected: 0, total: 0, conflicts: [], applied: true, samples: [] })
   patch.mockReset().mockResolvedValue({})
   del.mockReset().mockResolvedValue(undefined)
 })
@@ -48,6 +50,109 @@ describe("FieldEditor", () => {
     expect(screen.getByLabelText("最小值")).toBeInTheDocument()
     expect(screen.getByLabelText("单位")).toBeInTheDocument()
     expect(screen.queryByLabelText("校验正则")).not.toBeInTheDocument()
+  })
+
+  // Saving a changed rule and recomputing what it governs used to be two
+  // buttons on two pages, which is how assets ended up on rules nobody had
+  // applied to them.
+  it("recomputes what the rule governs when the rule is saved", async () => {
+    const user = userEvent.setup()
+    post.mockResolvedValue({ affected: 12, total: 40, conflicts: [], applied: true, samples: [] })
+    const onClose = vi.fn()
+    renderWithProviders(
+      <FieldEditor
+        field={field("computed", { options: { template: "hex2dec(attrs.mac)" } })}
+        onClose={onClose}
+      />,
+    )
+
+    await user.clear(screen.getByLabelText("表达式"))
+    await user.type(screen.getByLabelText("表达式"), "attrs.mac")
+    await user.click(screen.getByRole("button", { name: "保存" }))
+
+    // The save waits on the answer rather than happening behind the question.
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument()
+    expect(patch).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole("button", { name: "保存并重算" }))
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/fields/f1", {
+        label: "标签",
+        options: { template: "attrs.mac" },
+      }),
+    )
+    expect(post).toHaveBeenCalledWith("/fields/f1/recompute?dry_run=false", {})
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
+
+  it("saves nothing when the recompute is declined", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <FieldEditor
+        field={field("computed", { options: { template: "hex2dec(attrs.mac)" } })}
+        onClose={vi.fn()}
+      />,
+    )
+
+    await user.type(screen.getByLabelText("表达式"), " + \"x\"")
+    await user.click(screen.getByRole("button", { name: "保存" }))
+    await user.click(await screen.findByRole("button", { name: "取消" }))
+
+    expect(patch).not.toHaveBeenCalled()
+    expect(post).not.toHaveBeenCalled()
+  })
+
+  // Half the fleet on the new rule and half on the old is the state this whole
+  // flow exists to prevent, so a collision undoes the rule as well.
+  it("puts the rule back when the recompute would collide", async () => {
+    const user = userEvent.setup()
+    post.mockResolvedValue({
+      affected: 3,
+      total: 3,
+      conflicts: [{ key: "sn", value: "RT", assets: ["112394521950", "112394521951"] }],
+      applied: false,
+      samples: [],
+    })
+    const onClose = vi.fn()
+    renderWithProviders(
+      <FieldEditor
+        field={field("computed", { options: { template: "hex2dec(attrs.mac)" } })}
+        onClose={onClose}
+      />,
+    )
+
+    await user.clear(screen.getByLabelText("表达式"))
+    await user.type(screen.getByLabelText("表达式"), "category.code")
+    await user.click(screen.getByRole("button", { name: "保存" }))
+    await user.click(await screen.findByRole("button", { name: "保存并重算" }))
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenLastCalledWith("/fields/f1", {
+        options: { template: "hex2dec(attrs.mac)" },
+      }),
+    )
+    expect(screen.getByText(/已放弃保存/)).toBeInTheDocument()
+    expect(screen.getByText("sn = RT：112394521950、112394521951")).toBeInTheDocument()
+    // The dialog stays open on the rule that was refused, not on a blank page.
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  // Renaming a computed field changes no stored value, so it must not drag a
+  // fleet-wide recompute behind it.
+  it("asks nothing when only the label changed", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <FieldEditor
+        field={field("computed", { options: { template: "hex2dec(attrs.mac)" } })}
+        onClose={vi.fn()}
+      />,
+    )
+
+    await user.type(screen.getByLabelText("显示名"), "2")
+    await user.click(screen.getByRole("button", { name: "保存" }))
+
+    await waitFor(() => expect(patch).toHaveBeenCalled())
+    expect(post).not.toHaveBeenCalled()
   })
 
   it("offers a template box for a computed field", () => {
