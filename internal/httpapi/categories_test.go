@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/klskk23/nexus-assets/internal/asset"
+	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
 )
 
@@ -141,7 +142,10 @@ func TestRecomputeEndpointPreviewsBeforeApplying(t *testing.T) {
 func TestMovingAPopulatedCategoryReturnsTheRightCode(t *testing.T) {
 	h := newHarness(t)
 	h.seed(t, 0, 1)
-	rec := h.patch(t, "/api/categories/"+h.catID, `{"parent_id":null}`)
+	// Somewhere else to move it to. Asking for the parent it already has is
+	// not a move and is allowed -- see TestRenamingAPopulatedCategoryIsNotAMove.
+	other := decode[map[string]any](t, h.post(t, "/api/categories", `{"code":"SW","name":"交换机"}`))
+	rec := h.patch(t, "/api/categories/"+h.catID, `{"parent_id":"`+other["id"].(string)+`"}`)
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("want 409, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -488,4 +492,26 @@ func TestRequiredFieldCanBeBoundToAPopulatedCategory(t *testing.T) {
 	if ok := h.patch(t, "/api/assets/"+id, filled); ok.Code != http.StatusOK {
 		t.Fatalf("filling the field in = %d %s", ok.Code, ok.Body.String())
 	}
+}
+
+// The category editor sends the whole record back on every save, so the parent
+// it already has must not read as a move. It did, and a rename on any category
+// holding a device was refused -- with a message about moving it.
+func TestRenamingAPopulatedCategoryIsNotAMove(t *testing.T) {
+	h := newHarness(t)
+	h.seed(t, 0, 1)
+
+	cat := decode[[]model.Category](t, h.get(t, "/api/categories"))[0]
+	body := `{"name":"SDWAN 路由器（新）","display_key":"sn","parent_id":` +
+		nullableID(cat.ParentID) + `}`
+	if rec := h.patch(t, "/api/categories/"+cat.ID, body); rec.Code != http.StatusOK {
+		t.Fatalf("rename with the same parent = %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func nullableID(id *string) string {
+	if id == nil {
+		return "null"
+	}
+	return `"` + *id + `"`
 }

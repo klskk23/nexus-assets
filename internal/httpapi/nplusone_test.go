@@ -227,8 +227,13 @@ func TestMoveCategoryWithAssetsIsRefused(t *testing.T) {
 		t.Fatalf("create child: %v", err)
 	}
 
-	// The populated category may not move.
-	rec := h.patch(t, "/api/categories/"+h.catID, `{"parent_id":null}`)
+	// The populated category may not move. Somewhere else to move it to,
+	// because asking for the parent it already has is not a move.
+	dest, err := h.schema.CreateCategory(h.ctx, schema.CreateCategoryInput{Code: "DST", Name: "别处"})
+	if err != nil {
+		t.Fatalf("create destination: %v", err)
+	}
+	rec := h.patch(t, "/api/categories/"+h.catID, `{"parent_id":"`+dest.ID+`"}`)
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("moving a populated category should be refused, got %d: %s", rec.Code, rec.Body.String())
 	}

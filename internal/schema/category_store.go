@@ -162,7 +162,13 @@ func (s *Store) UpdateCategory(ctx context.Context, id string, in UpdateCategory
 			cur.DisplayKey = *in.DisplayKey
 		}
 
-		if in.ParentID != nil {
+		// Only an actual move is a move. The editor sends the whole category
+		// back on every save, so treating "the parent it already has" as a
+		// move refused a rename on any category that held a device -- with a
+		// message about moving it, which is not what the person did.
+		moving := in.ParentID != nil && !sameParent(cur.ParentID, *in.ParentID)
+
+		if moving {
 			var n int
 			if err := tx.QueryRowContext(ctx,
 				`SELECT count(*) FROM assets a JOIN categories c ON c.id = a.category_id
@@ -417,4 +423,12 @@ func (s *Store) ModelsAttached(ctx context.Context, categoryID string) ([]Catego
 		`SELECT m.id, m.name FROM product_models m
 		 JOIN product_model_categories pmc ON pmc.model_id = m.id
 		 WHERE pmc.category_id = ? ORDER BY m.vendor, m.name`, "model", categoryID)
+}
+
+// sameParent reports whether two optional parent ids name the same place.
+func sameParent(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
 }
