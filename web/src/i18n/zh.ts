@@ -125,7 +125,12 @@ export const zhMeta = {
     key: "键名（英文）",
     label: "显示名",
     type: "类型",
-    unique: "全局唯一",
+    unique: "类别内唯一",
+    categories: "所属类别",
+    categoryFilter: "类别",
+    allCategories: "全部类别",
+    unbound: "未绑定",
+    unboundHint: "还没有绑定到任何类别。字段只有绑定后才会出现在录入表单里。",
     empty: "还没有任何字段",
     emptyHint: "字段是全局共用的：同名字段在全系统含义一致。建好后到类别页绑定。",
   },
@@ -229,6 +234,7 @@ export const zhMeta = {
       `该类别下已有 ${n} 台设备。它们不会被回溯校验，但下次编辑其中任何一台时，` +
       `必须补上这个字段才能保存。`,
     unbind: "解绑",
+    bindElsewhere: "字段的绑定在「字段」页面上做：打开某个字段，把它绑定到类别。",
     unbindTitle: "从该类别解绑",
     unbindHint: (label: string) =>
       `解绑后，新录入的设备不再需要填写「${label}」；已有设备上的值会保留下来，只读展示、不再校验。`,

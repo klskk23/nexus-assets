@@ -58,7 +58,10 @@ const schema = {
 
 function route(p: string) {
   if (p === "/categories") return Promise.resolve(categories)
-  if (p === "/fields") return Promise.resolve(fields)
+  // The library is paged and filterable now, so it answers with an envelope.
+  if (p.startsWith("/fields")) {
+    return Promise.resolve({ items: fields, total: fields.length, offset: 0, limit: 20 })
+  }
   if (p === "/holders") return Promise.resolve(holders)
   if (p === "/users") return Promise.resolve(users)
   if (p.endsWith("/schema")) return Promise.resolve(schema)
@@ -118,7 +121,7 @@ describe("Fields page", () => {
     await openCreate(user, "新建字段")
     await user.type(screen.getByLabelText(/键名/), "rack")
     await user.type(screen.getByLabelText(/显示名/), "机柜位")
-    await user.click(screen.getByLabelText("全局唯一"))
+    await user.click(screen.getByLabelText("类别内唯一"))
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "新建字段" }))
 
     await waitFor(() =>
@@ -301,19 +304,6 @@ describe("Categories page", () => {
     expect(within(own).queryByText("网络设备")).not.toBeInTheDocument()
   })
 
-  it("surfaces a binding conflict rather than swallowing it", async () => {
-    post.mockRejectedValue(
-      new ApiError(409, "unique_conflict", 'field key already bound on this category chain: "mac" is already bound on 网络设备'),
-    )
-    const user = userEvent.setup()
-    renderWithProviders(<Categories />)
-
-    await user.click(await screen.findByRole("row", { name: /^SDWAN 路由器/ }))
-    await chooseByLabel(user, "绑定字段", "基准 MAC")
-    await user.click(screen.getByRole("button", { name: "绑定字段" }))
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(/already bound/)
-  })
 })
 
 // The server has attached the blocking devices since the first version. The

@@ -135,7 +135,12 @@ export const enMeta: typeof zhMeta = {
     key: "Key",
     label: "Display name",
     type: "Type",
-    unique: "Globally unique",
+    unique: "Unique in its category",
+    categories: "Categories",
+    categoryFilter: "Category",
+    allCategories: "All categories",
+    unbound: "Not bound",
+    unboundHint: "Not bound to any category yet. A field only appears on the entry form once it is.",
     empty: "No fields yet",
     emptyHint:
       "Fields are shared system-wide: one key means one thing everywhere. Create it here, then bind it on a category.",
@@ -245,6 +250,7 @@ export const enMeta: typeof zhMeta = {
       `${n} devices are already recorded here. They are not re-checked, but the next edit of any ` +
       `of them will not save until this field is filled in.`,
     unbind: "Unbind",
+    bindElsewhere: "Bindings are made on the Fields page: open a field and bind it to a category.",
     unbindTitle: "Unbind from this category",
     unbindHint: (label: string) =>
       `New devices will no longer be asked for ${label}; values on existing devices are kept, shown read-only and no longer validated.`,

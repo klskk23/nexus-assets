@@ -55,10 +55,28 @@ export interface RowAction<T> {
   confirm?: (row: T) => { title: string; description: string; phrase: string }
 }
 
+/** A page of rows, for the lists that are long enough to need one. */
+export interface ListPage<T> {
+  items: T[]
+  total: number
+}
+
 interface Props<T> {
   title: string
   queryKey: string
-  list: () => Promise<T[]>
+  /**
+   * Either the whole list or one page of it. Both shapes because most of these
+   * lists are short enough to read in one go, and the field library -- which
+   * may now hold two fields of the same name under different categories -- is
+   * not.
+   */
+  list: () => Promise<T[] | ListPage<T>>
+  /** Extra query-key parts, so a filter change refetches. */
+  deps?: unknown[]
+  /** Rendered above the table: filters, in one row, as everywhere else. */
+  filters?: ReactNode
+  /** Rendered below the table, where the pager goes. */
+  footer?: ReactNode
   create: () => Promise<unknown>
   columns: Column<T>[]
   emptyTitle: string
@@ -103,6 +121,9 @@ export function CrudPage<T extends { id: string }>({
   title,
   queryKey,
   list,
+  deps,
+  filters,
+  footer,
   create,
   columns,
   emptyTitle,
@@ -120,7 +141,8 @@ export function CrudPage<T extends { id: string }>({
   // A context menu closes as it fires, so a confirmation cannot hang off it.
   // The pending action is parked here and the dialog rendered outside.
   const [pending, setPending] = useState<{ action: RowAction<T>; row: T } | null>(null)
-  const query = useQuery({ queryKey: [queryKey], queryFn: list })
+  const query = useQuery({ queryKey: [queryKey, ...(deps ?? [])], queryFn: list })
+  const rows = Array.isArray(query.data) ? query.data : (query.data?.items ?? [])
 
   const mutation = useMutation({
     mutationFn: create,
@@ -190,10 +212,12 @@ export function CrudPage<T extends { id: string }>({
 
       {notice}
 
+      {filters}
+
       <StateBoundary
         isLoading={query.isLoading}
         error={query.error as Error | null}
-        isEmpty={query.data?.length === 0}
+        isEmpty={query.isSuccess && rows.length === 0}
         emptyTitle={emptyTitle}
         emptyHint={emptyHint}
         onRetry={() => query.refetch()}
@@ -208,7 +232,7 @@ export function CrudPage<T extends { id: string }>({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(query.data ?? []).map((row) => {
+              {rows.map((row) => {
                 const cells = columns.map((c) => (
                   <TableCell key={c.header}>{c.cell(row)}</TableCell>
                 ))
@@ -247,6 +271,7 @@ export function CrudPage<T extends { id: string }>({
             </TableBody>
           </Table>
         </div>
+        {footer}
       </StateBoundary>
 
       {pending?.action.confirm && (

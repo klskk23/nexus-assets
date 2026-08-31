@@ -3,10 +3,33 @@ import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError, blockerKey, type Blocker, type Referrer } from "@/lib/api"
-import type { Conflict, RecomputeReport } from "@/lib/types"
+import type { AssetPage, Category, Conflict, RecomputeReport } from "@/lib/types"
 import type { FieldOptions } from "@/lib/types"
 import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -50,6 +73,54 @@ export function FieldEditor({ field, onClose }: Props) {
   // appear.
   const [conflicts, setConflicts] = useState<Conflict[]>([])
   const [confirming, setConfirming] = useState(false)
+  // A field is bound to categories, not the other way round: this is where it
+  // is decided. Held locally so the dialog reflects a binding immediately.
+  const [bound, setBound] = useState<string[]>(field.category_ids ?? [])
+  const [bindTo, setBindTo] = useState("")
+  const [bindRequired, setBindRequired] = useState(false)
+  const [unbinding, setUnbinding] = useState<string | null>(null)
+
+  const categories = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => api.get<Category[]>("/categories"),
+  })
+  // How many devices a new required binding would land on. Required is checked
+  // when an asset is written, so the answer is a promise about their next edit.
+  const populated = useQuery({
+    queryKey: ["category-asset-count", bindTo],
+    queryFn: () =>
+      api.get<AssetPage>(`/assets?category_id=${bindTo}&include_descendants=true&limit=1`),
+    enabled: bindTo !== "",
+  })
+
+  const bind = useMutation({
+    mutationFn: () =>
+      api.post(`/categories/${bindTo}/bindings`, {
+        field_id: field.id,
+        required: bindRequired,
+      }),
+    onSuccess: () => {
+      setBanner(null)
+      setBound((cur) => (cur.includes(bindTo) ? cur : [...cur, bindTo]))
+      setBindTo("")
+      setBindRequired(false)
+      queryClient.invalidateQueries({ queryKey: ["fields"] })
+      queryClient.invalidateQueries({ queryKey: ["schema"] })
+    },
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
+  })
+
+  const unbind = useMutation({
+    mutationFn: (categoryID: string) =>
+      api.del(`/categories/${categoryID}/bindings/${field.id}`),
+    onSuccess: (_data, categoryID) => {
+      setBanner(null)
+      setBound((cur) => cur.filter((id) => id !== categoryID))
+      queryClient.invalidateQueries({ queryKey: ["fields"] })
+      queryClient.invalidateQueries({ queryKey: ["schema"] })
+    },
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
+  })
 
   const referrers = useQuery({
     queryKey: ["referrers", field.id],
@@ -212,6 +283,90 @@ export function FieldEditor({ field, onClose }: Props) {
           </Field>
         )}
 
+        <div className="grid gap-2">
+          <p className="text-sm font-medium">{tMeta.fields.categories}</p>
+          <div className="flex flex-wrap items-end gap-3">
+            <Field className="w-auto">
+              <FieldLabel htmlFor="fe-bind">{tMeta.categories.bind}</FieldLabel>
+              <Select value={bindTo} onValueChange={setBindTo}>
+                <SelectTrigger id="fe-bind" className="w-56">
+                  <SelectValue placeholder={t.common.select} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {(categories.data ?? [])
+                      .filter((c) => !bound.includes(c.id))
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field orientation="horizontal" className="w-auto pb-2">
+              <Checkbox
+                id="fe-bind-required"
+                checked={bindRequired}
+                onCheckedChange={(v) => setBindRequired(v === true)}
+              />
+              <FieldLabel htmlFor="fe-bind-required">{tMeta.categories.required}</FieldLabel>
+            </Field>
+            <Button
+              className="mb-0.5"
+              size="sm"
+              onClick={() => bind.mutate()}
+              disabled={bindTo === "" || bind.isPending}
+            >
+              {tMeta.categories.bind}
+            </Button>
+          </div>
+
+          {/* Required is checked when an asset is written, not when the field
+              is bound, so the devices already recorded keep their gap until
+              someone edits one. Worth saying before the box is ticked. */}
+          {bindRequired && (populated.data?.total ?? 0) > 0 && (
+            <Alert>
+              <AlertCircleIcon />
+              <AlertDescription>
+                {tMeta.categories.requiredWarning(populated.data?.total ?? 0)}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="overflow-x-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{tMeta.categories.title}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bound.map((id) => (
+                  <ContextMenu key={id}>
+                    <ContextMenuTrigger asChild>
+                      <TableRow aria-label={(categories.data ?? []).find((c) => c.id === id)?.name}>
+                        <TableCell>
+                          {(categories.data ?? []).find((c) => c.id === id)?.name ?? id}
+                        </TableCell>
+                      </TableRow>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                      <ContextMenuItem variant="destructive" onSelect={() => setUnbinding(id)}>
+                        {tMeta.categories.unbind}
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {bound.length === 0 && (
+            <p className="text-muted-foreground text-sm">{tMeta.fields.unboundHint}</p>
+          )}
+        </div>
+
         {(referrers.data ?? []).length > 0 && (
           <p className="text-sm text-muted-foreground">
             {tConfig.field.referrers}
@@ -292,6 +447,14 @@ export function FieldEditor({ field, onClose }: Props) {
             onConfirm={() => save.mutate()}
           />
         </DialogFooter>
+        <ConfirmDialog
+          open={unbinding !== null}
+          onOpenChange={(next) => !next && setUnbinding(null)}
+          title={tMeta.categories.unbindTitle}
+          description={tMeta.categories.unbindHint(field.label)}
+          confirmLabel={tMeta.categories.unbind}
+          onConfirm={() => unbinding && unbind.mutate(unbinding)}
+        />
       </DialogContent>
     </Dialog>
   )

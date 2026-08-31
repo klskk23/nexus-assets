@@ -1,11 +1,15 @@
 import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useState as useReactState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
+import { NONE, fromNone, toNone } from "@/lib/select"
+import type { Category } from "@/lib/types"
 import type { FieldDefinitionRow, FieldType } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
-import { CrudPage } from "@/features/metadata/CrudPage"
+import { CrudPage, type ListPage } from "@/features/metadata/CrudPage"
+import { PAGE_SIZES, Pager } from "@/features/common/Pager"
 import { FieldEditor } from "@/features/fields/FieldEditor"
 import { ExpressionHelp } from "@/features/fields/ExpressionHelp"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -43,6 +47,22 @@ export function Fields() {
   const [template, setTemplate] = useState("")
   const [regex, setRegex] = useState("")
   const [regexHint, setRegexHint] = useState("")
+  // Which category's fields are being looked at. A key is only unique inside
+  // one category chain now, so an unfiltered library can hold two "rack"s and
+  // the filter is what tells them apart.
+  const [categoryId, setCategoryId] = useState("")
+  const [page, setPage] = useReactState(0)
+  const [pageSize, setPageSize] = useReactState(PAGE_SIZES[0])
+  const [total, setTotal] = useReactState(0)
+
+  useEffect(() => setPage(0), [categoryId, pageSize, setPage])
+
+  const categories = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => api.get<Category[]>("/categories"),
+  })
+  const categoryName = (id: string) =>
+    (categories.data ?? []).find((c) => c.id === id)?.name ?? id
 
   // The same delete the editor offers, reachable without opening it first --
   // which is the point of the context menu.
@@ -61,7 +81,50 @@ export function Fields() {
     <CrudPage<FieldDefinitionRow>
       title={tMeta.fields.title}
       queryKey="fields"
-      list={() => api.get<FieldDefinitionRow[]>("/fields")}
+      deps={[categoryId, page, pageSize]}
+      list={async () => {
+        const params = new URLSearchParams({
+          limit: String(pageSize),
+          offset: String(page * pageSize),
+        })
+        if (categoryId) params.set("category_id", categoryId)
+        const res = await api.get<ListPage<FieldDefinitionRow>>(`/fields?${params}`)
+        setTotal(res.total)
+        return res
+      }}
+      filters={
+        <div className="flex flex-wrap items-center gap-3">
+          <Field className="w-auto">
+            <FieldLabel htmlFor="f-category" className="sr-only">
+              {tMeta.fields.categoryFilter}
+            </FieldLabel>
+            <Select value={toNone(categoryId)} onValueChange={(v) => setCategoryId(fromNone(v))}>
+              <SelectTrigger id="f-category" className="w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={NONE}>{tMeta.fields.allCategories}</SelectItem>
+                  {(categories.data ?? []).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+        </div>
+      }
+      footer={
+        <Pager
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPage={setPage}
+          onPageSize={setPageSize}
+        />
+      }
       createLabel={tMeta.fields.create}
       createDisabled={key === "" || label === ""}
       onCreated={() => {
@@ -117,6 +180,15 @@ export function Fields() {
         { header: tMeta.fields.key, cell: (f) => <span className="font-mono">{f.key}</span> },
         { header: tMeta.fields.label, cell: (f) => f.label },
         { header: tMeta.fields.type, cell: (f) => tMeta.fieldTypes[f.type] ?? f.type },
+        {
+          header: tMeta.fields.categories,
+          cell: (f) =>
+            (f.category_ids ?? []).length === 0 ? (
+              <span className="text-muted-foreground">{tMeta.fields.unbound}</span>
+            ) : (
+              (f.category_ids ?? []).map((id) => categoryName(id)).join("、")
+            ),
+        },
         {
           header: tMeta.fields.unique,
           cell: (f) => (f.is_unique ? <Badge variant="outline">{t.common.unique}</Badge> : null),

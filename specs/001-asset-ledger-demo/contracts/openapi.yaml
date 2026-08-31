@@ -425,7 +425,16 @@ paths:
               schema: { type: string }
 
   /fields:
-    get: { tags: [metadata], summary: 全局信息项库, responses: { "200": { description: OK } } }
+    get:
+      tags: [metadata]
+      summary: 字段库（可按类别筛选、分页）
+      parameters:
+        - { name: category_id, in: query, schema: { type: string, description: 该类别的有效字段（含继承） } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+      responses:
+        "200":
+          description: OK，items 的每一项额外带 category_ids（该字段绑定到的类别）
     post: { tags: [metadata], summary: 新建信息项定义, responses: { "201": { description: Created } } }
 
   /fields/{id}:

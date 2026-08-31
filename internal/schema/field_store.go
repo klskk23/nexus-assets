@@ -38,6 +38,89 @@ func scanField(row interface{ Scan(...any) error }) (model.FieldDefinition, erro
 }
 
 // ListFields returns the global field library.
+// FieldFilter narrows a field listing.
+type FieldFilter struct {
+	// CategoryID limits the list to the fields that category has, inherited
+	// ones included -- the same set its assets are asked to fill in.
+	CategoryID string
+	Offset     int
+	Limit      int
+}
+
+// FieldPage is one page of the field library.
+type FieldPage struct {
+	Items  []model.FieldDefinition `json:"items"`
+	Total  int                     `json:"total"`
+	Offset int                     `json:"offset"`
+	Limit  int                     `json:"limit"`
+}
+
+// ListFieldPage answers the field library one page at a time, optionally
+// limited to one category's effective fields.
+//
+// Paging and the filter live together because the library is now allowed to
+// hold two fields with the same key under different categories: without a way
+// to ask "this category's fields", the list stops being readable the moment a
+// key repeats.
+func (s *Store) ListFieldPage(ctx context.Context, f FieldFilter) (FieldPage, error) {
+	page := FieldPage{Items: []model.FieldDefinition{}, Offset: f.Offset, Limit: f.Limit}
+
+	all, err := s.ListFields(ctx)
+	if err != nil {
+		return page, err
+	}
+	if f.CategoryID != "" {
+		effective, err := s.EffectiveFields(ctx, f.CategoryID)
+		if err != nil {
+			return page, err
+		}
+		keep := make(map[string]struct{}, len(effective))
+		for _, b := range effective {
+			keep[b.ID] = struct{}{}
+		}
+		var kept []model.FieldDefinition
+		for _, fd := range all {
+			if _, ok := keep[fd.ID]; ok {
+				kept = append(kept, fd)
+			}
+		}
+		all = kept
+	}
+
+	page.Total = len(all)
+	if f.Offset < len(all) {
+		end := f.Offset + f.Limit
+		if f.Limit <= 0 || end > len(all) {
+			end = len(all)
+		}
+		page.Items = all[f.Offset:end]
+	}
+	return page, nil
+}
+
+// BoundCategories maps each field id to the categories that bind it.
+//
+// The binding is what gives a field a home now, so the list has to show it:
+// two fields with the same key are told apart by where they live.
+func (s *Store) BoundCategories(ctx context.Context) (map[string][]string, error) {
+	rows, err := s.db.ReadDB().QueryContext(ctx,
+		`SELECT cf.field_id, cf.category_id FROM category_fields cf
+		 JOIN categories c ON c.id = cf.category_id ORDER BY c.path`)
+	if err != nil {
+		return nil, fmt.Errorf("load field bindings: %w", err)
+	}
+	defer rows.Close()
+	out := map[string][]string{}
+	for rows.Next() {
+		var fieldID, categoryID string
+		if err := rows.Scan(&fieldID, &categoryID); err != nil {
+			return nil, err
+		}
+		out[fieldID] = append(out[fieldID], categoryID)
+	}
+	return out, rows.Err()
+}
+
 func (s *Store) ListFields(ctx context.Context) ([]model.FieldDefinition, error) {
 	rows, err := s.db.ReadDB().QueryContext(ctx, `SELECT `+fieldCols+` FROM field_definitions ORDER BY key`)
 	if err != nil {

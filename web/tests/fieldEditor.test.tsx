@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event"
 import { FieldEditor } from "@/features/fields/FieldEditor"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { ApiError } from "@/lib/api"
+import { chooseFromMenu } from "@/test/menu"
 import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import type { FieldType } from "@/lib/types"
 
@@ -29,8 +30,20 @@ function field(type: FieldType, over: Partial<FieldDefinitionRow> = {}): FieldDe
   return { id: "f1", key: "k", label: "标签", type, options: {}, is_unique: false, ...over }
 }
 
+const categories = [
+  { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", display_key: "" },
+  { id: "srv", code: "SRV", name: "服务器", parent_id: null, path: "/srv/", display_key: "" },
+]
+
+/** Answers the queries the editor makes; referrers stay empty by default. */
+function route(p: string) {
+  if (p === "/categories") return Promise.resolve(categories)
+  if (p.startsWith("/assets")) return Promise.resolve({ items: [], total: 4, offset: 0, limit: 1 })
+  return Promise.resolve([])
+}
+
 beforeEach(() => {
-  get.mockReset().mockResolvedValue([])
+  get.mockReset().mockImplementation(route)
   post.mockReset().mockResolvedValue({ affected: 0, total: 0, conflicts: [], applied: true, samples: [] })
   patch.mockReset().mockResolvedValue({})
   del.mockReset().mockResolvedValue(undefined)
@@ -250,5 +263,73 @@ describe("FieldEditor", () => {
 
     await waitFor(() => expect(del).toHaveBeenCalledWith("/fields/spare"))
     expect(onClose).toHaveBeenCalled()
+  })
+})
+
+// A field belongs to categories, not the other way round: this is where that
+// is decided, so the page that owns the field owns the binding.
+describe("FieldEditor bindings", () => {
+  it("binds the field to a category and lists it", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <FieldEditor field={field("text")} onClose={vi.fn()} />,
+    )
+
+    expect(await screen.findByText(/还没有绑定到任何类别/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole("combobox", { name: "绑定字段" }))
+    await user.click(await screen.findByRole("option", { name: "网络设备" }))
+    await user.click(screen.getByRole("button", { name: "绑定字段" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/categories/net/bindings", {
+        field_id: "f1",
+        required: false,
+      }),
+    )
+    expect(await screen.findByRole("row", { name: "网络设备" })).toBeInTheDocument()
+  })
+
+  it("warns before making it required where devices already exist", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<FieldEditor field={field("text")} onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole("combobox", { name: "绑定字段" }))
+    await user.click(await screen.findByRole("option", { name: "网络设备" }))
+    await user.click(screen.getByLabelText("必填"))
+
+    expect(await screen.findByText(/已有 4 台设备/)).toBeInTheDocument()
+  })
+
+  it("unbinds from the row menu, after confirming", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <FieldEditor field={field("text", { category_ids: ["net"] })} onClose={vi.fn()} />,
+    )
+
+    const row = await screen.findByRole("row", { name: "网络设备" })
+    await chooseFromMenu(user, row, "解绑")
+    const dialog = await screen.findByRole("alertdialog")
+    await user.click(within(dialog).getByRole("button", { name: "解绑" }))
+
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/categories/net/bindings/f1"))
+    await waitFor(() =>
+      expect(screen.queryByRole("row", { name: "网络设备" })).not.toBeInTheDocument(),
+    )
+  })
+
+  // The refusal has to land in the dialog: the page behind it is covered.
+  it("shows a refused binding inside the dialog", async () => {
+    post.mockRejectedValue(
+      new ApiError(409, "unique_conflict", "键名 rack 已经绑定在「服务器」上"),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<FieldEditor field={field("text")} onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole("combobox", { name: "绑定字段" }))
+    await user.click(await screen.findByRole("option", { name: "服务器" }))
+    await user.click(screen.getByRole("button", { name: "绑定字段" }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("已经绑定在")
   })
 })

@@ -34,7 +34,7 @@ func TestCyclicExpressionKeyRefusedAtBindTime(t *testing.T) {
 	}
 
 	catID := decode[map[string]any](t, h.post(t, "/api/categories", `{"code":"CYC","name":"环测"}`))["id"].(string)
-	fields := decode[[]map[string]any](t, h.get(t, "/api/fields"))
+	fields := listFields(t, h)
 	var aID string
 	for _, f := range fields {
 		if f["key"] == "a" {
@@ -56,7 +56,7 @@ func TestCyclicExpressionKeyRefusedAtBindTime(t *testing.T) {
 func TestDeletingAReferencedFieldIsRefusedWithReferrers(t *testing.T) {
 	h := newHarness(t)
 
-	fields := decode[[]map[string]any](t, h.get(t, "/api/fields"))
+	fields := listFields(t, h)
 	var macID string
 	for _, f := range fields {
 		if f["key"] == "mac" {
@@ -85,7 +85,7 @@ func TestDeletingAReferencedFieldIsRefusedWithReferrers(t *testing.T) {
 
 func TestFieldReferrersEndpoint(t *testing.T) {
 	h := newHarness(t)
-	fields := decode[[]map[string]any](t, h.get(t, "/api/fields"))
+	fields := listFields(t, h)
 	var macID string
 	for _, f := range fields {
 		if f["key"] == "mac" {
@@ -188,7 +188,7 @@ func TestClearingTheDefaultStockPointIsRefusedNotIgnored(t *testing.T) {
 func TestErrorMessagesReachTheUserWithoutTheEnglishSentinel(t *testing.T) {
 	h := newHarness(t)
 
-	fields := decode[[]map[string]any](t, h.get(t, "/api/fields"))
+	fields := listFields(t, h)
 	var macID string
 	for _, f := range fields {
 		if f["key"] == "mac" {
@@ -208,7 +208,7 @@ func TestErrorMessagesReachTheUserWithoutTheEnglishSentinel(t *testing.T) {
 		}, "field is still referenced"},
 		{"display key that is not unique", func() *httptest.ResponseRecorder {
 			h.post(t, "/api/fields", `{"key":"note","label":"备注","type":"text"}`)
-			all := decode[[]map[string]any](t, h.get(t, "/api/fields"))
+			all := listFields(t, h)
 			for _, f := range all {
 				if f["key"] == "note" {
 					h.post(t, "/api/categories/"+h.catID+"/bindings",
@@ -282,7 +282,7 @@ func TestUnbindEndpointDetachesAFieldAndKeepsStoredValues(t *testing.T) {
 func TestUnbindEndpointHonoursTheExistingGuards(t *testing.T) {
 	h := newHarness(t)
 
-	fields := decode[[]map[string]any](t, h.get(t, "/api/fields"))
+	fields := listFields(t, h)
 	var macID string
 	for _, f := range fields {
 		if f["key"] == "mac" {
@@ -313,7 +313,7 @@ func TestDeleteFieldEndpointCarriesTheRightPayload(t *testing.T) {
 	}
 
 	// A field assets carry values for is refused, with the devices named.
-	fields := decode[[]map[string]any](t, h.get(t, "/api/fields"))
+	fields := listFields(t, h)
 	var macID string
 	for _, f := range fields {
 		if f["key"] == "mac" {
@@ -587,5 +587,72 @@ func TestInheritedUniquenessSpansTheSubtree(t *testing.T) {
 		h.userID+`","holder_type":"entity","holder_id":"`+h.locID+`","attrs":{"mac":"001A2B3C0101"}}`)
 	if dup.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("reusing an inherited unique value = %d %s", dup.Code, dup.Body.String())
+	}
+}
+
+// listFields unwraps the field page, which the endpoint returns now that the
+// library can be filtered by category and paged.
+func listFields(t *testing.T, h *harness) []map[string]any {
+	t.Helper()
+	return decode[struct {
+		Items []map[string]any `json:"items"`
+	}](t, h.get(t, "/api/fields")).Items
+}
+
+// The library is now filtered and paged, because a key may repeat across
+// categories and an unfiltered list of two "rack"s says nothing.
+func TestFieldListFiltersByCategoryAndPages(t *testing.T) {
+	h := newHarness(t)
+
+	other := decode[map[string]any](t, h.post(t, "/api/categories", `{"code":"SW","name":"交换机"}`))
+	otherID := other["id"].(string)
+	rec := h.post(t, "/api/fields", `{"key":"rack","label":"机柜位","type":"text"}`)
+	rackID := decode[map[string]any](t, rec)["id"].(string)
+	if r := h.post(t, "/api/categories/"+otherID+"/bindings",
+		`{"field_id":"`+rackID+`","required":false,"sort":10}`); r.Code != http.StatusNoContent {
+		t.Fatal(r.Body.String())
+	}
+
+	type page struct {
+		Items []struct {
+			Key         string   `json:"key"`
+			CategoryIDs []string `json:"category_ids"`
+		} `json:"items"`
+		Total int `json:"total"`
+	}
+
+	all := decode[page](t, h.get(t, "/api/fields"))
+	if all.Total != 3 {
+		t.Fatalf("library holds %d fields, want 3", all.Total)
+	}
+
+	// The seeded category has mac and sn; rack belongs to the other one.
+	mine := decode[page](t, h.get(t, "/api/fields?category_id="+h.catID))
+	if mine.Total != 2 {
+		t.Errorf("this category's fields = %d, want 2", mine.Total)
+	}
+	for _, f := range mine.Items {
+		if f.Key == "rack" {
+			t.Error("rack belongs to another category")
+		}
+	}
+
+	theirs := decode[page](t, h.get(t, "/api/fields?category_id="+otherID))
+	if theirs.Total != 1 || theirs.Items[0].Key != "rack" {
+		t.Errorf("the other category's fields = %+v", theirs.Items)
+	}
+	// Where a field lives travels with it, or two same-named fields cannot be
+	// told apart in the list.
+	if len(theirs.Items[0].CategoryIDs) != 1 || theirs.Items[0].CategoryIDs[0] != otherID {
+		t.Errorf("category_ids = %v", theirs.Items[0].CategoryIDs)
+	}
+
+	paged := decode[page](t, h.get(t, "/api/fields?limit=2"))
+	if len(paged.Items) != 2 || paged.Total != 3 {
+		t.Errorf("paging: %d items of %d", len(paged.Items), paged.Total)
+	}
+	second := decode[page](t, h.get(t, "/api/fields?limit=2&offset=2"))
+	if len(second.Items) != 1 {
+		t.Errorf("second page: %d items", len(second.Items))
 	}
 }

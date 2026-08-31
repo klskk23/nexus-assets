@@ -41,7 +41,7 @@ const schema = {
 
 function route(p: string) {
   if (p === "/categories") return Promise.resolve(categories)
-  if (p === "/fields") return Promise.resolve([])
+  if (p.startsWith("/fields")) return Promise.resolve({ items: [], total: 0, offset: 0, limit: 20 })
   if (p === "/models") {
     return Promise.resolve([
       { id: "m1", category_ids: ["rt"], name: "X100", vendor: "Acme", attr_defaults: {} },
@@ -65,59 +65,20 @@ function categoryRow(name = /SDWAN 路由器/) {
   return screen.findByRole("row", { name })
 }
 
-async function selectCategory(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await categoryRow())
-}
 
 describe("Categories page", () => {
-  // Archiving an information item is gone, so unbinding is the only way to
-  // retire one that assets already carry values for. Until now the guard behind
-  // it had no route and no button.
-  it("detaches a field bound on this category, after confirming", async () => {
+  // Binding moved to the field itself, so what a category shows is the set it
+  // ends up with -- its own and its ancestors' -- and where to change it.
+  it("lists the fields it has, read-only, and says where they are bound", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
-    await selectCategory(user)
+    await user.click(await categoryRow())
 
-    const row = await screen.findByRole("row", { name: /机柜/ })
-    await chooseFromMenu(user, row, "解绑")
-
-    const dialog = await screen.findByRole("alertdialog")
-    // The confirmation has to say what survives, or it reads like a delete.
-    expect(dialog).toHaveTextContent("保留")
-    await user.click(within(dialog).getByRole("button", { name: "解绑" }))
-
-    await waitFor(() => expect(del).toHaveBeenCalledWith("/categories/rt/bindings/f1"))
-  })
-
-  // Disabled rather than missing: an item that vanishes reads as a bug, while
-  // one that is greyed out says the action exists and not here.
-  it("disables unbinding for a field inherited from an ancestor", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Categories />)
-    await selectCategory(user)
-
-    const row = await screen.findByRole("row", { name: /基准 MAC/ })
-    const menu = await openMenu(user, row)
-    expect(within(menu).getByRole("menuitem", { name: "解绑" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    )
-  })
-
-  it("surfaces the guard when something still reads the field", async () => {
-    del.mockRejectedValue(
-      new ApiError(409, "reference_blocked", "表达式键「设备编号」正在引用 rack，请先修改它们再解绑"),
-    )
-    const user = userEvent.setup()
-    renderWithProviders(<Categories />)
-    await selectCategory(user)
-
-    const row = await screen.findByRole("row", { name: /机柜/ })
-    await chooseFromMenu(user, row, "解绑")
-    const dialog = await screen.findByRole("alertdialog")
-    await user.click(within(dialog).getByRole("button", { name: "解绑" }))
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("设备编号")
+    const dialog = await screen.findByRole("dialog")
+    expect(within(dialog).getByRole("row", { name: /机柜/ })).toBeInTheDocument()
+    expect(within(dialog).getByText(/在「字段」页面上做/)).toBeInTheDocument()
+    // Nothing here binds or unbinds any more.
+    expect(within(dialog).queryByRole("combobox", { name: "绑定字段" })).not.toBeInTheDocument()
   })
 })
 
@@ -374,86 +335,4 @@ describe("Category editor", () => {
     expect(post).not.toHaveBeenCalled()
   })
 
-  it("binds a field from inside the dialog", async () => {
-    get.mockImplementation((p: string) =>
-      p === "/fields"
-        ? Promise.resolve([{ id: "f9", key: "rack2", label: "机柜位", type: "text", options: {}, is_unique: false }])
-        : route(p),
-    )
-    const user = userEvent.setup()
-    renderWithProviders(<Categories />)
-    await user.click(await categoryRow())
-
-    const dialog = await screen.findByRole("dialog")
-    await user.click(within(dialog).getByRole("combobox", { name: "绑定字段" }))
-    await user.click(await screen.findByRole("option", { name: "机柜位" }))
-    await user.click(within(dialog).getByRole("button", { name: "绑定字段" }))
-
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/categories/rt/bindings", {
-        field_id: "f9",
-        required: false,
-      }),
-    )
-  })
-})
-
-// Required is checked when an asset is written, not when the field is bound.
-// Ticking the box on a category that already holds devices is therefore a
-// promise about their next edit, and the person ticking it should know.
-describe("Binding a required field to a populated category", () => {
-  it("says how many devices will have to be filled in on their next edit", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Categories />)
-    await user.click(await categoryRow())
-
-    const dialog = await screen.findByRole("dialog")
-    expect(within(dialog).queryByText(/已有 3 台设备/)).not.toBeInTheDocument()
-
-    await user.click(within(dialog).getByLabelText("必填"))
-    expect(await within(dialog).findByText(/已有 3 台设备/)).toBeInTheDocument()
-
-    await user.click(within(dialog).getByLabelText("必填"))
-    expect(within(dialog).queryByText(/已有 3 台设备/)).not.toBeInTheDocument()
-  })
-
-  it("says nothing on a category with no devices in it", async () => {
-    get.mockImplementation((p: string) =>
-      p.startsWith("/assets")
-        ? Promise.resolve({ items: [], total: 0, offset: 0, limit: 1 })
-        : route(p),
-    )
-    const user = userEvent.setup()
-    renderWithProviders(<Categories />)
-    await user.click(await categoryRow())
-
-    const dialog = await screen.findByRole("dialog")
-    await user.click(within(dialog).getByLabelText("必填"))
-    expect(within(dialog).queryByText(/台设备/)).not.toBeInTheDocument()
-  })
-
-  // The point of the warning is that the binding still goes through.
-  it("binds it anyway", async () => {
-    get.mockImplementation((p: string) =>
-      p === "/fields"
-        ? Promise.resolve([{ id: "f9", key: "rack2", label: "机柜位", type: "text", options: {}, is_unique: false }])
-        : route(p),
-    )
-    const user = userEvent.setup()
-    renderWithProviders(<Categories />)
-    await user.click(await categoryRow())
-
-    const dialog = await screen.findByRole("dialog")
-    await user.click(within(dialog).getByRole("combobox", { name: "绑定字段" }))
-    await user.click(await screen.findByRole("option", { name: "机柜位" }))
-    await user.click(within(dialog).getByLabelText("必填"))
-    await user.click(within(dialog).getByRole("button", { name: "绑定字段" }))
-
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/categories/rt/bindings", {
-        field_id: "f9",
-        required: true,
-      }),
-    )
-  })
 })

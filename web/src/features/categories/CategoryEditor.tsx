@@ -4,20 +4,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError, blockerKey, type Blocker } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
-import type { AssetPage, BoundField, Category, CategorySchema } from "@/lib/types"
-import type { FieldDefinitionRow, ProductModelRow } from "@/lib/metaTypes"
+import type { Category, CategorySchema } from "@/lib/types"
+import type { ProductModelRow } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu"
 import {
   Dialog,
   DialogClose,
@@ -68,35 +61,17 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
   const [name, setName] = useState(category.name)
   const [parentId, setParentId] = useState(category.parent_id ?? "")
   const [displayKey, setDisplayKey] = useState(category.display_key)
-  const [bindField, setBindField] = useState("")
-  const [bindRequired, setBindRequired] = useState(false)
   const [banner, setBanner] = useState<string | null>(null)
   const [blockers, setBlockers] = useState<Blocker[]>([])
-  const [unbinding, setUnbinding] = useState<BoundField | null>(null)
 
   const schema = useQuery({
     queryKey: ["schema", category.id],
     queryFn: () => api.get<CategorySchema>(`/categories/${category.id}/schema`),
   })
-  const fields = useQuery({
-    queryKey: ["fields"],
-    queryFn: () => api.get<FieldDefinitionRow[]>("/fields"),
-  })
   const models = useQuery({
     queryKey: ["models"],
     queryFn: () => api.get<ProductModelRow[]>("/models"),
   })
-  // How many devices a new required field would land on. Asked for one row
-  // because only the total is wanted, and the subtree because a binding made
-  // here applies all the way down it.
-  const populated = useQuery({
-    queryKey: ["category-asset-count", category.id],
-    queryFn: () =>
-      api.get<AssetPage>(
-        `/assets?category_id=${category.id}&include_descendants=true&limit=1`,
-      ),
-  })
-  const existingAssets = populated.data?.total ?? 0
 
   const bound = schema.data?.fields ?? []
   // Only unique fields are offered as the number: one two devices can share is
@@ -137,33 +112,6 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] })
       onClose()
-    },
-    onError: fail,
-  })
-
-  const bind = useMutation({
-    mutationFn: () =>
-      api.post(`/categories/${category.id}/bindings`, {
-        field_id: bindField,
-        required: bindRequired,
-      }),
-    onSuccess: () => {
-      setBanner(null)
-      setBlockers([])
-      setBindField("")
-      queryClient.invalidateQueries({ queryKey: ["schema", category.id] })
-    },
-    onError: fail,
-  })
-
-  const unbind = useMutation({
-    mutationFn: (fieldID: string) =>
-      api.del(`/categories/${category.id}/bindings/${fieldID}`),
-    onSuccess: () => {
-      setBanner(null)
-      setBlockers([])
-      queryClient.invalidateQueries({ queryKey: ["schema", category.id] })
-      queryClient.invalidateQueries({ queryKey: ["category-schema", category.id] })
     },
     onError: fail,
   })
@@ -232,58 +180,11 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
 
           <div className="grid gap-2">
             <p className="text-sm font-medium">{tMeta.categories.fields}</p>
-            <div className="flex flex-wrap items-end gap-3">
-              <Field className="w-auto">
-                <FieldLabel htmlFor="ce-bind">{tMeta.categories.bind}</FieldLabel>
-                <Select value={bindField} onValueChange={setBindField}>
-                  <SelectTrigger id="ce-bind" className="w-56">
-                    <SelectValue placeholder={t.common.select} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {(fields.data ?? []).map((f) => (
-                        <SelectItem key={f.id} value={f.id}>
-                          {f.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field orientation="horizontal" className="w-auto pb-2">
-                <Checkbox
-                  id="ce-required"
-                  checked={bindRequired}
-                  onCheckedChange={(v) => setBindRequired(v === true)}
-                />
-                <FieldLabel htmlFor="ce-required">{tMeta.categories.required}</FieldLabel>
-              </Field>
-              <Button
-                className="mb-0.5"
-                size="sm"
-                onClick={() => bind.mutate()}
-                disabled={bindField === "" || bind.isPending}
-              >
-                {tMeta.categories.bind}
-              </Button>
-            </div>
+            {/* Read-only: a field is bound to categories from the field
+                itself, which is where the question "where does this belong"
+                actually gets answered. */}
+            <p className="text-muted-foreground text-sm">{tMeta.categories.bindElsewhere}</p>
 
-            {/* Required is checked when an asset is written, not when the
-                field is bound, so the devices already recorded keep their gap
-                until someone edits one. That is worth saying out loud before
-                the box is ticked rather than discovering it on a refusal. */}
-            {bindRequired && existingAssets > 0 && (
-              <Alert>
-                <AlertCircleIcon />
-                <AlertDescription>
-                  {tMeta.categories.requiredWarning(existingAssets)}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Unbinding is where every other row action is: the menu. An
-                inherited binding was not made here and cannot be removed here,
-                so the item is disabled rather than missing. */}
             <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
@@ -296,9 +197,7 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
                 </TableHeader>
                 <TableBody>
                   {bound.map((f) => (
-                    <ContextMenu key={f.key}>
-                      <ContextMenuTrigger asChild>
-                        <TableRow aria-label={f.label}>
+                    <TableRow key={f.key} aria-label={f.label}>
                           <TableCell className="text-muted-foreground font-mono">
                             {f.key}
                           </TableCell>
@@ -315,18 +214,7 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
                               </Badge>
                             )}
                           </TableCell>
-                        </TableRow>
-                      </ContextMenuTrigger>
-                      <ContextMenuContent>
-                        <ContextMenuItem
-                          variant="destructive"
-                          disabled={Boolean(f.inherited_from)}
-                          onSelect={() => setUnbinding(f)}
-                        >
-                          {tMeta.categories.unbind}
-                        </ContextMenuItem>
-                      </ContextMenuContent>
-                    </ContextMenu>
+                    </TableRow>
                   ))}
                 </TableBody>
               </Table>
@@ -379,14 +267,6 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
           </Button>
         </DialogFooter>
 
-        <ConfirmDialog
-          open={unbinding !== null}
-          onOpenChange={(next) => !next && setUnbinding(null)}
-          title={tMeta.categories.unbindTitle}
-          description={unbinding ? tMeta.categories.unbindHint(unbinding.label) : ""}
-          confirmLabel={tMeta.categories.unbind}
-          onConfirm={() => unbinding && unbind.mutate(unbinding.id)}
-        />
       </DialogContent>
     </Dialog>
   )

@@ -8,6 +8,8 @@ export interface FieldDefinitionRow {
   type: FieldType
   options: FieldOptions
   is_unique: boolean
+  /** The categories this field is bound to; empty until it is bound to one. */
+  category_ids?: string[]
 }
 
 export interface ProductModelRow {

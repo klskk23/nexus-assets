@@ -114,16 +114,44 @@ func (s *Server) categorySchema(c *gin.Context) {
 	})
 }
 
+// fieldRow is a field definition plus where it is bound.
+//
+// The binding is what a field means now -- a key is only unique inside one
+// chain -- so the list cannot leave it out and stay readable.
+type fieldRow struct {
+	model.FieldDefinition
+	CategoryIDs []string `json:"category_ids"`
+}
+
 func (s *Server) listFields(c *gin.Context) {
-	items, err := s.schema.ListFields(c.Request.Context())
+	offset, limit := Paging(c)
+
+	page, err := s.schema.ListFieldPage(c.Request.Context(), schema.FieldFilter{
+		CategoryID: c.Query("category_id"),
+		Offset:     offset,
+		Limit:      limit,
+	})
 	if err != nil {
 		FailErr(c, err)
 		return
 	}
-	if items == nil {
-		items = []model.FieldDefinition{}
+	bound, err := s.schema.BoundCategories(c.Request.Context())
+	if err != nil {
+		FailErr(c, err)
+		return
 	}
-	c.JSON(http.StatusOK, items)
+
+	rows := make([]fieldRow, 0, len(page.Items))
+	for _, f := range page.Items {
+		ids := bound[f.ID]
+		if ids == nil {
+			ids = []string{}
+		}
+		rows = append(rows, fieldRow{FieldDefinition: f, CategoryIDs: ids})
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"items": rows, "total": page.Total, "offset": page.Offset, "limit": page.Limit,
+	})
 }
 
 func (s *Server) createField(c *gin.Context) {
