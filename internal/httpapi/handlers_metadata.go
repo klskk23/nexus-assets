@@ -142,7 +142,7 @@ func (s *Server) createField(c *gin.Context) {
 		Key: req.Key, Label: req.Label, Type: req.Type, Options: req.Options, IsUnique: req.IsUnique,
 	})
 	if err != nil {
-		Fail(c, http.StatusUnprocessableEntity, CodeTemplateInvalid, err.Error(), nil)
+		Fail(c, http.StatusUnprocessableEntity, CodeTemplateInvalid, userText(c, err), nil)
 		return
 	}
 	if !s.record(c, audit.ActionCreate, audit.TargetField, out.ID, nil, out) {
@@ -167,7 +167,7 @@ func (s *Server) patchField(c *gin.Context) {
 		Label: req.Label, Options: req.Options,
 	})
 	if err != nil {
-		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, err.Error(), nil)
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, userText(c, err), nil)
 		return
 	}
 	{

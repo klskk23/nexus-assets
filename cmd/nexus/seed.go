@@ -61,7 +61,7 @@ func runSeed(ctx context.Context, a *app, count int) error {
 	// serve as the display key, and bound only after its input exists.
 	sn, err := a.schema.CreateField(ctx, schema.CreateFieldInput{
 		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
-		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
 	})
 	if err != nil {
 		return err

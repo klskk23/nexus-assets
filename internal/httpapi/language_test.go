@@ -47,6 +47,18 @@ func TestRefusalsAnswerInTheRequestedLanguage(t *testing.T) {
 			want: "No such record",
 		},
 		{
+			name: "expression guard, English", lang: "en",
+			method: http.MethodPost, path: "/api/fields",
+			body: `{"key":"g1","label":"x","type":"computed","options":{"template":"md5(attrs.mac)"}}`,
+			want: "There is no function called",
+		},
+		{
+			name: "expression guard, Chinese", lang: "zh",
+			method: http.MethodPost, path: "/api/fields",
+			body: `{"key":"g2","label":"x","type":"computed","options":{"template":"attrs[attrs.which]"}}`,
+			want: "字段必须写明名字",
+		},
+		{
 			// An unsupported language falls back rather than answering in keys.
 			name: "unsupported language falls back", lang: "fr-FR",
 			method: http.MethodPost, path: "/api/holders",

@@ -1,5 +1,5 @@
-import { zh, zhMeta, zhTransfer, zhConfig, zhImport, zhAudit, zhConfirm, zhOverview, zhStatuses } from "./zh"
-import { en, enMeta, enTransfer, enConfig, enImport, enAudit, enConfirm, enOverview, enStatuses } from "./en"
+import { zh, zhMeta, zhTransfer, zhConfig, zhImport, zhAudit, zhConfirm, zhOverview, zhStatuses, tExprHelp as zhExprHelp } from "./zh"
+import { en, enMeta, enTransfer, enConfig, enImport, enAudit, enConfirm, enOverview, enStatuses, enExprHelp } from "./en"
 
 export type Lang = "zh" | "en"
 
@@ -12,9 +12,11 @@ const STORAGE_KEY = "nexus.lang"
 
 const dictionaries = {
   zh: { t: zh, tMeta: zhMeta, tTransfer: zhTransfer, tConfig: zhConfig, tImport: zhImport,
-        tAudit: zhAudit, tConfirm: zhConfirm, tOverview: zhOverview, tStatuses: zhStatuses },
+        tAudit: zhAudit, tConfirm: zhConfirm, tOverview: zhOverview, tStatuses: zhStatuses,
+        tExprHelp: zhExprHelp },
   en: { t: en, tMeta: enMeta, tTransfer: enTransfer, tConfig: enConfig, tImport: enImport,
-        tAudit: enAudit, tConfirm: enConfirm, tOverview: enOverview, tStatuses: enStatuses },
+        tAudit: enAudit, tConfirm: enConfirm, tOverview: enOverview, tStatuses: enStatuses,
+        tExprHelp: enExprHelp },
 }
 
 /**
@@ -71,6 +73,7 @@ export let tAudit = dictionaries[current].tAudit
 export let tConfirm = dictionaries[current].tConfirm
 export let tOverview = dictionaries[current].tOverview
 export let tStatuses = dictionaries[current].tStatuses
+export let tExprHelp = dictionaries[current].tExprHelp
 
 /** Switches the language and remembers the choice. */
 export function applyLang(lang: Lang) {
@@ -85,6 +88,7 @@ export function applyLang(lang: Lang) {
   tConfirm = d.tConfirm
   tOverview = d.tOverview
   tStatuses = d.tStatuses
+  tExprHelp = d.tExprHelp
 
   try {
     localStorage.setItem(STORAGE_KEY, lang)

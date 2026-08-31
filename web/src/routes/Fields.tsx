@@ -7,6 +7,7 @@ import type { FieldDefinitionRow, FieldType } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
 import { CrudPage } from "@/features/metadata/CrudPage"
 import { FieldEditor } from "@/features/fields/FieldEditor"
+import { ExpressionHelp } from "@/features/fields/ExpressionHelp"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -160,11 +161,14 @@ export function Fields() {
           </Field>
           {type === "computed" && (
             <Field className="sm:col-span-2">
-              <FieldLabel htmlFor="f-template">{t.common.template}</FieldLabel>
+              <div className="flex items-center justify-between gap-2">
+                <FieldLabel htmlFor="f-template">{t.common.template}</FieldLabel>
+                <ExpressionHelp />
+              </div>
               <Input
                 id="f-template"
                 className="font-mono"
-                placeholder="{{ .attrs.mac | hex2dec }}"
+                placeholder="hex2dec(attrs.mac)"
                 value={template}
                 onChange={(e) => setTemplate(e.target.value)}
               />

@@ -16,14 +16,14 @@ func TestCyclicExpressionKeyRefusedAtBindTime(t *testing.T) {
 	h := newHarness(t)
 
 	a := decode[map[string]any](t, h.post(t, "/api/fields",
-		`{"key":"a","label":"A","type":"computed","options":{"template":"{{ .attrs.b | upper }}"}}`))
+		`{"key":"a","label":"A","type":"computed","options":{"template":"upper(attrs.b)"}}`))
 	if a["id"] == nil {
 		t.Fatalf("creating the first half of the cycle should succeed")
 	}
 	// b reads a, closing the loop. A definition on its own is harmless -- the
 	// loop only matters once something has to evaluate it.
 	b := h.post(t, "/api/fields",
-		`{"key":"b","label":"B","type":"computed","options":{"template":"{{ .attrs.a | upper }}"}}`)
+		`{"key":"b","label":"B","type":"computed","options":{"template":"upper(attrs.a)"}}`)
 	if b.Code != http.StatusUnprocessableEntity && b.Code != http.StatusCreated {
 		t.Fatalf("unexpected status %d: %s", b.Code, b.Body.String())
 	}
@@ -105,7 +105,7 @@ func TestRecomputeEndpointPreviewsBeforeApplying(t *testing.T) {
 
 	// Prefix every number with the category code.
 	if rec := h.patch(t, "/api/fields/"+h.snFieldID,
-		`{"options":{"template":"{{ printf \"%s-%s\" .category.code (.attrs.mac | hex2dec) }}"}}`); rec.Code != http.StatusOK {
+		`{"options":{"template":"category.code + \"-\" + hex2dec(attrs.mac)"}}`); rec.Code != http.StatusOK {
 		t.Fatalf("update rule: %s", rec.Body.String())
 	}
 

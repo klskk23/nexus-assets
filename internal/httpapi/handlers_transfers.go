@@ -200,8 +200,8 @@ func failTransfer(c *gin.Context, err error) {
 	case errors.Is(err, transfer.ErrNotFound), errors.Is(err, transfer.ErrAssetNotFound):
 		FailMsg(c, http.StatusNotFound, CodeNotFound, i18n.KeyNotFound)
 	case isTransitionError(err):
-		Fail(c, http.StatusUnprocessableEntity, CodeIllegalTransition, err.Error(),
-			map[string]string{"to_status": err.Error()})
+		Fail(c, http.StatusUnprocessableEntity, CodeIllegalTransition, userText(c, err),
+			map[string]string{"to_status": userText(c, err)})
 	default:
 		FailErr(c, err)
 	}

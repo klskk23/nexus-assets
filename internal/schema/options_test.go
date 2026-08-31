@@ -24,7 +24,7 @@ func TestValidateOptionsAcceptsEveryType(t *testing.T) {
 		model.FieldMAC:       {},
 		model.FieldIP:        {},
 		model.FieldURL:       {},
-		model.FieldComputed:  {Template: "{{ .attrs.mac | hex2dec }}"},
+		model.FieldComputed:  {Template: "hex2dec(attrs.mac)"},
 	}
 	if len(cases) != len(model.AllFieldTypes) {
 		t.Fatalf("test covers %d types, model declares %d", len(cases), len(model.AllFieldTypes))
@@ -55,7 +55,7 @@ func TestValidateOptionsRejections(t *testing.T) {
 			Target: "user", EntityTypes: []model.EntityType{model.EntityLocation}}, "only applies"},
 		{"computed without template", model.FieldComputed, model.FieldOptions{}, "needs a template"},
 		{"computed with control flow", model.FieldComputed, model.FieldOptions{
-			Template: "{{ if .attrs.mac }}x{{ end }}"}, "identifier rules"},
+			Template: `map(1..3, {#})`}, "不能做遍历"},
 		{"unknown type", model.FieldType("nope"), model.FieldOptions{}, "unknown field type"},
 	}
 	for _, tc := range cases {

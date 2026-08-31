@@ -1,9 +1,10 @@
 package compute
 
 import (
-	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/klskk23/nexus-assets/internal/i18n"
 )
 
 // TopoSort orders computed field keys so every field comes after the fields it
@@ -14,7 +15,7 @@ import (
 // evaluation starts.
 func TopoSort(deps map[string][]string) ([]string, error) {
 	if cycle := findCycle(deps); cycle != nil {
-		return nil, fmt.Errorf("computed fields form a cycle: %s", strings.Join(cycle, " -> "))
+		return nil, i18n.M(i18n.KeyExprCycle, strings.Join(cycle, " -> "))
 	}
 
 	keys := make([]string, 0, len(deps))

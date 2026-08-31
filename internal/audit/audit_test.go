@@ -36,7 +36,7 @@ func newStore(t *testing.T) (*Store, *auth.Store, context.Context, string) {
 func TestRecordKeepsBeforeAndAfter(t *testing.T) {
 	s, _, ctx, actor := newStore(t)
 
-	before := map[string]any{"sn_template": "{{ .attrs.mac | hex2dec }}"}
+	before := map[string]any{"sn_template": "hex2dec(attrs.mac)"}
 	after := map[string]any{"sn_template": `{{ printf "%s-%s" .category.code .attrs.mac }}`}
 	if err := s.Record(ctx, actor, ActionUpdate, TargetCategory, "cat-1", before, after); err != nil {
 		t.Fatalf("record: %v", err)

@@ -92,7 +92,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 	sn, err := sch.CreateField(ctx, schema.CreateFieldInput{
 		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
-		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
 	})
 	if err != nil {
 		t.Fatalf("create sn field: %v", err)
@@ -351,14 +351,14 @@ func TestComputedChainEvaluatesInDependencyOrder(t *testing.T) {
 
 	base, err := f.schema.CreateField(ctx, schema.CreateFieldInput{
 		Key: "base_num", Label: "基数", Type: model.FieldComputed,
-		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
 	})
 	if err != nil {
 		t.Fatalf("create base_num: %v", err)
 	}
 	full, err := f.schema.CreateField(ctx, schema.CreateFieldInput{
 		Key: "full_tag", Label: "完整标签", Type: model.FieldComputed,
-		Options: model.FieldOptions{Template: `{{ printf "%s-%s" .category.code .attrs.base_num }}`},
+		Options: model.FieldOptions{Template: `category.code + "-" + str(attrs.base_num)`},
 	})
 	if err != nil {
 		t.Fatalf("create full_tag: %v", err)
@@ -527,7 +527,7 @@ func TestBindingAnExpressionKeyBeforeItsInputsIsRefused(t *testing.T) {
 
 	tag, err := f.schema.CreateField(ctx, schema.CreateFieldInput{
 		Key: "rack_tag", Label: "机柜标签", Type: model.FieldComputed,
-		Options: model.FieldOptions{Template: "{{ .attrs.rack | upper }}"},
+		Options: model.FieldOptions{Template: "upper(attrs.rack)"},
 	})
 	if err != nil {
 		t.Fatalf("create rack_tag: %v", err)

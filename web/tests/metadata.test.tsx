@@ -93,9 +93,9 @@ describe("Fields page", () => {
     await screen.findByRole("row", { name: /基准 MAC/ })
 
     await openCreate(user, "新建字段")
-    expect(screen.queryByLabelText("模板")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("表达式")).not.toBeInTheDocument()
     await chooseByLabel(user, "类型", "计算项")
-    expect(screen.getByLabelText("模板")).toBeInTheDocument()
+    expect(screen.getByLabelText("表达式")).toBeInTheDocument()
   })
 
   // The list is what the page is for; the form is behind a button so the

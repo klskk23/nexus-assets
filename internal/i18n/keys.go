@@ -120,6 +120,23 @@ const (
 	KeyTemplateUnparseable = "template.unparseable"
 	KeyTemplateCycle       = "template.cycle"
 
+	// Expressions (computed fields).
+	KeyNamedProblem       = "expr.named_problem"
+	KeyExprEmpty          = "expr.empty"
+	KeyExprSyntax         = "expr.syntax"
+	KeyExprNameOutright   = "expr.name_outright"
+	KeyExprNoIteration    = "expr.no_iteration"
+	KeyExprNoSuchFunc     = "expr.no_such_function"
+	KeyExprNotReadable    = "expr.not_readable"
+	KeyExprBuiltinBlocked = "expr.builtin_blocked"
+	KeyExprNoValue        = "expr.no_value"
+	KeyExprEmptyResult    = "expr.empty_result"
+	KeyExprCycle          = "expr.cycle"
+	KeyFnHexEmpty         = "fn.hex_empty"
+	KeyFnNotHex           = "fn.not_hex"
+	KeyFnNotDecimal       = "fn.not_decimal"
+	KeyFnSliceRange       = "fn.slice_range"
+
 	// Product models.
 	KeyModelNoVendor  = "model.no_vendor"
 	KeyModelDuplicate = "model.duplicate"

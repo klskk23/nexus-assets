@@ -58,6 +58,25 @@ if (!Element.prototype.hasPointerCapture) {
   Element.prototype.releasePointerCapture = () => {}
 }
 /**
+ * vaul (the drawer) asks whether the viewport prefers reduced motion, and
+ * jsdom has no matchMedia at all. Reporting "no preference" is the honest
+ * answer for a headless run.
+ */
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  window.matchMedia = (query: string) =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList
+}
+
+/**
  * jsdom lays nothing out, so every element measures 0x0 and a chart's
  * responsive container concludes there is no room to draw in. A stub that only
  * swallows the calls leaves recharts rendering an empty SVG -- the assertions

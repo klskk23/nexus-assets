@@ -165,6 +165,48 @@ func Text(err error, l Lang) string {
 	return err.Error()
 }
 
+// HasKey reports whether an error carries a message with this catalogue key,
+// including one nested as another message's argument.
+//
+// Tests assert on this rather than on rendered text: the wording is copy and
+// will be edited, while the key is the identity of the thing being said.
+func HasKey(err error, key string) bool {
+	for e := err; e != nil; e = errors.Unwrap(e) {
+		var m Message
+		switch t := e.(type) {
+		case Message:
+			m = t
+		case messenger:
+			m = t.Msg()
+		default:
+			continue
+		}
+		if messageHasKey(m, key) {
+			return true
+		}
+	}
+	return false
+}
+
+func messageHasKey(m Message, key string) bool {
+	if m.Key == key {
+		return true
+	}
+	for _, a := range m.Args {
+		switch t := a.(type) {
+		case Message:
+			if messageHasKey(t, key) {
+				return true
+			}
+		case error:
+			if HasKey(t, key) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // HasText reports whether an error carries a translatable message.
 func HasText(err error) bool {
 	for e := err; e != nil; e = errors.Unwrap(e) {

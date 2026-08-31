@@ -1,17 +1,18 @@
 <!-- SPECKIT START -->
-当前计划：`specs/010-asset-row-gestures/spec.md`
+当前计划：`specs/011-expression-engine/spec.md`
 
 开工前必读，按优先级：
 
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
-2. `specs/010-asset-row-gestures/` —— 本轮特性的规格与检查清单
+2. `specs/011-expression-engine/` —— 本轮特性的规格与检查清单；
+   调研与备选方案在 `docs/research-expr-engine.md`
 3. `docs/design-baseline-v5.md`（决策 61–63）—— 状态不再约束持有方。
-   **冲突时以最新一版为准：010 > 009 > 008 > 007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
+   **冲突时以最新一版为准：011 > 010 > 009 > 008 > 007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
 4. `docs/design-baseline-v4.md`（决策 53–60）—— 状态成为可配置的数据
 5. `docs/design-baseline-v3.md`（决策 41–52）—— 字段可删除、型号多对多
 6. `docs/design-baseline-v2.md`（决策 25–40）—— 编号模型、依赖门禁、流转
 7. `docs/design-baseline.md` —— 原始设计基线（决策 1–24）
-8. `specs/001-asset-ledger-demo/` ~ `specs/009-field-rename-and-entry-owner/` —— 前九轮特性。
+8. `specs/001-asset-ledger-demo/` ~ `specs/010-asset-row-gestures/` —— 前十轮特性。
    001 的 `contracts/openapi.yaml` 仍是**全量**端点清单
 
 **最容易违反的十条硬规则**
@@ -75,6 +76,16 @@
 - **术语：「字段」。** 009 起统一叫「字段」；001–008 的规格与设计基线里写的是
   **「信息项」，指同一样东西** —— 读历史文档时按此对应，不要以为是两个概念。
   代码里一直是 `field`，没有改过。
+- **表达式引擎是 expr-lang/expr，不是 `text/template`**（011 起）。
+  `hex2dec(attrs.mac)`、`attrs.mac | hex2dec() | pad(16)`、`a == b ? x : y`、`??` 都可用。
+  **管道把左值传成第一个参数**，与旧引擎相反 —— 自定义函数的签名都是「主语在前」。
+  `internal/compute/translate.go` 保留着旧语法的转换器，供从旧备份恢复的人使用。
+- **`internal/compute` 的 AST 护栏不是加固，是前提。** 旧语法的贫乏白送了三样东西，
+  新语法把它们拿走了：非常量下标（会让「读了哪些字段」无法回答）、遍历构造、
+  未定义的名字（会静默变成空值拼进编号）。三者都在 `parse.go` 的 `guard` 里拒绝。
+  **动这个文件前先读 `docs/research-expr-engine.md`。**
+- **面向用户的错误一律走 `userText(c, err)`，不要用 `err.Error()`。**
+  后者取的是默认语言，英文请求会收到中文。006 在七处漏过这一点，011 补齐。
 - **字段没有「停用」。** 只有删除（无关联时）与解绑（有存量数据时）。
   `archived_attrs` 是**解绑**产生的孤儿键，与停用无关，不要跟着一起清理掉 ——
   删掉它会让「解绑后仍能查看旧值」当场失效，且没有任何现有测试会失败。

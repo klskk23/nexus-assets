@@ -53,11 +53,11 @@ describe("FieldEditor", () => {
   it("offers a template box for a computed field", () => {
     renderWithProviders(
       <FieldEditor
-        field={field("computed", { options: { template: "{{ .attrs.mac | hex2dec }}" } })}
+        field={field("computed", { options: { template: "hex2dec(attrs.mac)" } })}
         onClose={vi.fn()}
       />,
     )
-    expect(screen.getByLabelText("计算模板")).toHaveValue("{{ .attrs.mac | hex2dec }}")
+    expect(screen.getByLabelText("表达式")).toHaveValue("hex2dec(attrs.mac)")
   })
 
   // Retiring an option keeps it visible on existing assets; deleting it would

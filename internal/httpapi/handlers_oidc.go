@@ -51,7 +51,7 @@ func (s *Server) oidcCallback(c *gin.Context) {
 	if err != nil {
 		// The message says which domain was refused, so the person can see
 		// they signed in with the wrong account rather than guessing.
-		c.Redirect(http.StatusFound, "/login?error="+url.QueryEscape(err.Error()))
+		c.Redirect(http.StatusFound, "/login?error="+url.QueryEscape(userText(c, err)))
 		return
 	}
 

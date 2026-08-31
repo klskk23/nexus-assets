@@ -20,7 +20,7 @@ func TestReferrersFindsExpressionKeys(t *testing.T) {
 	}
 	if _, err := s.CreateField(ctx, CreateFieldInput{
 		Key: "tag", Label: "标签", Type: model.FieldComputed,
-		Options: model.FieldOptions{Template: `{{ printf "%s-%s" .category.code (.attrs.mac | hex2dec) }}`},
+		Options: model.FieldOptions{Template: `category.code + "-" + hex2dec(attrs.mac)`},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestReferrersIgnoresStringLiteralsAndFindsNestedCalls(t *testing.T) {
 	if _, err := s.CreateField(ctx, CreateFieldInput{
 		Key: "derived", Label: "推导项", Type: model.FieldComputed,
 		// "decoy" appears only inside a string literal.
-		Options: model.FieldOptions{Template: `{{ replace ".attrs.decoy" "" (.attrs.real | upper) }}`},
+		Options: model.FieldOptions{Template: `replace(upper(attrs.real), ".attrs.decoy", "")`},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestDeleteFieldRefusedWhileReferenced(t *testing.T) {
 	}
 	if _, err := s.CreateField(ctx, CreateFieldInput{
 		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
-		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
 	}); err != nil {
 		t.Fatal(err)
 	}

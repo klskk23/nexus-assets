@@ -79,7 +79,7 @@ func TestEveryMetadataMutationIsAudited(t *testing.T) {
 func TestUpdatingAFieldTemplateRecordsBothSides(t *testing.T) {
 	h := newHarness(t)
 
-	newRule := `{{ printf \"%s-%s\" .category.code (.attrs.mac | hex2dec) }}`
+	newRule := `category.code + \"-\" + hex2dec(attrs.mac)`
 	if rec := h.patch(t, "/api/fields/"+h.snFieldID,
 		`{"options":{"template":"`+newRule+`"}}`); rec.Code != http.StatusOK {
 		t.Fatalf("update: %s", rec.Body.String())

@@ -146,7 +146,7 @@ func TestDeleteFieldRefusedWhileConfigurationPointsAtIt(t *testing.T) {
 	}
 	sn, err := s.CreateField(ctx, CreateFieldInput{
 		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
-		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
 	})
 	if err != nil {
 		t.Fatal(err)

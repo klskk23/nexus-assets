@@ -1,4 +1,15 @@
-import type { zh, zhMeta, zhTransfer, zhConfig, zhImport, zhAudit, zhConfirm, zhOverview, zhStatuses } from "./zh"
+import type {
+  zh,
+  zhMeta,
+  zhTransfer,
+  zhConfig,
+  zhImport,
+  zhAudit,
+  zhConfirm,
+  zhOverview,
+  zhStatuses,
+  tExprHelp as tExprHelpZh,
+} from "./zh"
 
 /**
  * The English dictionary.
@@ -109,7 +120,7 @@ export const en: typeof zh = {
     computedHint: "Derived from other fields; not filled in directly",
     deprecatedSuffix: " (deprecated)",
     defaultStockSuffix: " (default stock point)",
-    template: "Template",
+    template: "Expression",
     requestFailed: "Request failed",
     expand: (name: string) => `Expand ${name}`,
     collapse: (name: string) => `Collapse ${name}`,
@@ -319,7 +330,7 @@ export const enConfig: typeof zhConfig = {
     staticGroup: "Static keys (typed in or imported)",
     expressionGroup: "Expression keys (derived from other keys)",
     templateHint:
-      "Available: {{ .attrs.key }}, {{ .category.code }}, {{ .model.name }}, {{ .id }}. Pipes work, e.g. {{ .attrs.mac | hex2dec }}. No if/range.",
+      "Reads attrs.key, category.code, model.name and id. Functions, pipes, conditions and concatenation all work. See “How to write one” for examples.",
     depsHint:
       "When bound to a category, every static key it depends on must already be bound and marked required, or the binding is refused.",
     regex: "Validation pattern",
@@ -476,4 +487,68 @@ export const enStatuses: typeof zhStatuses = {
     teal: "Teal",
     rose: "Rose",
   },
+}
+
+export const enExprHelp: typeof tExprHelpZh = {
+  open: "How to write one",
+  title: "Writing an expression",
+  subtitle: "An expression turns a device's fields into one value — usually its number.",
+
+  readsTitle: "What it can read",
+  reads: [
+    ["attrs.key", "one of this device's fields, e.g. attrs.mac"],
+    ["category.code", "the code of its category"],
+    ["category.name", "the name of its category"],
+    ["model.name", "the model"],
+    ["model.vendor", "the vendor"],
+    ["id", "the internal UUID"],
+  ],
+  readsNote:
+    "Those six and nothing else. A misspelt name is refused outright rather than producing a number with an empty piece in it.",
+
+  examplesTitle: "Examples",
+  examples: [
+    ["hex2dec(attrs.mac)", "read the MAC as hexadecimal, write it as decimal"],
+    ["attrs.mac | hex2dec() | pad(16)", "the same, left-padded to 16 digits"],
+    ['category.code + "-" + str(attrs.seq)', "category code, a hyphen, then the sequence"],
+    ['attrs.kind == "spare" ? "S" : "M"', "S for spares, M for everything else"],
+    ["attrs.sn ?? hex2dec(attrs.mac)", "use sn when there is one, otherwise derive it"],
+    ["upper(trim(attrs.rack))", "trim the spaces, then upper-case it"],
+  ],
+
+  pipeTitle: "Pipes",
+  pipeBody: "x | f() is the same as f(x). Chained functions read left to right.",
+  pipeExample: "attrs.mac | trunc(6) | lower()  is  lower(trunc(attrs.mac, 6))",
+
+  funcsTitle: "Functions",
+  funcs: [
+    ["hex2dec(x)", "hexadecimal to decimal, ignoring MAC separators"],
+    ["dec2hex(x)", "decimal to upper-case hexadecimal"],
+    ["pad(x, n)", "left-pad with zeroes to n. Never shortens"],
+    ["trunc(x, n)", "keep the first n characters"],
+    ["slice(x, a, b)", "characters a up to but not including b"],
+    ["upper(x) / lower(x) / trim(x)", "case and whitespace"],
+    ["replace(x, old, new)", "replace every occurrence"],
+    ["default(x, fallback)", "fallback when x is empty"],
+    ["str(x)", "make it a string. Needed when concatenating numbers"],
+  ],
+  funcsNote: "len, string, hasPrefix, split and other common builtins are available too.",
+
+  opsTitle: "Operators",
+  ops: [
+    ["+", "join strings, or add numbers"],
+    ["== != < >", "comparison"],
+    ["? :", "condition: test ? then : otherwise"],
+    ["??", "the right-hand side when the left is empty"],
+    ["in", 'attrs.vendor in ["Acme", "Beta"]'],
+    ["matches", 'regex: attrs.mac matches "^[0-9A-F]{12}$"'],
+  ],
+
+  rulesTitle: "Two rules",
+  rules: [
+    "The result cannot be empty, and cannot contain a field that has no value — such a number is refused rather than stored.",
+    "When the expression is bound to a category, every field it reads must already be bound there and marked required.",
+  ],
+
+  close: "Got it",
 }

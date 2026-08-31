@@ -109,9 +109,24 @@ func TestMigrateUpAndDown(t *testing.T) {
 		}
 	}
 
+	// 009 marks which side of the expression-syntax change a database is on.
+	var marker int
+	if err := s.read.QueryRowContext(ctx,
+		`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'expression_syntax_migration'`).
+		Scan(&marker); err != nil {
+		t.Fatal(err)
+	}
+	if marker != 1 {
+		t.Error("009 should have created the expression-syntax marker table")
+	}
+
 	// Rolling back one revision at a time must restore each earlier shape
 	// exactly, so a half-applied upgrade can be undone rather than requiring a
 	// fresh file.
+	if err := s.MigrateDown(ctx); err != nil {
+		t.Fatalf("MigrateDown 009: %v", err)
+	}
+
 	if err := s.MigrateDown(ctx); err != nil {
 		t.Fatalf("MigrateDown 008: %v", err)
 	}

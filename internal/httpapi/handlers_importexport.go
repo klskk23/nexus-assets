@@ -37,7 +37,7 @@ func (s *Server) importPreview(c *gin.Context) {
 
 	report, err := s.importer.Preview(c.Request.Context(), LangOf(c), categoryID, actor.ID, file)
 	if err != nil {
-		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, err.Error(), nil)
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, userText(c, err), nil)
 		return
 	}
 	c.JSON(http.StatusOK, report)
@@ -57,7 +57,7 @@ func (s *Server) importCommit(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
 			"error": gin.H{
 				"code":    CodeValidationFailed,
-				"message": err.Error(),
+				"message": userText(c, err),
 			},
 			"report": res.Report,
 		})

@@ -38,7 +38,7 @@ func (s *Server) createUser(c *gin.Context) {
 		Email: req.Email, Name: req.Name, AuthType: model.AuthLocal, Password: req.Password,
 	})
 	if err != nil {
-		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, err.Error(), nil)
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, userText(c, err), nil)
 		return
 	}
 	if !s.record(c, audit.ActionCreate, audit.TargetUser, out.ID, nil, out) {

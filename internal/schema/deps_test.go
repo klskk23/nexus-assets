@@ -17,8 +17,8 @@ func computed(key, label, tmpl string) model.FieldDefinition {
 
 func TestDependencyClosureFollowsExpressionKeysTransitively(t *testing.T) {
 	lib := map[string]model.FieldDefinition{
-		"label":     computed("label", "标签", `{{ printf "%s-%s" .category.code .attrs.sn }}`),
-		"sn":        computed("sn", "编号", `{{ .attrs.mac | hex2dec }}`),
+		"label":     computed("label", "标签", `category.code + "-" + str(attrs.sn)`),
+		"sn":        computed("sn", "编号", `hex2dec(attrs.mac)`),
 		"mac":       {Key: "mac", Label: "MAC", Type: model.FieldMAC},
 		"unrelated": {Key: "unrelated", Label: "无关", Type: model.FieldText},
 	}
@@ -37,8 +37,8 @@ func TestDependencyClosureFollowsExpressionKeysTransitively(t *testing.T) {
 
 func TestDependencyClosureReportsACycleRatherThanLooping(t *testing.T) {
 	lib := map[string]model.FieldDefinition{
-		"a": computed("a", "A", "{{ .attrs.b }}"),
-		"b": computed("b", "B", "{{ .attrs.a }}"),
+		"a": computed("a", "A", "attrs.b"),
+		"b": computed("b", "B", "attrs.a"),
 	}
 	_, err := DependencyClosure("a", lib)
 	if err == nil {
@@ -65,7 +65,7 @@ func TestBindGateRefusesUnmetDependencies(t *testing.T) {
 
 	sn, err := s.CreateField(ctx, CreateFieldInput{
 		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
-		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -126,7 +126,7 @@ func TestBindGateAcceptsAnInheritedInput(t *testing.T) {
 	}
 	sn, err := s.CreateField(ctx, CreateFieldInput{
 		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
-		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -151,7 +151,7 @@ func TestUnbindGateRefusesWhileSomethingReadsTheField(t *testing.T) {
 	})
 	sn, _ := s.CreateField(ctx, CreateFieldInput{
 		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
-		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
 	})
 	if err := s.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
 		t.Fatal(err)
@@ -217,7 +217,7 @@ func TestTemplateEditIsReCheckedAgainstEveryBoundCategory(t *testing.T) {
 	})
 	sn, _ := s.CreateField(ctx, CreateFieldInput{
 		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
-		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
 	})
 	for _, b := range []struct {
 		id       string
@@ -228,7 +228,7 @@ func TestTemplateEditIsReCheckedAgainstEveryBoundCategory(t *testing.T) {
 		}
 	}
 
-	opts := model.FieldOptions{Template: "{{ .attrs.firmware | upper }}"}
+	opts := model.FieldOptions{Template: "upper(attrs.firmware)"}
 	_, err := s.UpdateField(ctx, sn.ID, UpdateFieldInput{Options: &opts})
 	if !errors.Is(err, ErrDependenciesUnmet) {
 		t.Fatalf("want ErrDependenciesUnmet, got %v", err)
@@ -242,7 +242,7 @@ func TestTemplateEditIsReCheckedAgainstEveryBoundCategory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after.Options.Template != "{{ .attrs.mac | hex2dec }}" {
+	if after.Options.Template != "hex2dec(attrs.mac)" {
 		t.Errorf("the template was changed despite the refusal: %q", after.Options.Template)
 	}
 

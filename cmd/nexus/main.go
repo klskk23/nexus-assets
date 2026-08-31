@@ -81,6 +81,12 @@ func setup(ctx context.Context) (*app, error) {
 		db.Close()
 		return nil, err
 	}
+	// Runs once, after the schema is in place: the stored rules need a syntax
+	// tree to be rewritten, which SQL has none of.
+	if err := db.TranslateExpressions(ctx); err != nil {
+		db.Close()
+		return nil, err
+	}
 	sch := schema.New(db)
 	a := &app{
 		cfg: cfg, db: db,

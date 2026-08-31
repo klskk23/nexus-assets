@@ -77,11 +77,11 @@ func (s *Store) ReferrersOf(ctx context.Context, key string) ([]Referrer, error)
 }
 
 func templateRefs(name, text string) ([]string, error) {
-	t, err := compute.Parse(name, text)
+	p, err := compute.Parse(name, text)
 	if err != nil {
 		return nil, err
 	}
-	return compute.AttrReferences(t.Tree.Root), nil
+	return p.AttrReferences(), nil
 }
 
 // Blocker names one asset standing in the way of deleting a field.

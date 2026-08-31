@@ -110,7 +110,7 @@ export const zh = {
     computedHint: "由其他字段自动计算，不可直接填写",
     deprecatedSuffix: "（已废弃）",
     defaultStockSuffix: "（默认库存点）",
-    template: "模板",
+    template: "表达式",
     requestFailed: "请求失败",
     expand: (name: string) => `展开 ${name}`,
     collapse: (name: string) => `收起 ${name}`,
@@ -310,7 +310,7 @@ export const zhConfig = {
     edit: "编辑字段",
     staticGroup: "静态键（人工录入或导入）",
     expressionGroup: "表达式键（由其他键推导）",
-    templateHint: "可用：{{ .attrs.键名 }}、{{ .category.code }}、{{ .model.name }}、{{ .id }}。支持管道，如 {{ .attrs.mac | hex2dec }}。不支持 if/range。",
+    templateHint: "可读 attrs.键名、category.code、model.name、id。支持函数、管道、条件与拼接。点右上角的「怎么写」看例子。",
     depsHint: "绑定到类别时，它依赖的静态键必须已绑定且标为必填，否则会被拒绝。",
     regex: "校验正则",
     regexHint: "校验提示（填写错误时展示给用户）",
@@ -329,7 +329,7 @@ export const zhConfig = {
     targetUser: "账号",
     targetEntity: "持有方实体",
     entityTypes: "限定类型",
-    template: "计算模板",
+    template: "表达式",
     delete: "删除字段",
     deleteTitle: "删除字段",
     deleteHint: (label: string) =>
@@ -456,4 +456,67 @@ export const zhStatuses = {
     teal: "青",
     rose: "玫红",
   } as Record<string, string>,
+}
+
+export const tExprHelp = {
+  open: "怎么写",
+  title: "表达式怎么写",
+  subtitle: "表达式把一台设备的若干字段算成一个值 —— 通常是它的编号。",
+
+  readsTitle: "能读什么",
+  reads: [
+    ["attrs.键名", "这台设备某个字段的值，例如 attrs.mac"],
+    ["category.code", "所属类别的代号"],
+    ["category.name", "所属类别的名称"],
+    ["model.name", "型号名"],
+    ["model.vendor", "厂商"],
+    ["id", "系统内部的 UUID"],
+  ] as [string, string][],
+  readsNote: "只有这六个。写错名字会被当场拒绝，而不是算出一个含「空」的编号。",
+
+  examplesTitle: "例子",
+  examples: [
+    ["hex2dec(attrs.mac)", "把 MAC 当成十六进制转成十进制"],
+    ["attrs.mac | hex2dec() | pad(16)", "同上，再左补零到 16 位"],
+    ['category.code + "-" + str(attrs.seq)', "类别代号加序号，中间一个连字符"],
+    ['attrs.kind == "spare" ? "S" : "M"', "备件用 S，其余用 M"],
+    ["attrs.sn ?? hex2dec(attrs.mac)", "有 sn 就用 sn，没有就用 MAC 算"],
+    ["upper(trim(attrs.rack))", "去掉首尾空格再转大写"],
+  ] as [string, string][],
+
+  pipeTitle: "管道",
+  pipeBody: "x | f() 等同于 f(x)，多个函数串起来时从左往右读更顺。",
+  pipeExample: "attrs.mac | trunc(6) | lower()  等同于  lower(trunc(attrs.mac, 6))",
+
+  funcsTitle: "可用函数",
+  funcs: [
+    ["hex2dec(x)", "十六进制转十进制，忽略 MAC 里的分隔符"],
+    ["dec2hex(x)", "十进制转大写十六进制"],
+    ["pad(x, n)", "左补零到 n 位。超长不截断"],
+    ["trunc(x, n)", "只保留前 n 个字符"],
+    ["slice(x, a, b)", "取第 a 到 b 个字符（不含 b）"],
+    ["upper(x) / lower(x) / trim(x)", "大写 / 小写 / 去首尾空格"],
+    ["replace(x, 旧, 新)", "替换全部出现"],
+    ["default(x, 兜底)", "x 为空时用兜底值"],
+    ["str(x)", "转成字符串。拼接数字时需要"],
+  ] as [string, string][],
+  funcsNote: "另有 len、string、hasPrefix、split 等常用内建函数可用。",
+
+  opsTitle: "运算符",
+  ops: [
+    ["+", "拼接字符串，或做加法"],
+    ["== != < >", "比较"],
+    ["? :", "条件：判断 ? 真时 : 假时"],
+    ["??", "左边为空时取右边"],
+    ["in", 'attrs.vendor in ["Acme", "Beta"]'],
+    ["matches", '正则：attrs.mac matches "^[0-9A-F]{12}$"'],
+  ] as [string, string][],
+
+  rulesTitle: "两条规矩",
+  rules: [
+    "结果不能为空，也不能含有取不到值的字段 —— 那样的编号会被拒绝写入。",
+    "把表达式绑定到类别时，它读到的每个字段都必须已绑定且标为必填，否则绑定会被拒绝。",
+  ],
+
+  close: "知道了",
 }

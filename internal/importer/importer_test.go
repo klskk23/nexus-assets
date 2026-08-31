@@ -70,7 +70,7 @@ func newFixture(t *testing.T) *fixture {
 	})
 	tag, _ := sch.CreateField(ctx, schema.CreateFieldInput{
 		Key: "asset_tag", Label: "推导编号", Type: model.FieldComputed, IsUnique: true,
-		Options: model.FieldOptions{Template: "{{ .attrs.mac | hex2dec }}"},
+		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
 	})
 	for _, f := range []struct {
 		id       string

@@ -96,7 +96,7 @@ type Prepared struct {
 	Fields []model.BoundField
 	Attrs  map[string]any
 	// ID is the asset id, allocated here rather than at write time so an
-	// expression key may read {{ .id }} -- which is the natural way to build a
+	// expression key may read id -- which is the natural way to build a
 	// short label out of the UUID now that there is no separate serial column.
 	ID string
 	// Unique holds the values that must not collide, keyed by field.
@@ -330,17 +330,19 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 // evalComputed renders every computed field in dependency order.
 func evalComputed(fields []model.BoundField, ctx compute.Context) (map[string]any, error) {
 	deps := map[string][]string{}
-	tmplByKey := map[string]string{}
+	// Compiled once and kept: recompute runs these across a whole subtree, and
+	// parsing per asset would be the same work thousands of times.
+	progByKey := map[string]*compute.Program{}
 	for _, f := range fields {
 		if f.Type != model.FieldComputed {
 			continue
 		}
-		t, err := compute.Parse(f.Key, f.Options.Template)
+		p, err := compute.Parse(f.Key, f.Options.Template)
 		if err != nil {
 			return nil, FieldErrors{f.Key: asMessage(err)}
 		}
-		tmplByKey[f.Key] = f.Options.Template
-		deps[f.Key] = compute.AttrReferences(t.Tree.Root)
+		progByKey[f.Key] = p
+		deps[f.Key] = p.AttrReferences()
 	}
 	if len(deps) == 0 {
 		return nil, nil
@@ -353,7 +355,7 @@ func evalComputed(fields []model.BoundField, ctx compute.Context) (map[string]an
 	attrs, _ := ctx["attrs"].(map[string]any)
 	out := map[string]any{}
 	for _, key := range order {
-		v, err := compute.Eval(key, tmplByKey[key], ctx)
+		v, err := progByKey[key].Run(ctx)
 		if err != nil {
 			return nil, FieldErrors{key: i18n.M(i18n.KeyFieldComputeFail, err)}
 		}

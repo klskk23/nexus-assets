@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
+import { ExpressionHelp } from "@/features/fields/ExpressionHelp"
 import { Input } from "@/components/ui/input"
 import { Field, FieldLabel } from "@/components/ui/field"
 import {
@@ -242,10 +243,14 @@ export function FieldEditor({ field, onClose }: Props) {
 
         {field.type === "computed" && (
           <Field>
-            <FieldLabel htmlFor="fe-template">{tConfig.field.template}</FieldLabel>
+            <div className="flex items-center justify-between gap-2">
+              <FieldLabel htmlFor="fe-template">{tConfig.field.template}</FieldLabel>
+              <ExpressionHelp />
+            </div>
             <Input
               id="fe-template"
               className="font-mono"
+              placeholder="hex2dec(attrs.mac)"
               value={options.template ?? ""}
               onChange={(e) => set({ template: e.target.value })}
             />

@@ -36,7 +36,7 @@ func TestRecomputeDryRunWritesNothing(t *testing.T) {
 	}
 	before := a.DisplayName
 
-	f.setTemplate(t, `{{ printf "%s-%s" .category.code (.attrs.mac | hex2dec) }}`)
+	f.setTemplate(t, `category.code + "-" + hex2dec(attrs.mac)`)
 
 	report, err := f.svc.Recompute(f.ctx, f.catID, true)
 	if err != nil {
@@ -77,7 +77,7 @@ func TestRecomputeAppliesAndArchivesOldNumbers(t *testing.T) {
 		oldSNs[i] = f.numberOf(t, id)
 	}
 
-	f.setTemplate(t, `{{ printf "%s-%s" .category.code (.attrs.mac | hex2dec) }}`)
+	f.setTemplate(t, `category.code + "-" + hex2dec(attrs.mac)`)
 
 	report, err := f.svc.Recompute(f.ctx, f.catID, false)
 	if err != nil {
@@ -132,7 +132,7 @@ func TestRecomputeRollsBackEntirelyOnAConflict(t *testing.T) {
 	before := []string{f.numberOf(t, ids[0]), f.numberOf(t, ids[1])}
 
 	// Keeping only the trailing four hex digits collapses them onto one number.
-	f.setTemplate(t, `{{ slice 8 12 .attrs.mac | hex2dec }}`)
+	f.setTemplate(t, `hex2dec(slice(attrs.mac, 8, 12))`)
 
 	report, err := f.svc.Recompute(f.ctx, f.catID, true)
 	if err != nil {
@@ -187,7 +187,7 @@ func TestRecomputeReportsAnUnevaluableRule(t *testing.T) {
 	}
 	// The dependency is satisfied -- mac is bound and required -- so this gets
 	// past the bind gate and fails only when it meets an actual value.
-	f.setTemplate(t, `{{ slice 99 100 .attrs.mac }}`)
+	f.setTemplate(t, `slice(attrs.mac, 99, 100)`)
 
 	_, err := f.svc.Recompute(f.ctx, f.catID, true)
 	if err == nil {
@@ -204,7 +204,7 @@ func TestRecomputeReportsAnUnevaluableRule(t *testing.T) {
 func TestTemplateEditCannotIntroduceAnOptionalDependency(t *testing.T) {
 	f := newFixture(t)
 	// firmware is bound but optional, so an expression may not read it.
-	opts := model.FieldOptions{Template: `{{ .attrs.firmware | upper }}`}
+	opts := model.FieldOptions{Template: `upper(attrs.firmware)`}
 	_, err := f.schema.UpdateField(f.ctx, f.snField, schema.UpdateFieldInput{Options: &opts})
 	if !errors.Is(err, schema.ErrDependenciesUnmet) {
 		t.Fatalf("want ErrDependenciesUnmet, got %v", err)
