@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { screen, within } from "@testing-library/react"
+import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { Overview } from "@/routes/Overview"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { chooseByLabel } from "@/test/choose"
 
 const navigate = vi.fn()
 vi.mock("react-router", async () => {
@@ -131,10 +132,39 @@ describe("Overview", () => {
 
   it("shows an error state with a retry", async () => {
     get.mockImplementation((p: string) =>
-      p === "/overview" ? Promise.reject(new Error("服务不可用")) : Promise.resolve(categories),
+      p.startsWith("/overview") ? Promise.reject(new Error("服务不可用")) : Promise.resolve(categories),
     )
     renderWithProviders(<Overview />)
     expect(await screen.findByRole("alert")).toHaveTextContent("服务不可用")
     expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument()
+  })
+})
+
+// Each entry is a multi-line block, so ten of them is already a long card on a
+// page meant to be taken in at a glance. The count exists, and now it shows.
+describe("Overview recent count", () => {
+  beforeEach(() => {
+    navigate.mockReset()
+    get.mockReset().mockImplementation((p: string) => route(p))
+  })
+
+  it("asks for ten by default", async () => {
+    renderWithProviders(<Overview />)
+    await screen.findByText("最近流转")
+
+    const asked = get.mock.calls.map((c) => c[0] as string).filter((p) => p.startsWith("/overview"))
+    expect(asked[0]).toBe("/overview?recent=10")
+  })
+
+  it("lets the count be changed", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Overview />)
+    await screen.findByText("最近流转")
+
+    await chooseByLabel(user, "显示条数", "5 条")
+    await waitFor(() => {
+      const asked = get.mock.calls.map((c) => c[0] as string).filter((p) => p.startsWith("/overview"))
+      expect(asked[asked.length - 1]).toBe("/overview?recent=5")
+    })
   })
 })

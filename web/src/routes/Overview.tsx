@@ -39,13 +39,18 @@ interface OverviewData {
   recent_transfers: Transfer[]
 }
 
+/** How many recent entries the card offers. The middle one is the default. */
+const RECENT_COUNTS = [5, 10, 20]
+
 export function Overview() {
   const navigate = useNavigate()
   const [quickCategory, setQuickCategory] = useState("")
+  const [recentCount, setRecentCount] = useState(RECENT_COUNTS[1])
 
   const overview = useQuery({
-    queryKey: ["overview"],
-    queryFn: () => api.get<OverviewData>("/overview"),
+    queryKey: ["overview", recentCount],
+    queryFn: () => api.get<OverviewData>(`/overview?recent=${recentCount}`),
+    placeholderData: (prev) => prev,
   })
   const categories = useQuery({
     queryKey: ["categories"],
@@ -192,8 +197,29 @@ export function Overview() {
           </div>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center gap-3 space-y-0">
               <CardTitle>{zhOverview.recentTitle}</CardTitle>
+              {/* Each entry is a multi-line block, so how many belong here is a
+                  matter of taste rather than a constant worth guessing at. */}
+              <Field orientation="horizontal" className="ml-auto w-auto">
+                <FieldLabel htmlFor="recent-count" className="sr-only">
+                  {zhOverview.recentCount}
+                </FieldLabel>
+                <Select value={String(recentCount)} onValueChange={(v) => setRecentCount(Number(v))}>
+                  <SelectTrigger id="recent-count" size="sm" className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {RECENT_COUNTS.map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {zhOverview.recentCountUnit(n)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
             </CardHeader>
             <CardContent>
               <Timeline events={overview.data?.recent_transfers ?? []} />

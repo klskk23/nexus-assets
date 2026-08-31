@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { NONE, fromNone, toNone } from "@/lib/select"
-import type { AssetPage, Category, CategorySchema } from "@/lib/types"
+import type { AssetPage, Category, CategorySchema, User } from "@/lib/types"
 import { zh, zhImport } from "@/i18n/zh"
 import { StateBoundary } from "@/components/StateBoundary"
 import { useColumnSelection } from "@/features/assets/useColumns"
@@ -102,6 +102,7 @@ export function Assets() {
     searchParams.get("include_descendants") !== "false",
   )
   const [status, setStatus] = useState(searchParams.get("status") ?? "")
+  const [ownerId, setOwnerId] = useState(searchParams.get("owner_id") ?? "")
   const { keys: extraColumns, toggle } = useColumnSelection()
   const [selected, setSelected] = useState<string[]>([])
   const [done, setDone] = useState<string | null>(null)
@@ -128,6 +129,7 @@ export function Assets() {
     params.set("include_descendants", String(includeDescendants))
   }
   if (status) params.set("status", status)
+  if (ownerId) params.set("owner_id", ownerId)
 
   const listParams = new URLSearchParams(params)
   listParams.set("limit", String(pageSize))
@@ -143,6 +145,11 @@ export function Assets() {
   const categories = useQuery({
     queryKey: ["categories"],
     queryFn: () => api.get<Category[]>("/categories"),
+  })
+
+  const users = useQuery({
+    queryKey: ["users"],
+    queryFn: () => api.get<User[]>("/users"),
   })
 
   const schema = useQuery({
@@ -239,6 +246,29 @@ export function Assets() {
                     {v}
                   </SelectItem>
                 ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field className="w-auto">
+          <FieldLabel htmlFor="owner" className="sr-only">
+            {zh.assets.owner}
+          </FieldLabel>
+          <Select value={toNone(ownerId)} onValueChange={(v) => setOwnerId(fromNone(v))}>
+            <SelectTrigger id="owner" className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={NONE}>{zh.assets.allOwners}</SelectItem>
+                {(users.data ?? [])
+                  .filter((u) => u.status === "active")
+                  .map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name}
+                    </SelectItem>
+                  ))}
               </SelectGroup>
             </SelectContent>
           </Select>

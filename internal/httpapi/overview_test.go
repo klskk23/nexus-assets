@@ -198,3 +198,26 @@ func joinStrings(parts []string, sep string) string {
 }
 
 var _ = asset.Overview{}
+
+// Ten entries of a multi-line block is already a long card on a page meant to
+// be taken in at a glance, so the size is the caller's to choose.
+func TestOverviewRecentLimitIsAdjustableAndClamped(t *testing.T) {
+	h := newHarness(t)
+	h.seed(t, 0, 12)
+
+	for _, tc := range []struct {
+		query string
+		want  int
+	}{
+		{"", 10},           // the default
+		{"?recent=3", 3},   // fewer, which is the point
+		{"?recent=99", 12}, // clamped to 50, and there are only 12 events
+		{"?recent=0", 10},  // nonsense falls back rather than erroring
+		{"?recent=x", 10},
+	} {
+		ov := decode[overviewResponse](t, h.get(t, "/api/overview"+tc.query))
+		if len(ov.RecentTransfers) != tc.want {
+			t.Errorf("%q gave %d entries, want %d", tc.query, len(ov.RecentTransfers), tc.want)
+		}
+	}
+}

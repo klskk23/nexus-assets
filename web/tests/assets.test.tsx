@@ -55,8 +55,15 @@ const page = {
   limit: 50,
 }
 
+const users = [
+  { id: "u1", email: "a@example.com", name: "管理员", auth_type: "local", status: "active" },
+  { id: "u2", email: "z@example.com", name: "张三", auth_type: "local", status: "active" },
+  { id: "u3", email: "g@example.com", name: "离职的", auth_type: "local", status: "disabled" },
+]
+
 function route(path: string) {
   if (path === "/categories") return Promise.resolve(categories)
+  if (path === "/users") return Promise.resolve(users)
   if (path.endsWith("/schema")) return Promise.resolve(schema)
   if (path.startsWith("/assets")) return Promise.resolve(page)
   return Promise.resolve([])
@@ -229,3 +236,49 @@ describe("Assets paging", () => {
   })
 })
 
+
+// The list could already be filtered by owner through the API; the filter bar
+// simply never offered it.
+describe("Assets owner filter", () => {
+  beforeEach(() => {
+    navigate.mockReset()
+    get.mockReset().mockImplementation(route)
+    localStorage.clear()
+  })
+
+  it("filters by owner", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 1 条/)
+
+    await chooseByLabel(user, "负责人", "张三")
+    await waitFor(() => {
+      const asked = get.mock.calls.map((c) => c[0] as string).filter((p) => p.startsWith("/assets"))
+      expect(new URLSearchParams(asked[asked.length - 1].split("?")[1]).get("owner_id")).toBe("u2")
+    })
+  })
+
+  // A disabled account cannot be given new devices, so offering it as a filter
+  // would only ever return what somebody left behind.
+  it("offers only active accounts", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 1 条/)
+
+    await user.click(screen.getByRole("combobox", { name: "负责人" }))
+    const names = (await screen.findAllByRole("option")).map((o) => o.textContent)
+    expect(names).toContain("张三")
+    expect(names).not.toContain("离职的")
+  })
+
+  // Export follows the filters, and this is one of them.
+  it("carries the owner into the export link", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 1 条/)
+
+    await chooseByLabel(user, "负责人", "张三")
+    const href = screen.getByRole("link", { name: "导出 CSV" }).getAttribute("href")!
+    expect(new URLSearchParams(href.split("?")[1]).get("owner_id")).toBe("u2")
+  })
+})

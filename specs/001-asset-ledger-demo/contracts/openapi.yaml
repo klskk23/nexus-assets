@@ -81,6 +81,14 @@ paths:
   # ---------------- overview ----------------
   /overview:
     get:
+      parameters:
+        - name: recent
+          in: query
+          schema: { type: integer, default: 10, maximum: 50 }
+          description: >
+            最近流转的条数。每条是一个多行块，十条在一个「一眼看完」的页面上已经很长了，
+            所以由调用方决定。与其余分页参数一样是钳制而非拒绝：过期的客户端要一千条会得到
+            五十条，而不是一个错误。
       tags: [overview]
       summary: 首页概览：状态计数、类别分布、最近流转
       responses:

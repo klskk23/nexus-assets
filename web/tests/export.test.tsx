@@ -20,6 +20,9 @@ vi.mock("@/lib/api", async () => {
 const categories = [
   { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", display_key: "" },
 ]
+const users = [
+  { id: "u1", email: "a@example.com", name: "管理员", auth_type: "local", status: "active" },
+]
 const page = { items: [], total: 0, offset: 0, limit: 50 }
 const schema = {
   category: categories[0],
@@ -29,6 +32,7 @@ const schema = {
 beforeEach(() => {
   get.mockReset().mockImplementation((p: string) => {
     if (p === "/categories") return Promise.resolve(categories)
+    if (p === "/users") return Promise.resolve(users)
     if (p.endsWith("/schema")) return Promise.resolve(schema)
     return Promise.resolve(page)
   })
