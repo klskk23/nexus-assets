@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { AssetDetail } from "@/routes/AssetDetail"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { statusRoute } from "./fixtures/statuses"
 import { choose } from "@/test/choose"
 import { ApiError } from "@/lib/api"
 
@@ -58,6 +59,9 @@ const models = [
 ]
 
 function route(p: string) {
+  const st = statusRoute(p)
+  if (st) return st
+
   if (p === "/assets/a1") {
     return Promise.resolve({
       asset,
@@ -92,7 +96,7 @@ describe("AssetDetail", () => {
   it("shows the number, status and any retired values", async () => {
     renderWithProviders(<AssetDetail />)
     expect(await screen.findByText("112394521950")).toBeInTheDocument()
-    expect(screen.getByText("在库")).toBeInTheDocument()
+    expect(await screen.findByText("在库")).toBeInTheDocument()
     expect(screen.getByText(/112394521949/)).toBeInTheDocument()
   })
 

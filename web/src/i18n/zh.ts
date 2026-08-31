@@ -14,6 +14,7 @@ export const zh = {
     categories: "类别",
     fields: "信息项",
     models: "型号",
+    statuses: "状态",
     holders: "持有方",
     users: "账号",
     importPage: "导入",
@@ -31,14 +32,6 @@ export const zh = {
     google: "使用 Google 登录",
     submitting: "登录中…",
   },
-
-  status: {
-    in_stock: "在库",
-    in_use: "已签出",
-    in_repair: "维修中",
-    lost: "丢失",
-    retired: "已报废",
-  } as Record<string, string>,
 
   assets: {
     title: "资产",
@@ -116,6 +109,7 @@ export const zh = {
     select: "选择",
     selectOne: (name: string) => `选择 ${name}`,
     lineNo: (n: number) => `第 ${n} 行`,
+    actions: "操作",
   },
 } as const
 
@@ -355,7 +349,7 @@ export const zhAudit = {
   emptyHint: "新建或修改类别、信息项、型号、持有方、账号后，记录会出现在这里。",
   total: (n: number) => `共 ${n} 条`,
   actions: { create: "新建", update: "修改", archive: "停用", delete: "删除", recompute: "重算" } as Record<string, string>,
-  targets: { category: "类别", field: "信息项", binding: "字段绑定", model: "型号", holder: "持有方", user: "账号" } as Record<string, string>,
+  targets: { category: "类别", field: "信息项", binding: "字段绑定", model: "型号", holder: "持有方", user: "账号", status: "状态" } as Record<string, string>,
 } as const
 
 export const zhConfirm = {
@@ -381,4 +375,46 @@ export const zhOverview = {
   noCategoriesHint: "类别决定设备要记录哪些信息。先建一个类别才能录入设备。",
   goConfigure: "去配置类别",
   emptyDistribution: "还没有任何设备",
+} as const
+
+export const zhStatuses = {
+  title: "状态",
+  create: "新建状态",
+  key: "键名",
+  keyHint: "小写字母、数字与下划线，建好后不可更改",
+  label: "显示名",
+  color: "颜色",
+  kind: "类型",
+  builtin: "内置",
+  custom: "自定义",
+  behaviour: "行为",
+  requiresLocation: "持有方必须是位置",
+  requiresLocationHint: "适合表示「放在库房里」的状态。",
+  countsAsAvailable: "计入类别分布",
+  countsAsAvailableHint: "关掉后，处于该状态的设备不计入首页的类别可用量。",
+  notCounted: "不计入类别分布",
+  terminal: "终态",
+  terminalHint: "终态的设备不能再转到别的状态，只能改最后一条流转记录。",
+  builtinLocked: "内置状态的行为由系统定义，只能改显示名与颜色，不能删除。",
+  usage: "使用情况",
+  inUse: (n: number) => `${n} 台设备`,
+  unused: "无设备使用",
+  inHistory: (n: number) => `历史 ${n} 条`,
+  delete: "删除",
+  deleteTitle: "删除状态",
+  deleteHint: (label: string) => `「${label}」将从所有下拉框中移除。`,
+  deleteHistoryHint: (label: string, n: number) =>
+    `「${label}」在 ${n} 条流转记录中出现过。删除后那些记录会显示键名而不是这个名字，记录本身不会丢失。`,
+  empty: "还没有任何状态",
+  emptyHint: "系统内置了五个状态，如果这里是空的，说明数据库迁移没有跑完。",
+  colors: {
+    slate: "石墨",
+    green: "绿",
+    blue: "蓝",
+    amber: "琥珀",
+    red: "红",
+    violet: "紫",
+    teal: "青",
+    rose: "玫红",
+  } as Record<string, string>,
 } as const

@@ -22,6 +22,7 @@ export const router = createBrowserRouter([
       { path: "categories", lazy: async () => ({ Component: (await import("./Categories")).Categories }) },
       { path: "fields", lazy: async () => ({ Component: (await import("./Fields")).Fields }) },
       { path: "models", lazy: async () => ({ Component: (await import("./Models")).Models }) },
+      { path: "statuses", lazy: async () => ({ Component: (await import("./Statuses")).Statuses }) },
       { path: "holders", lazy: async () => ({ Component: (await import("./Holders")).Holders }) },
       { path: "audit", lazy: async () => ({ Component: (await import("./Audit")).Audit }) },
       { path: "import", lazy: async () => ({ Component: (await import("./Import")).Import }) },

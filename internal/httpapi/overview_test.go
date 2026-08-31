@@ -46,8 +46,8 @@ func TestStatusCountsMatchTheListEndpoint(t *testing.T) {
 		}
 	}
 	// Every status gets a card even at zero, so they do not appear and vanish.
-	if len(ov.StatusCounts) != len(model.AllStatuses) {
-		t.Errorf("got %d status cards, want %d", len(ov.StatusCounts), len(model.AllStatuses))
+	if len(ov.StatusCounts) != len(model.BuiltinStatuses) {
+		t.Errorf("got %d status cards, want %d", len(ov.StatusCounts), len(model.BuiltinStatuses))
 	}
 	if ov.Total != 6 {
 		t.Errorf("total = %d, want 6", ov.Total)
@@ -148,7 +148,7 @@ func TestOverviewOnAnEmptySystem(t *testing.T) {
 	if ov.Total != 0 {
 		t.Errorf("total = %d", ov.Total)
 	}
-	if len(ov.StatusCounts) != len(model.AllStatuses) {
+	if len(ov.StatusCounts) != len(model.BuiltinStatuses) {
 		t.Error("the cards should still be there at zero")
 	}
 	if ov.RecentTransfers == nil {

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { NewAssetDialog } from "@/features/assets/NewAssetDialog"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { statusRoute } from "./fixtures/statuses"
 import { chooseByLabel } from "@/test/choose"
 
 const navigate = vi.fn()
@@ -37,6 +38,9 @@ const withLocation = [
 ]
 
 function route(path: string, holders: unknown[] = withLocation) {
+  const st = statusRoute(path)
+  if (st) return st
+
   if (path === "/categories") return Promise.resolve(categories)
   if (path === "/holders") return Promise.resolve(holders)
   if (path === "/models") return Promise.resolve([])

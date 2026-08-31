@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { Assets } from "@/routes/Assets"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { statusRoute } from "./fixtures/statuses"
 import { chooseByLabel } from "@/test/choose"
 
 const navigate = vi.fn()
@@ -62,6 +63,9 @@ const users = [
 ]
 
 function route(path: string) {
+  const st = statusRoute(path)
+  if (st) return st
+
   if (path === "/categories") return Promise.resolve(categories)
   if (path === "/users") return Promise.resolve(users)
   if (path.endsWith("/schema")) return Promise.resolve(schema)

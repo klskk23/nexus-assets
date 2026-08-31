@@ -18,19 +18,52 @@ const (
 	StatusRetired  AssetStatus = "retired"
 )
 
-// AllStatuses lists every status in display order.
-var AllStatuses = []AssetStatus{
+// BuiltinStatuses lists the statuses the rest of the system is written
+// against, in display order.
+//
+// These five carry behaviour rather than only a name -- a transition matrix, a
+// holder constraint, an exclusion from the category distribution, and the
+// names of two transfer kinds. Administrators may add more, but not these:
+// removing one would take a rule with it.
+var BuiltinStatuses = []AssetStatus{
 	StatusInStock, StatusInUse, StatusInRepair, StatusLost, StatusRetired,
 }
 
-// Valid reports whether s is a known status.
-func (s AssetStatus) Valid() bool {
-	for _, v := range AllStatuses {
+// Builtin reports whether s is one of the five the code knows by name.
+func (s AssetStatus) Builtin() bool {
+	for _, v := range BuiltinStatuses {
 		if v == s {
 			return true
 		}
 	}
 	return false
+}
+
+// Status is one entry in the status list.
+//
+// The three flags replace what used to be hardcoded checks against particular
+// keys, so a status added at runtime can carry the same meanings.
+type Status struct {
+	Key   AssetStatus `json:"key"`
+	Label string      `json:"label"`
+	// Color names a slot in the palette rather than a value: a colour that
+	// reads on white rarely reads on black, and the palette is defined once
+	// per theme.
+	Color   string `json:"color"`
+	Sort    int    `json:"sort"`
+	Builtin bool   `json:"builtin"`
+	// RequiresLocation constrains the holder to a location entity. Being "in
+	// this status but held by a person" would make the stocktake question --
+	// which warehouse is it in -- unanswerable.
+	RequiresLocation bool `json:"requires_location"`
+	// CountsAsAvailable keeps it in the category distribution. "How many
+	// routers do we have" means working ones.
+	CountsAsAvailable bool `json:"counts_as_available"`
+	// Terminal forbids moving out of it. A device that finished the write-off
+	// process has usually been physically disposed of.
+	Terminal  bool      `json:"terminal"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // HolderType distinguishes a user account from a holder entity.

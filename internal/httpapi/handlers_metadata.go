@@ -479,6 +479,8 @@ func unwrapSentinel(err error) error {
 	for _, s := range []error{
 		schema.ErrCategoryHasChildren,
 		schema.ErrCategoryHasAssets,
+		schema.ErrStatusBuiltin,
+		schema.ErrStatusInUse,
 	} {
 		if errors.Is(err, s) {
 			return s

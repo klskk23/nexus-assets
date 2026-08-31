@@ -39,6 +39,7 @@ const (
 	TargetModel    TargetType = "model"
 	TargetHolder   TargetType = "holder"
 	TargetUser     TargetType = "user"
+	TargetStatus   TargetType = "status"
 )
 
 // Entry is one recorded change.

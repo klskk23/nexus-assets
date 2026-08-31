@@ -94,6 +94,10 @@ func FailErr(c *gin.Context, err error) {
 		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
 			userText(err, schema.ErrDependenciesUnmet), nil)
 
+	case errors.Is(err, schema.ErrStatusInvalid):
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
+			userText(err, schema.ErrStatusInvalid), nil)
+
 	case errors.Is(err, schema.ErrDisplayKeyInvalid):
 		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
 			userText(err, schema.ErrDisplayKeyInvalid), nil)

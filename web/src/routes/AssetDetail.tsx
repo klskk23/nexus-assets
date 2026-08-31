@@ -7,6 +7,7 @@ import { api, ApiError, type FieldErrors } from "@/lib/api"
 import type { Asset, CategorySchema } from "@/lib/types"
 import type { Transfer } from "@/lib/transferTypes"
 import { zh, zhTransfer } from "@/i18n/zh"
+import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { StateBoundary } from "@/components/StateBoundary"
 import { DynamicForm } from "@/features/assets/DynamicForm"
 import { Timeline } from "@/features/transfers/Timeline"
@@ -20,7 +21,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -140,7 +140,7 @@ export function AssetDetail() {
 
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-mono text-xl font-semibold">{asset.display_name}</h1>
-            <Badge variant="secondary">{zh.status[asset.status] ?? asset.status}</Badge>
+            <StatusBadge status={asset.status} />
             <Button className="ml-auto" onClick={() => setTransferOpen(true)}>
               {zh.assets.transfer}
             </Button>

@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, ApiError, type FieldErrors } from "@/lib/api"
 import type { Asset, AssetStatus, Category, CategorySchema, HolderEntity } from "@/lib/types"
 import { zh } from "@/i18n/zh"
+import { useStatuses } from "@/features/statuses/useStatuses"
 import { useAuth } from "@/features/auth/useAuth"
 import { DynamicForm } from "@/features/assets/DynamicForm"
 import { ModelPicker } from "@/features/assets/ModelPicker"
@@ -53,6 +54,7 @@ interface Props {
 export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const statuses = useStatuses()
   const { user } = useAuth()
 
   const [categoryId, setCategoryId] = useState(initialCategoryID ?? "")
@@ -172,9 +174,15 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {Object.entries(zh.status).map(([k, v]) => (
-                    <SelectItem key={k} value={k} disabled={k === "in_stock" && !canStock}>
-                      {v}
+                  {statuses.statuses.map((s) => (
+                    <SelectItem
+                      key={s.key}
+                      value={s.key}
+                      // A status that insists on a location is unreachable
+                      // until one exists.
+                      disabled={s.requires_location && !canStock}
+                    >
+                      {s.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>

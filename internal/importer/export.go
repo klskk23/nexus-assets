@@ -77,9 +77,12 @@ func (s *Service) Export(ctx context.Context, f asset.ListFilter) ([]byte, error
 		return nil, fmt.Errorf("write header: %w", err)
 	}
 
-	statusLabel := map[model.AssetStatus]string{
-		model.StatusInStock: "在库", model.StatusInUse: "已签出",
-		model.StatusInRepair: "维修中", model.StatusLost: "丢失", model.StatusRetired: "已报废",
+	// The labels used to be a second copy of the ones in the web bundle, which
+	// is exactly the arrangement that drifts. They come from the same rows the
+	// UI reads now.
+	statuses, err := s.schema.StatusSet(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	for _, a := range res.Items {
@@ -90,7 +93,7 @@ func (s *Service) Export(ctx context.Context, f asset.ListFilter) ([]byte, error
 		rec := []string{
 			a.DisplayName,
 			catName[a.CategoryID],
-			statusLabel[a.Status],
+			statuses.Label(a.Status),
 			holderLabel,
 			userName[a.OwnerID],
 			a.CreatedAt.Format("2006-01-02 15:04"),

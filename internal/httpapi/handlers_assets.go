@@ -172,14 +172,19 @@ func (s *Server) patchAsset(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
-// checkHolderStatus enforces the in_stock rule before the pipeline runs, so the
+// checkHolderStatus enforces the location rule before the pipeline runs, so the
 // message can name the holder field.
 func (s *Server) checkHolderStatus(c *gin.Context, req assetWriteRequest) error {
 	status := model.AssetStatus(req.Status)
 	if status == "" {
 		status = model.StatusInStock
 	}
-	if !model.RequiresLocationHolder(status) {
+	statuses, err := s.schema.StatusSet(c.Request.Context())
+	if err != nil {
+		FailErr(c, err)
+		return err
+	}
+	if !statuses.RequiresLocationHolder(status) {
 		return nil
 	}
 	var entityType model.EntityType
@@ -191,7 +196,7 @@ func (s *Server) checkHolderStatus(c *gin.Context, req assetWriteRequest) error 
 		}
 		entityType = e.Type
 	}
-	if err := asset.ValidateHolderForStatus(status,
+	if err := asset.ValidateHolderForStatus(statuses, status,
 		model.Holder{Type: model.HolderType(req.HolderType), ID: req.HolderID}, entityType); err != nil {
 		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, MsgValidationFailed,
 			map[string]string{"holder_id": err.Error()})

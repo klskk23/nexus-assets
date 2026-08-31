@@ -511,6 +511,78 @@ paths:
     get: { tags: [metadata], summary: 型号列表, responses: { "200": { description: OK } } }
     post: { tags: [metadata], summary: 新建型号, responses: { "201": { description: Created } } }
 
+  /statuses:
+    get:
+      tags: [metadata]
+      summary: 状态列表
+      description: >
+        每一个渲染状态的界面都读这里：徽章的颜色、下拉框的选项、筛选栏、
+        概览卡片、流转时间线。标签不再由前端与导出各存一份。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Status" } }
+    post:
+      tags: [metadata]
+      summary: 新建状态
+      description: >
+        key 只能是小写字母、数字与下划线；color 必须是色板里的名字，不接受十六进制。
+        新建的状态 builtin 恒为 false，sort 排在现有全部之后。
+      responses:
+        "201": { description: Created }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /statuses/{key}:
+    patch:
+      tags: [metadata]
+      summary: 修改状态
+      description: >
+        label、color、sort 任何状态都可改。requires_location、counts_as_available、
+        terminal 三个行为开关**仅对自定义状态生效**：内置的五个携带系统写死的语义，
+        请求里带上这三个字段会被静默忽略而不是报错 —— 它们本就不出现在界面上。
+      parameters:
+        - { name: key, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [metadata]
+      summary: 删除状态
+      description: >
+        两种拒绝共用 409：内置状态不可删除；当前仍有资产处于该状态时不可删除，
+        响应携带 total。**历史记录里出现过不构成拒绝** —— 那样会让一个用过一次的
+        状态永远删不掉，而代价只是时间线上显示键名而非标签，数据本身不丢。
+      parameters:
+        - { name: key, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Deleted }
+        "409": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /status-usage:
+    get:
+      tags: [metadata]
+      summary: 各状态的占用情况
+      description: >
+        key -> { assets, history }。assets 是当前处于该状态的资产数（删除的拦截理由），
+        history 是提及该状态的流转记录数（只用于确认框里说明代价）。
+        与 /statuses 分开，因为只有状态管理页需要它，而 /statuses 每个页面都在读。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+                  properties:
+                    assets: { type: integer }
+                    history: { type: integer }
+
   /holders:
     get: { tags: [metadata], summary: 持有方实体树, responses: { "200": { description: OK } } }
     post: { tags: [metadata], summary: 新建持有方实体, responses: { "201": { description: Created } } }
@@ -638,6 +710,22 @@ components:
           schema: { $ref: "#/components/schemas/ErrorEnvelope" }
 
   schemas:
+    Status:
+      type: object
+      required: [key, label, color, sort, builtin]
+      properties:
+        key: { type: string, description: 小写字母、数字与下划线；建成后不可改 }
+        label: { type: string, description: 显示名。中文文案，属于数据而非 i18n 常量 }
+        color:
+          type: string
+          description: 色板槽位名，不是像素值。两套主题各自决定它长什么样
+          enum: [slate, green, blue, amber, red, violet, teal, rose]
+        sort: { type: integer }
+        builtin: { type: boolean, description: 内置五个为真；不可删除，行为开关不可改 }
+        requires_location: { type: boolean, description: 持有方必须是位置实体 }
+        counts_as_available: { type: boolean, description: 计入首页的类别分布 }
+        terminal: { type: boolean, description: 终态，不能再转出 }
+
     ErrorEnvelope:
       type: object
       required: [error]

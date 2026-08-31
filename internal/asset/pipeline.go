@@ -262,7 +262,11 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 		}
 		to := model.AssetState{Status: in.Status, Holder: in.Holder, OwnerID: in.OwnerID}
 		if from != nil {
-			if err := model.ValidateTransition(from.Status, to.Status); err != nil {
+			statuses, err := store.LoadStatusSet(ctx, tx)
+			if err != nil {
+				return out, err
+			}
+			if err := statuses.ValidateTransition(from.Status, to.Status); err != nil {
 				return out, err
 			}
 		}

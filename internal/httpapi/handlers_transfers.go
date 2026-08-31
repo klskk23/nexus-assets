@@ -46,7 +46,12 @@ func (s *Server) createTransfer(c *gin.Context) {
 	}
 	if req.ToStatus != nil {
 		st := model.AssetStatus(*req.ToStatus)
-		if !st.Valid() {
+		statuses, err := s.schema.StatusSet(c.Request.Context())
+		if err != nil {
+			FailErr(c, err)
+			return
+		}
+		if _, ok := statuses.Get(st); !ok {
 			Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, MsgValidationFailed,
 				map[string]string{"to_status": "不是有效的状态"})
 			return

@@ -52,9 +52,14 @@ func (s *Service) Edit(ctx context.Context, id string, req EditRequest) ([]model
 			}
 		}
 
+		statuses, err := store.LoadStatusSet(ctx, tx)
+		if err != nil {
+			return err
+		}
+
 		out = out[:0]
 		for _, eventID := range ids {
-			edited, err := editOne(ctx, tx, eventID, req, now)
+			edited, err := editOne(ctx, tx, statuses, eventID, req, now)
 			if err != nil {
 				return err
 			}
@@ -86,7 +91,9 @@ func batchMembers(ctx context.Context, tx *sql.Tx, batchID string) ([]string, er
 	return out, rows.Err()
 }
 
-func editOne(ctx context.Context, tx *sql.Tx, id string, req EditRequest, now time.Time) (model.Transfer, error) {
+func editOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, id string,
+	req EditRequest, now time.Time) (model.Transfer, error) {
+
 	cur, err := scan(tx.QueryRowContext(ctx, `SELECT `+cols+` FROM asset_transfers WHERE id = ?`, id))
 	if err != nil {
 		return cur, err
@@ -129,11 +136,11 @@ func editOne(ctx context.Context, tx *sql.Tx, id string, req EditRequest, now ti
 	}
 
 	if cur.FromStatus != nil {
-		if err := model.ValidateTransition(*cur.FromStatus, cur.ToStatus); err != nil {
+		if err := statuses.ValidateTransition(*cur.FromStatus, cur.ToStatus); err != nil {
 			return cur, err
 		}
 	}
-	if err := checkHolderForStatus(ctx, tx, model.AssetState{
+	if err := checkHolderForStatus(ctx, tx, statuses, model.AssetState{
 		Status: cur.ToStatus, Holder: cur.ToHolder, OwnerID: cur.ToOwner,
 	}); err != nil {
 		return cur, err

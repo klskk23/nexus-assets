@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { Assets } from "@/routes/Assets"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { statusRoute } from "./fixtures/statuses"
 import { chooseByLabel } from "@/test/choose"
 
 vi.mock("react-router", async () => {
@@ -31,6 +32,8 @@ const schema = {
 
 beforeEach(() => {
   get.mockReset().mockImplementation((p: string) => {
+    const st = statusRoute(p)
+    if (st) return st
     if (p === "/categories") return Promise.resolve(categories)
     if (p === "/users") return Promise.resolve(users)
     if (p.endsWith("/schema")) return Promise.resolve(schema)

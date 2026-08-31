@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/api"
 import type { AssetStatus, HolderEntity, User } from "@/lib/types"
 import type { TransferResult } from "@/lib/transferTypes"
 import { zh, zhTransfer } from "@/i18n/zh"
+import { useStatuses } from "@/features/statuses/useStatuses"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -58,6 +59,7 @@ interface Props {
  */
 export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, onDone }: Props) {
   const queryClient = useQueryClient()
+  const statuses = useStatuses()
   const [action, setAction] = useState<TransferAction | null>(initialAction ?? null)
   const [holderType, setHolderType] = useState<"user" | "entity">("user")
   const [holderID, setHolderID] = useState("")
@@ -231,9 +233,9 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {Object.entries(zh.status).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>
-                        {v}
+                    {statuses.statuses.map((s) => (
+                      <SelectItem key={s.key} value={s.key}>
+                        {s.label}
                       </SelectItem>
                     ))}
                   </SelectGroup>

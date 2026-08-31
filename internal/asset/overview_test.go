@@ -23,8 +23,8 @@ func TestOverviewCountsEveryStatusIncludingZero(t *testing.T) {
 		t.Errorf("total = %d, want 3", ov.Total)
 	}
 	// A card that disappears at zero makes the row jump around as stock moves.
-	if len(ov.StatusCounts) != len(model.AllStatuses) {
-		t.Fatalf("got %d status entries, want %d", len(ov.StatusCounts), len(model.AllStatuses))
+	if len(ov.StatusCounts) != len(model.BuiltinStatuses) {
+		t.Fatalf("got %d status entries, want %d", len(ov.StatusCounts), len(model.BuiltinStatuses))
 	}
 	byStatus := map[model.AssetStatus]int{}
 	for _, sc := range ov.StatusCounts {
@@ -117,7 +117,7 @@ func TestOverviewOnAnEmptyDatabase(t *testing.T) {
 	if ov.Total != 0 {
 		t.Errorf("total = %d", ov.Total)
 	}
-	if len(ov.StatusCounts) != len(model.AllStatuses) {
+	if len(ov.StatusCounts) != len(model.BuiltinStatuses) {
 		t.Error("the cards should exist before any asset does")
 	}
 	if len(ov.CategoryDistribution) != 1 || ov.CategoryDistribution[0].Count != 0 {

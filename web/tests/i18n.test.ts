@@ -72,18 +72,19 @@ describe("user-facing copy stays in one place", () => {
       .map((f) => readFileSync(f, "utf8"))
       .join("\n")
 
-    // Some groups are read by dynamic index (zh.status[asset.status]), so a
-    // literal ".key" will never appear for their members.
-    const dynamic = /(zh\.status|zhMeta\.entityTypes|zhMeta\.fieldTypes|zhTransfer\.kind|zhAudit\.actions|zhAudit\.targets)\s*\[/
+    // Some groups are read by dynamic index (zhStatuses.colors[status.color]),
+    // so a literal ".key" will never appear for their members.
+    const dynamic =
+      /(zhStatuses\.colors|zhMeta\.entityTypes|zhMeta\.fieldTypes|zhTransfer\.kind|zhAudit\.actions|zhAudit\.targets)\s*\[/
     const dynamicallyIndexed = dynamic.test(code)
 
     const statusLike = new Set([
-      "in_stock", "in_use", "in_repair", "lost", "retired",
       "create", "checkout", "checkin", "transfer", "reassign", "status_change",
       "update", "archive", "delete", "recompute",
       "company", "location", "department",
       "text", "number", "boolean", "date", "enum", "reference", "mac", "ip", "url", "computed",
-      "category", "field", "binding", "model", "holder", "user",
+      "category", "field", "binding", "model", "holder", "user", "status",
+      "slate", "green", "blue", "amber", "red", "violet", "teal", "rose",
     ])
 
     const dead = [...keys].filter(

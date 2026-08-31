@@ -95,9 +95,16 @@ func (s *Service) Apply(ctx context.Context, req Request) (Result, error) {
 
 	now := time.Now().UTC()
 	err := s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		// Read through the transaction: a status deleted while this batch was
+		// being composed must not still be accepted here.
+		statuses, err := store.LoadStatusSet(ctx, tx)
+		if err != nil {
+			return err
+		}
+
 		res.Transfers = res.Transfers[:0]
 		for _, assetID := range req.AssetIDs {
-			t, err := applyOne(ctx, tx, assetID, req, batchID, now)
+			t, err := applyOne(ctx, tx, statuses, assetID, req, batchID, now)
 			if err != nil {
 				return err
 			}
@@ -114,8 +121,8 @@ func (s *Service) Apply(ctx context.Context, req Request) (Result, error) {
 	return res, nil
 }
 
-func applyOne(ctx context.Context, tx *sql.Tx, assetID string, req Request,
-	batchID *string, now time.Time) (*model.Transfer, error) {
+func applyOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, assetID string,
+	req Request, batchID *string, now time.Time) (*model.Transfer, error) {
 
 	var from model.AssetState
 	var version int
@@ -140,7 +147,7 @@ func applyOne(ctx context.Context, tx *sql.Tx, assetID string, req Request,
 		to.OwnerID = *req.ToOwnerID
 	}
 
-	if err := model.ValidateTransition(from.Status, to.Status); err != nil {
+	if err := statuses.ValidateTransition(from.Status, to.Status); err != nil {
 		return nil, err
 	}
 
@@ -151,7 +158,7 @@ func applyOne(ctx context.Context, tx *sql.Tx, assetID string, req Request,
 		return nil, nil
 	}
 
-	if err := checkHolderForStatus(ctx, tx, to); err != nil {
+	if err := checkHolderForStatus(ctx, tx, statuses, to); err != nil {
 		return nil, err
 	}
 
@@ -191,10 +198,12 @@ func applyOne(ctx context.Context, tx *sql.Tx, assetID string, req Request,
 	}, nil
 }
 
-// checkHolderForStatus enforces the in_stock coupling inside the transaction,
-// where the holder's type can be read consistently.
-func checkHolderForStatus(ctx context.Context, tx *sql.Tx, to model.AssetState) error {
-	if !model.RequiresLocationHolder(to.Status) {
+// checkHolderForStatus enforces a status's location constraint inside the
+// transaction, where the holder's type can be read consistently.
+func checkHolderForStatus(ctx context.Context, tx *sql.Tx, statuses model.StatusSet,
+	to model.AssetState) error {
+
+	if !statuses.RequiresLocationHolder(to.Status) {
 		return nil
 	}
 	if to.Holder.Type != model.HolderTypeEntity {

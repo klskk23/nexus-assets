@@ -1,4 +1,40 @@
-export type AssetStatus = "in_stock" | "in_use" | "in_repair" | "lost" | "retired"
+/**
+ * A status key. Not a union any more: an administrator can add statuses, so
+ * the set is data. The five built-ins are still spelled out below for the
+ * places that legitimately mean one specific status -- the entry default, and
+ * the check-out/check-in pair.
+ */
+export type AssetStatus = string
+
+export const BUILTIN_STATUSES = ["in_stock", "in_use", "in_repair", "lost", "retired"] as const
+
+/** One configurable status, as the server stores it. */
+export interface Status {
+  key: string
+  label: string
+  color: string
+  sort: number
+  builtin: boolean
+  requires_location: boolean
+  counts_as_available: boolean
+  terminal: boolean
+}
+
+/** What deleting a status would cost. */
+export interface StatusUsage {
+  assets: number
+  history: number
+}
+
+/**
+ * The palette slots a status may take.
+ *
+ * The same list exists on the server, which validates against it, and in
+ * index.css, which decides what each slot looks like in either theme. Three
+ * copies is one more than ideal, but a colour has to be validated where it is
+ * written and painted where it is shown; what matters is that the names match.
+ */
+export const PALETTE = ["slate", "green", "blue", "amber", "red", "violet", "teal", "rose"]
 
 export type FieldType =
   | "text"

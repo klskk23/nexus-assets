@@ -23,6 +23,7 @@ func TestMigrateUpAndDown(t *testing.T) {
 		"users", "holder_entities", "categories", "field_definitions",
 		"category_fields", "product_models", "product_model_categories",
 		"assets", "asset_unique_values", "asset_transfers", "audit_log",
+		"statuses",
 	}
 	for _, table := range want {
 		var n int
@@ -59,12 +60,35 @@ func TestMigrateUpAndDown(t *testing.T) {
 		t.Error("field_definitions should no longer carry archived_at")
 	}
 
-	// Rolling back one revision must restore the pre-003 shape exactly, so a
+	// The five built-in statuses arrive with the table, carrying the behaviour
+	// the rest of the system was written against.
+	var builtins int
+	if err := s.read.QueryRowContext(ctx,
+		`SELECT count(*) FROM statuses WHERE builtin = 1`).Scan(&builtins); err != nil {
+		t.Fatalf("count builtin statuses: %v", err)
+	}
+	if builtins != 5 {
+		t.Errorf("builtin statuses = %d, want 5", builtins)
+	}
+	var stockNeedsLocation, retiredTerminal, retiredCounts int
+	if err := s.read.QueryRowContext(ctx,
+		`SELECT (SELECT requires_location FROM statuses WHERE key = 'in_stock'),
+		        (SELECT terminal FROM statuses WHERE key = 'retired'),
+		        (SELECT counts_as_available FROM statuses WHERE key = 'retired')`).
+		Scan(&stockNeedsLocation, &retiredTerminal, &retiredCounts); err != nil {
+		t.Fatalf("read builtin flags: %v", err)
+	}
+	if stockNeedsLocation != 1 || retiredTerminal != 1 || retiredCounts != 0 {
+		t.Errorf("the seeded flags do not match the behaviour they replace: %d %d %d",
+			stockNeedsLocation, retiredTerminal, retiredCounts)
+	}
+
+	// Rolling back one revision must restore the pre-004 shape exactly, so a
 	// half-applied upgrade can be undone rather than requiring a fresh file.
 	if err := s.MigrateDown(ctx); err != nil {
 		t.Fatalf("MigrateDown: %v", err)
 	}
-	for table, wantN := range map[string]int{"product_model_categories": 0, "asset_unique_values": 1} {
+	for table, wantN := range map[string]int{"statuses": 0, "product_model_categories": 1} {
 		var n int
 		if err := s.read.QueryRowContext(ctx,
 			`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&n); err != nil {
@@ -75,8 +99,8 @@ func TestMigrateUpAndDown(t *testing.T) {
 		}
 	}
 	for spec, wantN := range map[[2]string]int{
-		{"field_definitions", "archived_at"}: 1,
-		{"product_models", "category_id"}:    1,
+		{"field_definitions", "archived_at"}: 0,
+		{"product_models", "category_id"}:    0,
 	} {
 		var n int
 		if err := s.read.QueryRowContext(ctx,

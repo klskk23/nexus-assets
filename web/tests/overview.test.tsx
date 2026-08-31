@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { Overview } from "@/routes/Overview"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { statusRoute } from "./fixtures/statuses"
 import { chooseByLabel } from "@/test/choose"
 
 const navigate = vi.fn()
@@ -53,6 +54,9 @@ const overview = {
 }
 
 function route(p: string, cats = categories) {
+  const st = statusRoute(p)
+  if (st) return st
+
   if (p === "/categories") return Promise.resolve(cats)
   return Promise.resolve(overview)
 }

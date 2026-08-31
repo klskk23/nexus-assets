@@ -8,12 +8,13 @@ import { cn } from "@/lib/utils"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { AssetPage, Category, CategorySchema, User } from "@/lib/types"
 import { zh, zhImport } from "@/i18n/zh"
+import { StatusBadge } from "@/features/statuses/StatusBadge"
+import { useStatuses } from "@/features/statuses/useStatuses"
 import { StateBoundary } from "@/components/StateBoundary"
 import { useColumnSelection } from "@/features/assets/useColumns"
 import { ActionBar } from "@/features/assets/ActionBar"
 import { NewAssetDialog } from "@/features/assets/NewAssetDialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import {
   Pagination,
   PaginationContent,
@@ -91,6 +92,7 @@ function cellText(v: unknown): string {
 
 export function Assets() {
   const navigate = useNavigate()
+  const statuses = useStatuses()
   const searchRef = useRef<HTMLInputElement>(null)
 
   // The overview links here with a filter already chosen, so the URL seeds the
@@ -241,7 +243,7 @@ export function Assets() {
             <SelectContent>
               <SelectGroup>
                 <SelectItem value={NONE}>{zh.assets.allStatuses}</SelectItem>
-                {Object.entries(zh.status).map(([k, v]) => (
+                {statuses.statuses.map(({ key: k, label: v }) => (
                   <SelectItem key={k} value={k}>
                     {v}
                   </SelectItem>
@@ -377,7 +379,7 @@ export function Assets() {
                       {a.display_name}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{zh.status[a.status] ?? a.status}</Badge>
+                      <StatusBadge status={a.status} />
                     </TableCell>
                     <TableCell>{a.holder.name ?? zh.common.none}</TableCell>
                     <TableCell>{a.owner?.name ?? zh.common.none}</TableCell>

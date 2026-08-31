@@ -27,9 +27,9 @@ type Overview struct {
 	// cards do not appear and vanish as stock moves.
 	StatusCounts []StatusCount `json:"status_counts"`
 	// CategoryDistribution rolls every descendant up into its top-level
-	// category and leaves retired devices out: "how many SDWAN routers do we
-	// have" is a question about usable stock, and counting written-off units
-	// gives a misleadingly large answer.
+	// category and leaves out the statuses marked as not counting towards
+	// stock: "how many SDWAN routers do we have" is a question about usable
+	// stock, and counting written-off units gives a misleadingly large answer.
 	CategoryDistribution []CategoryCount `json:"category_distribution"`
 	// Total counts every asset, retired included.
 	Total int `json:"total"`
@@ -64,9 +64,21 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 		return out, err
 	}
 
-	out.StatusCounts = make([]StatusCount, 0, len(model.AllStatuses))
-	for _, st := range model.AllStatuses {
-		out.StatusCounts = append(out.StatusCounts, StatusCount{Status: st, Count: byStatus[st]})
+	statuses, err := s.schema.StatusSet(ctx)
+	if err != nil {
+		return out, err
+	}
+	all := statuses.All()
+	out.StatusCounts = make([]StatusCount, 0, len(all))
+	for _, st := range all {
+		out.StatusCounts = append(out.StatusCounts, StatusCount{Status: st.Key, Count: byStatus[st.Key]})
+		delete(byStatus, st.Key)
+	}
+	// A status that was deleted while devices still carried it would otherwise
+	// vanish from the cards while still counting towards the total -- the one
+	// arrangement that makes the numbers not add up.
+	for st, n := range byStatus {
+		out.StatusCounts = append(out.StatusCounts, StatusCount{Status: st, Count: n})
 	}
 
 	categories, err := s.schema.ListCategories(ctx)
@@ -74,21 +86,25 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 		return out, err
 	}
 
+	// Which statuses count towards usable stock is a column now, so the filter
+	// is applied in Go rather than as a hardcoded `status != 'retired'`.
 	rows, err = s.db.ReadDB().QueryContext(ctx,
-		`SELECT category_id, count(*) FROM assets WHERE status != ? GROUP BY category_id`,
-		string(model.StatusRetired))
+		`SELECT category_id, status, count(*) FROM assets GROUP BY category_id, status`)
 	if err != nil {
 		return out, fmt.Errorf("count by category: %w", err)
 	}
 	perCategory := map[string]int{}
 	for rows.Next() {
 		var id string
+		var st model.AssetStatus
 		var n int
-		if err := rows.Scan(&id, &n); err != nil {
+		if err := rows.Scan(&id, &st, &n); err != nil {
 			rows.Close()
 			return out, err
 		}
-		perCategory[id] = n
+		if statuses.CountsAsAvailable(st) {
+			perCategory[id] += n
+		}
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {

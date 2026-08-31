@@ -2,6 +2,7 @@ import { Fragment } from "react"
 
 import type { Transfer } from "@/lib/transferTypes"
 import { zh, zhTransfer } from "@/i18n/zh"
+import { useStatuses } from "@/features/statuses/useStatuses"
 import { StateBoundary } from "@/components/StateBoundary"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -50,6 +51,8 @@ export function foldBatches(events: Transfer[]): Entry[] {
 }
 
 export function Timeline({ events, isLoading = false, error = null, editableId, onEdit }: Props) {
+  const statuses = useStatuses()
+
   const entries = foldBatches(events)
 
   return (
@@ -90,7 +93,7 @@ export function Timeline({ events, isLoading = false, error = null, editableId, 
                     {event.from_holder.name ?? event.from_holder.id}
                     {event.from_status && (
                       <span className="text-muted-foreground">
-                        （{zh.status[event.from_status] ?? event.from_status}）
+                        （{statuses.label(event.from_status)}）
                       </span>
                     )}
                     <span className="text-muted-foreground"> {zhTransfer.to} </span>
@@ -98,7 +101,7 @@ export function Timeline({ events, isLoading = false, error = null, editableId, 
                 )}
                 {event.to_holder.name ?? event.to_holder.id}
                 <span className="text-muted-foreground">
-                  （{zh.status[event.to_status] ?? event.to_status}）
+                  （{statuses.label(event.to_status)}）
                 </span>
               </p>
 

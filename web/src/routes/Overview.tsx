@@ -6,6 +6,8 @@ import { api } from "@/lib/api"
 import type { AssetStatus, Category } from "@/lib/types"
 import type { Transfer } from "@/lib/transferTypes"
 import { zh, zhOverview } from "@/i18n/zh"
+import { useStatuses } from "@/features/statuses/useStatuses"
+import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { StateBoundary } from "@/components/StateBoundary"
 import { Timeline } from "@/features/transfers/Timeline"
 import { Button } from "@/components/ui/button"
@@ -44,6 +46,7 @@ const RECENT_COUNTS = [5, 10, 20]
 
 export function Overview() {
   const navigate = useNavigate()
+  const statuses = useStatuses()
   const [quickCategory, setQuickCategory] = useState("")
   const [recentCount, setRecentCount] = useState(RECENT_COUNTS[1])
 
@@ -84,7 +87,7 @@ export function Overview() {
                   key={s.status}
                   role="button"
                   tabIndex={0}
-                  aria-label={`${zh.status[s.status] ?? s.status} ${s.count} ${zhOverview.unit}`}
+                  aria-label={`${statuses.label(s.status)} ${s.count} ${zhOverview.unit}`}
                   className="cursor-pointer transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   onClick={() => navigate(`/assets?status=${s.status}`)}
                   onKeyDown={(e) => {
@@ -95,9 +98,7 @@ export function Overview() {
                   }}
                 >
                   <CardContent className="pt-6">
-                    <p className="text-sm text-muted-foreground">
-                      {zh.status[s.status] ?? s.status}
-                    </p>
+                    <StatusBadge status={s.status} />
                     <p className="mt-1 text-2xl font-semibold tabular-nums">{s.count}</p>
                   </CardContent>
                 </Card>

@@ -1,9 +1,20 @@
-import { describe, expect, it } from "vitest"
-import { screen, within } from "@testing-library/react"
+import { describe, expect, it, vi } from "vitest"
+import { screen, waitFor, within } from "@testing-library/react"
 
 import { Timeline, foldBatches } from "@/features/transfers/Timeline"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { statusList } from "./fixtures/statuses"
 import type { Transfer, TransferKind } from "@/lib/transferTypes"
+
+// The timeline reads status labels from the API now rather than from a table
+// compiled into the bundle, so even this pure-render test needs the list.
+vi.mock("@/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api")
+  return {
+    ...actual,
+    api: { get: () => Promise.resolve(statusList), post: vi.fn(), patch: vi.fn(), del: vi.fn() },
+  }
+})
 
 function event(over: Partial<Transfer> & { id: string }): Transfer {
   return {
@@ -66,12 +77,13 @@ describe("Timeline", () => {
     expect(within(rows[0]).getByText("批量操作（20 台）")).toBeInTheDocument()
   })
 
-  it("shows where the device came from and where it went", () => {
+  it("shows where the device came from and where it went", async () => {
     renderWithProviders(<Timeline events={[event({ id: "e1", kind: "checkout" })]} />)
     const row = screen.getByRole("listitem", { name: "签出" })
     expect(row).toHaveTextContent("上海仓库")
     expect(row).toHaveTextContent("张三")
-    expect(row).toHaveTextContent("在库")
+    // Status labels come from the API, so they land a tick after the holders.
+    await waitFor(() => expect(row).toHaveTextContent("在库"))
     expect(row).toHaveTextContent("已签出")
     expect(within(row).getByText(/管理员/)).toBeInTheDocument()
   })

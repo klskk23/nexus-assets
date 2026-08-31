@@ -346,7 +346,11 @@ func TestSubtreeFilterIncludesDescendants(t *testing.T) {
 
 func TestInStockRequiresLocationHolder(t *testing.T) {
 	f := newFixture(t)
-	err := ValidateHolderForStatus(model.StatusInStock,
+	statuses, err := f.schema.StatusSet(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ValidateHolderForStatus(statuses, model.StatusInStock,
 		model.Holder{Type: model.HolderTypeUser, ID: f.userID}, "")
 	if err == nil {
 		t.Fatal("in_stock held by a person must be refused")

@@ -14,6 +14,7 @@ const links = [
   { to: "/categories", label: zh.nav.categories },
   { to: "/fields", label: zh.nav.fields },
   { to: "/models", label: zh.nav.models },
+  { to: "/statuses", label: zh.nav.statuses },
   { to: "/holders", label: zh.nav.holders },
   { to: "/users", label: zh.nav.users },
   { to: "/import", label: zh.nav.importPage },

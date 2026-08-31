@@ -134,13 +134,16 @@ func validateOne(f model.BoundField, raw any) (any, error) {
 //
 // in_stock means the device is sitting in a warehouse. Allowing "in stock but
 // held by a person" would leave the stocktake question -- which warehouse is it
-// in -- unanswerable.
-func ValidateHolderForStatus(status model.AssetStatus, holder model.Holder, entityType model.EntityType) error {
-	if !model.RequiresLocationHolder(status) {
+// in -- unanswerable. Which statuses carry that constraint is now a column, so
+// a custom status can say the same thing about itself.
+func ValidateHolderForStatus(statuses model.StatusSet, status model.AssetStatus,
+	holder model.Holder, entityType model.EntityType) error {
+
+	if !statuses.RequiresLocationHolder(status) {
 		return nil
 	}
 	if holder.Type != model.HolderTypeEntity || entityType != model.EntityLocation {
-		return fmt.Errorf("在库状态的持有方必须是一个位置")
+		return fmt.Errorf("「%s」状态的持有方必须是一个位置", statuses.Label(status))
 	}
 	return nil
 }

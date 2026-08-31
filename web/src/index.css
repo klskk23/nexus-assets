@@ -71,6 +71,51 @@
   --color-ring: var(--ring);
 }
 
+/* Status palette.
+ *
+ * A status stores a palette name, not a hex value. The name is a semantic
+ * slot; what it resolves to is decided here, once per theme -- which is the
+ * only way a colour an administrator picked in daylight still reads on the
+ * dark background this app defaults to. A free colour field would have looked
+ * more capable and been unreadable half the time.
+ *
+ * Each entry sets three vars; .status-chip below is what consumes them, so a
+ * new colour is one block here and one line in PaletteColors on the server.
+ */
+.status-slate  { --status-bg: oklch(0.95 0.005 260); --status-fg: oklch(0.38 0.02 260); --status-line: oklch(0.87 0.01 260); }
+.status-green  { --status-bg: oklch(0.95 0.05 150);  --status-fg: oklch(0.42 0.12 150); --status-line: oklch(0.86 0.08 150); }
+.status-blue   { --status-bg: oklch(0.95 0.04 250);  --status-fg: oklch(0.45 0.15 250); --status-line: oklch(0.86 0.07 250); }
+.status-amber  { --status-bg: oklch(0.96 0.06 85);   --status-fg: oklch(0.45 0.12 65);  --status-line: oklch(0.87 0.10 85); }
+.status-red    { --status-bg: oklch(0.95 0.04 25);   --status-fg: oklch(0.47 0.17 27);  --status-line: oklch(0.86 0.08 25); }
+.status-violet { --status-bg: oklch(0.95 0.04 300);  --status-fg: oklch(0.45 0.16 300); --status-line: oklch(0.87 0.07 300); }
+.status-teal   { --status-bg: oklch(0.95 0.04 190);  --status-fg: oklch(0.43 0.10 195); --status-line: oklch(0.86 0.07 190); }
+.status-rose   { --status-bg: oklch(0.95 0.04 5);    --status-fg: oklch(0.47 0.15 8);   --status-line: oklch(0.87 0.07 5); }
+
+/* Dark: the tint moves to the foreground and the fill drops back, because a
+ * pale chip on a dark page glares -- the same hue, inverted in weight. */
+.dark .status-slate  { --status-bg: oklch(0.30 0.01 260); --status-fg: oklch(0.82 0.02 260); --status-line: oklch(0.40 0.02 260); }
+.dark .status-green  { --status-bg: oklch(0.30 0.05 150); --status-fg: oklch(0.85 0.14 150); --status-line: oklch(0.42 0.08 150); }
+.dark .status-blue   { --status-bg: oklch(0.30 0.05 250); --status-fg: oklch(0.83 0.11 250); --status-line: oklch(0.42 0.09 250); }
+.dark .status-amber  { --status-bg: oklch(0.32 0.06 75);  --status-fg: oklch(0.88 0.13 85);  --status-line: oklch(0.44 0.09 75); }
+.dark .status-red    { --status-bg: oklch(0.31 0.07 27);  --status-fg: oklch(0.85 0.11 25);  --status-line: oklch(0.43 0.11 27); }
+.dark .status-violet { --status-bg: oklch(0.31 0.06 300); --status-fg: oklch(0.85 0.11 300); --status-line: oklch(0.43 0.10 300); }
+.dark .status-teal   { --status-bg: oklch(0.30 0.05 195); --status-fg: oklch(0.84 0.10 190); --status-line: oklch(0.42 0.08 195); }
+.dark .status-rose   { --status-bg: oklch(0.31 0.06 8);   --status-fg: oklch(0.85 0.10 5);   --status-line: oklch(0.43 0.09 8); }
+
+/* The chip itself. Colour comes entirely from the vars above, so it never needs
+ * a dark: override of its own.
+ *
+ * Deliberately outside every @layer: Badge's own variant classes are Tailwind
+ * utilities, and an unlayered rule is the only thing that outranks them without
+ * an !important or a specificity contest. Putting this in @layer components
+ * would leave `text-foreground` from variant="outline" winning, and the chip
+ * would render with a coloured background and the default text colour. */
+.status-chip {
+  background-color: var(--status-bg, var(--secondary));
+  color: var(--status-fg, var(--secondary-foreground));
+  border-color: var(--status-line, transparent);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
