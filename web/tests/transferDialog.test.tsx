@@ -132,3 +132,45 @@ describe("TransferDialog responsible party", () => {
     )
   })
 })
+
+describe("TransferDialog check-in destination", () => {
+  // The default is the only answer that can differ across a batch: twenty
+  // devices from four warehouses go back to four warehouses.
+  it("names no destination unless one is chosen", async () => {
+    const user = userEvent.setup()
+    open()
+
+    await pick(user, "归还")
+    expect(screen.getByRole("combobox", { name: "目标" })).toHaveTextContent("各自的默认归属")
+    await user.click(screen.getByRole("button", { name: "提交" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/transfers", {
+        asset_ids: ["a1"],
+        note: "",
+        to_status: "in_stock",
+        check_in: true,
+      }),
+    )
+  })
+
+  it("sends the destination when one is picked", async () => {
+    const user = userEvent.setup()
+    open()
+
+    await pick(user, "归还")
+    await chooseByLabel(user, "目标", "上海仓库")
+    await user.click(screen.getByRole("button", { name: "提交" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/transfers", {
+        asset_ids: ["a1"],
+        note: "",
+        to_status: "in_stock",
+        check_in: true,
+        to_holder_type: "entity",
+        to_holder_id: "loc",
+      }),
+    )
+  })
+})

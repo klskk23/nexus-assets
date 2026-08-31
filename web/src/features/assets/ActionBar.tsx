@@ -52,8 +52,11 @@ export function ActionBar({ selected, onClear, onDone }: Props) {
   if (selected.length === 0) return null
 
   return (
-    <Card className="sticky bottom-4 shadow-lg">
-      <CardContent className="flex flex-wrap items-center gap-3 p-3">
+    // Card's own py-6 and gap-6 were adding 48px of nothing above and below a
+    // single row of 32px buttons. The bar floats over the table it is about,
+    // so every pixel of it is a pixel of the table nobody can read.
+    <Card className="sticky bottom-4 gap-0 py-0 shadow-lg">
+      <CardContent className="flex flex-wrap items-center gap-2 px-3 py-2">
         <span className="text-sm font-medium">{tTransfer.actions.selected(selected.length)}</span>
 
         <ButtonGroup>

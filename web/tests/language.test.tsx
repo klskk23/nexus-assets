@@ -36,6 +36,18 @@ function renderShell(client = makeTestQueryClient()) {
   }
 }
 
+/**
+ * Picks a language from the settings menu.
+ *
+ * Language, theme and signing out live behind one trigger now: three controls
+ * competing with the nav for the same bar was three things to read before
+ * finding the one you wanted.
+ */
+async function pickLanguage(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole("button", { name: /管理员|Settings|设置/ }))
+  await user.click(await screen.findByRole("menuitemradio", { name }))
+}
+
 beforeEach(() => {
   localStorage.clear()
   applyLang("zh")
@@ -49,13 +61,11 @@ describe("language", () => {
 
     expect(screen.getByRole("link", { name: "概览" })).toBeInTheDocument()
 
-    // The button offers the language you would switch to, not the one in force.
-    await u.click(screen.getByRole("button", { name: "切换语言" }))
+    await pickLanguage(u, "English")
     await waitFor(() => expect(screen.getByRole("link", { name: "Overview" })).toBeInTheDocument())
     expect(screen.queryByRole("link", { name: "概览" })).not.toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument()
 
-    await u.click(screen.getByRole("button", { name: "Switch language" }))
+    await pickLanguage(u, "中文")
     await waitFor(() => expect(screen.getByRole("link", { name: "概览" })).toBeInTheDocument())
   })
 
@@ -63,7 +73,7 @@ describe("language", () => {
     const u = userEvent.setup()
     renderShell()
 
-    await u.click(screen.getByRole("button", { name: "切换语言" }))
+    await pickLanguage(u, "English")
     await waitFor(() => expect(getLang()).toBe("en"))
     expect(localStorage.getItem("nexus.lang")).toBe("en")
     // Screen readers and browser spellcheck read this.
@@ -78,7 +88,7 @@ describe("language", () => {
     const { client } = renderShell()
     client.setQueryData(["something"], { rendered: "in Chinese" })
 
-    await u.click(screen.getByRole("button", { name: "切换语言" }))
+    await pickLanguage(u, "English")
     await waitFor(() => expect(client.getQueryData(["something"])).toBeUndefined())
   })
 })
@@ -104,5 +114,22 @@ describe("detectLang", () => {
     spy.mockReturnValue("fr-FR")
     expect(detectLang()).toBe("zh")
     spy.mockRestore()
+  })
+})
+
+describe("settings menu", () => {
+  it("gathers language, theme and sign-out behind one trigger", async () => {
+    const u = userEvent.setup()
+    renderShell()
+    await screen.findByRole("link", { name: "概览" })
+
+    // The bar itself carries only the nav and one control.
+    expect(screen.queryByRole("menuitem")).not.toBeInTheDocument()
+
+    await u.click(screen.getByRole("button", { name: /管理员/ }))
+    expect(await screen.findByRole("menuitemradio", { name: "中文" })).toBeChecked()
+    expect(screen.getByRole("menuitemradio", { name: "English" })).not.toBeChecked()
+    expect(screen.getByRole("menuitem", { name: /切换到浅色|切换到深色/ })).toBeInTheDocument()
+    expect(screen.getByRole("menuitem", { name: "退出登录" })).toBeInTheDocument()
   })
 })

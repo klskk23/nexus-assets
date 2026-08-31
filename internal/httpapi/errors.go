@@ -115,6 +115,12 @@ func FailErr(c *gin.Context, err error) {
 	case errors.Is(err, schema.ErrModelDuplicate):
 		Fail(c, http.StatusConflict, CodeUniqueConflict, i18n.Text(err, lang), nil)
 
+	case errors.Is(err, schema.ErrModelInvalid):
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, i18n.Text(err, lang), nil)
+
+	case errors.Is(err, schema.ErrModelInUse):
+		Fail(c, http.StatusConflict, CodeReferenceBlocked, i18n.Text(err, lang), nil)
+
 	case errors.Is(err, schema.ErrModelAmbiguous):
 		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
 			i18n.Text(err, lang), nil)

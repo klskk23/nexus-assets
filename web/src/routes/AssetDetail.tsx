@@ -4,7 +4,8 @@ import { Link, useNavigate, useParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError, type FieldErrors } from "@/lib/api"
-import type { Asset, CategorySchema } from "@/lib/types"
+import type { Asset, CategorySchema, HolderEntity, User } from "@/lib/types"
+import { NONE } from "@/lib/select"
 import type { Transfer } from "@/lib/transferTypes"
 import { t, tTransfer } from "@/i18n"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
@@ -24,6 +25,22 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface HistoricValue {
   key: string
@@ -47,6 +64,8 @@ export function AssetDetail() {
   const [editing, setEditing] = useState<Transfer | null>(null)
   const [modelId, setModelId] = useState<string | null>(null)
   const [transferOpen, setTransferOpen] = useState(false)
+  const [homeID, setHomeID] = useState(NONE)
+  const [homeOwnerID, setHomeOwnerID] = useState(NONE)
 
   const detail = useQuery({
     queryKey: ["asset", id],
@@ -63,6 +82,15 @@ export function AssetDetail() {
   // the asset moves again.
   const tailID = timeline.data?.[timeline.data.length - 1]?.id
 
+  const holders = useQuery({
+    queryKey: ["holders"],
+    queryFn: () => api.get<HolderEntity[]>("/holders"),
+  })
+  const users = useQuery({
+    queryKey: ["users"],
+    queryFn: () => api.get<User[]>("/users"),
+  })
+
   const schema = useQuery({
     queryKey: ["schema", asset?.category_id],
     queryFn: () => api.get<CategorySchema>(`/categories/${asset!.category_id}/schema`),
@@ -73,6 +101,8 @@ export function AssetDetail() {
     if (asset) {
       setValues(asset.attrs)
       setModelId(asset.model_id)
+      setHomeID(asset.home_holder?.id ?? NONE)
+      setHomeOwnerID(asset.home_owner?.id ?? NONE)
     }
   }, [asset])
 
@@ -85,6 +115,11 @@ export function AssetDetail() {
         owner_id: asset!.owner?.id,
         holder_type: asset!.holder.type,
         holder_id: asset!.holder.id,
+        // Sent explicitly rather than omitted: absent means "leave it alone",
+        // and this form is where a home is changed.
+        home_holder_type: homeID === NONE ? null : "entity",
+        home_holder_id: homeID === NONE ? null : homeID,
+        home_owner_id: homeOwnerID === NONE ? null : homeOwnerID,
         attrs: values,
         version: asset!.version,
       }),
@@ -179,6 +214,54 @@ export function AssetDetail() {
                   <dd>{asset.owner?.name ?? t.common.none}</dd>
                 </div>
               </dl>
+
+              {/* Where it belongs when it is not out. Editable here rather
+                  than on the entry form: a device's home changes when it is
+                  relocated for good, which is an edit, not a recording. */}
+              <FieldSet>
+                <FieldLegend variant="label">{t.assets.home}</FieldLegend>
+                <FieldDescription>{t.assets.homeHint}</FieldDescription>
+                <FieldGroup className="grid gap-4 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel htmlFor="home-holder">{t.assets.holder}</FieldLabel>
+                    <Select value={homeID} onValueChange={setHomeID}>
+                      <SelectTrigger id="home-holder">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value={NONE}>{t.assets.homeNone}</SelectItem>
+                          {(holders.data ?? []).map((h) => (
+                            <SelectItem key={h.id} value={h.id}>
+                              {h.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="home-owner">{t.assets.owner}</FieldLabel>
+                    <Select value={homeOwnerID} onValueChange={setHomeOwnerID}>
+                      <SelectTrigger id="home-owner">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value={NONE}>{t.common.none}</SelectItem>
+                          {(users.data ?? [])
+                            .filter((u) => u.status === "active")
+                            .map((u) => (
+                              <SelectItem key={u.id} value={u.id}>
+                                {u.name}
+                              </SelectItem>
+                            ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </FieldGroup>
+              </FieldSet>
 
               <ModelPicker
                 categoryID={asset.category_id}

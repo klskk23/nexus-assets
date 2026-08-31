@@ -4,7 +4,8 @@ import userEvent from "@testing-library/user-event"
 
 import { Statuses } from "@/routes/Statuses"
 import { renderWithProviders } from "@/test/renderWithProviders"
-import { choose, chooseByLabel } from "@/test/choose"
+import { choose } from "@/test/choose"
+import { chooseFromMenu, openMenu } from "@/test/menu"
 import { statusList } from "./fixtures/statuses"
 import type { Status, StatusUsage } from "@/lib/types"
 
@@ -72,26 +73,38 @@ describe("Statuses page", () => {
     expect(screen.getByText("外借中")).toHaveClass("status-violet")
   })
 
-  it("offers no delete on a built-in status, only on a custom one", async () => {
-    renderWithProviders(<Statuses />)
-
-    await screen.findByText("在库")
-    const builtin = screen.getByText("在库").closest("tr") as HTMLElement
-    expect(within(builtin).queryByRole("button", { name: "删除" })).not.toBeInTheDocument()
-
-    const custom = screen.getByText("外借中").closest("tr") as HTMLElement
-    expect(within(custom).getByRole("button", { name: "删除" })).toBeInTheDocument()
-  })
-
-
-  it("recolours a status from the row", async () => {
+  // A built-in carries behaviour the system is written against. The action is
+  // offered and disabled rather than missing: "why is there no delete" is a
+  // worse question than a greyed-out row.
+  it("disables delete on a built-in status, enables it on a custom one", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Statuses />)
 
-    await screen.findByText("外借中")
-    await chooseByLabel(user, "外借中 颜色", "青")
+    await screen.findByText("在库")
+    await openMenu(user, screen.getByText("在库").closest("tr") as HTMLElement)
+    expect(screen.getByRole("menuitem", { name: "删除" })).toHaveAttribute("aria-disabled", "true")
+    await user.keyboard("{Escape}")
 
-    await waitFor(() => expect(patch).toHaveBeenCalledWith("/statuses/on_loan", { color: "teal" }))
+    await openMenu(user, screen.getByText("外借中").closest("tr") as HTMLElement)
+    expect(screen.getByRole("menuitem", { name: "删除" })).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
+  })
+
+
+  it("recolours a status from the editor the row opens", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Statuses />)
+
+    await user.click(await screen.findByRole("row", { name: /外借中/ }))
+    const dialog = await screen.findByRole("dialog")
+    await choose(user, within(dialog).getByLabelText("颜色"), "青")
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/statuses/on_loan", { label: "外借中", color: "teal" }),
+    )
   })
 
   it("creates a status with the behaviour switches it was given", async () => {
@@ -126,7 +139,7 @@ describe("Statuses page", () => {
     const row = screen.getByText("外借中").closest("tr") as HTMLElement
     expect(within(row).getByText(/历史 4 条/)).toBeInTheDocument()
 
-    await user.click(within(row).getByRole("button", { name: "删除" }))
+    await chooseFromMenu(user, row, "删除")
     const dialog = await screen.findByRole("alertdialog")
     expect(dialog).toHaveTextContent("4 条流转记录")
     // Deleting is only armed once the key has been typed out.
@@ -148,7 +161,7 @@ describe("Statuses page", () => {
 
     await screen.findByText("外借中")
     const row = screen.getByText("外借中").closest("tr") as HTMLElement
-    await user.click(within(row).getByRole("button", { name: "删除" }))
+    await chooseFromMenu(user, row, "删除")
     const dialog = await screen.findByRole("alertdialog")
     await user.type(within(dialog).getByRole("textbox"), "on_loan")
     await user.click(within(dialog).getByRole("button", { name: "删除" }))

@@ -102,10 +102,23 @@ func TestMigrateUpAndDown(t *testing.T) {
 	if column("statuses", "requires_location") != 0 {
 		t.Error("statuses should have lost requires_location in 007, for the same reason")
 	}
+	// 008: every asset can name where it belongs.
+	for _, c := range []string{"home_holder_type", "home_holder_id", "home_owner_id"} {
+		if column("assets", c) != 1 {
+			t.Errorf("assets should carry %s after 008", c)
+		}
+	}
 
 	// Rolling back one revision at a time must restore each earlier shape
 	// exactly, so a half-applied upgrade can be undone rather than requiring a
 	// fresh file.
+	if err := s.MigrateDown(ctx); err != nil {
+		t.Fatalf("MigrateDown 008: %v", err)
+	}
+	if column("assets", "home_holder_id") != 0 {
+		t.Error("down from 008 should have dropped the home columns")
+	}
+
 	if err := s.MigrateDown(ctx); err != nil {
 		t.Fatalf("MigrateDown 007: %v", err)
 	}

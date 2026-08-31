@@ -278,3 +278,136 @@ func dedupe(in []string) []string {
 	sort.Strings(out)
 	return out
 }
+
+// ErrModelInvalid marks a rejected name.
+var ErrModelInvalid = errors.New("invalid product model")
+
+// ErrModelInUse blocks removing a model assets are still assigned to.
+var ErrModelInUse = errors.New("product model is still in use")
+
+// UpdateModelInput carries the editable parts of a product model.
+//
+// Every field is a pointer: a form that sends only what it changed must not
+// silently blank the rest, and CategoryIDs in particular has a meaningful
+// empty value -- a model attached to nothing is a legitimate state.
+type UpdateModelInput struct {
+	Name         *string
+	Vendor       *string
+	ImageURL     *string
+	CategoryIDs  *[]string
+	AttrDefaults *map[string]any
+}
+
+// UpdateModel edits a product model and its category associations.
+func (s *Store) UpdateModel(ctx context.Context, id string, in UpdateModelInput) (model.ProductModel, error) {
+	cur, err := s.GetModel(ctx, id)
+	if err != nil {
+		return cur, err
+	}
+	if in.Name != nil {
+		if strings.TrimSpace(*in.Name) == "" {
+			return cur, i18n.Wrap(ErrModelInvalid, i18n.KeyModelNeedsName)
+		}
+		cur.Name = strings.TrimSpace(*in.Name)
+	}
+	if in.Vendor != nil {
+		cur.Vendor = strings.TrimSpace(*in.Vendor)
+	}
+	if in.ImageURL != nil {
+		cur.ImageURL = *in.ImageURL
+	}
+	if in.CategoryIDs != nil {
+		cur.CategoryIDs = dedupe(*in.CategoryIDs)
+	}
+	if in.AttrDefaults != nil {
+		cur.AttrDefaults = *in.AttrDefaults
+	}
+	if cur.AttrDefaults == nil {
+		cur.AttrDefaults = map[string]any{}
+	}
+
+	defaults, err := store.MarshalJSONMap(cur.AttrDefaults)
+	if err != nil {
+		return cur, err
+	}
+	now := time.Now().UTC()
+	cur.UpdatedAt = now
+
+	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE product_models SET name = ?, vendor = ?, image_url = ?, attr_defaults = ?, updated_at = ?
+			 WHERE id = ?`,
+			cur.Name, cur.Vendor, cur.ImageURL, defaults, store.FormatTime(now), id); err != nil {
+			return err
+		}
+		if in.CategoryIDs == nil {
+			return nil
+		}
+		// Replaced wholesale rather than diffed: the join table carries
+		// nothing but the pair, so there is no state a diff would preserve.
+		if _, err := tx.ExecContext(ctx,
+			`DELETE FROM product_model_categories WHERE model_id = ?`, id); err != nil {
+			return err
+		}
+		for _, cid := range cur.CategoryIDs {
+			if _, err := tx.ExecContext(ctx,
+				`INSERT INTO product_model_categories (model_id, category_id) VALUES (?, ?)`,
+				id, cid); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			var who any = cur.Vendor
+			if cur.Vendor == "" {
+				who = i18n.M(i18n.KeyModelNoVendor)
+			}
+			return cur, i18n.Wrap(ErrModelDuplicate, i18n.KeyModelDuplicate, who, cur.Name)
+		}
+		return cur, fmt.Errorf("update model: %w", err)
+	}
+	return cur, nil
+}
+
+// ModelUsage counts the assets assigned to a model.
+func (s *Store) ModelUsage(ctx context.Context, id string) (int, error) {
+	var n int
+	err := s.db.ReadDB().QueryRowContext(ctx,
+		`SELECT count(*) FROM assets WHERE model_id = ?`, id).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count assets using model %q: %w", id, err)
+	}
+	return n, nil
+}
+
+// DeleteModel removes a product model.
+//
+// Refused while any asset is assigned to it -- that is data, and clearing the
+// assignment silently would lose which device is which product. Category
+// associations go with it, the same consented cascade a category delete
+// performs in the other direction.
+func (s *Store) DeleteModel(ctx context.Context, id string) (int, error) {
+	cur, err := s.GetModel(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	used, err := s.ModelUsage(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	if used > 0 {
+		return used, i18n.Wrap(ErrModelInUse, i18n.KeyModelInUse, used, cur.Name)
+	}
+
+	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx,
+			`DELETE FROM product_model_categories WHERE model_id = ?`, id); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, `DELETE FROM product_models WHERE id = ?`, id)
+		return err
+	})
+	return 0, err
+}

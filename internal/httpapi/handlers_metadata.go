@@ -236,6 +236,83 @@ func (s *Server) createModel(c *gin.Context) {
 	c.JSON(http.StatusCreated, out)
 }
 
+func (s *Server) patchModel(c *gin.Context) {
+	var req struct {
+		Name         *string         `json:"name"`
+		Vendor       *string         `json:"vendor"`
+		ImageURL     *string         `json:"image_url"`
+		CategoryIDs  *[]string       `json:"category_ids"`
+		AttrDefaults *map[string]any `json:"attr_defaults"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
+		return
+	}
+	ctx := c.Request.Context()
+	before, err := s.schema.GetModel(ctx, c.Param("id"))
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+
+	out, err := s.schema.UpdateModel(ctx, c.Param("id"), schema.UpdateModelInput{
+		Name: req.Name, Vendor: req.Vendor, ImageURL: req.ImageURL,
+		CategoryIDs: req.CategoryIDs, AttrDefaults: req.AttrDefaults,
+	})
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	if !s.record(c, audit.ActionUpdate, audit.TargetModel, out.ID, before, out) {
+		return
+	}
+	c.JSON(http.StatusOK, out)
+}
+
+// modelUsage answers "what would deleting this cost" before anyone commits.
+func (s *Server) modelUsage(c *gin.Context) {
+	ctx := c.Request.Context()
+	if _, err := s.schema.GetModel(ctx, c.Param("id")); err != nil {
+		FailErr(c, err)
+		return
+	}
+	n, err := s.schema.ModelUsage(ctx, c.Param("id"))
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"assets": n})
+}
+
+func (s *Server) deleteModel(c *gin.Context) {
+	ctx := c.Request.Context()
+	before, err := s.schema.GetModel(ctx, c.Param("id"))
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+
+	total, err := s.schema.DeleteModel(ctx, c.Param("id"))
+	if errors.Is(err, schema.ErrModelInUse) {
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+			"error": gin.H{
+				"code":    CodeReferenceBlocked,
+				"message": userText(c, err),
+				"total":   total,
+			},
+		})
+		return
+	}
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	if !s.record(c, audit.ActionDelete, audit.TargetModel, before.ID, before, nil) {
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (s *Server) listHolders(c *gin.Context) {
 	items, err := s.holders.List(c.Request.Context())
 	if err != nil {

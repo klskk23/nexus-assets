@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -88,20 +89,34 @@ func (s *Server) decorate(c *gin.Context, items []model.Asset) error {
 		entityByID[e.ID] = e
 	}
 
+	// One resolver for both the current holder and the home, so the two can
+	// never end up reading differently on the same screen.
+	name := func(h *model.Holder) {
+		switch h.Type {
+		case model.HolderTypeUser:
+			if u, ok := userByID[h.ID]; ok {
+				h.Name = u.Name
+			}
+		case model.HolderTypeEntity:
+			if e, ok := entityByID[h.ID]; ok {
+				h.Name, h.EntityType = e.Name, e.Type
+			}
+		}
+	}
+
 	for i := range items {
 		if u, ok := userByID[items[i].OwnerID]; ok {
 			owner := u
 			items[i].Owner = &owner
 		}
-		switch items[i].Holder.Type {
-		case model.HolderTypeUser:
-			if u, ok := userByID[items[i].Holder.ID]; ok {
-				items[i].Holder.Name = u.Name
-			}
-		case model.HolderTypeEntity:
-			if e, ok := entityByID[items[i].Holder.ID]; ok {
-				items[i].Holder.Name = e.Name
-				items[i].Holder.EntityType = e.Type
+		name(&items[i].Holder)
+		if items[i].HomeHolder != nil {
+			name(items[i].HomeHolder)
+		}
+		if items[i].HomeOwnerID != nil {
+			if u, ok := userByID[*items[i].HomeOwnerID]; ok {
+				homeOwner := u
+				items[i].HomeOwner = &homeOwner
 			}
 		}
 	}
@@ -118,6 +133,30 @@ type assetWriteRequest struct {
 	Attrs      map[string]any `json:"attrs"`
 	Version    int            `json:"version"`
 	Note       string         `json:"note"`
+	// Where the device belongs when it is not out. Absent means "leave it
+	// alone" on an update, and "wherever it is being recorded" on a create.
+	// Explicit null clears it, restoring the global default stock point.
+	HomeHolderType json.RawMessage `json:"home_holder_type"`
+	HomeHolderID   json.RawMessage `json:"home_holder_id"`
+	HomeOwnerID    json.RawMessage `json:"home_owner_id"`
+}
+
+// home reads the tri-state home fields off a write request.
+func (r assetWriteRequest) home() (holder *model.Holder, owner *string, clear bool) {
+	var ht, hid, oid *string
+	_ = json.Unmarshal(r.HomeHolderType, &ht)
+	_ = json.Unmarshal(r.HomeHolderID, &hid)
+	_ = json.Unmarshal(r.HomeOwnerID, &oid)
+
+	// An explicit null on the holder is what "no home" means; the owner
+	// follows it, since answering "who" without "where" is not a home.
+	if len(r.HomeHolderType) > 0 && ht == nil {
+		return nil, nil, true
+	}
+	if ht != nil && hid != nil {
+		holder = &model.Holder{Type: model.HolderType(*ht), ID: *hid}
+	}
+	return holder, oid, false
 }
 
 func (r assetWriteRequest) toInput(id, actorID string) asset.SaveInput {
@@ -125,11 +164,13 @@ func (r assetWriteRequest) toInput(id, actorID string) asset.SaveInput {
 	if status == "" {
 		status = model.StatusInStock
 	}
+	homeHolder, homeOwner, clearHome := r.home()
 	return asset.SaveInput{
 		ID: id, CategoryID: r.CategoryID, ModelID: r.ModelID, Status: status,
 		OwnerID: r.OwnerID,
 		Holder:  model.Holder{Type: model.HolderType(r.HolderType), ID: r.HolderID},
 		Attrs:   r.Attrs, Version: r.Version, ActorID: actorID, Note: r.Note,
+		HomeHolder: homeHolder, HomeOwnerID: homeOwner, ClearHome: clearHome,
 	}
 }
 

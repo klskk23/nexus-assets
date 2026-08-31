@@ -1,12 +1,19 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertCircleIcon, Trash2Icon } from "lucide-react"
+import { AlertCircleIcon } from "lucide-react"
 
 import { api, ApiError } from "@/lib/api"
 import type { Status, StatusUsage } from "@/lib/types"
-import { t, tStatuses } from "@/i18n"
+import { t, tMeta, tStatuses } from "@/i18n"
 import { CrudPage } from "@/features/metadata/CrudPage"
-import { ConfirmDialog } from "@/features/common/ConfirmDialog"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { STATUSES_KEY, statusesQuery, useStatuses } from "@/features/statuses/useStatuses"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -61,6 +68,7 @@ export function Statuses() {
   const [countsAsAvailable, setCountsAsAvailable] = useState(true)
   const [terminal, setTerminal] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [editing, setEditing] = useState<Status | null>(null)
 
   const invalidate = () => {
     // The prefix covers both the list and the usage counts. The overview's
@@ -69,10 +77,13 @@ export function Statuses() {
     queryClient.invalidateQueries({ queryKey: ["overview"] })
   }
 
-  const recolor = useMutation({
-    mutationFn: (v: { key: string; color: string }) =>
-      api.patch(`/statuses/${v.key}`, { color: v.color }),
-    onSuccess: invalidate,
+  const save = useMutation({
+    mutationFn: (v: Status) =>
+      api.patch(`/statuses/${v.key}`, { label: v.label, color: v.color }),
+    onSuccess: () => {
+      invalidate()
+      setEditing(null)
+    },
     onError: (e) => setNotice(e instanceof ApiError ? e.message : t.common.error),
   })
 
@@ -87,6 +98,7 @@ export function Statuses() {
   })
 
   return (
+    <>
     <CrudPage<StatusRow>
       title={tStatuses.title}
       queryKey={STATUSES_KEY}
@@ -111,6 +123,30 @@ export function Statuses() {
           terminal,
         })
       }
+      onRowClick={(s) => setEditing(s)}
+      rowActions={[
+        { label: tStatuses.edit, onSelect: (s) => setEditing(s) },
+        {
+          label: tStatuses.delete,
+          destructive: true,
+          // A built-in carries behaviour the system is written against, so
+          // the action is offered and disabled rather than missing -- "why is
+          // there no delete" is a worse question than a greyed-out row.
+          disabled: (s) => s.builtin,
+          onSelect: (s) => remove.mutate(s.key),
+          confirm: (s) => {
+            const u = usage[s.key] ?? { assets: 0, children: 0, history: 0 }
+            return {
+              title: tStatuses.deleteTitle,
+              description:
+                u.history > 0
+                  ? tStatuses.deleteHistoryHint(s.label, u.history)
+                  : tStatuses.deleteHint(s.label),
+              phrase: s.key,
+            }
+          },
+        },
+      ]}
       emptyTitle={tStatuses.empty}
       emptyHint={tStatuses.emptyHint}
       notice={
@@ -136,27 +172,6 @@ export function Statuses() {
           ),
         },
         { header: tStatuses.key, cell: (s) => <span className="font-mono text-xs">{s.key}</span> },
-        {
-          header: tStatuses.color,
-          // Recolouring is the one edit people come here to make, so it is a
-          // control in the row rather than a trip through an edit dialog.
-          cell: (s) => (
-            <Select value={s.color} onValueChange={(c) => recolor.mutate({ key: s.key, color: c })}>
-              <SelectTrigger size="sm" aria-label={`${s.label} ${tStatuses.color}`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {colors.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {tStatuses.colors[c] ?? c}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          ),
-        },
         {
           header: tStatuses.kind,
           cell: (s) => (s.builtin ? tStatuses.builtin : tStatuses.custom),
@@ -191,37 +206,6 @@ export function Statuses() {
                 {u.assets > 0 ? tStatuses.inUse(u.assets) : tStatuses.unused}
                 {u.history > 0 ? `・${tStatuses.inHistory(u.history)}` : ""}
               </span>
-            )
-          },
-        },
-        {
-          header: t.common.actions,
-          cell: (s) => {
-            // A built-in has no delete control at all: offering one that always
-            // refuses would be a worse explanation than its absence.
-            if (s.builtin) return null
-            const u = usage[s.key] ?? { assets: 0, history: 0 }
-            return (
-              <ConfirmDialog
-                trigger={
-                  <Button size="sm" variant="ghost" className="text-destructive">
-                    <Trash2Icon data-icon="inline-start" />
-                    {tStatuses.delete}
-                  </Button>
-                }
-                title={tStatuses.deleteTitle}
-                // History only degrades the timeline, so it is stated rather
-                // than used to refuse -- otherwise a status used once could
-                // never be removed.
-                description={
-                  u.history > 0
-                    ? tStatuses.deleteHistoryHint(s.label, u.history)
-                    : tStatuses.deleteHint(s.label)
-                }
-                confirmLabel={tStatuses.delete}
-                requirePhrase={s.key}
-                onConfirm={() => remove.mutate(s.key)}
-              />
             )
           },
         },
@@ -291,5 +275,89 @@ export function Statuses() {
         </div>
       }
     />
+
+      <StatusEditor
+        status={editing}
+        colors={colors}
+        onOpenChange={(open) => !open && setEditing(null)}
+        onSave={(s) => save.mutate(s)}
+        saving={save.isPending}
+      />
+    </>
+  )
+}
+
+interface EditProps {
+  status: Status | null
+  colors: string[]
+  onOpenChange: (open: boolean) => void
+  onSave: (s: Status) => void
+  saving: boolean
+}
+
+/**
+ * Edits one status.
+ *
+ * The key is fixed and the two behaviour switches are not offered: a built-in
+ * carries meaning the rest of the system is written against, and a custom
+ * status that changed what it means underneath existing devices would rewrite
+ * history rather than record it. Name and colour are presentation, and those
+ * are yours.
+ */
+function StatusEditor({ status, colors, onOpenChange, onSave, saving }: EditProps) {
+  const [draft, setDraft] = useState<Status | null>(status)
+  if (status?.key !== draft?.key) setDraft(status)
+  if (!draft) return null
+
+  return (
+    <Dialog open={status !== null} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{tStatuses.editTitle}</DialogTitle>
+        </DialogHeader>
+
+        <div className="grid gap-4">
+          <Field>
+            <FieldLabel htmlFor="se-label">{tStatuses.label}</FieldLabel>
+            <Input
+              id="se-label"
+              value={draft.label}
+              onChange={(e) => setDraft({ ...draft, label: e.target.value })}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="se-color">{tStatuses.color}</FieldLabel>
+            <Select value={draft.color} onValueChange={(c) => setDraft({ ...draft, color: c })}>
+              <SelectTrigger id="se-color">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {colors.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {tStatuses.colors[c] ?? c}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              <Badge variant="outline" className={cn("status-chip", `status-${draft.color}`)}>
+                {draft.label || tStatuses.label}
+              </Badge>
+            </FieldDescription>
+          </Field>
+        </div>
+
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="ghost">{t.common.cancel}</Button>
+          </DialogClose>
+          <Button disabled={draft.label === "" || saving} onClick={() => onSave(draft)}>
+            {tMeta.holders.save}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

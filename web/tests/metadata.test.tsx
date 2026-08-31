@@ -8,6 +8,7 @@ import { Users } from "@/routes/Users"
 import { Categories } from "@/routes/Categories"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { chooseByLabel } from "@/test/choose"
+import { chooseFromMenu, openMenu } from "@/test/menu"
 import { ApiError } from "@/lib/api"
 
 const get = vi.fn()
@@ -170,7 +171,7 @@ describe("Holders page", () => {
     const user = userEvent.setup()
     renderWithProviders(<Holders />)
     const warehouse = await screen.findByRole("row", { name: /上海仓库/ })
-    await user.click(within(warehouse).getByRole("button", { name: "设为默认库存点" }))
+    await chooseFromMenu(user, warehouse, "设为默认库存点")
 
     expect(await screen.findByRole("alert")).toHaveTextContent("是当前默认库存点")
   })
@@ -178,14 +179,22 @@ describe("Holders page", () => {
 
 describe("Users page", () => {
   it("separates active from disabled accounts", async () => {
+    const user = userEvent.setup()
     renderWithProviders(<Users />)
     const active = await screen.findByRole("row", { name: /admin@example.com/ })
     expect(within(active).getByText("正常")).toBeInTheDocument()
-    expect(within(active).getByRole("button", { name: "停用" })).toBeInTheDocument()
+    await openMenu(user, active)
+    expect(screen.getByRole("menuitem", { name: "停用" })).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
+    await user.keyboard("{Escape}")
 
     const disabled = screen.getByRole("row", { name: /old@example.com/ })
     expect(within(disabled).getByText("已停用")).toBeInTheDocument()
-    expect(within(disabled).queryByRole("button", { name: "停用" })).not.toBeInTheDocument()
+    // Offered and disabled rather than missing: it is already disabled.
+    await openMenu(user, disabled)
+    expect(screen.getByRole("menuitem", { name: "停用" })).toHaveAttribute("aria-disabled", "true")
   })
 
   it("shows why disabling was refused instead of failing quietly", async () => {
@@ -195,7 +204,11 @@ describe("Users page", () => {
     const user = userEvent.setup()
     renderWithProviders(<Users />)
     const active = await screen.findByRole("row", { name: /admin@example.com/ })
-    await user.click(within(active).getByRole("button", { name: "停用" }))
+    await chooseFromMenu(user, active, "停用")
+    // Disabling cannot be undone, so it asks for the email first.
+    const confirm = await screen.findByRole("alertdialog")
+    await user.type(within(confirm).getByRole("textbox"), "admin@example.com")
+    await user.click(within(confirm).getByRole("button", { name: "停用" }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent("15 asset(s) must be transferred first")
   })
@@ -235,7 +248,7 @@ describe("Categories page", () => {
 // The server has attached the blocking devices since the first version. The
 // client parsed only `referrers` and dropped these, leaving the page with a
 // count and no way to act on it.
-it("lists the blocking devices when a holder cannot be archived", async () => {
+it("lists the blocking devices when a holder cannot take the marker", async () => {
   patch.mockRejectedValueOnce(
     new ApiError(
       409,
@@ -253,7 +266,7 @@ it("lists the blocking devices when a holder cannot be archived", async () => {
   const user = userEvent.setup()
   renderWithProviders(<Holders />)
   const warehouse = await screen.findByRole("row", { name: /上海仓库/ })
-  await user.click(within(warehouse).getByRole("button", { name: "设为默认库存点" }))
+  await chooseFromMenu(user, warehouse, "设为默认库存点")
 
   const alert = await screen.findByRole("alert")
   expect(alert).toHaveTextContent("112394521950")
@@ -314,7 +327,7 @@ describe("create dialog resets", () => {
     const user = userEvent.setup()
     renderWithProviders(<Holders />)
     const warehouse = await screen.findByRole("row", { name: /上海仓库/ })
-    await user.click(within(warehouse).getByRole("button", { name: "设为默认库存点" }))
+    await chooseFromMenu(user, warehouse, "设为默认库存点")
 
     const alert = await screen.findByRole("alert")
     expect(alert).toHaveTextContent("仍被 5 台设备使用")

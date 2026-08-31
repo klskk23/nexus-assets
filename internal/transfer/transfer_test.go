@@ -2,6 +2,7 @@ package transfer
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -119,6 +120,31 @@ func (f *fixture) newAsset(t *testing.T, n int) []string {
 	return ids
 }
 
+// clearHome makes an asset look like one recorded before homes existed.
+func (f *fixture) clearHome(t *testing.T, assetID string) {
+	t.Helper()
+	err := f.db.Write(f.ctx, func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx,
+			`UPDATE assets SET home_holder_type = NULL, home_holder_id = NULL, home_owner_id = NULL
+			 WHERE id = ?`, assetID)
+		return err
+	})
+	if err != nil {
+		t.Fatalf("clear home: %v", err)
+	}
+}
+
+// attrsOf reads an asset's stored values, so an update can resave them
+// untouched rather than wiping the unique key it was created with.
+func (f *fixture) attrsOf(t *testing.T, assetID string) map[string]any {
+	t.Helper()
+	a, err := f.assets.Get(f.ctx, assetID)
+	if err != nil {
+		t.Fatalf("load asset: %v", err)
+	}
+	return a.Attrs
+}
+
 func (f *fixture) snapshot(t *testing.T, assetID string) model.AssetState {
 	t.Helper()
 	var s model.AssetState
@@ -203,9 +229,14 @@ func TestCheckinReturnsToTheDefaultStockPoint(t *testing.T) {
 	}
 }
 
-func TestCheckinWithoutADefaultStockPointAsksForALocation(t *testing.T) {
+// A device recorded before homes existed has neither a home nor, here, a
+// global default. Failing outright would strand the operator; the rule is to
+// ask which location to return it to.
+func TestCheckinWithNoHomeAndNoDefaultStockPointAsks(t *testing.T) {
 	f := newFixture(t) // no default stock point marked
 	id := f.newAsset(t, 1)[0]
+	f.clearHome(t, id)
+
 	if _, err := f.svc.Apply(f.ctx, Request{
 		AssetIDs: []string{id}, ToStatus: status(model.StatusInUse),
 		ToHolder: &model.Holder{Type: model.HolderTypeUser, ID: f.otherID}, ActorID: f.userID,
@@ -216,9 +247,56 @@ func TestCheckinWithoutADefaultStockPointAsksForALocation(t *testing.T) {
 	_, err := f.svc.Apply(f.ctx, Request{
 		AssetIDs: []string{id}, ToStatus: status(model.StatusInStock), CheckIn: true, ActorID: f.userID,
 	})
-	// Failing outright would strand the operator; the rule is to ask.
 	if !errors.Is(err, ErrNoDefaultStock) {
 		t.Fatalf("want ErrNoDefaultStock, got %v", err)
+	}
+}
+
+// The point of a home: a batch from four warehouses goes back to four
+// warehouses, not to whichever one happens to be marked the global default.
+func TestCheckinReturnsEachDeviceToItsOwnHome(t *testing.T) {
+	f := newFixture(t)
+	f.setDefaultStock(t) // marked, and deliberately not where these belong
+
+	other, err := f.holders.Create(f.ctx, holder.CreateInput{
+		Type: model.EntityLocation, Name: "北京仓库",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := f.newAsset(t, 2)
+	// The second one lives in Beijing; the first keeps the fixture's warehouse.
+	if _, err := f.assets.Save(f.ctx, asset.SaveInput{
+		ID: ids[1], CategoryID: f.catID, Status: model.StatusInStock, OwnerID: f.userID,
+		Holder:     model.Holder{Type: model.HolderTypeEntity, ID: f.warehouseID},
+		HomeHolder: &model.Holder{Type: model.HolderTypeEntity, ID: other.ID},
+		Version:    1, ActorID: f.userID, Attrs: f.attrsOf(t, ids[1]),
+	}); err != nil {
+		t.Fatalf("set the second device's home: %v", err)
+	}
+
+	if _, err := f.svc.Apply(f.ctx, Request{
+		AssetIDs: ids, ToStatus: status(model.StatusInUse),
+		ToHolder: &model.Holder{Type: model.HolderTypeUser, ID: f.otherID}, ActorID: f.userID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := f.svc.Apply(f.ctx, Request{
+		AssetIDs: ids, ToStatus: status(model.StatusInStock), CheckIn: true, ActorID: f.userID,
+	})
+	if err != nil {
+		t.Fatalf("check in: %v", err)
+	}
+	got := map[string]string{}
+	for _, tr := range res.Transfers {
+		got[tr.AssetID] = tr.ToHolder.ID
+	}
+	if got[ids[0]] != f.warehouseID {
+		t.Errorf("the first device should go home to the fixture warehouse, went to %s", got[ids[0]])
+	}
+	if got[ids[1]] != other.ID {
+		t.Errorf("the second device should go home to Beijing, went to %s", got[ids[1]])
 	}
 }
 

@@ -14,19 +14,27 @@ import (
 	"github.com/klskk23/nexus-assets/internal/store"
 )
 
-const assetCols = `id, category_id, model_id, status, owner_id, holder_type, holder_id, attrs, version, created_at, updated_at`
+const assetCols = `id, category_id, model_id, status, owner_id, holder_type, holder_id,
+	home_holder_type, home_holder_id, home_owner_id, attrs, version, created_at, updated_at`
 
 func scanAsset(row interface{ Scan(...any) error }) (model.Asset, error) {
 	var a model.Asset
-	var modelID sql.NullString
+	var modelID, homeType, homeID, homeOwner sql.NullString
 	var attrs, created, updated string
 	var holderType, holderID string
 	if err := row.Scan(&a.ID, &a.CategoryID, &modelID, &a.Status, &a.OwnerID,
-		&holderType, &holderID, &attrs, &a.Version, &created, &updated); err != nil {
+		&holderType, &holderID, &homeType, &homeID, &homeOwner,
+		&attrs, &a.Version, &created, &updated); err != nil {
 		return a, err
 	}
 	a.ModelID = store.StrPtr(modelID)
 	a.Holder = model.Holder{Type: model.HolderType(holderType), ID: holderID}
+	// Both halves or neither: a home holder with no id would be a shape the
+	// rest of the code has to keep checking for.
+	if homeType.Valid && homeID.Valid {
+		a.HomeHolder = &model.Holder{Type: model.HolderType(homeType.String), ID: homeID.String}
+	}
+	a.HomeOwnerID = store.StrPtr(homeOwner)
 	var err error
 	if a.Attrs, err = store.UnmarshalJSONMap(attrs); err != nil {
 		return a, err

@@ -157,6 +157,9 @@ export interface Asset {
   status: AssetStatus
   owner?: User
   holder: Holder
+  /** Where it belongs when it is not out; check-in returns it here. */
+  home_holder?: Holder
+  home_owner?: User
   attrs: Record<string, unknown>
   archived_attrs?: Record<string, unknown>
   version: number

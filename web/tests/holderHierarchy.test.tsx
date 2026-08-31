@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event"
 import { Holders } from "@/routes/Holders"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { choose } from "@/test/choose"
+import { chooseFromMenu, openMenu } from "@/test/menu"
 import type { HolderEntity } from "@/lib/types"
 
 const get = vi.fn()
@@ -151,8 +152,8 @@ describe("Holders edit and delete", () => {
     const user = userEvent.setup()
     renderWithProviders(<Holders />)
 
-    const row = await screen.findByRole("row", { name: /上海仓库/ })
-    await user.click(within(row).getByRole("button", { name: "编辑" }))
+    // The row is the control now, the same gesture the asset list uses.
+    await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
 
     const dialog = await screen.findByRole("dialog")
     const name = within(dialog).getByLabelText("名称")
@@ -176,8 +177,7 @@ describe("Holders edit and delete", () => {
     const user = userEvent.setup()
     renderWithProviders(<Holders />)
 
-    const row = await screen.findByRole("row", { name: /上海仓库/ })
-    await user.click(within(row).getByRole("button", { name: "编辑" }))
+    await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
     const dialog = await screen.findByRole("dialog")
     await choose(user, within(dialog).getByLabelText("上级"), "无上级")
     await user.click(within(dialog).getByRole("button", { name: "保存" }))
@@ -192,7 +192,7 @@ describe("Holders edit and delete", () => {
     renderWithProviders(<Holders />)
 
     const row = await screen.findByRole("row", { name: /运维部.*部门/ })
-    await user.click(within(row).getByRole("button", { name: "删除" }))
+    await chooseFromMenu(user, row, "删除")
 
     const dialog = await screen.findByRole("alertdialog")
     const confirm = within(dialog).getByRole("button", { name: "删除" })
@@ -212,7 +212,7 @@ describe("Holders edit and delete", () => {
     renderWithProviders(<Holders />)
 
     const row = await screen.findByRole("row", { name: /上海仓库/ })
-    await user.click(within(row).getByRole("button", { name: "删除" }))
+    await chooseFromMenu(user, row, "删除")
 
     const dialog = await screen.findByRole("alertdialog")
     expect(dialog).toHaveTextContent("7 条流转记录")
@@ -227,11 +227,35 @@ describe("Holders edit and delete", () => {
     renderWithProviders(<Holders />)
 
     const row = await screen.findByRole("row", { name: /XX 集团.*公司/ })
-    await user.click(within(row).getByRole("button", { name: "删除" }))
+    await chooseFromMenu(user, row, "删除")
     const dialog = await screen.findByRole("alertdialog")
     await user.type(within(dialog).getByRole("textbox"), "XX 集团")
     await user.click(within(dialog).getByRole("button", { name: "删除" }))
 
     expect(await screen.findByText(/还有 1 个下级/)).toBeInTheDocument()
+  })
+})
+
+describe("Holders context menu", () => {
+  // The marker moves but never switches off, so the action is offered on
+  // every location except the one that already has it.
+  it("offers the default-stock action only where it could apply", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Holders />)
+
+    const co = await screen.findByRole("row", { name: /XX 集团.*公司/ })
+    await openMenu(user, co)
+    expect(screen.getByRole("menuitem", { name: "设为默认库存点" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
+    await user.keyboard("{Escape}")
+
+    const current = screen.getByRole("row", { name: /上海仓库/ })
+    await openMenu(user, current)
+    expect(screen.getByRole("menuitem", { name: "设为默认库存点" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
   })
 })

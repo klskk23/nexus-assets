@@ -78,6 +78,9 @@ func (s *Server) Router() *gin.Engine {
 
 	authed.GET("/models", s.listModels)
 	authed.POST("/models", s.createModel)
+	authed.PATCH("/models/:id", s.patchModel)
+	authed.DELETE("/models/:id", s.deleteModel)
+	authed.GET("/models/:id/usage", s.modelUsage)
 
 	authed.GET("/statuses", s.listStatuses)
 	authed.POST("/statuses", s.createStatus)

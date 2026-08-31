@@ -8,7 +8,6 @@ import { t, tMeta } from "@/i18n"
 import { CrudPage } from "@/features/metadata/CrudPage"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -53,6 +52,21 @@ export function Users() {
         setPassword("")
       }}
       create={() => api.post("/users", { email, name, password })}
+      // Accounts cannot be deleted -- actor_id references them from every
+      // audit entry -- so disabling is the only lifecycle action there is.
+      rowActions={[
+        {
+          label: tMeta.users.disable,
+          destructive: true,
+          disabled: (u) => u.status !== "active",
+          onSelect: (u) => disable.mutate(u.id),
+          confirm: (u) => ({
+            title: tMeta.users.disableTitle,
+            description: tMeta.users.disableHint(u.name),
+            phrase: u.email,
+          }),
+        },
+      ]}
       emptyTitle={tMeta.users.empty}
       emptyHint={tMeta.users.emptyHint}
       columns={[
@@ -66,15 +80,6 @@ export function Users() {
             ) : (
               <Badge variant="outline">{tMeta.users.disabled}</Badge>
             ),
-        },
-        {
-          header: "",
-          cell: (u) =>
-            u.status === "active" ? (
-              <Button variant="ghost" size="sm" onClick={() => disable.mutate(u.id)}>
-                {tMeta.users.disable}
-              </Button>
-            ) : null,
         },
       ]}
       form={

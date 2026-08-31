@@ -1,12 +1,12 @@
 <!-- SPECKIT START -->
-当前计划：`specs/006-bilingual-and-holder-lifecycle/plan.md`
+当前计划：`specs/007-asset-home-and-table-conventions/plan.md`
 
 开工前必读，按优先级：
 
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
-2. `specs/006-bilingual-and-holder-lifecycle/` —— 本轮特性的规格、计划、决策与任务
+2. `specs/007-asset-home-and-table-conventions/` —— 本轮特性的规格、计划、决策与任务
 3. `docs/design-baseline-v5.md`（决策 61–63）—— 状态不再约束持有方。
-   **冲突时以最新一版为准：v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
+   **冲突时以最新一版为准：007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
 4. `docs/design-baseline-v4.md`（决策 53–60）—— 状态成为可配置的数据
 5. `docs/design-baseline-v3.md`（决策 41–52）—— 信息项可删除、型号多对多
 6. `docs/design-baseline-v2.md`（决策 25–40）—— 编号模型、依赖门禁、流转
@@ -14,7 +14,7 @@
 8. `specs/001-asset-ledger-demo/` ~ `specs/006-bilingual-and-holder-lifecycle/` —— 前六轮特性。
    001 的 `contracts/openapi.yaml` 仍是**全量**端点清单
 
-**最容易违反的九条硬规则**
+**最容易违反的十条硬规则**
 
 - **组件必须来自 shadcn/ui。** 不存在时必须先与开发者确认才能自定义，**不接受事后补批**。
   类别树用 `Collapsible` 递归组合，不引入树组件。
@@ -52,6 +52,16 @@
   移动要防成环。迁移**不回填**存量的无上级部门。
   **持有方没有「停用」**（006 起）：删除在有设备、有下级、是默认库存点时拒绝；
   仅在流转历史中出现只提示不拒绝 —— 与状态删除同一条规则。类型不可改。
+- **归还的目的地在设备身上，不在系统身上。** `assets.home_holder_*` / `home_owner_id`
+  是设备「不在外面时归属何处」。归还的解析在 `applyOne` **逐台**进行：
+  请求指定 → 该资产的 home → 全局默认库存点 → 报错。
+  解析绝不能挪回批次层面 —— 那会让一批来自四个仓库的设备仍然只去一个地方。
+  三态：字段缺席 = 不动，显式 null = 清空，有值 = 设置。
+- **元数据表格：点击行编辑，右键出操作菜单。** 不留成列的操作按钮。
+  不适用的菜单项**禁用而不是隐藏**。破坏性操作要 `confirm` 并输入该行标识。
+  约定集中在 `CrudPage` 的 `onRowClick` / `rowActions`，不要在页面里各写一遍。
+  **类别页有意不套用** —— 它是树不是列表。
+  右键菜单在触发时关闭，所以确认框必须渲染在菜单之外（`ConfirmDialog` 有受控模式）。
 - **信息项没有「停用」。** 只有删除（无关联时）与解绑（有存量数据时）。
   `archived_attrs` 是**解绑**产生的孤儿键，与停用无关，不要跟着一起清理掉 ——
   删掉它会让「解绑后仍能查看旧值」当场失效，且没有任何现有测试会失败。

@@ -85,6 +85,9 @@ export const en: typeof zh = {
     deleteManyHint: (n: number) =>
       `This cannot be undone. It deletes the ${n} selected device(s) and their whole transfer history.`,
     generatedSN: "The number is derived from this category's display key; leave it alone",
+    home: "Home",
+    homeHint: "Check-in returns this device here. Left empty, it goes to the default stock point.",
+    homeNone: "None (the default stock point)",
     transfer: "Transfer",
     backToList: "Back to assets",
   },
@@ -145,6 +148,13 @@ export const enMeta: typeof zhMeta = {
     defaultValue: "Value",
     addDefault: "Add one",
     removeDefault: "Remove",
+    edit: "Edit",
+    editTitle: "Edit model",
+    save: "Save",
+    delete: "Delete",
+    deleteTitle: "Delete model",
+    deleteHint: (name: string) =>
+      `${name} will be deleted, along with its links to every category. Refused while any device is assigned to it.`,
     empty: "No models yet",
     emptyHint:
       "A model can belong to several categories and supply default values, prefilled during entry.",
@@ -189,6 +199,9 @@ export const enMeta: typeof zhMeta = {
     active: "Active",
     disabled: "Disabled",
     disable: "Disable",
+    disableTitle: "Disable account",
+    disableHint: (name: string) =>
+      `${name} will no longer be able to sign in. Refused while they still own devices — reassign those first.`,
     empty: "No accounts yet",
     emptyHint:
       "Accounts can be disabled but not deleted; reassign their devices before disabling one.",
@@ -264,7 +277,8 @@ export const enTransfer: typeof zhTransfer = {
     note: "Note",
     submit: "Submit",
     submitting: "Submitting…",
-    checkinHint: "Returns to the default stock point",
+    toHome: "Each device's own home",
+    checkinHint: "Left alone, each device returns to its own home; one that never named a home goes to the default stock point.",
     title: "Transfer",
     action: "Action",
     done: (n: number) => `Transferred ${n} device(s)`,
@@ -440,6 +454,8 @@ export const enStatuses: typeof zhStatuses = {
   inUse: (n: number) => `${n} device(s)`,
   unused: "Unused",
   inHistory: (n: number) => `${n} in history`,
+  edit: "Edit",
+  editTitle: "Edit status",
   delete: "Delete",
   deleteTitle: "Delete status",
   deleteHint: (label: string) => `${label} will disappear from every dropdown.`,

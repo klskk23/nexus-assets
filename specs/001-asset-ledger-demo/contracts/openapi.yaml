@@ -511,6 +511,33 @@ paths:
     get: { tags: [metadata], summary: 型号列表, responses: { "200": { description: OK } } }
     post: { tags: [metadata], summary: 新建型号, responses: { "201": { description: Created } } }
 
+  /models/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: 修改型号。字段可省略，省略即不动；category_ids 给了则整体替换
+      responses:
+        "200": { description: OK }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [metadata]
+      summary: 删除型号。仍有设备是该型号时拒绝（带 total）；类别关联一并解除
+      responses:
+        "204": { description: Deleted }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /models/{id}/usage:
+    get:
+      tags: [metadata]
+      summary: 删除该型号的代价：{assets}
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK }
+        "404": { $ref: "#/components/responses/Error" }
+
   /statuses:
     get:
       tags: [metadata]

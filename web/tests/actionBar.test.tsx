@@ -59,12 +59,14 @@ describe("ActionBar", () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledWith("已完成 20 台的流转"))
   })
 
-  it("asks the server for the default stock point when returning", async () => {
+  // Returning names no destination by default: each device goes back to its
+  // own home, which is the only answer that can differ across a batch.
+  it("returns each device to its own home by default", async () => {
     const user = userEvent.setup()
     renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
 
     await user.click(screen.getByRole("button", { name: "归还" }))
-    expect(screen.getByText("归还到默认库存点")).toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "目标" })).toHaveTextContent("各自的默认归属")
     await user.click(screen.getByRole("button", { name: "提交" }))
 
     await waitFor(() =>

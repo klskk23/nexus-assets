@@ -1,0 +1,151 @@
+openapi: 3.1.0
+info:
+  title: Nexus Assets API — 007 增量
+  version: 0.7.0
+  description: >
+    资产归属与型号生命周期带来的契约变化。**这是一份增量，不是全量。**
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+tags:
+  - name: metadata
+  - name: assets
+
+paths:
+  /models/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: 修改型号
+      description: >
+        每个字段都可省略，省略即不动 —— 只提交了改动的表单不能把其余字段清空。
+        `category_ids` 给了就**整体替换**：连接表除了这一对什么都不存，
+        没有差分能保留的状态。改名造成同厂商重名时 409。
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                vendor: { type: string }
+                image_url: { type: string }
+                category_ids: { type: array, items: { type: string } }
+                attr_defaults: { type: object, additionalProperties: true }
+      responses:
+        "200": { description: OK }
+        "404": { description: Not Found }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [metadata]
+      summary: 删除型号。仍有设备是该型号时拒绝
+      description: >
+        类别关联随删除一并解除 —— 同意的级联，与 v3 决策 47 方向相反、性质相同。
+        被使用时**拒绝而不是清空** `model_id`：静默清空会丢掉「这台是哪款产品」，
+        而那是没人同意过的数据损失。
+      responses:
+        "204": { description: Deleted }
+        "404": { description: Not Found }
+        "409":
+          description: 仍有设备是该型号，载荷带 total
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /models/{id}/usage:
+    get:
+      tags: [metadata]
+      summary: 删除该型号的代价
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [assets]
+                properties:
+                  assets: { type: integer }
+        "404": { description: Not Found }
+
+  /assets:
+    post:
+      tags: [assets]
+      summary: （已存在）录入设备。本轮新增归属三字段
+      description: >
+        `home_holder_type` / `home_holder_id` / `home_owner_id` 描述设备
+        **不在外面时归属何处**。创建时省略即取录入时的持有方与负责人 ——
+        设备刚到某个地方，那个地方就是答案，再问一遍是结论已定的问题。
+      responses:
+        "201": { description: Created }
+
+  /assets/{id}:
+    patch:
+      tags: [assets]
+      summary: （已存在）修改设备。归属为三态
+      description: >
+        字段缺席 = 不动；显式 `null` = 清空（回退到全局默认库存点）；有值 = 设置。
+        与类别、持有方的 `parent_id` 是同一套 `json.RawMessage` 处理 ——
+        不区分的话，一次改备注会顺手把归属清掉。
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                home_holder_type: { type: [string, "null"], enum: [user, entity, null] }
+                home_holder_id: { type: [string, "null"] }
+                home_owner_id: { type: [string, "null"] }
+      responses:
+        "200": { description: OK }
+        "409": { description: 版本冲突 }
+
+  /transfers:
+    post:
+      tags: [assets]
+      summary: （已存在）流转。本轮 check_in 的目的地解析有变
+      description: >
+        请求形状未变。变的是**不指定目标时的答案**：
+
+        ```
+        to_holder_id 给了     → 整批去那里
+        该资产有 home_holder  → 各自回各自的家
+        有全局默认库存点       → 去那里
+        都没有                → 422，提示选择位置
+        ```
+
+        解析在逐台的循环里，不在批次层面 —— 否则一批来自四个仓库的设备
+        仍然只会去一个地方，而那正是要解决的问题。
+        `to_owner_id` 同理：给了就用，否则用该资产的 `home_owner_id`，再否则不变。
+      responses:
+        "200": { description: OK }
+        "422": { $ref: "#/components/responses/Error" }
+
+components:
+  responses:
+    Error:
+      description: 统一错误 envelope
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            total: { type: integer }
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }

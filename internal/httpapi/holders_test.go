@@ -3,6 +3,7 @@ package httpapi
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -198,4 +199,63 @@ func TestOnlyALocationCanBeTheDefaultStockPoint(t *testing.T) {
 	if !strings.Contains(body, "is_default_stock") {
 		t.Errorf("the refusal should name the field, got %s", body)
 	}
+}
+
+// A device's home is where check-in returns it, and a batch from two
+// warehouses goes back to two warehouses. The global default stock point is
+// only the fallback for devices that never named one.
+func TestCheckinReturnsDevicesToTheirOwnHome(t *testing.T) {
+	h := newHarness(t)
+	h.seed(t, 1, 1)
+
+	res := h.do(t, http.MethodPost, "/api/holders", `{"type":"location","name":"北京仓库"}`)
+	var other model.HolderEntity
+	if err := json.Unmarshal(res.Body.Bytes(), &other); err != nil {
+		t.Fatal(err)
+	}
+	id := h.firstAssetID(t)
+
+	// Recording set the home to where it was recorded; move it to Beijing.
+	res = h.do(t, http.MethodGet, "/api/assets/"+id, "")
+	var wrapper struct {
+		Asset model.Asset `json:"asset"`
+	}
+	if err := json.Unmarshal(res.Body.Bytes(), &wrapper); err != nil {
+		t.Fatal(err)
+	}
+	if wrapper.Asset.HomeHolder == nil || wrapper.Asset.HomeHolder.ID != h.locID {
+		t.Fatalf("a new device should be at home where it was recorded, got %+v", wrapper.Asset.HomeHolder)
+	}
+
+	body := `{"category_id":"` + wrapper.Asset.CategoryID + `","owner_id":"` + h.userID +
+		`","holder_type":"entity","holder_id":"` + h.locID +
+		`","home_holder_type":"entity","home_holder_id":"` + other.ID +
+		`","version":` + strconv.Itoa(wrapper.Asset.Version) + `,"attrs":` + attrsJSON(t, wrapper.Asset) + `}`
+	if res := h.do(t, http.MethodPatch, "/api/assets/"+id, body); res.Code != http.StatusOK {
+		t.Fatalf("move the home: %d %s", res.Code, res.Body)
+	}
+
+	// Out and back.
+	if res := h.do(t, http.MethodPost, "/api/transfers",
+		`{"asset_ids":["`+id+`"],"to_status":"in_use","to_holder_type":"user","to_holder_id":"`+
+			h.userID+`"}`); res.Code != http.StatusOK && res.Code != http.StatusCreated {
+		t.Fatalf("check out: %d %s", res.Code, res.Body)
+	}
+	res = h.do(t, http.MethodPost, "/api/transfers",
+		`{"asset_ids":["`+id+`"],"to_status":"in_stock","check_in":true}`)
+	if res.Code != http.StatusOK && res.Code != http.StatusCreated {
+		t.Fatalf("check in: %d %s", res.Code, res.Body)
+	}
+	if !strings.Contains(res.Body.String(), other.ID) {
+		t.Errorf("it should have gone home to Beijing, got %s", res.Body)
+	}
+}
+
+func attrsJSON(t *testing.T, a model.Asset) string {
+	t.Helper()
+	b, err := json.Marshal(a.Attrs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
 }

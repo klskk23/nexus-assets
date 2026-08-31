@@ -1,10 +1,19 @@
 import { AlertCircleIcon, PlusIcon } from "lucide-react"
-import { useState, type ReactNode } from "react"
+import { Fragment, useState, type ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { ApiError } from "@/lib/api"
 import { t } from "@/i18n"
+import { cn } from "@/lib/utils"
 import { StateBoundary } from "@/components/StateBoundary"
+import { ConfirmDialog } from "@/features/common/ConfirmDialog"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -31,6 +40,21 @@ export interface Column<T> {
   cell: (row: T) => ReactNode
 }
 
+/** One entry in a row's context menu. */
+export interface RowAction<T> {
+  label: string
+  onSelect: (row: T) => void
+  /** Renders in the destructive colour and sits below a separator. */
+  destructive?: boolean
+  disabled?: (row: T) => boolean
+  /**
+   * Asks before acting. The phrase is what the operator has to type, which is
+   * how an irreversible action stays hard to do by accident -- reading a
+   * warning is easy to do without noticing, typing a name is not.
+   */
+  confirm?: (row: T) => { title: string; description: string; phrase: string }
+}
+
 interface Props<T> {
   title: string
   queryKey: string
@@ -48,6 +72,18 @@ interface Props<T> {
    * it inside the create dialog would surface it where nobody is looking.
    */
   notice?: ReactNode
+  /**
+   * Opens the editor for a row. Given, the whole row becomes the control --
+   * the same gesture the asset list uses, rather than a button in a column
+   * that has to be aimed at.
+   */
+  onRowClick?: (row: T) => void
+  /**
+   * What right-clicking a row offers. Actions live here rather than in a
+   * column of buttons: the buttons were competing with the data for width on
+   * every screen, and most of them are used once a month.
+   */
+  rowActions?: RowAction<T>[]
   /**
    * Clears the form. Required rather than optional: the fields live on the
    * page, and a dialog that reopens holding the last thing you created is a
@@ -75,10 +111,15 @@ export function CrudPage<T extends { id: string }>({
   createDisabled,
   form,
   notice,
+  onRowClick,
+  rowActions,
   onCreated,
 }: Props<T>) {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
+  // A context menu closes as it fires, so a confirmation cannot hang off it.
+  // The pending action is parked here and the dialog rendered outside.
+  const [pending, setPending] = useState<{ action: RowAction<T>; row: T } | null>(null)
   const query = useQuery({ queryKey: [queryKey], queryFn: list })
 
   const mutation = useMutation({
@@ -167,17 +208,61 @@ export function CrudPage<T extends { id: string }>({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(query.data ?? []).map((row) => (
-                <TableRow key={row.id}>
-                  {columns.map((c) => (
-                    <TableCell key={c.header}>{c.cell(row)}</TableCell>
-                  ))}
-                </TableRow>
-              ))}
+              {(query.data ?? []).map((row) => {
+                const cells = columns.map((c) => (
+                  <TableCell key={c.header}>{c.cell(row)}</TableCell>
+                ))
+                const tr = (
+                  <TableRow
+                    key={row.id}
+                    className={cn(onRowClick && "cursor-pointer")}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  >
+                    {cells}
+                  </TableRow>
+                )
+                if (!rowActions?.length) return tr
+                return (
+                  <ContextMenu key={row.id}>
+                    <ContextMenuTrigger asChild>{tr}</ContextMenuTrigger>
+                    <ContextMenuContent>
+                      {rowActions.map((a, i) => (
+                        <Fragment key={a.label}>
+                          {a.destructive && i > 0 && <ContextMenuSeparator />}
+                          <ContextMenuItem
+                            variant={a.destructive ? "destructive" : "default"}
+                            disabled={a.disabled?.(row)}
+                            onSelect={() =>
+                              a.confirm ? setPending({ action: a, row }) : a.onSelect(row)
+                            }
+                          >
+                            {a.label}
+                          </ContextMenuItem>
+                        </Fragment>
+                      ))}
+                    </ContextMenuContent>
+                  </ContextMenu>
+                )
+              })}
             </TableBody>
           </Table>
         </div>
       </StateBoundary>
+
+      {pending?.action.confirm && (
+        <ConfirmDialog
+          open
+          onOpenChange={(next) => !next && setPending(null)}
+          title={pending.action.confirm(pending.row).title}
+          description={pending.action.confirm(pending.row).description}
+          confirmLabel={pending.action.label}
+          requirePhrase={pending.action.confirm(pending.row).phrase}
+          onConfirm={() => {
+            pending.action.onSelect(pending.row)
+            setPending(null)
+          }}
+        />
+      )}
     </div>
   )
 }

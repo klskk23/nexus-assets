@@ -1,4 +1,4 @@
-import { LanguagesIcon, MoonIcon, SunIcon } from "lucide-react"
+import { LogOutIcon, MoonIcon, SunIcon, UserIcon } from "lucide-react"
 import { NavLink, Navigate, Outlet } from "react-router"
 
 import { useAuth } from "@/features/auth/useAuth"
@@ -8,6 +8,16 @@ import { LANGS, LANG_NAMES } from "@/i18n"
 import { t } from "@/i18n"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
 /**
@@ -68,30 +78,47 @@ export function AppShell() {
               </NavLink>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-3 text-sm">
-            <span className="text-muted-foreground">{user.name}</span>
-            {/* Two languages, so a toggle rather than a dropdown: the label
-                is the one you would switch to. */}
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label={t.nav.language}
-              onClick={() => setLang(LANGS.find((l) => l !== lang)!)}
-            >
-              <LanguagesIcon data-icon="inline-start" />
-              {LANG_NAMES[LANGS.find((l) => l !== lang)!]}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={theme === "dark" ? t.nav.toLight : t.nav.toDark}
-              onClick={toggle}
-            >
-              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              {t.nav.signOut}
-            </Button>
+          {/* Language, theme and signing out are all "about me, not about the
+              data". Three controls competing with the nav for the same bar was
+              three things to read before finding the one you wanted; behind
+              one menu they are one. */}
+          <div className="ml-auto flex items-center gap-2 text-sm">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                {/* No aria-label: it would override the name and leave a
+                    screen-reader user unable to hear whose session this is.
+                    aria-haspopup already says a menu opens. */}
+                <Button variant="ghost" size="sm">
+                  <UserIcon data-icon="inline-start" />
+                  {user.name}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>{t.nav.language}</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={lang}
+                  onValueChange={(v) => setLang(v as (typeof LANGS)[number])}
+                >
+                  {LANGS.map((l) => (
+                    <DropdownMenuRadioItem key={l} value={l}>
+                      {LANG_NAMES[l]}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={toggle}>
+                  {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+                  {theme === "dark" ? t.nav.toLight : t.nav.toDark}
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onSelect={signOut}>
+                  <LogOutIcon />
+                  {t.nav.signOut}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>

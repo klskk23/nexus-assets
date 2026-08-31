@@ -37,6 +37,9 @@ export type TransferAction = "checkout" | "checkin" | "transfer" | "reassign" | 
 /** "leave the owner alone". Radix reserves the empty string. */
 const KEEP = "__keep"
 
+/** "each device goes back to its own home" -- the default for a check-in. */
+const HOME = "__home"
+
 /**
  * The actions, in the order they are offered.
  *
@@ -95,7 +98,10 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
     if (open) {
       setAction(initialAction ?? null)
       setBanner(null)
-      setResponsibleID(user?.id ?? KEEP)
+      // Check-in defaults to leaving both alone: each device's own home
+      // already answers where and who, which is the point of having one.
+      setResponsibleID(initialAction === "checkin" ? KEEP : user?.id ?? KEEP)
+      setHolderID(initialAction === "checkin" ? HOME : "")
     }
   }, [open, initialAction, user?.id])
 
@@ -122,9 +128,14 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
           break
         case "checkin":
           body.to_status = "in_stock"
-          // No destination named: the server uses the default stock point, and
-          // says so if none is marked rather than failing opaquely.
+          // No destination named: each device goes back to its own home, and
+          // the server says so if one has neither a home nor a global default
+          // rather than failing opaquely.
           body.check_in = true
+          if (holderID !== HOME) {
+            body.to_holder_type = "entity"
+            body.to_holder_id = holderID
+          }
           if (responsibleID !== KEEP) body.to_owner_id = responsibleID
           break
         case "transfer":
@@ -180,7 +191,16 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
               variant="outline"
               className="justify-start"
               value={action ?? ""}
-              onValueChange={(v) => setAction((v || null) as TransferAction | null)}
+              onValueChange={(v) => {
+                const next = (v || null) as TransferAction | null
+                setAction(next)
+                // Check-in starts on "each device's own home"; the others
+                // start unset, so submit stays disabled until one is picked.
+                setHolderID(next === "checkin" ? HOME : "")
+                // And it leaves the owner alone, because the home already
+                // answers who is responsible once the device is back.
+                setResponsibleID(next === "checkin" ? KEEP : user?.id ?? KEEP)
+              }}
             >
               {transferActions().map(([a, label]) => (
                 <ToggleGroupItem key={a} value={a} aria-label={label}>
@@ -189,6 +209,30 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
               ))}
             </ToggleGroup>
           </Field>
+
+          {action === "checkin" && (
+            <Field>
+              <FieldLabel htmlFor="td-checkin-holder">{tTransfer.actions.target}</FieldLabel>
+              <Select value={holderID} onValueChange={setHolderID}>
+                <SelectTrigger id="td-checkin-holder">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {/* The default, and the only option that can differ per
+                        device in a batch. */}
+                    <SelectItem value={HOME}>{tTransfer.actions.toHome}</SelectItem>
+                    {(holders.data ?? []).map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <FieldDescription>{tTransfer.actions.checkinHint}</FieldDescription>
+            </Field>
+          )}
 
           {needsHolder && (
             <>
@@ -298,10 +342,6 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
                 </SelectContent>
               </Select>
             </Field>
-          )}
-
-          {action === "checkin" && (
-            <p className="text-sm text-muted-foreground">{tTransfer.actions.checkinHint}</p>
           )}
 
           <Field>

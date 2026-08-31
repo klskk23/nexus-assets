@@ -73,17 +73,19 @@ func (s *Service) Apply(ctx context.Context, req Request) (Result, error) {
 		return res, fmt.Errorf("no assets given")
 	}
 
-	// Resolving the default stock point needs a read, so do it before the
-	// write transaction takes the exclusive lock.
+	// Check-in returns each device to its own home, so the destination is
+	// resolved per asset inside the loop. Only the fallback -- the one global
+	// default stock point, for devices with no home of their own -- is a
+	// single read, done here before the write transaction takes its lock.
+	var fallback *model.Holder
 	if req.CheckIn && req.ToHolder == nil {
 		def, ok, err := s.holders.DefaultStock(ctx)
 		if err != nil {
 			return res, err
 		}
-		if !ok {
-			return res, ErrNoDefaultStock
+		if ok {
+			fallback = &model.Holder{Type: model.HolderTypeEntity, ID: def.ID}
 		}
-		req.ToHolder = &model.Holder{Type: model.HolderTypeEntity, ID: def.ID}
 	}
 
 	// A batch id only makes sense when there is a batch to identify.
@@ -104,7 +106,7 @@ func (s *Service) Apply(ctx context.Context, req Request) (Result, error) {
 
 		res.Transfers = res.Transfers[:0]
 		for _, assetID := range req.AssetIDs {
-			t, err := applyOne(ctx, tx, statuses, assetID, req, batchID, now)
+			t, err := applyOne(ctx, tx, statuses, assetID, req, fallback, batchID, now)
 			if err != nil {
 				return err
 			}
@@ -122,13 +124,17 @@ func (s *Service) Apply(ctx context.Context, req Request) (Result, error) {
 }
 
 func applyOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, assetID string,
-	req Request, batchID *string, now time.Time) (*model.Transfer, error) {
+	req Request, fallback *model.Holder, batchID *string, now time.Time) (*model.Transfer, error) {
 
 	var from model.AssetState
 	var version int
+	var homeType, homeID, homeOwner sql.NullString
 	err := tx.QueryRowContext(ctx,
-		`SELECT status, holder_type, holder_id, owner_id, version FROM assets WHERE id = ?`, assetID).
-		Scan(&from.Status, &from.Holder.Type, &from.Holder.ID, &from.OwnerID, &version)
+		`SELECT status, holder_type, holder_id, owner_id, version,
+		        home_holder_type, home_holder_id, home_owner_id
+		 FROM assets WHERE id = ?`, assetID).
+		Scan(&from.Status, &from.Holder.Type, &from.Holder.ID, &from.OwnerID, &version,
+			&homeType, &homeID, &homeOwner)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("%w: %s", ErrAssetNotFound, assetID)
 	}
@@ -145,6 +151,24 @@ func applyOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, assetID
 	}
 	if req.ToOwnerID != nil {
 		to.OwnerID = *req.ToOwnerID
+	}
+
+	// Check-in with no destination named: this device's own home first, then
+	// the global default. A batch of twenty from four warehouses therefore
+	// goes back to four warehouses, which is the whole point of a home.
+	if req.CheckIn && req.ToHolder == nil {
+		switch {
+		case homeType.Valid && homeID.Valid:
+			to.Holder = model.Holder{Type: model.HolderType(homeType.String), ID: homeID.String}
+		case fallback != nil:
+			to.Holder = *fallback
+		default:
+			return nil, ErrNoDefaultStock
+		}
+		// The home owner comes with it, unless the caller named one.
+		if req.ToOwnerID == nil && homeOwner.Valid && homeOwner.String != "" {
+			to.OwnerID = homeOwner.String
+		}
 	}
 
 	if err := statuses.ValidateTransition(from.Status, to.Status); err != nil {

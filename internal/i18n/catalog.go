@@ -115,6 +115,8 @@ var catalogs = map[Lang]map[string]string{
 
 		KeyModelNoVendor:  "（未填厂商）",
 		KeyModelDuplicate: "%s 已经有一款叫「%s」的产品",
+		KeyModelNeedsName: "型号需要一个名称",
+		KeyModelInUse:     "还有 %d 台设备是「%s」，请先改掉它们的型号",
 
 		KeyImportParseFailed:  "解析 CSV 失败：%v",
 		KeyImportNeedsHeaders: "文件至少需要两行表头：标题行与键名行",
@@ -247,6 +249,8 @@ var catalogs = map[Lang]map[string]string{
 
 		KeyModelNoVendor:  "(no vendor)",
 		KeyModelDuplicate: "%s already has a product called %q.",
+		KeyModelNeedsName: "A model needs a name.",
+		KeyModelInUse:     "%d device(s) are still assigned to %q. Change their model first.",
 
 		KeyImportParseFailed:  "Could not parse the CSV: %v",
 		KeyImportNeedsHeaders: "The file needs two header rows: the titles and the keys.",

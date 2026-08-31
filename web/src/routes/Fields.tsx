@@ -1,12 +1,14 @@
+import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 
-import { api } from "@/lib/api"
+import { api, ApiError } from "@/lib/api"
 import type { FieldDefinitionRow, FieldType } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
 import { CrudPage } from "@/features/metadata/CrudPage"
 import { FieldEditor } from "@/features/fields/FieldEditor"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
@@ -30,12 +32,25 @@ const staticTypes: FieldType[] = [
 const expressionTypes: FieldType[] = ["computed"]
 
 export function Fields() {
+  const queryClient = useQueryClient()
   const [editing, setEditing] = useState<FieldDefinitionRow | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [key, setKey] = useState("")
   const [label, setLabel] = useState("")
   const [type, setType] = useState<FieldType>("text")
   const [isUnique, setIsUnique] = useState(false)
   const [template, setTemplate] = useState("")
+
+  // The same delete the editor offers, reachable without opening it first --
+  // which is the point of the context menu.
+  const remove = useMutation({
+    mutationFn: (id: string) => api.del(`/fields/${id}`),
+    onSuccess: () => {
+      setNotice(null)
+      queryClient.invalidateQueries({ queryKey: ["fields"] })
+    },
+    onError: (e) => setNotice(e instanceof ApiError ? e.message : t.common.error),
+  })
 
   return (
     <>
@@ -62,6 +77,28 @@ export function Fields() {
           options: type === "computed" ? { template } : {},
         })
       }
+      notice={
+        notice && (
+          <Alert variant="destructive">
+            <AlertCircleIcon />
+            <AlertDescription>{notice}</AlertDescription>
+          </Alert>
+        )
+      }
+      onRowClick={(f) => setEditing(f)}
+      rowActions={[
+        { label: tConfig.field.edit, onSelect: (f) => setEditing(f) },
+        {
+          label: tConfig.field.delete,
+          destructive: true,
+          onSelect: (f) => remove.mutate(f.id),
+          confirm: (f) => ({
+            title: tConfig.field.deleteTitle,
+            description: tConfig.field.deleteHint(f.label),
+            phrase: f.key,
+          }),
+        },
+      ]}
       emptyTitle={tMeta.fields.empty}
       emptyHint={tMeta.fields.emptyHint}
       columns={[
@@ -71,14 +108,6 @@ export function Fields() {
         {
           header: tMeta.fields.unique,
           cell: (f) => (f.is_unique ? <Badge variant="outline">{t.common.unique}</Badge> : null),
-        },
-        {
-          header: "",
-          cell: (f) => (
-            <Button variant="ghost" size="sm" onClick={() => setEditing(f)}>
-              {tConfig.field.edit}
-            </Button>
-          ),
         },
       ]}
       form={

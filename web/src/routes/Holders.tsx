@@ -1,4 +1,4 @@
-import { AlertCircleIcon, PencilIcon, Trash2Icon } from "lucide-react"
+import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -13,7 +13,6 @@ import {
 import { NONE, fromNone, toNone } from "@/lib/select"
 import { t, tMeta } from "@/i18n"
 import { CrudPage } from "@/features/metadata/CrudPage"
-import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -166,7 +165,34 @@ export function Holders() {
             </Alert>
           )
         }
-        createDisabled={name === "" || (PARENT_REQUIRED[type] && parentID === "")}
+        onRowClick={(h) => setEditing(h)}
+      rowActions={[
+        { label: tMeta.holders.edit, onSelect: (h) => setEditing(h) },
+        {
+          label: tMeta.holders.setDefault,
+          // Only a location can be one, and the current one has nowhere to
+          // move to.
+          disabled: (h) => h.type !== "location" || h.is_default_stock,
+          onSelect: (h) => setDefault.mutate(h.id),
+        },
+        {
+          label: tMeta.holders.delete,
+          destructive: true,
+          onSelect: (h) => remove.mutate(h.id),
+          confirm: (h) => {
+            const u = usage.data?.[h.id]
+            return {
+              title: tMeta.holders.deleteTitle,
+              description:
+                u && u.history > 0
+                  ? tMeta.holders.deleteHistoryHint(h.name, u.history)
+                  : tMeta.holders.deleteHint(h.name),
+              phrase: h.name,
+            }
+          },
+        },
+      ]}
+      createDisabled={name === "" || (PARENT_REQUIRED[type] && parentID === "")}
         onCreated={() => {
           setName("")
           setType("location")
@@ -191,39 +217,6 @@ export function Holders() {
           {
             header: tMeta.holders.note,
             cell: (h) => <span className="text-muted-foreground text-sm">{h.note}</span>,
-          },
-          {
-            header: t.common.actions,
-            cell: (h) => {
-              const u = usage.data?.[h.id]
-              return (
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => setEditing(h)}>
-                    <PencilIcon data-icon="inline-start" />
-                    {tMeta.holders.edit}
-                  </Button>
-                  <ConfirmDialog
-                    trigger={
-                      <Button variant="ghost" size="sm" className="text-destructive">
-                        <Trash2Icon data-icon="inline-start" />
-                        {tMeta.holders.delete}
-                      </Button>
-                    }
-                    title={tMeta.holders.deleteTitle}
-                    // History only degrades the timeline, so it is stated rather
-                    // than used to refuse.
-                    description={
-                      u && u.history > 0
-                        ? tMeta.holders.deleteHistoryHint(h.name, u.history)
-                        : tMeta.holders.deleteHint(h.name)
-                    }
-                    confirmLabel={tMeta.holders.delete}
-                    requirePhrase={h.name}
-                    onConfirm={() => remove.mutate(h.id)}
-                  />
-                </div>
-              )
-            },
           },
           {
             header: tMeta.holders.defaultStock,

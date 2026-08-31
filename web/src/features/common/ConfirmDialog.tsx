@@ -16,8 +16,15 @@ import { Label } from "@/components/ui/label"
 import { tConfirm } from "@/i18n"
 
 interface Props {
-  /** The control that opens the dialog. */
-  trigger: ReactNode
+  /**
+   * The control that opens the dialog. Omitted when the caller drives `open`
+   * itself -- an action chosen from a context menu has no trigger to hang off,
+   * because the menu has already closed by the time the dialog should appear.
+   */
+  trigger?: ReactNode
+  /** Controlled mode. Both or neither. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   title: string
   description: string
   confirmLabel: string
@@ -33,6 +40,8 @@ interface Props {
 
 export function ConfirmDialog({
   trigger,
+  open: controlledOpen,
+  onOpenChange,
   title,
   description,
   confirmLabel,
@@ -41,7 +50,14 @@ export function ConfirmDialog({
   onConfirm,
 }: Props) {
   const [typed, setTyped] = useState("")
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : uncontrolledOpen
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setUncontrolledOpen(next)
+    onOpenChange?.(next)
+  }
 
   const armed = requirePhrase === undefined || typed === requirePhrase
 
@@ -53,7 +69,7 @@ export function ConfirmDialog({
         if (!next) setTyped("")
       }}
     >
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

@@ -283,13 +283,20 @@ type Asset struct {
 	ID string `json:"id"`
 	// DisplayName is derived on read from the category's DisplayKey, never
 	// stored. The UUID in ID is the only identity the database knows about.
-	DisplayName string         `json:"display_name"`
-	CategoryID  string         `json:"category_id"`
-	ModelID     *string        `json:"model_id"`
-	Status      AssetStatus    `json:"status"`
-	OwnerID     string         `json:"-"`
-	Owner       *User          `json:"owner,omitempty"`
-	Holder      Holder         `json:"holder"`
+	DisplayName string      `json:"display_name"`
+	CategoryID  string      `json:"category_id"`
+	ModelID     *string     `json:"model_id"`
+	Status      AssetStatus `json:"status"`
+	OwnerID     string      `json:"-"`
+	Owner       *User       `json:"owner,omitempty"`
+	Holder      Holder      `json:"holder"`
+	// Home is where this device belongs when it is not out: the holder a
+	// check-in returns it to, and who is answerable for it there. Null means
+	// "no opinion" -- check-in then falls back to the global default stock
+	// point, which is what every device did before homes existed.
+	HomeHolder  *Holder        `json:"home_holder,omitempty"`
+	HomeOwnerID *string        `json:"-"`
+	HomeOwner   *User          `json:"home_owner,omitempty"`
 	Attrs       map[string]any `json:"attrs"`
 	// ArchivedAttrs holds keys that are no longer part of the category's
 	// effective field set. They are kept, shown read-only, and never validated.

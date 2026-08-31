@@ -123,6 +123,8 @@ const (
 	// Product models.
 	KeyModelNoVendor  = "model.no_vendor"
 	KeyModelDuplicate = "model.duplicate"
+	KeyModelNeedsName = "model.needs_name"
+	KeyModelInUse     = "model.in_use"
 
 	// Import and export.
 	KeyImportParseFailed  = "import.parse_failed"

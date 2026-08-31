@@ -28,10 +28,19 @@ type SaveInput struct {
 	Status     model.AssetStatus
 	OwnerID    string
 	Holder     model.Holder
-	Attrs      map[string]any
-	Version    int // required for an update
-	ActorID    string
-	Note       string
+	// Home is where the device belongs when it is not out. Unset on a create
+	// means "wherever it is being recorded" -- the place it just arrived at is
+	// the obvious answer, and asking again on the form would be noise.
+	// Unset on an update means "leave it alone".
+	HomeHolder  *model.Holder
+	HomeOwnerID *string
+	// ClearHome unsets the home, restoring "use the global default stock
+	// point". Distinct from HomeHolder being nil, which means "no change".
+	ClearHome bool
+	Attrs     map[string]any
+	Version   int // required for an update
+	ActorID   string
+	Note      string
 	// BatchID groups the create events of one import so the file can be
 	// identified afterwards.
 	BatchID *string
@@ -210,14 +219,46 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 			return out, err
 		}
 
+		// The home a create lands on: whatever was named, else where the
+		// device is being recorded. It has just arrived somewhere, and that
+		// somewhere is the obvious answer -- asking again on the form would be
+		// one more question with a foregone conclusion.
+		home := in.Holder
+		if in.HomeHolder != nil {
+			home = *in.HomeHolder
+		}
+		homeOwner := in.OwnerID
+		if in.HomeOwnerID != nil {
+			homeOwner = *in.HomeOwnerID
+		}
+
+		// On an update the three are tri-state: named, cleared, or left alone.
+		var homeHolder *model.Holder
+		var homeType, homeID, homeOwnerPtr *string
+		if prev != nil && !in.ClearHome {
+			homeHolder, homeOwnerPtr = prev.HomeHolder, prev.HomeOwnerID
+			if in.HomeHolder != nil {
+				homeHolder = in.HomeHolder
+			}
+			if in.HomeOwnerID != nil {
+				homeOwnerPtr = in.HomeOwnerID
+			}
+			if homeHolder != nil {
+				t, i := string(homeHolder.Type), homeHolder.ID
+				homeType, homeID = &t, &i
+			}
+		}
+
 		// 7. write, under an optimistic-lock guard on update
 		if prev == nil {
 			_, err = tx.ExecContext(ctx,
 				`INSERT INTO assets (id, category_id, model_id, status, owner_id, holder_type, holder_id,
+				                     home_holder_type, home_holder_id, home_owner_id,
 				                     attrs, version, created_at, updated_at)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
 				id, in.CategoryID, store.NullString(in.ModelID), string(in.Status), in.OwnerID,
-				string(in.Holder.Type), in.Holder.ID, attrsJSON,
+				string(in.Holder.Type), in.Holder.ID,
+				string(home.Type), home.ID, homeOwner, attrsJSON,
 				store.FormatTime(now), store.FormatTime(now))
 			if err != nil {
 				return out, err
@@ -225,15 +266,20 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 			out = model.Asset{
 				ID: id, CategoryID: in.CategoryID, ModelID: in.ModelID,
 				Status: in.Status, OwnerID: in.OwnerID, Holder: in.Holder,
+				HomeHolder: &home, HomeOwnerID: &homeOwner,
 				Attrs: clean, Version: 1, CreatedAt: now, UpdatedAt: now,
 			}
 		} else {
 			res, err := tx.ExecContext(ctx,
 				`UPDATE assets SET category_id = ?, model_id = ?, status = ?, owner_id = ?,
-				                   holder_type = ?, holder_id = ?, attrs = ?, version = version + 1, updated_at = ?
+				                   holder_type = ?, holder_id = ?,
+				                   home_holder_type = ?, home_holder_id = ?, home_owner_id = ?,
+				                   attrs = ?, version = version + 1, updated_at = ?
 				 WHERE id = ? AND version = ?`,
 				in.CategoryID, store.NullString(in.ModelID), string(in.Status), in.OwnerID,
-				string(in.Holder.Type), in.Holder.ID, attrsJSON, store.FormatTime(now), id, in.Version)
+				string(in.Holder.Type), in.Holder.ID,
+				store.NullString(homeType), store.NullString(homeID), store.NullString(homeOwnerPtr),
+				attrsJSON, store.FormatTime(now), id, in.Version)
 			if err != nil {
 				return out, err
 			}
@@ -243,6 +289,7 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 			out = model.Asset{
 				ID: id, CategoryID: in.CategoryID, ModelID: in.ModelID,
 				Status: in.Status, OwnerID: in.OwnerID, Holder: in.Holder,
+				HomeHolder: homeHolder, HomeOwnerID: homeOwnerPtr,
 				Attrs: clean, Version: in.Version + 1, CreatedAt: prev.CreatedAt, UpdatedAt: now,
 			}
 		}
