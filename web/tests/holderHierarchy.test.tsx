@@ -167,6 +167,9 @@ describe("Holders edit and delete", () => {
         name: "上海一号仓",
         note: "B 座三层，A01–A24 号货架",
         parent_id: "co",
+        // The fixture warehouse already holds the marker; the box is ticked
+        // and locked, and the save carries it along unchanged.
+        is_default_stock: true,
       }),
     )
   })
@@ -236,26 +239,33 @@ describe("Holders edit and delete", () => {
   })
 })
 
-describe("Holders context menu", () => {
-  // The marker moves but never switches off, so the action is offered on
-  // every location except the one that already has it.
-  it("offers the default-stock action only where it could apply", async () => {
+describe("Holders default stock marker", () => {
+  // It moved out of the context menu and into the editor: a control inside a
+  // clickable row fired the row's handler too, so pressing it also opened the
+  // editor -- two things from one click, one of them unasked for.
+  it("is set in the editor, and is not a row action", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Holders />)
 
-    const co = await screen.findByRole("row", { name: /XX 集团.*公司/ })
-    await openMenu(user, co)
-    expect(screen.getByRole("menuitem", { name: "设为默认库存点" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    )
+    const wh = await screen.findByRole("row", { name: /上海仓库/ })
+    await openMenu(user, wh)
+    expect(screen.queryByRole("menuitem", { name: "设为默认库存点" })).not.toBeInTheDocument()
     await user.keyboard("{Escape}")
 
-    const current = screen.getByRole("row", { name: /上海仓库/ })
-    await openMenu(user, current)
-    expect(screen.getByRole("menuitem", { name: "设为默认库存点" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    )
+    await user.click(wh)
+    const box = within(await screen.findByRole("dialog")).getByLabelText("设为默认库存点")
+    // This fixture warehouse is the current default, so it is ticked and locked.
+    expect(box).toBeChecked()
+    expect(box).toBeDisabled()
+  })
+
+  // A company cannot hold the marker, so the box is not there to tick.
+  it("is absent on a holder that could never hold it", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Holders />)
+
+    await user.click(await screen.findByRole("row", { name: /XX 集团.*公司/ }))
+    const dialog = await screen.findByRole("dialog")
+    expect(within(dialog).queryByLabelText("设为默认库存点")).not.toBeInTheDocument()
   })
 })

@@ -17,6 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import {
   Dialog,
@@ -35,6 +36,45 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+/** What is standing in the way, as the server reported it. */
+interface Refusal {
+  message: string
+  blockers: Blocker[]
+  total: number
+}
+
+/**
+ * A refusal with the devices behind it.
+ *
+ * One component because it is shown in two places -- above the table for a
+ * row action, and inside the editor for a save -- and a refusal that lists its
+ * blockers in one place and not the other would be the same bug twice.
+ */
+function RefusalAlert({ refusal }: { refusal: Refusal }) {
+  return (
+    <Alert variant="destructive">
+      <AlertCircleIcon />
+      <AlertTitle>{tMeta.holders.blocked}</AlertTitle>
+      <AlertDescription className="grid gap-1">
+        {refusal.message}
+        {refusal.blockers.length > 0 && (
+          <>
+            <p className="text-xs">{tMeta.holders.blockedBy}</p>
+            <ul className="grid gap-0.5 font-mono text-xs">
+              {refusal.blockers.map((b) => (
+                <li key={blockerKey(b)}>{b.name}</li>
+              ))}
+              {refusal.total > refusal.blockers.length && (
+                <li>{tMeta.holders.blockedMore(refusal.total)}</li>
+              )}
+            </ul>
+          </>
+        )}
+      </AlertDescription>
+    </Alert>
+  )
+}
+
 export function Holders() {
   const [name, setName] = useState("")
   const [type, setType] = useState<EntityType>("location")
@@ -43,12 +83,12 @@ export function Holders() {
   const queryClient = useQueryClient()
 
   const [editing, setEditing] = useState<HolderEntity | null>(null)
-  const [banner, setBanner] = useState<string | null>(null)
-  // The server has attached the blocking devices since the first version; the
-  // client used to parse only `referrers` and drop these on the floor, leaving
-  // the page with a count and no way to act on it.
-  const [blockers, setBlockers] = useState<Blocker[]>([])
-  const [blockerTotal, setBlockerTotal] = useState(0)
+  // Two refusals, deliberately separate: a row action has no dialog and shows
+  // above the table, while a save happens with the editor open -- and the page
+  // behind a dialog is aria-hidden and covered, so an alert out there is one
+  // the operator can neither see nor hear.
+  const [rowRefusal, setRowRefusal] = useState<Refusal | null>(null)
+  const [saveRefusal, setSaveRefusal] = useState<Refusal | null>(null)
 
   // Read separately from CrudPage's own list so the form can offer parents and
   // resolve names; it is the same query key, so there is one fetch.
@@ -82,20 +122,14 @@ export function Holders() {
   })
 
   const invalidate = () => {
-    setBanner(null)
-    setBlockers([])
+    setRowRefusal(null)
     queryClient.invalidateQueries({ queryKey: ["holders"] })
   }
 
-  const fail = (e: unknown) => {
-    if (e instanceof ApiError) {
-      setBanner(e.message)
-      setBlockers(e.blockers ?? [])
-      setBlockerTotal(e.total ?? 0)
-    } else {
-      setBanner(t.common.error)
-    }
-  }
+  const refusalOf = (e: unknown): Refusal =>
+    e instanceof ApiError
+      ? { message: e.message, blockers: e.blockers ?? [], total: e.total ?? 0 }
+      : { message: t.common.error, blockers: [], total: 0 }
 
   const save = useMutation({
     mutationFn: (h: HolderEntity) =>
@@ -105,24 +139,23 @@ export function Holders() {
         // Explicit null detaches; the field must be present either way, since
         // this dialog is where a parent gets cleared.
         parent_id: h.parent_id,
+        // Only ever sent as true. The marker moves but does not switch off, so
+        // false is refused by the server -- and sending it on every save would
+        // turn "I renamed a warehouse" into that refusal.
+        ...(h.is_default_stock ? { is_default_stock: true } : {}),
       }),
     onSuccess: () => {
       invalidate()
       setEditing(null)
+      setSaveRefusal(null)
     },
-    onError: fail,
+    onError: (e) => setSaveRefusal(refusalOf(e)),
   })
 
   const remove = useMutation({
     mutationFn: (id: string) => api.del(`/holders/${id}`),
     onSuccess: invalidate,
-    onError: fail,
-  })
-
-  const setDefault = useMutation({
-    mutationFn: (id: string) => api.patch(`/holders/${id}`, { is_default_stock: true }),
-    onSuccess: invalidate,
-    onError: fail,
+    onError: (e) => setRowRefusal(refusalOf(e)),
   })
 
   return (
@@ -130,7 +163,13 @@ export function Holders() {
       <EditDialog
         holder={editing}
         holders={holders}
-        onOpenChange={(open) => !open && setEditing(null)}
+        refusal={saveRefusal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditing(null)
+            setSaveRefusal(null)
+          }
+        }}
         onSave={(h) => save.mutate(h)}
         saving={save.isPending}
       />
@@ -141,40 +180,10 @@ export function Holders() {
         createLabel={tMeta.holders.create}
         // Setting the default stock marker is a row action, so its refusal
         // belongs beside the rows -- not inside the create dialog.
-        notice={
-          banner && (
-            <Alert variant="destructive">
-              <AlertCircleIcon />
-              <AlertTitle>{tMeta.holders.blocked}</AlertTitle>
-              <AlertDescription className="grid gap-1">
-                {banner}
-                {blockers.length > 0 && (
-                  <>
-                    <p className="text-xs">{tMeta.holders.blockedBy}</p>
-                    <ul className="grid gap-0.5 font-mono text-xs">
-                      {blockers.map((b) => (
-                        <li key={blockerKey(b)}>{b.name}</li>
-                      ))}
-                      {blockerTotal > blockers.length && (
-                        <li>{tMeta.holders.blockedMore(blockerTotal)}</li>
-                      )}
-                    </ul>
-                  </>
-                )}
-              </AlertDescription>
-            </Alert>
-          )
-        }
+        notice={rowRefusal && <RefusalAlert refusal={rowRefusal} />}
         onRowClick={(h) => setEditing(h)}
       rowActions={[
         { label: tMeta.holders.edit, onSelect: (h) => setEditing(h) },
-        {
-          label: tMeta.holders.setDefault,
-          // Only a location can be one, and the current one has nowhere to
-          // move to.
-          disabled: (h) => h.type !== "location" || h.is_default_stock,
-          onSelect: (h) => setDefault.mutate(h.id),
-        },
         {
           label: tMeta.holders.delete,
           destructive: true,
@@ -220,21 +229,10 @@ export function Holders() {
           },
           {
             header: tMeta.holders.defaultStock,
-            // The marker moves but never switches off, so the current holder gets
-            // a badge with no control rather than a toggle that would be refused.
-            cell: (h) =>
-              h.is_default_stock ? (
-                <Badge>{tMeta.holders.defaultStock}</Badge>
-              ) : h.type === "location" ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={setDefault.isPending}
-                  onClick={() => setDefault.mutate(h.id)}
-                >
-                  {tMeta.holders.setDefault}
-                </Button>
-              ) : null,
+            // Shown, not operated. A control inside a clickable row fires the
+            // row's handler too, so pressing it also opened the editor -- two
+            // things happening from one click, one of them unasked for.
+            cell: (h) => (h.is_default_stock ? <Badge>{tMeta.holders.defaultStock}</Badge> : null),
           },
         ]}
         form={
@@ -325,6 +323,7 @@ export function Holders() {
 interface EditProps {
   holder: HolderEntity | null
   holders: HolderEntity[]
+  refusal: Refusal | null
   onOpenChange: (open: boolean) => void
   onSave: (h: HolderEntity) => void
   saving: boolean
@@ -338,7 +337,7 @@ interface EditProps {
  * to what should happen to them that the operator has agreed to. Delete and
  * recreate says the same thing out loud.
  */
-function EditDialog({ holder, holders, onOpenChange, onSave, saving }: EditProps) {
+function EditDialog({ holder, holders, refusal, onOpenChange, onSave, saving }: EditProps) {
   const [draft, setDraft] = useState<HolderEntity | null>(holder)
 
   // The row is the source of truth; opening on a different one replaces the
@@ -402,6 +401,26 @@ function EditDialog({ holder, holders, onOpenChange, onSave, saving }: EditProps
               onChange={(e) => setDraft({ ...draft, note: e.target.value })}
             />
           </Field>
+
+          {/* Only a location can hold the marker, and the one that has it has
+              nowhere to move it to -- so it is ticked and locked rather than
+              hidden, which would leave "where did it go" unanswered. */}
+          {draft.type === "location" && (
+            <Field orientation="horizontal">
+              <Checkbox
+                id="he-default"
+                checked={draft.is_default_stock}
+                disabled={holder?.is_default_stock}
+                onCheckedChange={(v) => setDraft({ ...draft, is_default_stock: v === true })}
+              />
+              <FieldLabel htmlFor="he-default">{tMeta.holders.setDefault}</FieldLabel>
+            </Field>
+          )}
+          {draft.type === "location" && (
+            <FieldDescription>{tMeta.holders.defaultStockHint}</FieldDescription>
+          )}
+
+          {refusal && <RefusalAlert refusal={refusal} />}
         </div>
 
         <DialogFooter>

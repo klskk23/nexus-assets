@@ -185,6 +185,8 @@ export const enMeta: typeof zhMeta = {
     blockedBy: "These devices are using it:",
     blockedMore: (n: number) => `and ${n} in total`,
     setDefault: "Make default stock point",
+    defaultStockHint:
+      "Devices with no home of their own return here. The marker moves; it does not switch off.",
     empty: "No holders yet",
     emptyHint:
       "Locations, companies and departments are all holders. Check-in points at whichever location is marked the default stock point.",

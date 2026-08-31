@@ -183,6 +183,7 @@ export const zhMeta = {
     blockedBy: "以下设备正在使用它：",
     blockedMore: (n: number) => `等共 ${n} 台`,
     setDefault: "设为默认库存点",
+    defaultStockHint: "归还时没有归属的设备会回到这里。标记只能转移，不能取消。",
     empty: "还没有任何持有方",
     emptyHint: "位置、公司、部门都是持有方。归还操作默认指向标记为默认库存点的位置。",
   },

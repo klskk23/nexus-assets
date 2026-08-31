@@ -134,34 +134,70 @@ describe("Fields page", () => {
 })
 
 describe("Holders page", () => {
-  it("offers the default stock marker only on a location", async () => {
+  // The marker is set where everything else about a holder is set. A control
+  // inside a clickable row fired the row's handler too, so pressing it also
+  // opened the editor -- two things from one click, one of them unasked for.
+  it("offers the default stock marker only on a location, inside the editor", async () => {
+    const user = userEvent.setup()
     renderWithProviders(<Holders />)
-    const warehouse = await screen.findByRole("row", { name: /上海仓库/ })
-    expect(within(warehouse).getByRole("button", { name: "设为默认库存点" })).toBeInTheDocument()
 
-    const company = screen.getByRole("row", { name: /XX 集团/ })
-    expect(within(company).queryByRole("button", { name: "设为默认库存点" })).not.toBeInTheDocument()
+    await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
+    let dialog = await screen.findByRole("dialog")
+    expect(within(dialog).getByLabelText("设为默认库存点")).toBeInTheDocument()
+    await user.keyboard("{Escape}")
+
+    await user.click(screen.getByRole("row", { name: /XX 集团/ }))
+    dialog = await screen.findByRole("dialog")
+    expect(within(dialog).queryByLabelText("设为默认库存点")).not.toBeInTheDocument()
   })
 
   it("marks a location as the default stock point", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Holders />)
-    const warehouse = await screen.findByRole("row", { name: /上海仓库/ })
-    await user.click(within(warehouse).getByRole("button", { name: "设为默认库存点" }))
+
+    await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
+    const dialog = await screen.findByRole("dialog")
+    await user.click(within(dialog).getByLabelText("设为默认库存点"))
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
     await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith("/holders/h1", { is_default_stock: true }),
+      expect(patch).toHaveBeenCalledWith(
+        "/holders/h1",
+        expect.objectContaining({ is_default_stock: true }),
+      ),
     )
   })
 
-  // The marker moves but never switches off, so the location that holds it gets
-  // a badge with no control -- a toggle here would only ever be refused.
-  it("gives the current default a badge rather than a way to clear it", async () => {
+  // The marker moves but never switches off, so the location that holds it
+  // gets a ticked, locked box -- a toggle here would only ever be refused.
+  it("locks the box on the location that already holds the marker", async () => {
+    const user = userEvent.setup()
     renderWithProviders(<Holders />)
+
     const current = await screen.findByRole("row", { name: /北京仓库/ })
     expect(within(current).getByText("默认库存点")).toBeInTheDocument()
-    expect(
-      within(current).queryByRole("button", { name: "设为默认库存点" }),
-    ).not.toBeInTheDocument()
+
+    await user.click(current)
+    const box = within(await screen.findByRole("dialog")).getByLabelText("设为默认库存点")
+    expect(box).toBeChecked()
+    expect(box).toBeDisabled()
+  })
+
+  // Renaming a warehouse must not carry a marker request along with it: the
+  // server refuses is_default_stock:false, so sending it on every save would
+  // turn an ordinary rename into that refusal.
+  it("sends no marker request when the box was not ticked", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Holders />)
+
+    await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
+    const dialog = await screen.findByRole("dialog")
+    await user.clear(within(dialog).getByLabelText("名称"))
+    await user.type(within(dialog).getByLabelText("名称"), "上海一号仓")
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
+    await waitFor(() => expect(patch).toHaveBeenCalled())
+    expect(patch.mock.calls[0][1]).not.toHaveProperty("is_default_stock")
   })
 
   it("surfaces a refusal from the server rather than swallowing it", async () => {
@@ -170,10 +206,15 @@ describe("Holders page", () => {
     )
     const user = userEvent.setup()
     renderWithProviders(<Holders />)
-    const warehouse = await screen.findByRole("row", { name: /上海仓库/ })
-    await chooseFromMenu(user, warehouse, "设为默认库存点")
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("是当前默认库存点")
+    await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
+    const dialog = await screen.findByRole("dialog")
+    await user.click(within(dialog).getByLabelText("设为默认库存点"))
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
+    // Inside the dialog, which is still open: the page behind it is
+    // aria-hidden and covered, so an alert out there reaches nobody.
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("是当前默认库存点")
   })
 })
 
@@ -265,10 +306,12 @@ it("lists the blocking devices when a holder cannot take the marker", async () =
   )
   const user = userEvent.setup()
   renderWithProviders(<Holders />)
-  const warehouse = await screen.findByRole("row", { name: /上海仓库/ })
-  await chooseFromMenu(user, warehouse, "设为默认库存点")
+  await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
+  const dialog = await screen.findByRole("dialog")
+  await user.click(within(dialog).getByLabelText("设为默认库存点"))
+  await user.click(within(dialog).getByRole("button", { name: "保存" }))
 
-  const alert = await screen.findByRole("alert")
+  const alert = await within(dialog).findByRole("alert")
   expect(alert).toHaveTextContent("112394521950")
   expect(alert).toHaveTextContent("112394521951")
   // Two of seven were sent, so the page has to say the list is partial.
@@ -326,11 +369,12 @@ describe("create dialog resets", () => {
     )
     const user = userEvent.setup()
     renderWithProviders(<Holders />)
-    const warehouse = await screen.findByRole("row", { name: /上海仓库/ })
-    await chooseFromMenu(user, warehouse, "设为默认库存点")
+    await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
+    const editor = await screen.findByRole("dialog")
+    await user.click(within(editor).getByLabelText("设为默认库存点"))
+    await user.click(within(editor).getByRole("button", { name: "保存" }))
 
-    const alert = await screen.findByRole("alert")
+    const alert = await within(editor).findByRole("alert")
     expect(alert).toHaveTextContent("仍被 5 台设备使用")
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 })
