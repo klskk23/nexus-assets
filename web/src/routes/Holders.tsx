@@ -2,7 +2,7 @@ import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
-import { api, ApiError, type Blocker } from "@/lib/api"
+import { api, ApiError, type Blocker, blockerKey } from "@/lib/api"
 import type { HolderEntity } from "@/lib/types"
 import { zh, zhMeta } from "@/i18n/zh"
 import { CrudPage } from "@/features/metadata/CrudPage"
@@ -70,7 +70,7 @@ export function Holders() {
                   <p className="text-xs">{zhMeta.holders.blockedBy}</p>
                   <ul className="grid gap-0.5 font-mono text-xs">
                     {blockers.map((b) => (
-                      <li key={b.asset_id}>{b.name}</li>
+                      <li key={blockerKey(b)}>{b.name}</li>
                     ))}
                     {blockerTotal > blockers.length && (
                       <li>{zhMeta.holders.blockedMore(blockerTotal)}</li>

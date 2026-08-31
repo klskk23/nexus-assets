@@ -328,3 +328,34 @@ func TestDeleteFieldEndpointCarriesTheRightPayload(t *testing.T) {
 func jsonNumber(v any) string {
 	return strconv.FormatFloat(v.(float64), 'f', -1, 64)
 }
+
+func TestDeleteCategoryEndpoint(t *testing.T) {
+	h := newHarness(t)
+	h.seed(t, 0, 2)
+
+	// The fixture category holds assets, so it is refused and the devices are
+	// named -- "cannot delete" without them is a dead end.
+	rec := h.do(t, http.MethodDelete, "/api/categories/"+h.catID, "")
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("want 409, got %d: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !contains(body, "blockers") || !contains(body, `"kind":"asset"`) {
+		t.Errorf("the refusal should carry the blocking assets, got %s", body)
+	}
+	if contains(body, "category subtree still holds assets") {
+		t.Errorf("the English sentinel leaked into the message: %s", body)
+	}
+
+	// An empty category deletes.
+	empty := decode[map[string]any](t, h.post(t, "/api/categories", `{"code":"SW","name":"交换机"}`))
+	id := empty["id"].(string)
+	if rec := h.do(t, http.MethodDelete, "/api/categories/"+id, ""); rec.Code != http.StatusNoContent {
+		t.Fatalf("an empty category must delete: %d %s", rec.Code, rec.Body.String())
+	}
+	for _, c := range decode[[]map[string]any](t, h.get(t, "/api/categories")) {
+		if c["id"] == id {
+			t.Error("the category should be gone from the list")
+		}
+	}
+}

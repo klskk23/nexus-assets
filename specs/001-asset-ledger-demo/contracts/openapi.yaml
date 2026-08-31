@@ -298,6 +298,23 @@ paths:
         "200": { description: OK }
         "409": { $ref: "#/components/responses/Error" }
 
+  /categories/{id}/delete:
+    delete:
+      tags: [metadata]
+      summary: （即 DELETE /categories/{id}）删除类别
+      description: >
+        两种拒绝共用 409：有子类别、子树下有资产。响应携带 blockers 与 total，
+        逐条给出挡住它的对象。
+        随类别一并删除的有两样：它自己的字段绑定（描述的正是这个类别要求记录什么），
+        以及型号关联 —— 型号本身保留。型号关联不作为拒绝理由，因为界面上没有任何
+        地方能解除关联，那会让拒绝无路可走；「未关联任何类别的型号」本来就是合法状态。
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Deleted }
+        "409": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
   /categories/{id}/schema:
     get:
       tags: [metadata]

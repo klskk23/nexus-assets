@@ -1,9 +1,9 @@
-import { InfoIcon, SearchIcon } from "lucide-react"
+import { InfoIcon, SearchIcon, Trash2Icon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import { api } from "@/lib/api"
+import { api, ApiError } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { AssetPage, Category, CategorySchema } from "@/lib/types"
@@ -11,6 +11,7 @@ import { zh, zhImport, zhTransfer } from "@/i18n/zh"
 import { StateBoundary } from "@/components/StateBoundary"
 import { useColumnSelection } from "@/features/assets/useColumns"
 import { ActionBar } from "@/features/assets/ActionBar"
+import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -90,6 +91,7 @@ function cellText(v: unknown): string {
 
 export function Assets() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const searchRef = useRef<HTMLInputElement>(null)
 
   // The overview links here with a filter already chosen, so the URL seeds the
@@ -160,6 +162,16 @@ export function Assets() {
       navigate(`/assets/${assets.data.exact_match_id}`)
     }
   }, [assets.data?.exact_match_id, navigate])
+
+  const remove = useMutation({
+    mutationFn: (a: { id: string; display_name: string }) =>
+      api.del(`/assets/${a.id}?confirm=${encodeURIComponent(a.display_name)}`),
+    onSuccess: () => {
+      setDone(null)
+      queryClient.invalidateQueries({ queryKey: ["assets"] })
+    },
+    onError: (e) => setDone(e instanceof ApiError ? e.message : zh.common.error),
+  })
 
   const available = schema.data?.fields?.filter((f) => f.type !== "computed") ?? []
   const total = assets.data?.total ?? 0
@@ -325,6 +337,9 @@ export function Assets() {
                   {extraColumns.map((k) => (
                     <TableHead key={k}>{available.find((f) => f.key === k)?.label ?? k}</TableHead>
                   ))}
+                  <TableHead className="w-10">
+                    <span className="sr-only">{zh.assets.delete}</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -351,6 +366,27 @@ export function Assets() {
                     {extraColumns.map((k) => (
                       <TableCell key={k}>{cellText(a.attrs[k])}</TableCell>
                     ))}
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      {/* Same confirmation as the detail page: the number has
+                          to be typed out. A row action is quicker to reach, so
+                          it must not be quicker to do by accident. */}
+                      <ConfirmDialog
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`${zh.assets.delete} ${a.display_name}`}
+                          >
+                            <Trash2Icon />
+                          </Button>
+                        }
+                        title={zh.assets.deleteTitle}
+                        description={zh.assets.deleteHint(a.display_name)}
+                        confirmLabel={zh.assets.delete}
+                        requirePhrase={a.display_name}
+                        onConfirm={() => remove.mutate(a)}
+                      />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

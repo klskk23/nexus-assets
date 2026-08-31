@@ -2,10 +2,10 @@ import { AlertCircleIcon, PlusIcon } from "lucide-react"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import { api, ApiError } from "@/lib/api"
+import { api, ApiError, blockerKey, type Blocker } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category, CategorySchema } from "@/lib/types"
-import type { FieldDefinitionRow } from "@/lib/metaTypes"
+import type { FieldDefinitionRow, ProductModelRow } from "@/lib/metaTypes"
 import { zh, zhMeta } from "@/i18n/zh"
 import { StateBoundary } from "@/components/StateBoundary"
 import { CollapsibleTree, buildTree } from "@/features/tree/CollapsibleTree"
@@ -47,6 +47,8 @@ export function Categories() {
   const [bindRequired, setBindRequired] = useState(false)
   const [banner, setBanner] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [removeBanner, setRemoveBanner] = useState<string | null>(null)
+  const [removeBlockers, setRemoveBlockers] = useState<Blocker[]>([])
 
   const categories = useQuery({
     queryKey: ["categories"],
@@ -73,6 +75,16 @@ export function Categories() {
     onError: (e) => setBanner(e instanceof ApiError ? e.message : zh.common.error),
   })
 
+  const selectedCategory = (categories.data ?? []).find((c) => c.id === selected)
+
+  // Deleting detaches these rather than refusing on them, so the confirmation
+  // has to say which before it happens rather than after.
+  const models = useQuery({
+    queryKey: ["models"],
+    queryFn: () => api.get<ProductModelRow[]>("/models"),
+  })
+  const detaching = (models.data ?? []).filter((m) => (m.category_ids ?? []).includes(selected))
+
   const create = useMutation({
     mutationFn: () =>
       api.post("/categories", {
@@ -84,6 +96,26 @@ export function Categories() {
       setCreateOpen(false)
       resetCreateForm()
       queryClient.invalidateQueries({ queryKey: ["categories"] })
+    },
+  })
+
+  const remove = useMutation({
+    mutationFn: () => api.del(`/categories/${selected}`),
+    onSuccess: () => {
+      setRemoveBanner(null)
+      setRemoveBlockers([])
+      setSelected("")
+      queryClient.invalidateQueries({ queryKey: ["categories"] })
+    },
+    // The refusal carries the children, assets or models holding it -- without
+    // them "cannot delete" leaves the user with nowhere to look.
+    onError: (e) => {
+      if (e instanceof ApiError) {
+        setRemoveBanner(e.message)
+        setRemoveBlockers(e.blockers ?? [])
+      } else {
+        setRemoveBanner(zh.common.error)
+      }
     },
   })
 
@@ -216,6 +248,45 @@ export function Categories() {
 
         {selected && (
           <div className="grid gap-6">
+            {selectedCategory && (
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-medium">{selectedCategory.name}</h2>
+                <ConfirmDialog
+                  trigger={
+                    <Button variant="destructive" size="sm" className="ml-auto">
+                      {zhMeta.categories.delete}
+                    </Button>
+                  }
+                  title={zhMeta.categories.deleteTitle}
+                  description={
+                    zhMeta.categories.deleteHint(selectedCategory.name) +
+                    (detaching.length > 0
+                      ? zhMeta.categories.deleteDetaches(detaching.map((m) => m.name).join("、"))
+                      : "")
+                  }
+                  confirmLabel={zhMeta.categories.delete}
+                  requirePhrase={selectedCategory.name}
+                  onConfirm={() => remove.mutate()}
+                />
+              </div>
+            )}
+
+            {(removeBanner || removeBlockers.length > 0) && (
+              <Alert variant="destructive">
+                <AlertCircleIcon />
+                <AlertDescription className="grid gap-1">
+                  {removeBanner}
+                  {removeBlockers.length > 0 && (
+                    <ul className="grid gap-0.5 text-xs">
+                      {removeBlockers.map((b) => (
+                        <li key={blockerKey(b)}>{b.name}</li>
+                      ))}
+                    </ul>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
             {schema.data && (
               <DisplayKeyEditor
                 key={selected}

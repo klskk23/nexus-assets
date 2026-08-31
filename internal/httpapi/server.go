@@ -62,6 +62,7 @@ func (s *Server) Router() *gin.Engine {
 	authed.GET("/categories", s.listCategories)
 	authed.POST("/categories", s.createCategory)
 	authed.PATCH("/categories/:id", s.patchCategory)
+	authed.DELETE("/categories/:id", s.deleteCategory)
 	authed.GET("/categories/:id/schema", s.categorySchema)
 
 	authed.GET("/fields", s.listFields)

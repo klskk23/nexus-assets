@@ -70,6 +70,10 @@ func FailErr(c *gin.Context, err error) {
 		errors.Is(err, auth.ErrNotFound):
 		Fail(c, http.StatusNotFound, CodeNotFound, MsgNotFound, nil)
 
+	case errors.Is(err, schema.ErrCategoryHasChildren):
+		Fail(c, http.StatusConflict, CodeReferenceBlocked,
+			userText(err, schema.ErrCategoryHasChildren), nil)
+
 	case errors.Is(err, schema.ErrCategoryHasAssets):
 		Fail(c, http.StatusConflict, CodeCategoryHasAssets,
 			userText(err, schema.ErrCategoryHasAssets), nil)

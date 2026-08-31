@@ -10,12 +10,26 @@ export interface Referrer {
   label: string
 }
 
-/** A device standing in the way, named the way a person would refer to it. */
+/**
+ * Something standing in the way, named the way a person would refer to it.
+ *
+ * The three refusals that carry these block on different things -- devices
+ * holding a value, devices holding a location, a whole category's children,
+ * assets and models -- so the identifying field varies. `name` is the one the
+ * interface actually renders, and it is always there.
+ */
 export interface Blocker {
-  asset_id: string
   name: string
+  /** Set when the blocker is an asset. */
+  asset_id?: string
+  /** Set when the refusal can block on several kinds of record. */
+  id?: string
+  kind?: string
   reason?: string
 }
+
+/** A stable key for rendering a blocker list. */
+export const blockerKey = (b: Blocker) => b.asset_id ?? b.id ?? b.name
 
 /** The single error shape every non-2xx response uses. */
 export class ApiError extends Error {

@@ -40,6 +40,12 @@ const schema = {
 function route(p: string) {
   if (p === "/categories") return Promise.resolve(categories)
   if (p === "/fields") return Promise.resolve([])
+  if (p === "/models") {
+    return Promise.resolve([
+      { id: "m1", category_ids: ["rt"], name: "X100", vendor: "Acme", attr_defaults: {} },
+      { id: "m2", category_ids: ["net"], name: "别的机", vendor: "", attr_defaults: {} },
+    ])
+  }
   if (p.endsWith("/schema")) return Promise.resolve(schema)
   return Promise.resolve([])
 }
@@ -172,4 +178,72 @@ describe("Categories create dialog", () => {
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("类别编码已存在")
   })
+})
+
+// Deleting a category is where the dependencies actually bite: children,
+// assets anywhere beneath it, and models attached to it each stop it, and each
+// refusal has to say which.
+describe("Categories delete", () => {
+  it("requires the category name to be typed out", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+    await user.click(await screen.findByRole("button", { name: /SDWAN 路由器/ }))
+
+    await user.click(await screen.findByRole("button", { name: "删除类别" }))
+    const dialog = await screen.findByRole("alertdialog")
+    const confirm = within(dialog).getByRole("button", { name: "删除类别" })
+    expect(confirm).toBeDisabled()
+
+    await user.type(screen.getByLabelText(/请输入/), "SDWAN 路由器")
+    expect(confirm).toBeEnabled()
+
+    await user.click(confirm)
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/categories/rt"))
+  })
+
+  it("lists what is holding the category when the delete is refused", async () => {
+    del.mockRejectedValue(
+      new ApiError(
+        409,
+        "reference_blocked",
+        "「SDWAN 路由器」下还有 2 台资产，请先把它们移到别处",
+        undefined,
+        undefined,
+        [
+          { kind: "asset", id: "a1", name: "112394521950" },
+          { kind: "asset", id: "a2", name: "112394521951" },
+        ],
+        2,
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+    await user.click(await screen.findByRole("button", { name: /SDWAN 路由器/ }))
+
+    await user.click(await screen.findByRole("button", { name: "删除类别" }))
+    const dialog = await screen.findByRole("alertdialog")
+    await user.type(screen.getByLabelText(/请输入/), "SDWAN 路由器")
+    await user.click(within(dialog).getByRole("button", { name: "删除类别" }))
+
+    const alert = await screen.findByRole("alert")
+    expect(alert).toHaveTextContent("还有 2 台资产")
+    expect(alert).toHaveTextContent("112394521950")
+    expect(alert).toHaveTextContent("112394521951")
+  })
+})
+
+// Deleting detaches attached models instead of refusing on them -- nothing in
+// the interface can detach one, so a refusal would have been a dead end. What
+// it must not be is silent.
+it("names the models that will be detached before asking to confirm", async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<Categories />)
+  await user.click(await screen.findByRole("button", { name: /SDWAN 路由器/ }))
+
+  await user.click(await screen.findByRole("button", { name: "删除类别" }))
+  const dialog = await screen.findByRole("alertdialog")
+  expect(dialog).toHaveTextContent("以下型号将不再关联到该类别")
+  expect(dialog).toHaveTextContent("X100")
+  // A model attached elsewhere is not this category's business.
+  expect(dialog).not.toHaveTextContent("别的机")
 })

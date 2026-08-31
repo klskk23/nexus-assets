@@ -174,6 +174,12 @@ export const zhMeta = {
     name: "名称",
     parent: "上级类别",
     noParent: "无（作为顶层类别）",
+    delete: "删除类别",
+    deleteTitle: "删除类别",
+    deleteHint: (name: string) =>
+      `「${name}」及其字段绑定将被删除。有子类别、或子树下有资产时会被拒绝，届时会列出是哪些。`,
+    deleteDetaches: (names: string) =>
+      `以下型号将不再关联到该类别（型号本身保留）：${names}。`,
     fields: "本类别的信息项",
     inheritedFrom: "继承自",
     bind: "绑定信息项",

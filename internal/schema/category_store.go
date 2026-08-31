@@ -277,3 +277,144 @@ func nilIfEmpty(s string) *string {
 	}
 	return &s
 }
+
+// ErrCategoryHasChildren blocks deleting a node that other categories hang off.
+var ErrCategoryHasChildren = errors.New("category still has child categories")
+
+// CategoryBlocker names one thing standing in the way of deleting a category.
+type CategoryBlocker struct {
+	// Kind is "category", "asset" or "model".
+	Kind string `json:"kind"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// categoryBlockerLimit caps how many are listed, as elsewhere: enough to show
+// what is going on without turning an error into a report.
+const categoryBlockerLimit = 5
+
+// DeleteCategory removes a category, refusing while anything still depends on it.
+//
+// Three refusals, cheapest first, and each names what is in the way:
+//
+//   - child categories, because deleting a subtree is a much larger act than
+//     the one being asked for and nobody should get it by accident
+//   - assets anywhere beneath it, the same rule every other record follows:
+//     configuration that has produced data is not configuration any more
+//
+// Two things go with it rather than blocking it:
+//
+//   - its own field bindings, which describe what this category asks for and
+//     mean nothing once it is gone
+//   - its model associations. Refusing on those looked consistent, but nothing
+//     in the interface can detach a model from a category, so the refusal was
+//     a dead end. The models themselves survive; a model attached to no
+//     category is an ordinary state, the one a model sits in before it is
+//     placed anywhere.
+func (s *Store) DeleteCategory(ctx context.Context, id string) ([]CategoryBlocker, int, error) {
+	cur, err := s.GetCategory(ctx, id)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	children, err := s.blockers(ctx, `SELECT id, name FROM categories WHERE parent_id = ? ORDER BY name`, "category", id)
+	if err != nil {
+		return nil, 0, err
+	}
+	if len(children) > 0 {
+		return children, len(children), fmt.Errorf(
+			"%w：「%s」下还有 %d 个子类别，请先删除或移走它们", ErrCategoryHasChildren, cur.Name, len(children))
+	}
+
+	assets, total, err := s.assetsUnder(ctx, cur.Path)
+	if err != nil {
+		return nil, 0, err
+	}
+	if total > 0 {
+		partial := ""
+		if len(assets) < total {
+			partial = fmt.Sprintf("，此处仅列出前 %d 台", len(assets))
+		}
+		return assets, total, fmt.Errorf(
+			"%w：「%s」下还有 %d 台资产%s，请先把它们移到别处", ErrCategoryHasAssets, cur.Name, total, partial)
+	}
+
+	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		for _, q := range []string{
+			// Both belong to this category and point nowhere else.
+			`DELETE FROM category_fields WHERE category_id = ?`,
+			`DELETE FROM product_model_categories WHERE category_id = ?`,
+			`DELETE FROM categories WHERE id = ?`,
+		} {
+			if _, err := tx.ExecContext(ctx, q, id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return nil, 0, err
+}
+
+func (s *Store) blockers(ctx context.Context, q, kind, arg string) ([]CategoryBlocker, error) {
+	rows, err := s.db.ReadDB().QueryContext(ctx, q, arg)
+	if err != nil {
+		return nil, fmt.Errorf("list %s blockers: %w", kind, err)
+	}
+	defer rows.Close()
+	var out []CategoryBlocker
+	for rows.Next() {
+		b := CategoryBlocker{Kind: kind}
+		if err := rows.Scan(&b.ID, &b.Name); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
+// assetsUnder counts the assets in a subtree and names the first few.
+func (s *Store) assetsUnder(ctx context.Context, path string) ([]CategoryBlocker, int, error) {
+	const where = `FROM assets a JOIN categories c ON c.id = a.category_id WHERE c.path LIKE ? || '%'`
+
+	var total int
+	if err := s.db.ReadDB().QueryRowContext(ctx, `SELECT count(*) `+where, path).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count assets under %s: %w", path, err)
+	}
+	if total == 0 {
+		return nil, 0, nil
+	}
+
+	rows, err := s.db.ReadDB().QueryContext(ctx,
+		`SELECT a.id, a.attrs, coalesce(c.display_key, '') `+where+
+			` ORDER BY a.created_at, a.id LIMIT ?`, path, categoryBlockerLimit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list assets under %s: %w", path, err)
+	}
+	defer rows.Close()
+	var out []CategoryBlocker
+	for rows.Next() {
+		b := CategoryBlocker{Kind: "asset"}
+		var attrsJSON, displayKey string
+		if err := rows.Scan(&b.ID, &attrsJSON, &displayKey); err != nil {
+			return nil, 0, err
+		}
+		attrs, err := store.UnmarshalJSONMap(attrsJSON)
+		if err != nil {
+			return nil, 0, err
+		}
+		b.Name = model.AssetDisplayName(b.ID, attrs, displayKey)
+		out = append(out, b)
+	}
+	return out, total, rows.Err()
+}
+
+// ModelsAttached lists the models a category delete would detach.
+//
+// Deleting does not refuse on them, so the interface has to be able to say
+// what will happen before it happens rather than after.
+func (s *Store) ModelsAttached(ctx context.Context, categoryID string) ([]CategoryBlocker, error) {
+	return s.blockers(ctx,
+		`SELECT m.id, m.name FROM product_models m
+		 JOIN product_model_categories pmc ON pmc.model_id = m.id
+		 WHERE pmc.category_id = ? ORDER BY m.vendor, m.name`, "model", categoryID)
+}

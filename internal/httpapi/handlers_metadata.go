@@ -435,3 +435,54 @@ func (s *Server) unbindField(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
+
+// deleteCategory removes a category once nothing depends on it.
+//
+// The three refusals share a code but carry the blocking records, because
+// "cannot delete" without them is a dead end: the user has no way to find the
+// four assets or the one model that is holding it.
+func (s *Server) deleteCategory(c *gin.Context) {
+	ctx := c.Request.Context()
+	before, err := s.schema.GetCategory(ctx, c.Param("id"))
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+
+	blockers, total, err := s.schema.DeleteCategory(ctx, c.Param("id"))
+	switch {
+	case errors.Is(err, schema.ErrCategoryHasChildren),
+		errors.Is(err, schema.ErrCategoryHasAssets):
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+			"error": gin.H{
+				"code":     CodeReferenceBlocked,
+				"message":  userText(err, unwrapSentinel(err)),
+				"blockers": blockers,
+				"total":    total,
+			},
+		})
+		return
+	case err != nil:
+		FailErr(c, err)
+		return
+	}
+
+	if !s.record(c, audit.ActionDelete, audit.TargetCategory, before.ID, before, nil) {
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// unwrapSentinel picks the sentinel a refusal was built from, so its English
+// identifier can be stripped without the caller having to guess which one.
+func unwrapSentinel(err error) error {
+	for _, s := range []error{
+		schema.ErrCategoryHasChildren,
+		schema.ErrCategoryHasAssets,
+	} {
+		if errors.Is(err, s) {
+			return s
+		}
+	}
+	return err
+}

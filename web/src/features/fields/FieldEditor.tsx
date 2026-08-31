@@ -2,7 +2,7 @@ import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import { api, ApiError, type Blocker, type Referrer } from "@/lib/api"
+import { api, ApiError, blockerKey, type Blocker, type Referrer } from "@/lib/api"
 import type { EnumChoice, FieldOptions } from "@/lib/types"
 import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import { zh, zhConfig, zhMeta } from "@/i18n/zh"
@@ -271,7 +271,7 @@ export function FieldEditor({ field, onClose }: Props) {
                   <p className="text-xs">{zhConfig.field.blockedByAssets}</p>
                   <ul className="grid gap-0.5 font-mono text-xs">
                     {assetBlockers.map((b) => (
-                      <li key={b.asset_id}>{b.name}</li>
+                      <li key={blockerKey(b)}>{b.name}</li>
                     ))}
                   </ul>
                 </>
