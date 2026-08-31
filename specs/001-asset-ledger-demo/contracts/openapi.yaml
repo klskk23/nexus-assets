@@ -202,6 +202,38 @@ paths:
         "204": { description: Deleted }
         "422": { $ref: "#/components/responses/Error" }
 
+  /assets/delete:
+    post:
+      tags: [assets]
+      summary: 批量删除。confirm 必须等于选中的台数
+      description: >
+        POST 而非 DELETE，因为请求带 body —— 带 body 的 DELETE 在各层代理与客户端上
+        支持参差，这不是发现这件事的地方。
+        单条删除要求逐字输入设备编号，那对一批设备不成立，于是改为要求输入这一批的**数量**：
+        确认十二台之前你必须先看清自己选了几台。整批成功或整批失败 ——
+        删掉十二台里的九台再失败，操作者无从知道是哪九台。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [asset_ids, confirm]
+              properties:
+                asset_ids: { type: array, items: { type: string } }
+                confirm: { type: string, description: 必须等于 asset_ids 的长度 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted: { type: integer }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
   /assets/{id}/transfers:
     get:
       tags: [transfers]

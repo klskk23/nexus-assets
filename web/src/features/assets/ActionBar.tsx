@@ -1,43 +1,67 @@
 import { useState } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { Trash2Icon } from "lucide-react"
 
-import { zhTransfer } from "@/i18n/zh"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { api, ApiError } from "@/lib/api"
+import { zh, zhTransfer } from "@/i18n/zh"
+import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import {
   TransferDialog,
   transferActions,
   type TransferAction,
 } from "@/features/transfers/TransferDialog"
+import { Button } from "@/components/ui/button"
+import { ButtonGroup, ButtonGroupSeparator } from "@/components/ui/button-group"
+import { Card, CardContent } from "@/components/ui/card"
 
 interface Props {
   selected: string[]
   onClear: () => void
-  onDone: (count: number) => void
+  onDone: (message: string) => void
 }
 
 /**
  * The bar that rises once rows are ticked.
  *
- * It composes nothing itself: each button opens the shared transfer dialog
+ * One row, at the height of the buttons it holds: it floats over the table it
+ * is about, so every extra line of it is a line of the table nobody can read.
+ *
+ * It composes nothing itself. Each transfer button opens the shared dialog
  * with that action preselected, so the list page and the detail page cannot
  * end up behaving differently for the same operation.
  */
 export function ActionBar({ selected, onClear, onDone }: Props) {
+  const queryClient = useQueryClient()
   const [action, setAction] = useState<TransferAction | null>(null)
   const [open, setOpen] = useState(false)
+
+  const remove = useMutation({
+    mutationFn: () =>
+      api.post<{ deleted: number }>("/assets/delete", {
+        asset_ids: selected,
+        confirm: String(selected.length),
+      }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["assets"] })
+      onDone(zh.assets.deletedCount(res.deleted))
+      onClear()
+    },
+    onError: (e) => onDone(e instanceof ApiError ? e.message : zh.common.error),
+  })
 
   if (selected.length === 0) return null
 
   return (
     <Card className="sticky bottom-4 shadow-lg">
-      <CardContent className="flex flex-wrap items-center gap-2 pt-6">
-        <span className="font-medium">{zhTransfer.actions.selected(selected.length)}</span>
-        <div className="flex flex-wrap gap-1">
+      <CardContent className="flex flex-wrap items-center gap-3 p-3">
+        <span className="text-sm font-medium">{zhTransfer.actions.selected(selected.length)}</span>
+
+        <ButtonGroup>
           {transferActions.map(([a, label]) => (
             <Button
               key={a}
               size="sm"
-              variant="ghost"
+              variant="outline"
               onClick={() => {
                 setAction(a)
                 setOpen(true)
@@ -46,7 +70,26 @@ export function ActionBar({ selected, onClear, onDone }: Props) {
               {label}
             </Button>
           ))}
-        </div>
+          <ButtonGroupSeparator />
+          {/* Destructive, so it sits after a separator rather than in the run
+              of transfer actions -- the same click distance, a different act. */}
+          <ConfirmDialog
+            trigger={
+              <Button size="sm" variant="outline" className="text-destructive">
+                <Trash2Icon data-icon="inline-start" />
+                {zh.assets.delete}
+              </Button>
+            }
+            title={zh.assets.deleteTitle}
+            description={zh.assets.deleteManyHint(selected.length)}
+            confirmLabel={zh.assets.delete}
+            // A batch cannot ask for every number to be typed out, so it asks
+            // for its size: you cannot confirm without having looked at it.
+            requirePhrase={String(selected.length)}
+            onConfirm={() => remove.mutate()}
+          />
+        </ButtonGroup>
+
         <Button size="sm" variant="ghost" className="ml-auto" onClick={onClear}>
           {zhTransfer.actions.clear}
         </Button>
@@ -58,7 +101,7 @@ export function ActionBar({ selected, onClear, onDone }: Props) {
         onOpenChange={setOpen}
         initialAction={action}
         onDone={(n) => {
-          onDone(n)
+          onDone(zhTransfer.actions.done(n))
           onClear()
         }}
       />

@@ -250,3 +250,13 @@ describe("AssetDetail", () => {
     await waitFor(() => expect(del).toHaveBeenCalledWith("/assets/a1?confirm=112394521950"))
   })
 })
+
+// You can arrive here from the overview, from a scan, or straight after
+// recording a device, and there was no way out but the browser's own back.
+it("offers a way back to the list", async () => {
+  renderWithProviders(<AssetDetail />)
+  await screen.findByText("112394521950")
+
+  const back = screen.getByRole("link", { name: /返回资产列表/ })
+  expect(back).toHaveAttribute("href", "/assets")
+})

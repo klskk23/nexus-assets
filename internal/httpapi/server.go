@@ -90,6 +90,7 @@ func (s *Server) Router() *gin.Engine {
 	authed.GET("/assets/:id", s.getAsset)
 	authed.PATCH("/assets/:id", s.patchAsset)
 	authed.DELETE("/assets/:id", s.deleteAsset)
+	authed.POST("/assets/delete", s.deleteAssets)
 	authed.GET("/assets/:id/transfers", s.listAssetTransfers)
 
 	authed.GET("/categories/:id/import-template.csv", s.importTemplate)

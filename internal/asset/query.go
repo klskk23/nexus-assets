@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -309,4 +310,50 @@ func (s *Service) Delete(ctx context.Context, id, confirm string) error {
 		}
 		return nil
 	})
+}
+
+// DeleteMany removes several assets in one transaction.
+//
+// The single delete asks for the device's number to be typed out. That does
+// not scale, so a batch asks for its size instead: you cannot confirm twelve
+// deletions without having looked at how many you selected. Checking it here
+// as well as on screen keeps the endpoint self-describing -- the count is part
+// of the request, not an afterthought of the interface.
+//
+// All or nothing. A batch that removed nine of twelve and then failed would
+// leave the operator with no idea which nine.
+func (s *Service) DeleteMany(ctx context.Context, ids []string, confirm string) (int, error) {
+	if len(ids) == 0 {
+		return 0, FieldErrors{"asset_ids": "没有选中任何设备"}
+	}
+	if confirm != strconv.Itoa(len(ids)) {
+		return 0, FieldErrors{"confirm": fmt.Sprintf("请输入 %d 以确认删除", len(ids))}
+	}
+
+	err := s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		for _, id := range ids {
+			var exists string
+			err := tx.QueryRowContext(ctx, `SELECT id FROM assets WHERE id = ?`, id).Scan(&exists)
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
+			if err != nil {
+				return err
+			}
+			for _, q := range []string{
+				`DELETE FROM asset_transfers WHERE asset_id = ?`,
+				`DELETE FROM asset_unique_values WHERE asset_id = ?`,
+				`DELETE FROM assets WHERE id = ?`,
+			} {
+				if _, err := tx.ExecContext(ctx, q, id); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return len(ids), nil
 }

@@ -15,7 +15,6 @@ export const router = createBrowserRouter([
     children: [
       { index: true, lazy: async () => ({ Component: (await import("./Overview")).Overview }) },
       { path: "assets", lazy: async () => ({ Component: (await import("./Assets")).Assets }) },
-      { path: "assets/new", lazy: async () => ({ Component: (await import("./NewAsset")).NewAsset }) },
       {
         path: "assets/:id",
         lazy: async () => ({ Component: (await import("./AssetDetail")).AssetDetail }),

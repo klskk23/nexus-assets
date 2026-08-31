@@ -112,7 +112,7 @@ describe("Overview", () => {
     await user.click(await screen.findByRole("combobox", { name: "类别" }))
     await user.click(await screen.findByRole("option", { name: "网络设备" }))
     await user.click(screen.getByRole("button", { name: "开始录入" }))
-    expect(navigate).toHaveBeenCalledWith("/assets/new?category_id=net")
+    expect(navigate).toHaveBeenCalledWith("/assets?new=1&category_id=net")
   })
 
   // A fresh install has nothing configured; the card has to point at the one

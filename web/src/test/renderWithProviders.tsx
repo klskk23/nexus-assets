@@ -3,6 +3,7 @@ import { render, type RenderOptions } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter } from "react-router"
 
+import { AuthProvider } from "@/features/auth/useAuth"
 import { ThemeProvider } from "@/features/theme/useTheme"
 
 /**
@@ -34,7 +35,11 @@ export function renderWithProviders(ui: ReactElement, { route = "/", ...options 
     return (
       <ThemeProvider>
         <QueryClientProvider client={client}>
-          <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+          {/* With no token stored -- which is every test unless one puts one
+              there -- this fetches nothing and reports a signed-out user. */}
+          <AuthProvider>
+            <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+          </AuthProvider>
         </QueryClientProvider>
       </ThemeProvider>
     )

@@ -1,6 +1,6 @@
-import { InfoIcon } from "lucide-react"
+import { ArrowLeftIcon, InfoIcon } from "lucide-react"
 import { useEffect, useState } from "react"
-import { useNavigate, useParams } from "react-router"
+import { Link, useNavigate, useParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError, type FieldErrors } from "@/lib/api"
@@ -128,6 +128,16 @@ export function AssetDetail() {
     >
       {asset && (
         <div className="grid gap-6">
+          {/* A link to the list rather than browser back: you can arrive here
+              from the overview, a scan, or straight after recording a device,
+              and "back" from those is three different places. */}
+          <Button variant="ghost" size="sm" className="w-fit -ml-2" asChild>
+            <Link to="/assets">
+              <ArrowLeftIcon data-icon="inline-start" />
+              {zh.assets.backToList}
+            </Link>
+          </Button>
+
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-mono text-xl font-semibold">{asset.display_name}</h1>
             <Badge variant="secondary">{zh.status[asset.status] ?? asset.status}</Badge>

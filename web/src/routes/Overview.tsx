@@ -168,7 +168,7 @@ export function Overview() {
                     <div>
                       <Button
                         disabled={quickCategory === ""}
-                        onClick={() => navigate(`/assets/new?category_id=${quickCategory}`)}
+                        onClick={() => navigate(`/assets?new=1&category_id=${quickCategory}`)}
                       >
                         {zhOverview.quickStart}
                       </Button>

@@ -631,3 +631,61 @@ func TestDisplayNameFallsBackToShortUUID(t *testing.T) {
 		t.Errorf("the fallback should be eight hex digits, got %q", a.DisplayName)
 	}
 }
+
+// A batch asks for its size rather than each device's number: typing twelve
+// identifiers is not confirmation, it is an obstacle course.
+func TestDeleteManyRequiresTheCount(t *testing.T) {
+	f := newFixture(t)
+	var ids []string
+	for _, mac := range []string{"001A2B3C0001", "001A2B3C0002", "001A2B3C0003"} {
+		a, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": mac}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, a.ID)
+	}
+
+	if _, err := f.svc.DeleteMany(f.ctx, ids, "2"); err == nil {
+		t.Fatal("a wrong count must refuse the batch")
+	}
+	var fe FieldErrors
+	if _, err := f.svc.DeleteMany(f.ctx, ids, ""); !errors.As(err, &fe) || fe["confirm"] == "" {
+		t.Errorf("the refusal should name the confirmation field, got %#v", err)
+	}
+	if _, err := f.svc.DeleteMany(f.ctx, nil, "0"); err == nil {
+		t.Error("an empty selection has nothing to confirm")
+	}
+
+	// Everything still there after the refusals.
+	res, err := f.svc.List(f.ctx, ListFilter{})
+	if err != nil || res.Total != 3 {
+		t.Fatalf("total = %d, %v", res.Total, err)
+	}
+
+	n, err := f.svc.DeleteMany(f.ctx, ids, "3")
+	if err != nil || n != 3 {
+		t.Fatalf("DeleteMany = %d, %v", n, err)
+	}
+	res, err = f.svc.List(f.ctx, ListFilter{})
+	if err != nil || res.Total != 0 {
+		t.Errorf("total = %d, %v", res.Total, err)
+	}
+}
+
+// Removing nine of twelve and then failing would leave the operator with no
+// idea which nine.
+func TestDeleteManyIsAllOrNothing(t *testing.T) {
+	f := newFixture(t)
+	a, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C0001"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := f.svc.DeleteMany(f.ctx, []string{a.ID, "missing"}, "2"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("want ErrNotFound, got %v", err)
+	}
+	res, err := f.svc.List(f.ctx, ListFilter{})
+	if err != nil || res.Total != 1 {
+		t.Errorf("the whole batch should have rolled back, total = %d", res.Total)
+	}
+}

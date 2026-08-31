@@ -235,3 +235,29 @@ func (s *Server) deleteAsset(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
+
+// deleteAssets removes a selection in one go.
+//
+// A POST rather than a DELETE because the request carries a body: DELETE with
+// one is supported unevenly across proxies and clients, and this is not the
+// place to find that out.
+func (s *Server) deleteAssets(c *gin.Context) {
+	var req struct {
+		AssetIDs []string `json:"asset_ids" binding:"required"`
+		Confirm  string   `json:"confirm"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		return
+	}
+
+	n, err := s.assets.DeleteMany(c.Request.Context(), req.AssetIDs, req.Confirm)
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	// No audit entry, matching the single delete: the audit log covers
+	// configuration objects, and an asset's history lives in its transfer log
+	// -- which this removes along with it.
+	c.JSON(http.StatusOK, gin.H{"deleted": n})
+}

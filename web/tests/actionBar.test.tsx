@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { screen, waitFor } from "@testing-library/react"
+import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { ActionBar } from "@/features/assets/ActionBar"
@@ -56,7 +56,7 @@ describe("ActionBar", () => {
       }),
     )
     expect(post).toHaveBeenCalledTimes(1)
-    await waitFor(() => expect(onDone).toHaveBeenCalledWith(20))
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith("已完成 20 台的流转"))
   })
 
   it("asks the server for the default stock point when returning", async () => {
@@ -98,5 +98,48 @@ describe("ActionBar", () => {
     await user.click(screen.getByRole("button", { name: "改状态" }))
     await user.click(screen.getByRole("button", { name: "提交" }))
     expect(await screen.findByRole("alert")).toHaveTextContent(/terminal/)
+  })
+})
+
+// Deleting used to be a button on every row. It belongs with the other things
+// you do to a selection, and it stops the table growing a column for it.
+describe("ActionBar delete", () => {
+  it("asks for the size of the batch before deleting", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ActionBar selected={twenty} onClear={vi.fn()} onDone={vi.fn()} />)
+
+    await user.click(screen.getByRole("button", { name: /删除/ }))
+    const dialog = await screen.findByRole("alertdialog")
+    expect(dialog).toHaveTextContent("20 台设备")
+
+    const confirm = within(dialog).getByRole("button", { name: "删除" })
+    expect(confirm).toBeDisabled()
+    // Typing the wrong number is not confirmation either.
+    await user.type(screen.getByLabelText(/请输入/), "2")
+    expect(confirm).toBeDisabled()
+    await user.type(screen.getByLabelText(/请输入/), "0")
+    expect(confirm).toBeEnabled()
+  })
+
+  it("sends one request for the whole selection", async () => {
+    const onDone = vi.fn()
+    const onClear = vi.fn()
+    post.mockResolvedValue({ deleted: 20 })
+    const user = userEvent.setup()
+    renderWithProviders(<ActionBar selected={twenty} onClear={onClear} onDone={onDone} />)
+
+    await user.click(screen.getByRole("button", { name: /删除/ }))
+    const dialog = await screen.findByRole("alertdialog")
+    await user.type(screen.getByLabelText(/请输入/), "20")
+    await user.click(within(dialog).getByRole("button", { name: "删除" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/assets/delete", {
+        asset_ids: twenty,
+        confirm: "20",
+      }),
+    )
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith("已删除 20 台设备"))
+    expect(onClear).toHaveBeenCalled()
   })
 })
