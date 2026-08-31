@@ -88,9 +88,9 @@ describe("user-facing copy stays in one place", () => {
   it("describes no behaviour the system has dropped", () => {
     const source = readFileSync(join(I18N, "zh.ts"), "utf8")
     const gone = [
-      { phrase: "编号怎么生成", why: "编号规则已不属于类别，改由信息项承担" },
+      { phrase: "编号怎么生成", why: "编号规则已不属于类别，改由字段承担" },
       { phrase: "编号生成规则", why: "同上" },
-      { phrase: "停用信息项", why: "信息项改为可删除，停用机制已移除" },
+      { phrase: "停用字段", why: "字段改为可删除，停用机制已移除" },
       { phrase: "停用持有方", why: "持有方改为可删除，停用机制已移除" },
     ]
     const found = gone.filter((g) => source.includes(g.phrase))

@@ -15,7 +15,7 @@ export const en: typeof zh = {
     overview: "Overview",
     assets: "Assets",
     categories: "Categories",
-    fields: "Information items",
+    fields: "Fields",
     models: "Models",
     statuses: "Statuses",
     holders: "Holders",
@@ -61,7 +61,7 @@ export const en: typeof zh = {
     holder: "Holder",
     owner: "Owner",
     empty: "No assets yet",
-    emptyHint: "Set up a category and its information items first, then record the first device.",
+    emptyHint: "Set up a category and its fields first, then record the first device.",
     snChanged: (from: string, to: string) => `Number ${from} became ${to}`,
     modelLabel: "Model",
     noModel: "No model",
@@ -74,7 +74,7 @@ export const en: typeof zh = {
     valueHistoryHint: "Old values still match a search but no longer hold their uniqueness slot.",
     archivedFields: "Retired fields",
     archivedHint:
-      "These items no longer belong to this category. They are kept visible and are not validated.",
+      "These fields no longer belong to this category. They are kept visible and are not validated.",
     save: "Save",
     saving: "Saving…",
     saved: "Saved",
@@ -106,7 +106,7 @@ export const en: typeof zh = {
     entityGroup: "Company / location / department",
     inherited: "Inherited",
     unique: "Unique",
-    computedHint: "Derived from other items; not filled in directly",
+    computedHint: "Derived from other fields; not filled in directly",
     deprecatedSuffix: " (deprecated)",
     defaultStockSuffix: " (default stock point)",
     template: "Template",
@@ -122,15 +122,15 @@ export const en: typeof zh = {
 
 export const enMeta: typeof zhMeta = {
   fields: {
-    title: "Information items",
-    create: "New item",
+    title: "Fields",
+    create: "New field",
     key: "Key",
     label: "Display name",
     type: "Type",
     unique: "Globally unique",
-    empty: "No information items yet",
+    empty: "No fields yet",
     emptyHint:
-      "Items are shared system-wide: one key means one thing everywhere. Create it here, then bind it on a category.",
+      "Fields are shared system-wide: one key means one thing everywhere. Create it here, then bind it on a category.",
   },
   models: {
     title: "Models",
@@ -221,9 +221,9 @@ export const enMeta: typeof zhMeta = {
       `${name} and its field bindings will be deleted. Refused while it has subcategories or assets beneath it — you will be told which.`,
     deleteDetaches: (names: string) =>
       `These models will no longer be attached to it (the models themselves survive): ${names}.`,
-    fields: "Items on this category",
+    fields: "Fields on this category",
     inheritedFrom: "Inherited from",
-    bind: "Bind an item",
+    bind: "Bind a field",
     required: "Required",
     unbind: "Unbind",
     unbindTitle: "Unbind from this category",
@@ -231,7 +231,7 @@ export const enMeta: typeof zhMeta = {
       `New devices will no longer be asked for ${label}; values on existing devices are kept, shown read-only and no longer validated.`,
     empty: "No categories yet",
     emptyHint:
-      "A category decides what a device records. Subcategories inherit every item from above.",
+      "A category decides what a device records. Subcategories inherit every field from above.",
   },
   entityTypes: { company: "Company", location: "Location", department: "Department" },
   fieldTypes: {
@@ -293,7 +293,7 @@ export const enConfig: typeof zhConfig = {
     label: "Item used as the number",
     none: "Not set (shows the first 8 of the UUID)",
     hint:
-      "Only items marked unique may be chosen. The number is usually an expression key derived from a static one such as the MAC.",
+      "Only fields marked unique may be chosen. The number is usually an expression key derived from a static one such as the MAC.",
     save: "Save",
     saved: "Saved",
     recompute: "Recompute existing data",
@@ -315,7 +315,7 @@ export const enConfig: typeof zhConfig = {
       "Changing the expression only affects assets created afterwards. Existing ones need an explicit recompute.",
   },
   field: {
-    edit: "Edit item",
+    edit: "Edit field",
     staticGroup: "Static keys (typed in or imported)",
     expressionGroup: "Expression keys (derived from other keys)",
     templateHint:
@@ -341,8 +341,8 @@ export const enConfig: typeof zhConfig = {
     targetEntity: "Holder entity",
     entityTypes: "Limit to types",
     template: "Expression",
-    delete: "Delete item",
-    deleteTitle: "Delete item",
+    delete: "Delete field",
+    deleteTitle: "Delete field",
     deleteHint: (label: string) =>
       `${label} will be removed outright, including its bindings on every category. Refused while any device has a value for it — ` +
       `unbind it from the category instead in that case.`,
@@ -385,7 +385,7 @@ export const enImport: typeof zhImport = {
 export const enAudit: typeof zhAudit = {
   title: "Change audit",
   hint:
-    "Asset transfers have their own timeline; this records configuration changes to categories, items, models, holders and accounts.",
+    "Asset transfers have their own timeline; this records configuration changes to categories, fields, models, holders and accounts.",
   targetType: "Object type",
   allTypes: "All types",
   from: "From",
@@ -400,10 +400,10 @@ export const enAudit: typeof zhAudit = {
   after: "After",
   empty: "No configuration changes yet",
   emptyHint:
-    "Create or change a category, item, model, holder or account and the record appears here.",
+    "Create or change a category, field, model, holder or account and the record appears here.",
   total: (n: number) => `${n} in total`,
   actions: { create: "Created", update: "Changed", archive: "Disabled", delete: "Deleted", recompute: "Recomputed" },
-  targets: { category: "Category", field: "Item", binding: "Binding", model: "Model", holder: "Holder", user: "Account", status: "Status" },
+  targets: { category: "Category", field: "Field", binding: "Binding", model: "Model", holder: "Holder", user: "Account", status: "Status" },
 }
 
 export const enConfirm: typeof zhConfirm = {

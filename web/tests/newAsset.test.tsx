@@ -33,8 +33,14 @@ const schema = {
   ],
 }
 const withLocation = [
-  { id: "loc", type: "location", name: "上海仓库", parent_id: null, is_default_stock: true },
-  { id: "loc2", type: "location", name: "北京仓库", parent_id: null, is_default_stock: false },
+  { id: "loc", type: "location", name: "上海仓库", parent_id: null, note: "", is_default_stock: true },
+  { id: "loc2", type: "location", name: "北京仓库", parent_id: null, note: "", is_default_stock: false },
+]
+const me = { id: "u1", email: "a@example.com", name: "管理员", auth_type: "local", status: "active" }
+const users = [
+  me,
+  { id: "u2", email: "z@example.com", name: "张三", auth_type: "local", status: "active" },
+  { id: "u3", email: "g@example.com", name: "离职的", auth_type: "local", status: "disabled" },
 ]
 
 function route(path: string, holders: unknown[] = withLocation) {
@@ -43,12 +49,16 @@ function route(path: string, holders: unknown[] = withLocation) {
 
   if (path === "/categories") return Promise.resolve(categories)
   if (path === "/holders") return Promise.resolve(holders)
+  if (path === "/users") return Promise.resolve(users)
+  if (path === "/me") return Promise.resolve(me)
   if (path === "/models") return Promise.resolve([])
   if (path.endsWith("/schema")) return Promise.resolve(schema)
   return Promise.resolve([])
 }
 
 beforeEach(() => {
+  // Recording a device needs somebody signed in: they are the default owner.
+  localStorage.setItem("nexus.token", "t")
   navigate.mockReset()
   get.mockReset().mockImplementation((p: string) => route(p))
   post.mockReset().mockResolvedValue({ id: "a1", display_name: "112394521950" })
@@ -75,6 +85,7 @@ describe("NewAssetDialog", () => {
     )
 
     await chooseByLabel(user, "持有方", /北京仓库/)
+    await chooseByLabel(user, "负责人", "张三")
     await user.type(await screen.findByLabelText(/基准 MAC/), "001A2B3C4D5E")
     await user.click(screen.getByRole("button", { name: "保存" }))
 
@@ -86,9 +97,48 @@ describe("NewAssetDialog", () => {
           status: "in_stock",
           holder_type: "entity",
           holder_id: "loc2",
+          owner_id: "u2",
         }),
       ),
     )
+  })
+
+  // Handing a device to a person answers "who is responsible" by itself, so
+  // the question is not asked -- and the answer sent is that person.
+  it("asks for no owner when a person is holding it", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<NewAssetDialog open onOpenChange={vi.fn()} initialCategoryID="rt" />)
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "持有方" })).toHaveTextContent("上海仓库"),
+    )
+    expect(screen.getByRole("combobox", { name: "负责人" })).toBeInTheDocument()
+
+    await chooseByLabel(user, "持有方", "张三")
+    expect(screen.queryByRole("combobox", { name: "负责人" })).not.toBeInTheDocument()
+
+    await user.type(await screen.findByLabelText(/基准 MAC/), "001A2B3C4D5E")
+    await user.click(screen.getByRole("button", { name: "保存" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith(
+        "/assets",
+        expect.objectContaining({ holder_type: "user", holder_id: "u2", owner_id: "u2" }),
+      ),
+    )
+  })
+
+  // A disabled account can neither hold a device nor be answerable for one.
+  it("offers only active accounts", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<NewAssetDialog open onOpenChange={vi.fn()} />)
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "持有方" })).toHaveTextContent("上海仓库"),
+    )
+
+    await user.click(screen.getByRole("combobox", { name: "持有方" }))
+    const names = (await screen.findAllByRole("option")).map((o) => o.textContent)
+    expect(names).toContain("张三")
+    expect(names).not.toContain("离职的")
   })
 
   it("lets the status be something other than in stock", async () => {
@@ -106,9 +156,9 @@ describe("NewAssetDialog", () => {
     )
   })
 
-  // No status constrains the kind of holder any more, so every holder on file
-  // is on offer -- and a device can start out in a company's custody.
-  it("offers every holder, and the account, whatever the status", async () => {
+  // No status constrains the kind of holder any more, so everything on file is
+  // on offer -- a device can start out in a company's custody or in a person's.
+  it("offers every holder and every account, whatever the status", async () => {
     const user = userEvent.setup()
     renderWithProviders(<NewAssetDialog open onOpenChange={vi.fn()} />)
     await waitFor(() =>
@@ -120,9 +170,8 @@ describe("NewAssetDialog", () => {
     for (const o of options) {
       expect(o).not.toHaveAttribute("aria-disabled", "true")
     }
-    // Signed out in this harness, so the account reads as the "none" label --
-    // what matters is that it is offered and not disabled.
-    expect(options.map((o) => o.textContent)).toContain("无")
+    const names = options.map((o) => o.textContent)
+    expect(names).toEqual(expect.arrayContaining(["北京仓库", "管理员", "张三"]))
   })
 
   // A fresh install has no holders at all, and the first device still has to
@@ -136,7 +185,7 @@ describe("NewAssetDialog", () => {
     await waitFor(() =>
       expect(screen.getByRole("combobox", { name: "状态" })).toHaveTextContent("在库"),
     )
-    expect(screen.getByRole("combobox", { name: "持有方" })).toHaveTextContent("无")
+    expect(screen.getByRole("combobox", { name: "持有方" })).toHaveTextContent("管理员")
   })
 
   it("goes to the new device after recording it", async () => {

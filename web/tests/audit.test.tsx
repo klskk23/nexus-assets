@@ -58,7 +58,7 @@ describe("Audit page", () => {
     renderWithProviders(<Audit />)
     const row = await screen.findByRole("row", { name: /管理员/ })
     expect(within(row).getByText("修改")).toBeInTheDocument()
-    expect(within(row).getByText("信息项")).toBeInTheDocument()
+    expect(within(row).getByText("字段")).toBeInTheDocument()
   })
 
   it("filters by target type", async () => {
@@ -66,7 +66,7 @@ describe("Audit page", () => {
     renderWithProviders(<Audit />)
     await screen.findByRole("row", { name: /管理员/ })
 
-    await chooseByLabel(user, "对象类型", "信息项")
+    await chooseByLabel(user, "对象类型", "字段")
     await waitFor(() => expect(get).toHaveBeenCalledWith("/audit?target_type=field"))
   })
 

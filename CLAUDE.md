@@ -1,17 +1,17 @@
 <!-- SPECKIT START -->
-当前计划：`specs/008-field-dialog-and-chart/plan.md`
+当前计划：`specs/009-field-rename-and-entry-owner/spec.md`
 
 开工前必读，按优先级：
 
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
-2. `specs/008-field-dialog-and-chart/` —— 本轮特性的规格、计划、决策与任务
+2. `specs/009-field-rename-and-entry-owner/` —— 本轮特性的规格与检查清单
 3. `docs/design-baseline-v5.md`（决策 61–63）—— 状态不再约束持有方。
-   **冲突时以最新一版为准：008 > 007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
+   **冲突时以最新一版为准：009 > 008 > 007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
 4. `docs/design-baseline-v4.md`（决策 53–60）—— 状态成为可配置的数据
-5. `docs/design-baseline-v3.md`（决策 41–52）—— 信息项可删除、型号多对多
+5. `docs/design-baseline-v3.md`（决策 41–52）—— 字段可删除、型号多对多
 6. `docs/design-baseline-v2.md`（决策 25–40）—— 编号模型、依赖门禁、流转
 7. `docs/design-baseline.md` —— 原始设计基线（决策 1–24）
-8. `specs/001-asset-ledger-demo/` ~ `specs/007-asset-home-and-table-conventions/` —— 前七轮特性。
+8. `specs/001-asset-ledger-demo/` ~ `specs/008-field-dialog-and-chart/` —— 前八轮特性。
    001 的 `contracts/openapi.yaml` 仍是**全量**端点清单
 
 **最容易违反的十条硬规则**
@@ -36,7 +36,7 @@
 - **SQLite 写事务一律 `BEGIN IMMEDIATE`，写连接池为 1。** 唯一性现在由
   `asset_unique_values` 上的部分唯一索引保证（v2 决策 32），所以这条不再是正确性前提，
   但保持不变 —— 放宽没有收益。
-- **`assets` 没有 `sn` 列。** UUID 是唯一内部标识；人能读的编号是某个标为唯一的信息项，
+- **`assets` 没有 `sn` 列。** UUID 是唯一内部标识；人能读的编号是某个标为唯一的字段，
   由类别的 `display_key` 指定，未指定时回退 UUID 前 8 位。改动编号相关代码前先读 v2 文档。
 - **状态是数据，不是常量。** 标签、颜色与三项行为都在 `statuses` 表里。
   标签**不在** `zh.status`（已撤销）—— 前端一律走 `useStatuses()`，
@@ -70,7 +70,10 @@
   + `Suspense`：入口 chunk 与概览页 chunk 都不含它（否则概览页 chunk 是 358KB 而非 4.4KB）。
   测试环境的 `ResizeObserver` 桩会回报固定尺寸，否则图表在 jsdom 里根本不渲染，
   断言会因为与图表无关的原因通过。
-- **信息项没有「停用」。** 只有删除（无关联时）与解绑（有存量数据时）。
+- **术语：「字段」。** 009 起统一叫「字段」；001–008 的规格与设计基线里写的是
+  **「信息项」，指同一样东西** —— 读历史文档时按此对应，不要以为是两个概念。
+  代码里一直是 `field`，没有改过。
+- **字段没有「停用」。** 只有删除（无关联时）与解绑（有存量数据时）。
   `archived_attrs` 是**解绑**产生的孤儿键，与停用无关，不要跟着一起清理掉 ——
   删掉它会让「解绑后仍能查看旧值」当场失效，且没有任何现有测试会失败。
 <!-- SPECKIT END -->

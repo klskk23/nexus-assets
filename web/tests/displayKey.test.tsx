@@ -52,7 +52,7 @@ describe("DisplayKeyEditor", () => {
     const user = userEvent.setup()
     render()
     // The listbox exists only while it is open, so the options are read there.
-    await user.click(screen.getByRole("combobox", { name: "用作编号的信息项" }))
+    await user.click(screen.getByRole("combobox", { name: "用作编号的字段" }))
     const labels = (await screen.findAllByRole("option")).map((o) => o.textContent)
 
     expect(labels).toContain("设备编号（sn）")
@@ -65,7 +65,7 @@ describe("DisplayKeyEditor", () => {
     const user = userEvent.setup()
     render()
 
-    await chooseByLabel(user, "用作编号的信息项", "基准 MAC（mac）")
+    await chooseByLabel(user, "用作编号的字段", "基准 MAC（mac）")
     await user.click(screen.getByRole("button", { name: "保存" }))
 
     await waitFor(() =>

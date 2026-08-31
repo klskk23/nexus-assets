@@ -92,7 +92,7 @@ describe("Fields page", () => {
     renderWithProviders(<Fields />)
     await screen.findByRole("row", { name: /基准 MAC/ })
 
-    await openCreate(user, "新建信息项")
+    await openCreate(user, "新建字段")
     expect(screen.queryByLabelText("模板")).not.toBeInTheDocument()
     await chooseByLabel(user, "类型", "计算项")
     expect(screen.getByLabelText("模板")).toBeInTheDocument()
@@ -106,7 +106,7 @@ describe("Fields page", () => {
     await screen.findByRole("row", { name: /基准 MAC/ })
 
     expect(screen.queryByLabelText(/键名/)).not.toBeInTheDocument()
-    await openCreate(user, "新建信息项")
+    await openCreate(user, "新建字段")
     expect(screen.getByLabelText(/键名/)).toBeInTheDocument()
   })
 
@@ -115,11 +115,11 @@ describe("Fields page", () => {
     renderWithProviders(<Fields />)
     await screen.findByRole("row", { name: /基准 MAC/ })
 
-    await openCreate(user, "新建信息项")
+    await openCreate(user, "新建字段")
     await user.type(screen.getByLabelText(/键名/), "rack")
     await user.type(screen.getByLabelText(/显示名/), "机柜位")
     await user.click(screen.getByLabelText("全局唯一"))
-    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "新建信息项" }))
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "新建字段" }))
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/fields", {
@@ -279,8 +279,8 @@ describe("Categories page", () => {
     renderWithProviders(<Categories />)
 
     await user.click(await screen.findByRole("button", { name: "SDWAN 路由器" }))
-    await chooseByLabel(user, "绑定信息项", "基准 MAC")
-    await user.click(screen.getByRole("button", { name: "绑定信息项" }))
+    await chooseByLabel(user, "绑定字段", "基准 MAC")
+    await user.click(screen.getByRole("button", { name: "绑定字段" }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/already bound/)
   })

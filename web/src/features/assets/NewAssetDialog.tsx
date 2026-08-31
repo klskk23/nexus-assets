@@ -4,7 +4,14 @@ import { useNavigate } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError, type FieldErrors } from "@/lib/api"
-import type { Asset, AssetStatus, Category, CategorySchema, HolderEntity } from "@/lib/types"
+import type {
+  Asset,
+  AssetStatus,
+  Category,
+  CategorySchema,
+  HolderEntity,
+  User,
+} from "@/lib/types"
 import { t } from "@/i18n"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { useAuth } from "@/features/auth/useAuth"
@@ -27,13 +34,16 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 
-/** The account itself, as a holder. Radix reserves the empty string. */
-const SELF = "__self"
+/** Holder ids are prefixed by kind, since an account and an entity could
+ *  otherwise collide in one dropdown. Radix reserves the empty string. */
+const USER_PREFIX = "user:"
+const ENTITY_PREFIX = "entity:"
 
 interface Props {
   open: boolean
@@ -59,7 +69,9 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
 
   const [categoryId, setCategoryId] = useState(initialCategoryID ?? "")
   const [status, setStatus] = useState<AssetStatus>("in_stock")
-  const [holderId, setHolderId] = useState(SELF)
+  // "kind:id", so one dropdown can offer accounts and entities together.
+  const [holder, setHolder] = useState("")
+  const [ownerId, setOwnerId] = useState("")
   const [modelId, setModelId] = useState<string | null>(null)
   const [values, setValues] = useState<Record<string, unknown>>({})
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -75,6 +87,11 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
     queryFn: () => api.get<HolderEntity[]>("/holders"),
     enabled: open,
   })
+  const users = useQuery({
+    queryKey: ["users"],
+    queryFn: () => api.get<User[]>("/users"),
+    enabled: open,
+  })
   const schema = useQuery({
     queryKey: ["schema", categoryId],
     queryFn: () => api.get<CategorySchema>(`/categories/${categoryId}/schema`),
@@ -83,8 +100,15 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
 
   // Every holder is on offer. A status no longer constrains the kind, so a
   // new device can start out in a company's or a department's custody just as
-  // legitimately as on a warehouse shelf.
+  // legitimately as on a warehouse shelf -- or in somebody's hands.
   const entities = holders.data ?? []
+  const accounts = (users.data ?? []).filter((u) => u.status === "active")
+
+  // Handing a device to a person answers "who is responsible" by itself.
+  // Handing it to a company, a department or a warehouse does not, so those
+  // cases ask -- the same split the transfer dialog makes.
+  const heldByAccount = holder.startsWith(USER_PREFIX)
+  const effectiveOwner = heldByAccount ? holder.slice(USER_PREFIX.length) : ownerId
 
   // Opening resets the form. The holders query settles after the dialog is
   // already open, so this runs again when it arrives and lands the defaults on
@@ -106,20 +130,19 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
     // demanded one -- that constraint is gone, so the honest default holds
     // whatever holders are on file.
     setStatus("in_stock")
-    setHolderId(stock ? stock.id : SELF)
-  }, [open, initialCategoryID, holders.data])
+    setHolder(stock ? ENTITY_PREFIX + stock.id : user ? USER_PREFIX + user.id : "")
+    setOwnerId(user?.id ?? "")
+  }, [open, initialCategoryID, holders.data, user])
 
   const create = useMutation({
     mutationFn: () =>
       api.post<Asset>("/assets", {
         category_id: categoryId,
         model_id: modelId,
-        owner_id: user?.id,
+        owner_id: effectiveOwner,
         status,
-        // A fresh install has no locations, so the first device may be held by
-        // the person recording it.
-        holder_type: holderId === SELF ? "user" : "entity",
-        holder_id: holderId === SELF ? user?.id : holderId,
+        holder_type: heldByAccount ? "user" : "entity",
+        holder_id: holder.slice(holder.indexOf(":") + 1),
         attrs: values,
       }),
     onSuccess: (a) => {
@@ -189,25 +212,54 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
             </Select>
           </Field>
 
-          <Field className="sm:col-span-2">
+          <Field>
             <FieldLabel htmlFor="new-holder">{t.assets.holder}</FieldLabel>
-            <Select value={holderId} onValueChange={setHolderId}>
+            <Select value={holder} onValueChange={setHolder}>
               <SelectTrigger id="new-holder">
-                <SelectValue />
+                <SelectValue placeholder={t.common.select} />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value={SELF}>{user?.name ?? t.common.none}</SelectItem>
+                  <SelectLabel>{t.common.entityGroup}</SelectLabel>
                   {entities.map((h) => (
-                    <SelectItem key={h.id} value={h.id}>
+                    <SelectItem key={h.id} value={ENTITY_PREFIX + h.id}>
                       {h.name}
                       {h.is_default_stock ? t.common.defaultStockSuffix : ""}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectGroup>
+                  <SelectLabel>{t.common.user}</SelectLabel>
+                  {accounts.map((u) => (
+                    <SelectItem key={u.id} value={USER_PREFIX + u.id}>
+                      {u.name}
                     </SelectItem>
                   ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
           </Field>
+
+          {/* Not asked when a person is holding it: they are the answer. */}
+          {!heldByAccount && (
+            <Field>
+              <FieldLabel htmlFor="new-owner">{t.assets.owner}</FieldLabel>
+              <Select value={ownerId} onValueChange={setOwnerId}>
+                <SelectTrigger id="new-owner">
+                  <SelectValue placeholder={t.common.select} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {accounts.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
         </div>
 
         {categoryId && (
@@ -246,7 +298,10 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
           <DialogClose asChild>
             <Button variant="ghost">{t.common.cancel}</Button>
           </DialogClose>
-          <Button onClick={() => create.mutate()} disabled={categoryId === "" || create.isPending}>
+          <Button
+            onClick={() => create.mutate()}
+            disabled={categoryId === "" || holder === "" || effectiveOwner === "" || create.isPending}
+          >
             {create.isPending && <Spinner data-icon="inline-start" aria-hidden />}
             {create.isPending ? t.assets.saving : t.assets.save}
           </Button>

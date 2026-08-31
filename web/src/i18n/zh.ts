@@ -16,7 +16,7 @@ export const zh = {
     overview: "概览",
     assets: "资产",
     categories: "类别",
-    fields: "信息项",
+    fields: "字段",
     models: "型号",
     statuses: "状态",
     holders: "持有方",
@@ -64,7 +64,7 @@ export const zh = {
     holder: "持有方",
     owner: "负责人",
     empty: "还没有任何资产",
-    emptyHint: "先在类别页配置一个类别与信息项，然后录入第一台设备。",
+    emptyHint: "先在类别页配置一个类别与字段，然后录入第一台设备。",
     snChanged: (from: string, to: string) => `编号 ${from} 已变更为 ${to}`,
     modelLabel: "设备型号",
     noModel: "未指定型号",
@@ -75,7 +75,7 @@ export const zh = {
     valueHistory: "历史编号",
     valueHistoryHint: "旧值仍可被搜索命中，但不再占用唯一性。",
     archivedFields: "已归档字段",
-    archivedHint: "这些信息项已不属于当前类别，保留展示但不参与校验。",
+    archivedHint: "这些字段已不属于当前类别，保留展示但不参与校验。",
     save: "保存",
     saving: "保存中…",
     saved: "已保存",
@@ -107,7 +107,7 @@ export const zh = {
     entityGroup: "公司 / 位置 / 部门",
     inherited: "继承",
     unique: "唯一",
-    computedHint: "由其他信息项自动计算，不可直接填写",
+    computedHint: "由其他字段自动计算，不可直接填写",
     deprecatedSuffix: "（已废弃）",
     defaultStockSuffix: "（默认库存点）",
     template: "模板",
@@ -123,14 +123,14 @@ export const zh = {
 
 export const zhMeta = {
   fields: {
-    title: "信息项",
-    create: "新建信息项",
+    title: "字段",
+    create: "新建字段",
     key: "键名（英文）",
-    label: "显示名（中文）",
+    label: "显示名",
     type: "类型",
     unique: "全局唯一",
-    empty: "还没有任何信息项",
-    emptyHint: "信息项是全局共用的：同名信息项在全系统含义一致。建好后到类别页绑定。",
+    empty: "还没有任何字段",
+    emptyHint: "字段是全局共用的：同名字段在全系统含义一致。建好后到类别页绑定。",
   },
   models: {
     title: "型号",
@@ -154,7 +154,7 @@ export const zhMeta = {
     deleteHint: (name: string) =>
       `「${name}」将被删除，它与各类别的关联一并解除。仍有设备是这个型号时会被拒绝。`,
     empty: "还没有任何型号",
-    emptyHint: "型号可同时归属多个类别，并为信息项提供默认值，录入时预填。",
+    emptyHint: "型号可同时归属多个类别，并为字段提供默认值，录入时预填。",
   },
   holders: {
     title: "持有方",
@@ -216,16 +216,16 @@ export const zhMeta = {
       `「${name}」及其字段绑定将被删除。有子类别、或子树下有资产时会被拒绝，届时会列出是哪些。`,
     deleteDetaches: (names: string) =>
       `以下型号将不再关联到该类别（型号本身保留）：${names}。`,
-    fields: "本类别的信息项",
+    fields: "本类别的字段",
     inheritedFrom: "继承自",
-    bind: "绑定信息项",
+    bind: "绑定字段",
     required: "必填",
     unbind: "解绑",
     unbindTitle: "从该类别解绑",
     unbindHint: (label: string) =>
       `解绑后，新录入的设备不再需要填写「${label}」；已有设备上的值会保留下来，只读展示、不再校验。`,
     empty: "还没有任何类别",
-    emptyHint: "类别决定一台设备要记录哪些信息。子类别继承上级的全部信息项。",
+    emptyHint: "类别决定一台设备要记录哪些信息。子类别继承上级的全部字段。",
   },
   entityTypes: { company: "公司", location: "位置", department: "部门" } as Record<string, string>,
   fieldTypes: {
@@ -284,9 +284,9 @@ export const zhTransfer = {
 export const zhConfig = {
   displayKey: {
     title: "显示编号",
-    label: "用作编号的信息项",
+    label: "用作编号的字段",
     none: "未设置（显示 UUID 前 8 位）",
-    hint: "只能选择标为唯一的信息项。编号通常是一个表达式键，由 MAC 等静态键推导而来。",
+    hint: "只能选择标为唯一的字段。编号通常是一个表达式键，由 MAC 等静态键推导而来。",
     save: "保存",
     saved: "已保存",
     recompute: "重算存量数据",
@@ -307,7 +307,7 @@ export const zhConfig = {
     ruleChangedHint: "改动表达式只影响之后新建的资产。存量资产需要显式重算。",
   },
   field: {
-    edit: "编辑信息项",
+    edit: "编辑字段",
     staticGroup: "静态键（人工录入或导入）",
     expressionGroup: "表达式键（由其他键推导）",
     templateHint: "可用：{{ .attrs.键名 }}、{{ .category.code }}、{{ .model.name }}、{{ .id }}。支持管道，如 {{ .attrs.mac | hex2dec }}。不支持 if/range。",
@@ -330,8 +330,8 @@ export const zhConfig = {
     targetEntity: "持有方实体",
     entityTypes: "限定类型",
     template: "计算模板",
-    delete: "删除信息项",
-    deleteTitle: "删除信息项",
+    delete: "删除字段",
+    deleteTitle: "删除字段",
     deleteHint: (label: string) =>
       `「${label}」将被彻底移除，包括它在各类别上的绑定。有设备填写过它时会被拒绝 —— ` +
       `那种情况请改为从类别上解绑。`,
@@ -371,7 +371,7 @@ export const zhImport = {
 
 export const zhAudit = {
   title: "变更审计",
-  hint: "资产流转有自己的时间线；这里记录的是类别、信息项、型号、持有方与账号的配置变更。",
+  hint: "资产流转有自己的时间线；这里记录的是类别、字段、型号、持有方与账号的配置变更。",
   targetType: "对象类型",
   allTypes: "全部类型",
   from: "起始时间",
@@ -385,10 +385,10 @@ export const zhAudit = {
   before: "变更前",
   after: "变更后",
   empty: "还没有配置变更记录",
-  emptyHint: "新建或修改类别、信息项、型号、持有方、账号后，记录会出现在这里。",
+  emptyHint: "新建或修改类别、字段、型号、持有方、账号后，记录会出现在这里。",
   total: (n: number) => `共 ${n} 条`,
   actions: { create: "新建", update: "修改", archive: "停用", delete: "删除", recompute: "重算" } as Record<string, string>,
-  targets: { category: "类别", field: "信息项", binding: "字段绑定", model: "型号", holder: "持有方", user: "账号", status: "状态" } as Record<string, string>,
+  targets: { category: "类别", field: "字段", binding: "字段绑定", model: "型号", holder: "持有方", user: "账号", status: "状态" } as Record<string, string>,
 }
 
 export const zhConfirm = {
