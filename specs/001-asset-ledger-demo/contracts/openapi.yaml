@@ -606,9 +606,20 @@ paths:
   /holders/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [metadata]
+      summary: 删除持有方。被持有、被引用、有下级或是默认库存点时拒绝
+      description: >
+        取代 006 之前的 `archive: true`。三种拒绝共用 409：有设备（带 blockers 与 total）、
+        有下级（带 total）、是默认库存点。仅在流转历史中出现**不**构成拒绝，
+        代价由 GET /holders/{id}/usage 给出。
+      responses:
+        "204": { description: Deleted }
+        "409": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
     patch:
       tags: [metadata]
-      summary: 改名 / 改备注 / 移动 / 标记默认库存点 / 停用。被持有或被引用时拒绝停用
+      summary: 改名 / 改备注 / 移动 / 标记默认库存点。被持有或被引用时拒绝删除
       description: >
         `name`、`note`、`parent_id` 可单独或一起提交。`parent_id` 用 JSON null 表示
         「脱离上级」，字段缺席表示「不动」—— 二者必须可区分，否则改备注会顺手把上级清掉。
@@ -617,6 +628,19 @@ paths:
         "200": { description: OK }
         "409": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
+
+  /holders/{id}/usage:
+    get:
+      tags: [metadata]
+      summary: 删除该持有方的代价：{assets, children, history}
+      description: >
+        前两个是拒绝的理由，history 只用于确认框事先说明代价。
+        对不存在的持有方返回 404，而不是一组全零 —— 全零读起来像「可以安全删除」。
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK }
+        "404": { $ref: "#/components/responses/Error" }
 
   /users:
     get: { tags: [metadata], summary: 账号列表, responses: { "200": { description: OK } } }
@@ -717,6 +741,19 @@ paths:
               schema: { type: string }
 
 components:
+  parameters:
+    AcceptLanguage:
+      name: Accept-Language
+      in: header
+      required: false
+      schema: { type: string, example: "en-GB,en;q=0.9" }
+      description: >
+        **每一个端点**都读它（006 起）。支持 zh 与 en，按前缀匹配；
+        不支持的语言回退到中文。它决定 error.message、error.fields 的**值**、
+        CSV 表头、导入模板的标题行与导入预览的问题描述。
+        **不影响** error.code、error.fields 的**键**、导入模板的键名行，
+        以及任何数据（类别名、状态标签、信息项显示名）。
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -743,6 +780,7 @@ components:
           description: 部门必须有；位置可有可无；公司恒为 null
         note: { type: string, description: 货架区间、联系人、用途 —— 运维自己要记的东西 }
         is_default_stock: { type: boolean }
+        # archived_at 自 006 移除：停用机制不复存在，可删除取代了它
 
     Status:
       type: object

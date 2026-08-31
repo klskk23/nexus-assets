@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
+
 	"github.com/klskk23/nexus-assets/internal/asset"
 	"github.com/klskk23/nexus-assets/internal/audit"
 	"github.com/klskk23/nexus-assets/internal/auth"
@@ -54,7 +56,7 @@ func (s *Server) Router() *gin.Engine {
 
 	authed := api.Group("")
 	authed.Use(auth.Middleware(s.issuer, s.users, func(c *gin.Context) {
-		Fail(c, http.StatusUnauthorized, CodeUnauthenticated, MsgUnauthenticated, nil)
+		FailMsg(c, http.StatusUnauthorized, CodeUnauthenticated, i18n.KeyUnauthenticated)
 	}))
 
 	authed.GET("/me", s.me)
@@ -86,6 +88,8 @@ func (s *Server) Router() *gin.Engine {
 	authed.GET("/holders", s.listHolders)
 	authed.POST("/holders", s.createHolder)
 	authed.PATCH("/holders/:id", s.patchHolder)
+	authed.DELETE("/holders/:id", s.deleteHolder)
+	authed.GET("/holders/:id/usage", s.holderUsage)
 
 	authed.GET("/users", s.listUsers)
 	authed.POST("/users", s.createUser)
@@ -122,7 +126,7 @@ func (s *Server) mountWeb(r *gin.Engine) {
 	fileServer := http.FileServer(http.FS(s.webFS))
 	r.NoRoute(func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/api/") {
-			Fail(c, http.StatusNotFound, CodeNotFound, MsgNotFound, nil)
+			FailMsg(c, http.StatusNotFound, CodeNotFound, i18n.KeyNotFound)
 			return
 		}
 		if _, err := fs.Stat(s.webFS, strings.TrimPrefix(c.Request.URL.Path, "/")); err != nil {

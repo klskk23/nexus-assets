@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
+
 	"github.com/klskk23/nexus-assets/internal/asset"
 	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/model"
@@ -134,7 +136,7 @@ func (r assetWriteRequest) toInput(id, actorID string) asset.SaveInput {
 func (s *Server) createAsset(c *gin.Context) {
 	var req assetWriteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	actor, _ := auth.CurrentUser(c)
@@ -152,12 +154,11 @@ func (s *Server) createAsset(c *gin.Context) {
 func (s *Server) patchAsset(c *gin.Context) {
 	var req assetWriteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	if req.Version <= 0 {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest,
-			map[string]string{"version": "缺少版本号，无法检测并发修改"})
+		FailField(c, http.StatusBadRequest, "version", i18n.KeyVersionRequired)
 		return
 	}
 	actor, _ := auth.CurrentUser(c)
@@ -198,7 +199,7 @@ func (s *Server) checkHolderStatus(c *gin.Context, req assetWriteRequest) error 
 	}
 	if err := asset.ValidateHolderForStatus(statuses, status,
 		model.Holder{Type: model.HolderType(req.HolderType), ID: req.HolderID}, entityType); err != nil {
-		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, MsgValidationFailed,
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, i18n.M(i18n.KeyValidationFailed).In(LangOf(c)),
 			map[string]string{"holder_id": err.Error()})
 		return err
 	}
@@ -230,8 +231,7 @@ func (s *Server) getAsset(c *gin.Context) {
 func (s *Server) deleteAsset(c *gin.Context) {
 	confirm := c.Query("confirm")
 	if confirm == "" {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgSNMismatch,
-			map[string]string{"confirm": "请输入该资产的编号以确认删除"})
+		FailField(c, http.StatusBadRequest, "confirm", i18n.KeyConfirmSN)
 		return
 	}
 	if err := s.assets.Delete(c.Request.Context(), c.Param("id"), confirm); err != nil {
@@ -252,7 +252,7 @@ func (s *Server) deleteAssets(c *gin.Context) {
 		Confirm  string   `json:"confirm"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
@@ -80,26 +80,30 @@ const listBlockersSQL = `
 	   OR EXISTS (SELECT 1 FROM json_each(a.attrs) WHERE json_each.value = ?)
 	ORDER BY a.created_at, a.id LIMIT ?`
 
-// describeBlockers renders a message a person can act on.
-func describeBlockers(entityName string, blockers []Blocker, total int) string {
-	parts := make([]string, 0, len(blockers))
+// describeBlockers builds a message a person can act on, in whichever language
+// they end up reading it in.
+//
+// The device names are data and stay as they are; everything around them --
+// the reason each one is in the way, the separator, the "showing the first N"
+// tail -- is a nested Message, resolved only when the HTTP layer renders.
+func describeBlockers(entityName string, blockers []Blocker, total int) error {
+	parts := make([]any, 0, len(blockers))
 	for _, b := range blockers {
-		reason := "持有"
+		reasonKey := i18n.KeyHolderBlockerHold
 		if b.Reason == "reference" {
-			reason = "引用"
+			reasonKey = i18n.KeyHolderBlockerRef
 		}
-		parts = append(parts, fmt.Sprintf("%s（%s）", b.Name, reason))
+		parts = append(parts, i18n.M(i18n.KeyBlockerEntry, b.Name, i18n.M(reasonKey)))
 	}
-	msg := fmt.Sprintf("「%s」仍被 %d 台设备%s", entityName, total, joinOr(parts))
-	if total > len(blockers) {
-		msg += fmt.Sprintf("，此处仅列出前 %d 台", len(blockers))
-	}
-	return msg + "，请先转移或改绑后再停用"
-}
 
-func joinOr(parts []string) string {
-	if len(parts) == 0 {
-		return "使用"
+	var list any = i18n.M(i18n.KeyHolderBlockerPlain)
+	if len(parts) > 0 {
+		list = i18n.M(i18n.KeyHolderBlockerList, i18n.Join(i18n.KeyListSeparator, parts...))
 	}
-	return "使用：" + strings.Join(parts, "、")
+	var tail any = ""
+	if total > len(blockers) {
+		tail = i18n.M(i18n.KeyHolderReferencedMore, len(blockers))
+	}
+	return i18n.Wrap(ErrReferenced,
+		i18n.KeyHolderReferenced, entityName, total, i18n.Join("", list, tail))
 }

@@ -1,10 +1,10 @@
 package schema
 
 import (
-	"fmt"
 	"slices"
 	"sort"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 )
 
@@ -31,11 +31,11 @@ func DependencyClosure(start string, byKey map[string]model.FieldDefinition) ([]
 		}
 		refs, err := templateRefs(key, f.Options.Template)
 		if err != nil {
-			return fmt.Errorf("信息项「%s」的表达式无法解析：%w", f.Label, err)
+			return i18n.M(i18n.KeyTemplateUnparseable, f.Label, err)
 		}
 		for _, ref := range refs {
 			if slices.Contains(stack, ref) {
-				return fmt.Errorf("表达式键 %s 存在循环依赖：%s", start, joinArrow(append(stack, ref)))
+				return i18n.M(i18n.KeyTemplateCycle, start, joinArrow(append(stack, ref)))
 			}
 			if seen[ref] {
 				continue

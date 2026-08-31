@@ -9,6 +9,8 @@ import type { HolderEntity } from "@/lib/types"
 
 const get = vi.fn()
 const post = vi.fn()
+const patch = vi.fn()
+const del = vi.fn()
 vi.mock("@/lib/api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api")
   return {
@@ -16,8 +18,8 @@ vi.mock("@/lib/api", async () => {
     api: {
       get: (p: string) => get(p),
       post: (p: string, b: unknown) => post(p, b),
-      patch: vi.fn(),
-      del: vi.fn(),
+      patch: (p: string, b: unknown) => patch(p, b),
+      del: (p: string) => del(p),
     },
   }
 })
@@ -35,8 +37,15 @@ const warehouse: HolderEntity = {
   parent_id: "dp", note: "B 座三层，A01–A24 号货架", is_default_stock: true,
 }
 
-function serve(list: HolderEntity[]) {
-  return (p: string) => Promise.resolve(p === "/holders" ? list : [])
+const noUsage = { assets: 0, children: 0, history: 0 }
+
+function serve(list: HolderEntity[], usage: Record<string, typeof noUsage> = {}) {
+  return (p: string) => {
+    if (p === "/holders") return Promise.resolve(list)
+    const m = /^\/holders\/(.+)\/usage$/.exec(p)
+    if (m) return Promise.resolve(usage[m[1]] ?? noUsage)
+    return Promise.resolve([])
+  }
 }
 
 async function openCreate(user: ReturnType<typeof userEvent.setup>) {
@@ -47,6 +56,8 @@ async function openCreate(user: ReturnType<typeof userEvent.setup>) {
 beforeEach(() => {
   get.mockReset().mockImplementation(serve([company, dept, warehouse]))
   post.mockReset().mockResolvedValue({})
+  patch.mockReset().mockResolvedValue({})
+  del.mockReset().mockResolvedValue(undefined)
 })
 
 describe("Holders hierarchy and notes", () => {
@@ -132,5 +143,95 @@ describe("Holders hierarchy and notes", () => {
     await user.click(within(dialog).getByLabelText("类型"))
     const option = await screen.findByRole("option", { name: "部门" })
     expect(option).toHaveAttribute("aria-disabled", "true")
+  })
+})
+
+describe("Holders edit and delete", () => {
+  it("edits a holder's name, parent and note in one dialog", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Holders />)
+
+    const row = await screen.findByRole("row", { name: /上海仓库/ })
+    await user.click(within(row).getByRole("button", { name: "编辑" }))
+
+    const dialog = await screen.findByRole("dialog")
+    const name = within(dialog).getByLabelText("名称")
+    await user.clear(name)
+    await user.type(name, "上海一号仓")
+    await choose(user, within(dialog).getByLabelText("上级"), /XX 集团/)
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/holders/wh", {
+        name: "上海一号仓",
+        note: "B 座三层，A01–A24 号货架",
+        parent_id: "co",
+      }),
+    )
+  })
+
+  // Detaching has to be sayable, and it travels as an explicit null -- an
+  // absent field means "leave the parent alone".
+  it("can clear a location's parent", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Holders />)
+
+    const row = await screen.findByRole("row", { name: /上海仓库/ })
+    await user.click(within(row).getByRole("button", { name: "编辑" }))
+    const dialog = await screen.findByRole("dialog")
+    await choose(user, within(dialog).getByLabelText("上级"), "无上级")
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/holders/wh", expect.objectContaining({ parent_id: null })),
+    )
+  })
+
+  it("deletes only after the name has been typed out", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Holders />)
+
+    const row = await screen.findByRole("row", { name: /运维部.*部门/ })
+    await user.click(within(row).getByRole("button", { name: "删除" }))
+
+    const dialog = await screen.findByRole("alertdialog")
+    const confirm = within(dialog).getByRole("button", { name: "删除" })
+    expect(confirm).toBeDisabled()
+
+    await user.type(within(dialog).getByRole("textbox"), "运维部")
+    await user.click(confirm)
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/holders/dp"))
+  })
+
+  // History does not refuse, so the dialog has to say what it costs instead.
+  it("states how many events mention a holder before it is deleted", async () => {
+    const user = userEvent.setup()
+    get.mockImplementation(
+      serve([company, dept, warehouse], { wh: { assets: 0, children: 0, history: 7 } }),
+    )
+    renderWithProviders(<Holders />)
+
+    const row = await screen.findByRole("row", { name: /上海仓库/ })
+    await user.click(within(row).getByRole("button", { name: "删除" }))
+
+    const dialog = await screen.findByRole("alertdialog")
+    expect(dialog).toHaveTextContent("7 条流转记录")
+  })
+
+  it("surfaces a refusal above the table", async () => {
+    const user = userEvent.setup()
+    const { ApiError } = await vi.importActual<typeof import("@/lib/api")>("@/lib/api")
+    del.mockRejectedValue(
+      new ApiError(409, "reference_blocked", "「XX 集团」下还有 1 个下级，请先移走或删除它们"),
+    )
+    renderWithProviders(<Holders />)
+
+    const row = await screen.findByRole("row", { name: /XX 集团.*公司/ })
+    await user.click(within(row).getByRole("button", { name: "删除" }))
+    const dialog = await screen.findByRole("alertdialog")
+    await user.type(within(dialog).getByRole("textbox"), "XX 集团")
+    await user.click(within(dialog).getByRole("button", { name: "删除" }))
+
+    expect(await screen.findByText(/还有 1 个下级/)).toBeInTheDocument()
   })
 })

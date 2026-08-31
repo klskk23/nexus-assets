@@ -3,12 +3,12 @@
 package asset
 
 import (
-	"fmt"
 	"net/netip"
 	"net/url"
 	"regexp"
 	"strings"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 )
 
@@ -23,10 +23,10 @@ var hex12 = regexp.MustCompile(`^[0-9A-F]{12}$`)
 func NormalizeMAC(raw string) (string, error) {
 	s := strings.ToUpper(strings.NewReplacer(":", "", "-", "", ".", "", " ", "").Replace(strings.TrimSpace(raw)))
 	if s == "" {
-		return "", fmt.Errorf("MAC 地址不能为空")
+		return "", i18n.M(i18n.KeyFieldMACEmpty)
 	}
 	if !hex12.MatchString(s) {
-		return "", fmt.Errorf("MAC 格式非法：%s", raw)
+		return "", i18n.M(i18n.KeyFieldMACInvalid, raw)
 	}
 	return s, nil
 }
@@ -35,7 +35,7 @@ func NormalizeMAC(raw string) (string, error) {
 func NormalizeIP(raw string) (string, error) {
 	addr, err := netip.ParseAddr(strings.TrimSpace(raw))
 	if err != nil {
-		return "", fmt.Errorf("IP 格式非法：%s", raw)
+		return "", i18n.M(i18n.KeyFieldIPInvalid, raw)
 	}
 	return addr.String(), nil
 }
@@ -45,7 +45,7 @@ func NormalizeURL(raw string) (string, error) {
 	s := strings.TrimSpace(raw)
 	u, err := url.Parse(s)
 	if err != nil || u.Scheme == "" || u.Host == "" {
-		return "", fmt.Errorf("网址格式非法：%s", raw)
+		return "", i18n.M(i18n.KeyFieldURLInvalid, raw)
 	}
 	return u.String(), nil
 }

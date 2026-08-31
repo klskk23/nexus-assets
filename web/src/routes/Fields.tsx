@@ -2,7 +2,7 @@ import { useState } from "react"
 
 import { api } from "@/lib/api"
 import type { FieldDefinitionRow, FieldType } from "@/lib/metaTypes"
-import { zh, zhConfig, zhMeta } from "@/i18n/zh"
+import { t, tConfig, tMeta } from "@/i18n"
 import { CrudPage } from "@/features/metadata/CrudPage"
 import { FieldEditor } from "@/features/fields/FieldEditor"
 import { Badge } from "@/components/ui/badge"
@@ -41,10 +41,10 @@ export function Fields() {
     <>
       {editing && <FieldEditor field={editing} onClose={() => setEditing(null)} />}
     <CrudPage<FieldDefinitionRow>
-      title={zhMeta.fields.title}
+      title={tMeta.fields.title}
       queryKey="fields"
       list={() => api.get<FieldDefinitionRow[]>("/fields")}
-      createLabel={zhMeta.fields.create}
+      createLabel={tMeta.fields.create}
       createDisabled={key === "" || label === ""}
       onCreated={() => {
         setKey("")
@@ -62,21 +62,21 @@ export function Fields() {
           options: type === "computed" ? { template } : {},
         })
       }
-      emptyTitle={zhMeta.fields.empty}
-      emptyHint={zhMeta.fields.emptyHint}
+      emptyTitle={tMeta.fields.empty}
+      emptyHint={tMeta.fields.emptyHint}
       columns={[
-        { header: zhMeta.fields.key, cell: (f) => <span className="font-mono">{f.key}</span> },
-        { header: zhMeta.fields.label, cell: (f) => f.label },
-        { header: zhMeta.fields.type, cell: (f) => zhMeta.fieldTypes[f.type] ?? f.type },
+        { header: tMeta.fields.key, cell: (f) => <span className="font-mono">{f.key}</span> },
+        { header: tMeta.fields.label, cell: (f) => f.label },
+        { header: tMeta.fields.type, cell: (f) => tMeta.fieldTypes[f.type] ?? f.type },
         {
-          header: zhMeta.fields.unique,
-          cell: (f) => (f.is_unique ? <Badge variant="outline">{zh.common.unique}</Badge> : null),
+          header: tMeta.fields.unique,
+          cell: (f) => (f.is_unique ? <Badge variant="outline">{t.common.unique}</Badge> : null),
         },
         {
           header: "",
           cell: (f) => (
             <Button variant="ghost" size="sm" onClick={() => setEditing(f)}>
-              {zhConfig.field.edit}
+              {tConfig.field.edit}
             </Button>
           ),
         },
@@ -84,15 +84,15 @@ export function Fields() {
       form={
         <div className="grid gap-4 sm:grid-cols-2">
           <Field>
-            <FieldLabel htmlFor="f-key">{zhMeta.fields.key}</FieldLabel>
+            <FieldLabel htmlFor="f-key">{tMeta.fields.key}</FieldLabel>
             <Input id="f-key" value={key} onChange={(e) => setKey(e.target.value)} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="f-label">{zhMeta.fields.label}</FieldLabel>
+            <FieldLabel htmlFor="f-label">{tMeta.fields.label}</FieldLabel>
             <Input id="f-label" value={label} onChange={(e) => setLabel(e.target.value)} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="f-type">{zhMeta.fields.type}</FieldLabel>
+            <FieldLabel htmlFor="f-type">{tMeta.fields.type}</FieldLabel>
             <Select value={type} onValueChange={(v) => setType(v as FieldType)}>
               <SelectTrigger id="f-type">
                 <SelectValue />
@@ -102,19 +102,19 @@ export function Fields() {
                     here, where it is the difference a person actually cares
                     about: is this value typed in, or worked out? */}
                 <SelectGroup>
-                  <SelectLabel>{zhConfig.field.staticGroup}</SelectLabel>
+                  <SelectLabel>{tConfig.field.staticGroup}</SelectLabel>
                   {staticTypes.map((t) => (
                     <SelectItem key={t} value={t}>
-                      {zhMeta.fieldTypes[t]}
+                      {tMeta.fieldTypes[t]}
                     </SelectItem>
                   ))}
                 </SelectGroup>
                 <SelectSeparator />
                 <SelectGroup>
-                  <SelectLabel>{zhConfig.field.expressionGroup}</SelectLabel>
+                  <SelectLabel>{tConfig.field.expressionGroup}</SelectLabel>
                   {expressionTypes.map((t) => (
                     <SelectItem key={t} value={t}>
-                      {zhMeta.fieldTypes[t]}
+                      {tMeta.fieldTypes[t]}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -127,11 +127,11 @@ export function Fields() {
               checked={isUnique}
               onCheckedChange={(v) => setIsUnique(v === true)}
             />
-            <FieldLabel htmlFor="f-unique">{zhMeta.fields.unique}</FieldLabel>
+            <FieldLabel htmlFor="f-unique">{tMeta.fields.unique}</FieldLabel>
           </Field>
           {type === "computed" && (
             <Field className="sm:col-span-2">
-              <FieldLabel htmlFor="f-template">{zh.common.template}</FieldLabel>
+              <FieldLabel htmlFor="f-template">{t.common.template}</FieldLabel>
               <Input
                 id="f-template"
                 className="font-mono"
@@ -139,8 +139,8 @@ export function Fields() {
                 value={template}
                 onChange={(e) => setTemplate(e.target.value)}
               />
-              <FieldDescription>{zhConfig.field.templateHint}</FieldDescription>
-              <FieldDescription>{zhConfig.field.depsHint}</FieldDescription>
+              <FieldDescription>{tConfig.field.templateHint}</FieldDescription>
+              <FieldDescription>{tConfig.field.depsHint}</FieldDescription>
             </Field>
           )}
         </div>

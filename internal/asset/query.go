@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
 	"github.com/klskk23/nexus-assets/internal/store"
@@ -297,7 +298,7 @@ func (s *Service) Delete(ctx context.Context, id, confirm string) error {
 			return err
 		}
 		if model.AssetDisplayName(id, attrs, displayKey) != confirm {
-			return FieldErrors{"confirm": "输入的编号与该资产不符"}
+			return FieldErrors{"confirm": i18n.M(i18n.KeyConfirmSNMismatch)}
 		}
 		for _, q := range []string{
 			`DELETE FROM asset_transfers WHERE asset_id = ?`,
@@ -324,10 +325,10 @@ func (s *Service) Delete(ctx context.Context, id, confirm string) error {
 // leave the operator with no idea which nine.
 func (s *Service) DeleteMany(ctx context.Context, ids []string, confirm string) (int, error) {
 	if len(ids) == 0 {
-		return 0, FieldErrors{"asset_ids": "没有选中任何设备"}
+		return 0, FieldErrors{"asset_ids": i18n.M(i18n.KeyNoAssetsSelected)}
 	}
 	if confirm != strconv.Itoa(len(ids)) {
-		return 0, FieldErrors{"confirm": fmt.Sprintf("请输入 %d 以确认删除", len(ids))}
+		return 0, FieldErrors{"confirm": i18n.M(i18n.KeyConfirmCount, len(ids))}
 	}
 
 	err := s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {

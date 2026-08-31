@@ -1,4 +1,4 @@
-import { zhMeta } from "@/i18n/zh"
+import { tMeta } from "@/i18n"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,14 +31,14 @@ export function AttrDefaultsEditor({ rows, onChange }: Props) {
 
   return (
     <div className="grid gap-2">
-      <Label>{zhMeta.models.defaults}</Label>
-      <p className="text-xs text-muted-foreground">{zhMeta.models.defaultsHint}</p>
+      <Label>{tMeta.models.defaults}</Label>
+      <p className="text-xs text-muted-foreground">{tMeta.models.defaultsHint}</p>
 
       {rows.map((r, i) => (
         <div key={i} className="flex items-end gap-2">
           <div className="grid gap-1.5">
             <Label htmlFor={`ad-key-${i}`} className="text-xs">
-              {zhMeta.models.defaultKey}
+              {tMeta.models.defaultKey}
             </Label>
             <Input
               id={`ad-key-${i}`}
@@ -49,7 +49,7 @@ export function AttrDefaultsEditor({ rows, onChange }: Props) {
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor={`ad-value-${i}`} className="text-xs">
-              {zhMeta.models.defaultValue}
+              {tMeta.models.defaultValue}
             </Label>
             <Input
               id={`ad-value-${i}`}
@@ -61,10 +61,10 @@ export function AttrDefaultsEditor({ rows, onChange }: Props) {
             variant="ghost"
             size="sm"
             className="mb-0.5"
-            aria-label={`${zhMeta.models.removeDefault} ${r.key || i + 1}`}
+            aria-label={`${tMeta.models.removeDefault} ${r.key || i + 1}`}
             onClick={() => onChange(rows.filter((_, j) => j !== i))}
           >
-            {zhMeta.models.removeDefault}
+            {tMeta.models.removeDefault}
           </Button>
         </div>
       ))}
@@ -75,7 +75,7 @@ export function AttrDefaultsEditor({ rows, onChange }: Props) {
           size="sm"
           onClick={() => onChange([...rows, { key: "", value: "" }])}
         >
-          {zhMeta.models.addDefault}
+          {tMeta.models.addDefault}
         </Button>
       </div>
     </div>

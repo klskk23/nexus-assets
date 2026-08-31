@@ -1,4 +1,4 @@
-import { zh } from "@/i18n/zh"
+import { t } from "@/i18n"
 import { fromNone, toNone } from "@/lib/select"
 import {
   Select,
@@ -68,13 +68,13 @@ function FieldRow({
           {field.label}
           {field.required && <span className="ml-1 text-destructive">*</span>}
         </FieldLabel>
-        {field.inherited_from && <Badge variant="secondary">{zh.common.inherited}</Badge>}
-        {field.is_unique && <Badge variant="outline">{zh.common.unique}</Badge>}
+        {field.inherited_from && <Badge variant="secondary">{t.common.inherited}</Badge>}
+        {field.is_unique && <Badge variant="outline">{t.common.unique}</Badge>}
       </div>
 
       <FieldControl id={id} field={field} value={value} describedBy={describedBy} onChange={onChange} />
 
-      {field.type === "computed" && <FieldDescription>{zh.common.computedHint}</FieldDescription>}
+      {field.type === "computed" && <FieldDescription>{t.common.computedHint}</FieldDescription>}
       {error && (
         <FieldError id={`${id}-error`} role="alert">
           {error}
@@ -117,7 +117,7 @@ function FieldControl({
       return (
         <Select value={toNone(str)} onValueChange={(v) => onChange(field.key, fromNone(v))}>
           <SelectTrigger id={id} aria-describedby={describedBy}>
-            <SelectValue placeholder={zh.common.select} />
+            <SelectValue placeholder={t.common.select} />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
@@ -130,7 +130,7 @@ function FieldControl({
                   disabled={isDeprecated(field.options, c.value)}
                 >
                   {c.label}
-                  {isDeprecated(field.options, c.value) ? zh.common.deprecatedSuffix : ""}
+                  {isDeprecated(field.options, c.value) ? t.common.deprecatedSuffix : ""}
                 </SelectItem>
               ))}
             </SelectGroup>

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 )
 
@@ -104,7 +104,7 @@ func (s *Store) Bind(ctx context.Context, categoryID, fieldID string, required b
 		      LIMIT 1`
 		err := tx.QueryRowContext(ctx, q, key, categoryID, path, path).Scan(&clash)
 		if err == nil {
-			return fmt.Errorf("%w：键 %q 已绑定在「%s」上，同一条链上不允许重复绑定", ErrKeyConflict, key, clash)
+			return i18n.Wrap(ErrKeyConflict, i18n.KeyBindDuplicate, key, clash)
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
 			return err
@@ -238,7 +238,7 @@ func checkBindDeps(ctx context.Context, tx *sql.Tx, path, key string) error {
 		return err
 	}
 
-	var unknown, unbound, optional []string
+	var unknown, unbound, optional []any
 	for _, d := range deps {
 		def, inLibrary := lib[d]
 		if !inLibrary {
@@ -247,28 +247,34 @@ func checkBindDeps(ctx context.Context, tx *sql.Tx, path, key string) error {
 		}
 		bound, ok := chain[d]
 		if !ok {
-			unbound = append(unbound, fmt.Sprintf("「%s」(%s)", def.Label, d))
+			unbound = append(unbound, i18n.M(i18n.KeyLabelWithKey, def.Label, d))
 			continue
 		}
 		// Expression keys carry no required flag of their own; theirs was
 		// enforced when they were bound.
 		if def.Type != model.FieldComputed && !bound.required {
-			optional = append(optional, fmt.Sprintf("「%s」(%s)", def.Label, d))
+			optional = append(optional, i18n.M(i18n.KeyLabelWithKey, def.Label, d))
 		}
 	}
 
-	var problems []string
-	if len(unknown) > 0 {
-		problems = append(problems, fmt.Sprintf("信息项库中不存在：%s", strings.Join(unknown, "、")))
-	}
-	if len(unbound) > 0 {
-		problems = append(problems, fmt.Sprintf("尚未绑定到该类别：%s", strings.Join(unbound, "、")))
-	}
-	if len(optional) > 0 {
-		problems = append(problems, fmt.Sprintf("需要先标为必填：%s", strings.Join(optional, "、")))
+	// Each problem is a nested message rather than a rendered string: the list
+	// is assembled here and resolved to a language only when it is shown.
+	var problems []any
+	for _, p := range []struct {
+		key   string
+		items []any
+	}{
+		{i18n.KeyDepMissing, unknown},
+		{i18n.KeyDepUnbound, unbound},
+		{i18n.KeyDepNotRequired, optional},
+	} {
+		if len(p.items) > 0 {
+			problems = append(problems, i18n.M(p.key, i18n.Join(i18n.KeyListSeparator, p.items...)))
+		}
 	}
 	if len(problems) > 0 {
-		return fmt.Errorf("%w: 表达式键 %s 依赖的%s", ErrDependenciesUnmet, key, strings.Join(problems, "；"))
+		return i18n.Wrap(ErrDependenciesUnmet, i18n.KeyDepUnmet,
+			key, i18n.Join(i18n.KeyProblemSeparator, problems...))
 	}
 	return nil
 }
@@ -308,14 +314,14 @@ func checkUnbindSafe(ctx context.Context, tx *sql.Tx, path, key, fieldID string)
 		return err
 	}
 
-	var blockers []string
+	var blockers []any
 	for _, c := range candidates {
 		deps, err := DependencyClosure(c.key, lib)
 		if err != nil {
 			return fmt.Errorf("%w: %s", ErrFieldDependedOn, err)
 		}
 		if slices.Contains(deps, key) {
-			blockers = append(blockers, fmt.Sprintf("表达式键「%s」", c.label))
+			blockers = append(blockers, i18n.M(i18n.KeyRefComputedKey, c.label))
 		}
 	}
 
@@ -333,15 +339,15 @@ func checkUnbindSafe(ctx context.Context, tx *sql.Tx, path, key, fieldID string)
 		if err := dispRows.Scan(&name); err != nil {
 			return err
 		}
-		blockers = append(blockers, fmt.Sprintf("类别「%s」的显示编号", name))
+		blockers = append(blockers, i18n.M(i18n.KeyRefDisplayKey, name))
 	}
 	if err := dispRows.Err(); err != nil {
 		return err
 	}
 
 	if len(blockers) > 0 {
-		return fmt.Errorf("%w：%s正在引用 %s，请先修改它们再解绑",
-			ErrFieldDependedOn, strings.Join(blockers, "、"), key)
+		return i18n.Wrap(ErrFieldDependedOn, i18n.KeyUnbindBlocked,
+			i18n.Join(i18n.KeyListSeparator, blockers...), key)
 	}
 	return nil
 }

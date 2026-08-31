@@ -1,8 +1,10 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/klskk23/nexus-assets/internal/audit"
@@ -135,13 +137,41 @@ func TestAuditEndpointFiltersAndPaginates(t *testing.T) {
 	}
 }
 
-// Archiving a holder that assets still use must be refused, and the refusal has
+// Deleting a holder that assets still use must be refused, and the refusal has
 // to say which assets are in the way.
-func TestArchivingAHeldHolderIsRefusedWithBlockers(t *testing.T) {
+func TestDeletingAHeldHolderIsRefusedWithBlockers(t *testing.T) {
 	h := newHarness(t)
 	h.seed(t, 0, 2)
 
-	rec := h.patch(t, "/api/holders/"+h.locID, `{"archive":true}`)
+	// The seeded warehouse is also the default stock point, and that refusal
+	// fires first. Move the devices somewhere else so the blocking-assets
+	// refusal is the one under test.
+	created := h.do(t, http.MethodPost, "/api/holders", `{"type":"location","name":"备用仓库"}`)
+	var spare struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(created.Body.Bytes(), &spare); err != nil {
+		t.Fatal(err)
+	}
+	page := h.do(t, http.MethodGet, "/api/assets?limit=2", "")
+	var list struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(page.Body.Bytes(), &list); err != nil {
+		t.Fatal(err)
+	}
+	ids := make([]string, 0, len(list.Items))
+	for _, it := range list.Items {
+		ids = append(ids, `"`+it.ID+`"`)
+	}
+	if rec := h.do(t, http.MethodPost, "/api/transfers",
+		`{"asset_ids":[`+strings.Join(ids, ",")+`],"to_holder_type":"entity","to_holder_id":"`+spare.ID+`"}`); rec.Code != http.StatusOK && rec.Code != http.StatusCreated {
+		t.Fatalf("move the devices: %d %s", rec.Code, rec.Body)
+	}
+
+	rec := h.do(t, http.MethodDelete, "/api/holders/"+spare.ID, "")
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("want 409, got %d: %s", rec.Code, rec.Body.String())
 	}

@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 
 import { api, ApiError, getToken } from "@/lib/api"
 import type { Category } from "@/lib/types"
-import { zh, zhImport } from "@/i18n/zh"
+import { t, tImport } from "@/i18n"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -59,7 +59,7 @@ async function upload(path: string, categoryID: string, file: File): Promise<Rep
     const e = payload?.error ?? {}
     // A refused commit still carries the report, so the page can keep showing
     // exactly which lines are in the way.
-    const err = new ApiError(res.status, e.code ?? "internal_error", e.message ?? zh.common.error)
+    const err = new ApiError(res.status, e.code ?? "internal_error", e.message ?? t.common.error)
     ;(err as ApiError & { report?: Report }).report = payload?.report
     throw err
   }
@@ -86,7 +86,7 @@ export function Import() {
     },
     onError: (e) => {
       setReport(null)
-      setBanner(e instanceof ApiError ? e.message : zh.common.error)
+      setBanner(e instanceof ApiError ? e.message : t.common.error)
     },
   })
 
@@ -96,12 +96,12 @@ export function Import() {
       setReport(null)
       setFile(null)
       if (fileInput.current) fileInput.current.value = ""
-      setBanner(zhImport.done(r.ok ?? 0))
+      setBanner(tImport.done(r.ok ?? 0))
     },
     onError: (e) => {
       const withReport = e as ApiError & { report?: Report }
       if (withReport.report) setReport(withReport.report)
-      setBanner(e instanceof ApiError ? e.message : zh.common.error)
+      setBanner(e instanceof ApiError ? e.message : t.common.error)
     },
   })
 
@@ -111,17 +111,17 @@ export function Import() {
 
   return (
     <div className="grid max-w-4xl gap-6">
-      <h1 className="text-xl font-semibold">{zhImport.title}</h1>
+      <h1 className="text-xl font-semibold">{tImport.title}</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle>{zhImport.step1}</CardTitle>
+          <CardTitle>{tImport.step1}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <p className="text-sm text-muted-foreground">{zhImport.step1Hint}</p>
+          <p className="text-sm text-muted-foreground">{tImport.step1Hint}</p>
           <div className="flex flex-wrap items-end gap-4">
             <Field>
-              <FieldLabel htmlFor="im-category">{zhImport.category}</FieldLabel>
+              <FieldLabel htmlFor="im-category">{tImport.category}</FieldLabel>
               <Select
                 value={categoryID}
                 onValueChange={(v) => {
@@ -130,7 +130,7 @@ export function Import() {
                 }}
               >
                 <SelectTrigger id="im-category" className="w-56">
-                  <SelectValue placeholder={zh.common.select} />
+                  <SelectValue placeholder={t.common.select} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -147,12 +147,12 @@ export function Import() {
                 render a real button instead of a live link to a broken URL. */}
             {categoryID === "" ? (
               <Button variant="outline" className="mb-0.5" disabled>
-                {zhImport.download}
+                {tImport.download}
               </Button>
             ) : (
               <Button variant="outline" className="mb-0.5" asChild>
                 <a href={`/api/categories/${categoryID}/import-template.csv`} download>
-                  {zhImport.download}
+                  {tImport.download}
                 </a>
               </Button>
             )}
@@ -162,13 +162,13 @@ export function Import() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{zhImport.step2}</CardTitle>
+          <CardTitle>{tImport.step2}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <p className="text-sm text-muted-foreground">{zhImport.step2Hint}</p>
+          <p className="text-sm text-muted-foreground">{tImport.step2Hint}</p>
           <div className="flex flex-wrap items-end gap-4">
             <Field>
-              <FieldLabel htmlFor="im-file">{zhImport.file}</FieldLabel>
+              <FieldLabel htmlFor="im-file">{tImport.file}</FieldLabel>
               <Input
                 id="im-file"
                 ref={fileInput}
@@ -186,7 +186,7 @@ export function Import() {
               onClick={() => preview.mutate()}
             >
               {preview.isPending && <Spinner data-icon="inline-start" aria-hidden />}
-              {preview.isPending ? zhImport.previewing : zhImport.preview}
+              {preview.isPending ? tImport.previewing : tImport.preview}
             </Button>
           </div>
 
@@ -202,18 +202,18 @@ export function Import() {
       {report && (
         <Card>
           <CardHeader>
-            <CardTitle>{zhImport.step3}</CardTitle>
+            <CardTitle>{tImport.step3}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <p className="text-sm text-muted-foreground">{zhImport.step3Hint}</p>
+            <p className="text-sm text-muted-foreground">{tImport.step3Hint}</p>
 
             <p role="status">
-              {zhImport.summary(report.ok, report.total)}
+              {tImport.summary(report.ok, report.total)}
               {failing.length === 0 ? (
-                <Badge className="ml-2">{zhImport.allGood(report.total)}</Badge>
+                <Badge className="ml-2">{tImport.allGood(report.total)}</Badge>
               ) : (
                 <Badge variant="outline" className="ml-2">
-                  {zhImport.hasErrors(failing.length)}
+                  {tImport.hasErrors(failing.length)}
                 </Badge>
               )}
             </p>
@@ -223,13 +223,13 @@ export function Import() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-20">{zhImport.line}</TableHead>
-                      <TableHead>{zhImport.problem}</TableHead>
+                      <TableHead className="w-20">{tImport.line}</TableHead>
+                      <TableHead>{tImport.problem}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {failing.map((r) => (
-                      <TableRow key={r.line} aria-label={zh.common.lineNo(r.line)}>
+                      <TableRow key={r.line} aria-label={t.common.lineNo(r.line)}>
                         <TableCell className="font-mono">{r.line}</TableCell>
                         <TableCell>
                           <ul className="grid gap-0.5 text-sm">
@@ -250,7 +250,7 @@ export function Import() {
             <div>
               <Button disabled={!canCommit || commit.isPending} onClick={() => commit.mutate()}>
                 {commit.isPending && <Spinner data-icon="inline-start" aria-hidden />}
-              {commit.isPending ? zhImport.committing : zhImport.commit}
+              {commit.isPending ? tImport.committing : tImport.commit}
               </Button>
             </div>
           </CardContent>

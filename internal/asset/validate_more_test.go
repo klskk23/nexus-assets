@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 )
 
@@ -72,7 +73,7 @@ func TestValidateAttrsPerType(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, errs := ValidateAttrs(fields, tc.in)
-			msg := errs[tc.key]
+			msg := errs[tc.key].Error()
 			if msg == "" {
 				t.Fatalf("expected an error on %q, got %v", tc.key, errs)
 			}
@@ -84,7 +85,7 @@ func TestValidateAttrsPerType(t *testing.T) {
 }
 
 func TestFieldErrorsSummarises(t *testing.T) {
-	e := FieldErrors{"mac": "格式非法"}
+	e := FieldErrors{"mac": i18n.M(i18n.KeyFieldMACInvalid, "zz")}
 	if !strings.Contains(e.Error(), "mac") {
 		t.Errorf("summary should name the fields, got %q", e.Error())
 	}
@@ -93,6 +94,15 @@ func TestFieldErrorsSummarises(t *testing.T) {
 	}
 	if (FieldErrors{}).Any() {
 		t.Error("an empty set is not an error")
+	}
+
+	// The same set renders in whichever language the reader asked for; the
+	// keys stay put, because the form matches messages to inputs by key.
+	if got := e.In(i18n.EN)["mac"]; got != "Not a valid MAC address: zz" {
+		t.Errorf("en = %q", got)
+	}
+	if got := e.In(i18n.ZH)["mac"]; got != "MAC 格式非法：zz" {
+		t.Errorf("zh = %q", got)
 	}
 }
 

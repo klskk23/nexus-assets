@@ -1,7 +1,7 @@
 import { Fragment } from "react"
 
 import type { Transfer } from "@/lib/transferTypes"
-import { zh, zhTransfer } from "@/i18n/zh"
+import { locale, t, tTransfer } from "@/i18n"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { StateBoundary } from "@/components/StateBoundary"
 import { Badge } from "@/components/ui/badge"
@@ -60,28 +60,28 @@ export function Timeline({ events, isLoading = false, error = null, editableId, 
       isLoading={isLoading}
       error={error}
       isEmpty={entries.length === 0}
-      emptyTitle={zhTransfer.empty}
-      emptyHint={zhTransfer.emptyHint}
+      emptyTitle={tTransfer.empty}
+      emptyHint={tTransfer.emptyHint}
     >
-      <ol className="grid gap-4" aria-label={zhTransfer.timeline}>
+      <ol className="grid gap-4" aria-label={tTransfer.timeline}>
         {entries.map(({ event, count }, i) => (
           <Fragment key={event.id}>
             {i > 0 && <Separator />}
-            <li aria-label={zhTransfer.kind[event.kind] ?? event.kind} className="grid gap-1.5">
+            <li aria-label={tTransfer.kind[event.kind] ?? event.kind} className="grid gap-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge>{zhTransfer.kind[event.kind] ?? event.kind}</Badge>
-                {count > 1 && <Badge variant="outline">{zhTransfer.batch(count)}</Badge>}
+                <Badge>{tTransfer.kind[event.kind] ?? event.kind}</Badge>
+                {count > 1 && <Badge variant="outline">{tTransfer.batch(count)}</Badge>}
                 <span className="text-sm text-muted-foreground">
-                  {new Date(event.created_at).toLocaleString("zh-CN")}
+                  {new Date(event.created_at).toLocaleString(locale())}
                 </span>
                 {event.actor && (
                   <span className="text-sm text-muted-foreground">
-                    {zhTransfer.by}：{event.actor.name}
+                    {tTransfer.by}：{event.actor.name}
                   </span>
                 )}
                 {event.edited_at && (
                   <Badge variant="secondary">
-                    {zhTransfer.edited(event.edited_by_name ?? zh.common.none)}
+                    {tTransfer.edited(event.edited_by_name ?? t.common.none)}
                   </Badge>
                 )}
               </div>
@@ -89,14 +89,14 @@ export function Timeline({ events, isLoading = false, error = null, editableId, 
               <p className="text-sm">
                 {event.from_holder && (
                   <>
-                    <span className="text-muted-foreground">{zhTransfer.from} </span>
+                    <span className="text-muted-foreground">{tTransfer.from} </span>
                     {event.from_holder.name ?? event.from_holder.id}
                     {event.from_status && (
                       <span className="text-muted-foreground">
                         （{statuses.label(event.from_status)}）
                       </span>
                     )}
-                    <span className="text-muted-foreground"> {zhTransfer.to} </span>
+                    <span className="text-muted-foreground"> {tTransfer.to} </span>
                   </>
                 )}
                 {event.to_holder.name ?? event.to_holder.id}
@@ -107,14 +107,14 @@ export function Timeline({ events, isLoading = false, error = null, editableId, 
 
               {event.note && (
                 <p className="text-sm text-muted-foreground">
-                  {zhTransfer.note}：{event.note}
+                  {tTransfer.note}：{event.note}
                 </p>
               )}
 
               {onEdit && event.id === editableId && (
                 <div>
                   <Button variant="outline" size="sm" onClick={() => onEdit(event)}>
-                    {zhTransfer.editTail}
+                    {tTransfer.editTail}
                   </Button>
                 </div>
               )}

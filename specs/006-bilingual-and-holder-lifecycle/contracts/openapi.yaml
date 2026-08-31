@@ -1,0 +1,103 @@
+openapi: 3.1.0
+info:
+  title: Nexus Assets API — 006 增量
+  version: 0.6.0
+  description: >
+    双语与持有方生命周期带来的契约变化。**这是一份增量，不是全量。**
+    完整清单见 specs/001-asset-ledger-demo/contracts/openapi.yaml（已就地更新）。
+servers:
+  - url: /api
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: metadata
+
+paths:
+  /holders/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [metadata]
+      summary: 删除持有方。被持有、被引用、有下级或是默认库存点时拒绝
+      description: >
+        取代此前的 `PATCH /holders/{id}` + `archive: true`。停用机制移除：
+        建错的仓库应当能删干净，而有存量数据的应当删不掉 —— 这个区别系统自己判断得出。
+
+        三种拒绝共用 409。有设备时载荷带 `blockers` 与 `total`；
+        有下级时带 `total` —— 静默改挂下级等于替人改了组织架构；
+        是默认库存点时单独拒绝，因为那个标记只能转移不能消失。
+
+        **仅在流转历史中出现不构成拒绝**（与 004 的状态删除同一条规则）：
+        拒绝会让一个用过一次的仓库永远删不掉，而代价只是时间线上显示原始 id。
+      responses:
+        "204": { description: Deleted }
+        "404": { description: Not Found }
+        "409":
+          description: 被持有 / 被引用 / 有下级 / 是默认库存点
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /holders/{id}/usage:
+    get:
+      tags: [metadata]
+      summary: 删除该持有方的代价
+      description: >
+        `assets` 与 `children` 是拒绝的理由，`history` 只用于确认框事先说明代价。
+        历史按事件去重：一次实体内部的换位不该被计两次。
+        对不存在的持有方返回 404，而不是一组全零 —— 全零读起来像「可以安全删除」。
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [assets, children, history]
+                properties:
+                  assets: { type: integer, description: 持有或引用它的设备数 }
+                  children: { type: integer, description: 挂在它下面的持有方数 }
+                  history: { type: integer, description: 提及它的流转记录数 }
+        "404": { description: Not Found }
+
+components:
+  parameters:
+    AcceptLanguage:
+      name: Accept-Language
+      in: header
+      required: false
+      schema: { type: string, example: "en-GB,en;q=0.9" }
+      description: >
+        **每一个端点**都读它。支持 zh 与 en，按前缀匹配；不支持的语言回退到中文。
+        它决定 `error.message`、`error.fields.*` 的值、CSV 表头、导入模板的标题行
+        与导入预览的问题描述。
+        **不影响** `error.code`、`error.fields` 的键、导入模板的键名行，
+        以及任何数据（类别名、状态标签、信息项显示名）。
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, description: 机器可读，英文，不随语言改变 }
+            message: { type: string, description: 按 Accept-Language 渲染 }
+            fields:
+              type: object
+              additionalProperties: { type: string }
+              description: 键是字段名（不翻译），值按 Accept-Language 渲染
+            blockers: { type: array, items: { type: object } }
+            total: { type: integer }
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

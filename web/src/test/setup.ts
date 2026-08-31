@@ -2,6 +2,18 @@ import "@testing-library/jest-dom/vitest"
 import { cleanup } from "@testing-library/react"
 import { afterEach, beforeEach } from "vitest"
 
+import { applyLang } from "@/i18n"
+
+/**
+ * Tests run in Chinese, whatever jsdom claims navigator.language is.
+ *
+ * The assertions in this suite are written against the Chinese copy, and
+ * jsdom reports en-US, so without this the language would follow the test
+ * runner's idea of a browser rather than the thing under test. Switching
+ * languages is covered on purpose in tests/language.test.tsx.
+ */
+applyLang("zh")
+
 /**
  * jsdom in this setup exposes no localStorage at all -- it is undefined rather
  * than throwing. Production code therefore guards every access, and that guard

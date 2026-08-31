@@ -3,26 +3,41 @@ package asset
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
 )
 
-// FieldErrors maps a field key to a user-facing message. It becomes the
-// "fields" member of the error envelope, which is what lets the dynamic form
-// put each message next to the right input.
-type FieldErrors map[string]string
+// FieldErrors maps a field key to a message about it. It becomes the "fields"
+// member of the error envelope, which is what lets the dynamic form put each
+// message next to the right input.
+//
+// The values are Messages, not strings: which language they render in is the
+// reader's business, and this map is built long before the reader is known.
+type FieldErrors map[string]i18n.Message
 
-// Error renders a summary.
+// Error renders a summary. English by design -- this one goes to logs.
 func (e FieldErrors) Error() string {
 	keys := make([]string, 0, len(e))
 	for k := range e {
 		keys = append(keys, k)
 	}
+	sort.Strings(keys)
 	return fmt.Sprintf("validation failed for %s", strings.Join(keys, ", "))
+}
+
+// In renders every message in one language, ready for the JSON envelope.
+func (e FieldErrors) In(l i18n.Lang) map[string]string {
+	out := make(map[string]string, len(e))
+	for k, m := range e {
+		out[k] = m.In(l)
+	}
+	return out
 }
 
 // Any reports whether anything was recorded.
@@ -45,14 +60,14 @@ func ValidateAttrs(fields []model.BoundField, in map[string]any) (map[string]any
 
 		if empty {
 			if f.Required {
-				errs[f.Key] = "此字段必填"
+				errs[f.Key] = i18n.M(i18n.KeyFieldRequired)
 			}
 			continue
 		}
 
 		v, err := validateOne(f, raw)
 		if err != nil {
-			errs[f.Key] = err.Error()
+			errs[f.Key] = asMessage(err)
 			continue
 		}
 		out[f.Key] = v
@@ -71,13 +86,13 @@ func validateOne(f model.BoundField, raw any) (any, error) {
 		if f.Options.Regex != "" {
 			re, err := regexp.Compile(f.Options.Regex)
 			if err != nil {
-				return nil, fmt.Errorf("字段配置的校验规则无效")
+				return nil, i18n.M(i18n.KeyFieldRuleInvalid)
 			}
 			if !re.MatchString(s) {
 				if f.Options.RegexHint != "" {
-					return nil, fmt.Errorf("格式不符合要求：%s", f.Options.RegexHint)
+					return nil, i18n.M(i18n.KeyFieldPatternHint, f.Options.RegexHint)
 				}
-				return nil, fmt.Errorf("格式不符合要求")
+				return nil, i18n.M(i18n.KeyFieldPattern)
 			}
 		}
 		return s, nil
@@ -85,48 +100,48 @@ func validateOne(f model.BoundField, raw any) (any, error) {
 	case model.FieldNumber:
 		n, err := strconv.ParseFloat(s, 64)
 		if err != nil {
-			return nil, fmt.Errorf("必须是数字")
+			return nil, i18n.M(i18n.KeyFieldNotNumber)
 		}
 		if f.Options.Min != nil && n < *f.Options.Min {
-			return nil, fmt.Errorf("不能小于 %v", *f.Options.Min)
+			return nil, i18n.M(i18n.KeyFieldMin, *f.Options.Min)
 		}
 		if f.Options.Max != nil && n > *f.Options.Max {
-			return nil, fmt.Errorf("不能大于 %v", *f.Options.Max)
+			return nil, i18n.M(i18n.KeyFieldMax, *f.Options.Max)
 		}
 		return n, nil
 
 	case model.FieldBoolean:
 		b, err := strconv.ParseBool(s)
 		if err != nil {
-			return nil, fmt.Errorf("必须是是或否")
+			return nil, i18n.M(i18n.KeyFieldNotBool)
 		}
 		return b, nil
 
 	case model.FieldDate:
 		if _, err := time.Parse("2006-01-02", s); err != nil {
-			return nil, fmt.Errorf("日期格式应为 YYYY-MM-DD")
+			return nil, i18n.M(i18n.KeyFieldDateShape)
 		}
 		return s, nil
 
 	case model.FieldEnum:
 		if !schema.ChoiceExists(f.Options, s) {
-			return nil, fmt.Errorf("不是可选值之一")
+			return nil, i18n.M(i18n.KeyFieldNotAnOption)
 		}
 		if schema.IsDeprecatedChoice(f.Options, s) {
 			// A retired option stays readable on existing assets but may not be
 			// chosen anew, which is what separates "archive" from "delete".
-			return nil, fmt.Errorf("该选项已废弃，请选择其他值")
+			return nil, i18n.M(i18n.KeyFieldOptionGone)
 		}
 		return s, nil
 
 	case model.FieldReference:
 		if s == "" {
-			return nil, fmt.Errorf("必须选择一个目标")
+			return nil, i18n.M(i18n.KeyFieldRefRequired)
 		}
 		return s, nil // existence is checked against the database by the caller
 
 	default:
-		return nil, fmt.Errorf("未知的字段类型 %s", f.Type)
+		return nil, i18n.M(i18n.KeyFieldTypeUnknown, string(f.Type))
 	}
 }
 
@@ -143,7 +158,7 @@ func ValidateHolderForStatus(statuses model.StatusSet, status model.AssetStatus,
 		return nil
 	}
 	if holder.Type != model.HolderTypeEntity || entityType != model.EntityLocation {
-		return fmt.Errorf("「%s」状态的持有方必须是一个位置", statuses.Label(status))
+		return i18n.M(i18n.KeyHolderMustBeLoc, statuses.Label(status))
 	}
 	return nil
 }
@@ -166,4 +181,16 @@ func SplitAttrs(fields []model.BoundField, stored map[string]any) (live, archive
 		}
 	}
 	return live, archived
+}
+
+// asMessage lifts an error into a Message so it can carry a language.
+//
+// Everything raised inside this package already is one; anything else is a
+// failure the operator cannot act on, and its own text is the best available
+// description of it.
+func asMessage(err error) i18n.Message {
+	if m, ok := err.(i18n.Message); ok {
+		return m
+	}
+	return i18n.M(i18n.KeyPassthrough, err.Error())
 }

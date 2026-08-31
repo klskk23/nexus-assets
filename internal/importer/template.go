@@ -10,6 +10,7 @@ import (
 	"github.com/klskk23/nexus-assets/internal/asset"
 	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/holder"
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
 	"github.com/klskk23/nexus-assets/internal/store"
@@ -22,10 +23,13 @@ const (
 	ColNote   = "note"
 )
 
-var fixedColumns = []struct{ key, label string }{
-	{ColModel, "型号"},
-	{ColHolder, "持有方（位置名称）"},
-	{ColNote, "备注"},
+// The label is a catalogue key, not a string: the sheet a person downloads is
+// headed in their own language, while the second header row -- the machine
+// keys -- is what the importer reads back either way.
+var fixedColumns = []struct{ key, labelKey string }{
+	{ColModel, i18n.KeyColModel},
+	{ColHolder, i18n.KeyColHolderLoc},
+	{ColNote, i18n.KeyColNote},
 }
 
 // Service builds templates, previews files and commits them.
@@ -45,7 +49,7 @@ func New(db *store.Store, sch *schema.Store, holders *holder.Store,
 
 // Columns returns the template's columns for one category: the fixed ones
 // followed by every field the category asks for, computed fields excluded.
-func (s *Service) Columns(ctx context.Context, categoryID string) ([]string, []string, error) {
+func (s *Service) Columns(ctx context.Context, lang i18n.Lang, categoryID string) ([]string, []string, error) {
 	fields, err := s.schema.EffectiveFields(ctx, categoryID)
 	if err != nil {
 		return nil, nil, err
@@ -56,7 +60,7 @@ func (s *Service) Columns(ctx context.Context, categoryID string) ([]string, []s
 	labels := make([]string, 0, cap(keys))
 	for _, c := range fixedColumns {
 		keys = append(keys, c.key)
-		labels = append(labels, c.label)
+		labels = append(labels, i18n.M(c.labelKey).In(lang))
 	}
 	for _, f := range fields {
 		// A computed value is derived, never supplied, so offering a column for
@@ -67,7 +71,7 @@ func (s *Service) Columns(ctx context.Context, categoryID string) ([]string, []s
 		keys = append(keys, f.Key)
 		label := f.Label
 		if f.Required {
-			label += "（必填）"
+			label += i18n.M(i18n.KeyColRequired).In(lang)
 		}
 		labels = append(labels, label)
 	}
@@ -76,11 +80,11 @@ func (s *Service) Columns(ctx context.Context, categoryID string) ([]string, []s
 
 // Template renders the import template for one category.
 //
-// Two header rows: the first is Chinese for whoever fills the sheet in, the
+// Two header rows: the first is prose for whoever fills the sheet in, the
 // second is the machine key. Only the key row is read back, so renaming a field
 // never invalidates a template someone already downloaded.
-func (s *Service) Template(ctx context.Context, categoryID string) ([]byte, error) {
-	keys, labels, err := s.Columns(ctx, categoryID)
+func (s *Service) Template(ctx context.Context, lang i18n.Lang, categoryID string) ([]byte, error) {
+	keys, labels, err := s.Columns(ctx, lang, categoryID)
 	if err != nil {
 		return nil, err
 	}

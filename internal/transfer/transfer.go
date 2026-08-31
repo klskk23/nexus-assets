@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/klskk23/nexus-assets/internal/holder"
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
@@ -215,7 +216,7 @@ func checkHolderForStatus(ctx context.Context, tx *sql.Tx, statuses model.Status
 		return nil
 	}
 	if to.Holder.Type != model.HolderTypeEntity {
-		return fmt.Errorf("%w：「%s」状态的持有方必须是一个位置", ErrHolderKind, statuses.Label(to.Status))
+		return i18n.Wrap(ErrHolderKind, i18n.KeyHolderMustBeLoc, statuses.Label(to.Status))
 	}
 	var typ string
 	if err := tx.QueryRowContext(ctx,
@@ -226,7 +227,7 @@ func checkHolderForStatus(ctx context.Context, tx *sql.Tx, statuses model.Status
 		return err
 	}
 	if model.EntityType(typ) != model.EntityLocation {
-		return fmt.Errorf("%w：「%s」状态的持有方必须是一个位置", ErrHolderKind, statuses.Label(to.Status))
+		return i18n.Wrap(ErrHolderKind, i18n.KeyHolderMustBeLoc, statuses.Label(to.Status))
 	}
 	return nil
 }

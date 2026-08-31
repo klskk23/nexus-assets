@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
+
 	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/transfer"
@@ -33,7 +35,7 @@ type transferRequest struct {
 func (s *Server) createTransfer(c *gin.Context) {
 	var req transferRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	actor, _ := auth.CurrentUser(c)
@@ -52,8 +54,7 @@ func (s *Server) createTransfer(c *gin.Context) {
 			return
 		}
 		if _, ok := statuses.Get(st); !ok {
-			Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, MsgValidationFailed,
-				map[string]string{"to_status": "不是有效的状态"})
+			FailField(c, http.StatusUnprocessableEntity, "to_status", i18n.KeyStatusUnknown)
 			return
 		}
 		in.ToStatus = &st
@@ -65,8 +66,7 @@ func (s *Server) createTransfer(c *gin.Context) {
 	if req.DueAt != nil && *req.DueAt != "" {
 		t, err := time.Parse(time.RFC3339, *req.DueAt)
 		if err != nil {
-			Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, MsgValidationFailed,
-				map[string]string{"due_at": "时间格式不正确"})
+			FailField(c, http.StatusUnprocessableEntity, "due_at", i18n.KeyTimeShape)
 			return
 		}
 		in.DueAt = &t
@@ -93,7 +93,7 @@ func (s *Server) patchTransfer(c *gin.Context) {
 		Note       *string `json:"note"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	actor, _ := auth.CurrentUser(c)
@@ -193,18 +193,18 @@ func (s *Server) decorateTransfers(c *gin.Context, items []model.Transfer) error
 func failTransfer(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, transfer.ErrNotTailEvent):
-		Fail(c, http.StatusConflict, CodeNotTailEvent, MsgNotTailEvent, nil)
+		FailMsg(c, http.StatusConflict, CodeNotTailEvent, i18n.KeyNotTailEvent)
 	case errors.Is(err, transfer.ErrNoDefaultStock):
-		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, MsgNoDefaultStock,
-			map[string]string{"to_holder_id": MsgNoDefaultStock})
+		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, i18n.M(i18n.KeyNoDefaultStock).In(LangOf(c)),
+			map[string]string{"to_holder_id": i18n.M(i18n.KeyNoDefaultStock).In(LangOf(c))})
 	case errors.Is(err, transfer.ErrNotFound), errors.Is(err, transfer.ErrAssetNotFound):
-		Fail(c, http.StatusNotFound, CodeNotFound, MsgNotFound, nil)
+		FailMsg(c, http.StatusNotFound, CodeNotFound, i18n.KeyNotFound)
 	case errors.Is(err, transfer.ErrHolderKind):
 		// Tagged to the field that was actually chosen. Reporting a holder
 		// problem against to_status is what made this refusal unactionable.
 		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
-			userText(err, transfer.ErrHolderKind),
-			map[string]string{"to_holder_id": userText(err, transfer.ErrHolderKind)})
+			userText(c, err),
+			map[string]string{"to_holder_id": userText(c, err)})
 	case isTransitionError(err):
 		Fail(c, http.StatusUnprocessableEntity, CodeIllegalTransition, err.Error(),
 			map[string]string{"to_status": err.Error()})

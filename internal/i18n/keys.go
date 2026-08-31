@@ -1,0 +1,151 @@
+package i18n
+
+// Catalogue keys.
+//
+// Named after what the message is about rather than where it is raised, so a
+// message that moves between packages keeps its key. Grouped by area; the
+// prefix is what the parity test sorts on.
+const (
+	// Generic HTTP-layer messages.
+	KeyValidationFailed  = "err.validation_failed"
+	KeyVersionConflict   = "err.version_conflict"
+	KeyNotFound          = "err.not_found"
+	KeyInternal          = "err.internal"
+	KeyUnauthenticated   = "err.unauthenticated"
+	KeyBadRequest        = "err.bad_request"
+	KeyLoginFailed       = "err.login_failed"
+	KeyAccountDisabled   = "err.account_disabled"
+	KeyDomainNotAllowed  = "err.domain_not_allowed"
+	KeyOIDCDisabled      = "err.oidc_disabled"
+	KeyOIDCStateMismatch = "err.oidc_state_mismatch"
+	KeyUploadTooLarge    = "err.upload_too_large"
+	KeyNotTailEvent      = "err.not_tail_event"
+	KeyNoDefaultStock    = "err.no_default_stock"
+
+	// Request shape.
+	KeyVersionRequired   = "req.version_required"
+	KeyParentIDShape     = "req.parent_id_shape"
+	KeyCategoryIDShape   = "req.category_parent_id_shape"
+	KeyTimeShapeRFC3339  = "req.time_rfc3339"
+	KeyTimeShape         = "req.time_invalid"
+	KeyImportNeedCat     = "req.import_needs_category"
+	KeyImportNeedFile    = "req.import_needs_file"
+	KeyStatusUnknown     = "req.status_unknown"
+	KeyConfirmSN         = "req.confirm_sn"
+	KeyConfirmSNMismatch = "req.confirm_sn_mismatch"
+	KeyConfirmCount      = "req.confirm_count"
+	KeyNoAssetsSelected  = "req.no_assets_selected"
+
+	// Field validation.
+	KeyFieldRequired    = "field.required"
+	KeyFieldRuleInvalid = "field.rule_invalid"
+	KeyFieldPatternHint = "field.pattern_hint"
+	KeyFieldPattern     = "field.pattern"
+	KeyFieldNotNumber   = "field.not_number"
+	KeyFieldMin         = "field.min"
+	KeyFieldMax         = "field.max"
+	KeyFieldNotBool     = "field.not_bool"
+	KeyFieldDateShape   = "field.date_shape"
+	KeyFieldNotAnOption = "field.not_an_option"
+	KeyFieldOptionGone  = "field.option_deprecated"
+	KeyFieldRefRequired = "field.reference_required"
+	KeyFieldTypeUnknown = "field.type_unknown"
+	KeyFieldMACEmpty    = "field.mac_empty"
+	KeyFieldMACInvalid  = "field.mac_invalid"
+	KeyFieldIPInvalid   = "field.ip_invalid"
+	KeyFieldURLInvalid  = "field.url_invalid"
+	KeyFieldComputeFail = "field.compute_failed"
+	KeyFieldValueTaken  = "field.value_taken_by"
+	KeyFieldValuesTaken = "field.values_taken"
+	KeyHolderMustBeLoc  = "field.holder_must_be_location"
+
+	// Statuses.
+	KeyStatusKeyShape   = "status.key_shape"
+	KeyStatusNeedsLabel = "status.needs_label"
+	KeyStatusBadColor   = "status.bad_color"
+	KeyStatusKeyTaken   = "status.key_taken"
+	KeyStatusBuiltin    = "status.builtin"
+	KeyStatusInUse      = "status.in_use"
+
+	// Holder entities.
+	KeyHolderDefaultStock    = "holder.default_stock_required"
+	KeyHolderDefaultStockDel = "holder.default_stock_delete"
+	KeyHolderHasChildren     = "holder.has_children"
+	KeyHolderNameEmpty       = "holder.name_empty"
+	KeyHolderCycle           = "holder.cycle"
+	KeyHolderTypeUnknown     = "holder.type_unknown"
+	KeyHolderNoParentAllowed = "holder.no_parent_allowed"
+	KeyHolderParentMissing   = "holder.parent_missing"
+	KeyHolderParentKind      = "holder.parent_kind"
+	KeyHolderParentRequired  = "holder.parent_required"
+	KeyHolderReferenced      = "holder.referenced"
+	KeyHolderReferencedMore  = "holder.referenced_more"
+	KeyHolderBlockerHold     = "holder.blocker_hold"
+	KeyHolderBlockerRef      = "holder.blocker_ref"
+	KeyHolderBlockerList     = "holder.blocker_list"
+	KeyHolderBlockerPlain    = "holder.blocker_plain"
+	KeyEntityCompany         = "holder.kind.company"
+	KeyEntityDepartment      = "holder.kind.department"
+	KeyEntityLocation        = "holder.kind.location"
+	KeyJoinOr                = "holder.join_or"
+	KeyBlockerEntry          = "holder.blocker_entry"
+	KeyListSeparator         = "common.list_separator"
+
+	// Accounts.
+	KeyUserStillOwns = "user.still_owns_assets"
+
+	// Categories, fields, bindings.
+	KeyCategoryHasAssetsMove = "category.has_assets_move"
+	KeyCategoryHasChildren   = "category.has_children"
+	KeyCategoryHasAssets     = "category.has_assets"
+	KeyDisplayKeyUnbound     = "category.display_key_unbound"
+	KeyDisplayKeyNotUnique   = "category.display_key_not_unique"
+	KeyBindDuplicate         = "binding.duplicate"
+	KeyDepMissing            = "binding.dep_missing"
+	KeyDepUnbound            = "binding.dep_unbound"
+	KeyDepNotRequired        = "binding.dep_not_required"
+	KeyDepUnmet              = "binding.dep_unmet"
+	KeyRefComputedKey        = "ref.computed_key"
+	KeyRefDisplayKey         = "ref.display_key"
+	KeyUnbindBlocked         = "binding.unbind_blocked"
+	KeyFieldReferenced       = "field.referenced"
+	KeyFieldInUseByAssets    = "field.in_use_by_assets"
+	KeyListTruncated         = "common.list_truncated"
+	// KeyPassthrough carries text that is already final -- an underlying
+	// error whose wording this system does not own.
+	KeyPassthrough         = "common.passthrough"
+	KeyLabelWithKey        = "common.label_with_key"
+	KeyProblemSeparator    = "common.problem_separator"
+	KeyFieldInCategory     = "field.in_category"
+	KeyTemplateUnparseable = "template.unparseable"
+	KeyTemplateCycle       = "template.cycle"
+
+	// Product models.
+	KeyModelNoVendor  = "model.no_vendor"
+	KeyModelDuplicate = "model.duplicate"
+
+	// Import and export.
+	KeyImportParseFailed  = "import.parse_failed"
+	KeyImportNeedsHeaders = "import.needs_headers"
+	KeyImportNoRows       = "import.no_rows"
+	KeyImportNotLocation  = "import.not_a_location"
+	KeyImportRowsFailed   = "import.rows_failed"
+	KeyImportModelAmbig   = "import.model_ambiguous"
+	KeyImportModelMissing = "import.model_missing"
+	KeyImportHolderEmpty  = "import.holder_empty"
+	KeyImportHolderMiss   = "import.holder_missing"
+	KeyImportUserMissing  = "import.user_missing"
+	KeyImportRefMissing   = "import.reference_missing"
+
+	// CSV column headers, shared by the export and the import template.
+	KeyColSN        = "csv.sn"
+	KeyColCategory  = "csv.category"
+	KeyColStatus    = "csv.status"
+	KeyColHolder    = "csv.holder"
+	KeyColOwner     = "csv.owner"
+	KeyColCreatedAt = "csv.created_at"
+	KeyColModel     = "csv.model"
+	KeyColHolderLoc = "csv.holder_location"
+	KeyColNote      = "csv.note"
+	KeyColRequired  = "csv.required_suffix"
+)

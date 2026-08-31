@@ -125,6 +125,16 @@ export const ALLOWED_PARENTS: Record<EntityType, EntityType[]> = {
   location: ["company", "department"],
 }
 
+/** What deleting a holder would cost. */
+export interface HolderUsage {
+  /** Devices holding it or naming it in a reference field. Refuses. */
+  assets: number
+  /** Entities hanging from it. Refuses. */
+  children: number
+  /** Transfer events mentioning it. Warns only. */
+  history: number
+}
+
 /** Kinds that cannot stand alone. */
 export const PARENT_REQUIRED: Record<EntityType, boolean> = {
   company: false,

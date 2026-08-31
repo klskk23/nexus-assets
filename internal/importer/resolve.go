@@ -2,10 +2,9 @@ package importer
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"strings"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
 )
@@ -62,10 +61,10 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 	if err != nil {
 		return nil, err
 	}
+	// Every entity on file is a candidate: archiving is gone, so an entity
+	// that exists is one that can hold something.
 	for _, e := range entities {
-		if e.ArchivedAt == nil {
-			l.holdersByName[strings.TrimSpace(e.Name)] = e
-		}
+		l.holdersByName[strings.TrimSpace(e.Name)] = e
 	}
 
 	users, err := s.users.List(ctx)
@@ -99,11 +98,11 @@ func (l *lookups) resolveModel(name string) (string, error) {
 		return "", nil
 	}
 	if l.ambiguousModels[name] {
-		return "", fmt.Errorf("型号「%s」有多个厂商的同名产品，请写成「厂商 型号」", name)
+		return "", i18n.M(i18n.KeyImportModelAmbig, name)
 	}
 	id, ok := l.modelsByName[name]
 	if !ok {
-		return "", fmt.Errorf("找不到型号「%s」，请先在型号页建立", name)
+		return "", i18n.M(i18n.KeyImportModelMissing, name)
 	}
 	return id, nil
 }
@@ -112,11 +111,11 @@ func (l *lookups) resolveModel(name string) (string, error) {
 func (l *lookups) resolveHolder(name string) (model.HolderEntity, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return model.HolderEntity{}, errors.New("持有方不能为空")
+		return model.HolderEntity{}, i18n.M(i18n.KeyImportHolderEmpty)
 	}
 	e, ok := l.holdersByName[name]
 	if !ok {
-		return model.HolderEntity{}, fmt.Errorf("找不到持有方「%s」，请先在持有方页建立", name)
+		return model.HolderEntity{}, i18n.M(i18n.KeyImportHolderMiss, name)
 	}
 	return e, nil
 }
@@ -132,11 +131,11 @@ func (l *lookups) resolveReference(f model.BoundField, name string) (string, err
 		if id, ok := l.usersByName[name]; ok {
 			return id, nil
 		}
-		return "", fmt.Errorf("找不到账号「%s」", name)
+		return "", i18n.M(i18n.KeyImportUserMissing, name)
 	default:
 		e, ok := l.holdersByName[name]
 		if !ok {
-			return "", fmt.Errorf("找不到「%s」", name)
+			return "", i18n.M(i18n.KeyImportRefMissing, name)
 		}
 		return e.ID, nil
 	}

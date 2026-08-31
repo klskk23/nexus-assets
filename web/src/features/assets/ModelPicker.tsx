@@ -5,7 +5,7 @@ import { api } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category } from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
-import { zh } from "@/i18n/zh"
+import { t } from "@/i18n"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -107,14 +107,14 @@ export function ModelPicker({ categoryID, value, onChange, values, confirmOverwr
   return (
     <>
       <Field>
-        <FieldLabel htmlFor="asset-model">{zh.assets.modelLabel}</FieldLabel>
+        <FieldLabel htmlFor="asset-model">{t.assets.modelLabel}</FieldLabel>
         <Select value={toNone(value)} onValueChange={(v) => select(fromNone(v))}>
           <SelectTrigger id="asset-model">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              <SelectItem value={NONE}>{zh.assets.noModel}</SelectItem>
+              <SelectItem value={NONE}>{t.assets.noModel}</SelectItem>
               {candidates.map((m) => (
                 <SelectItem key={m.id} value={m.id}>
                   {m.vendor ? `${m.vendor} ${m.name}` : m.name}
@@ -128,8 +128,8 @@ export function ModelPicker({ categoryID, value, onChange, values, confirmOverwr
       <Dialog open={pending !== null} onOpenChange={(o) => !o && setPending(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{zh.assets.modelChangeTitle}</DialogTitle>
-            <DialogDescription>{zh.assets.modelChangeHint}</DialogDescription>
+            <DialogTitle>{t.assets.modelChangeTitle}</DialogTitle>
+            <DialogDescription>{t.assets.modelChangeHint}</DialogDescription>
           </DialogHeader>
           <ul className="grid gap-1 font-mono text-sm">
             {(pending?.overwrites ?? []).map((o) => (
@@ -146,7 +146,7 @@ export function ModelPicker({ categoryID, value, onChange, values, confirmOverwr
                 setPending(null)
               }}
             >
-              {zh.assets.modelChangeSkip}
+              {t.assets.modelChangeSkip}
             </Button>
             <Button
               onClick={() => {
@@ -154,7 +154,7 @@ export function ModelPicker({ categoryID, value, onChange, values, confirmOverwr
                 setPending(null)
               }}
             >
-              {zh.assets.modelChangeApply}
+              {t.assets.modelChangeApply}
             </Button>
           </DialogFooter>
         </DialogContent>

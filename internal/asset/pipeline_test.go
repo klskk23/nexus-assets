@@ -164,7 +164,7 @@ func TestInheritedRequiredFieldEnforced(t *testing.T) {
 		t.Fatal("a missing required inherited field must block the save")
 	}
 	var fe FieldErrors
-	if !errors.As(err, &fe) || fe["mac"] == "" {
+	if !errors.As(err, &fe) || fe["mac"].Error() == "" {
 		t.Errorf("error should point at the mac field, got %#v", err)
 	}
 }
@@ -184,7 +184,7 @@ func TestDuplicateMACAcrossSpellingsRejected(t *testing.T) {
 		if !errors.As(err, &fe) {
 			t.Fatalf("expected field errors, got %#v", err)
 		}
-		if fe["mac"] == "" && fe["sn"] == "" {
+		if fe["mac"].Error() == "" && fe["sn"].Error() == "" {
 			t.Errorf("conflict should name mac or sn, got %v", fe)
 		}
 	}
@@ -669,7 +669,7 @@ func TestDeleteManyRequiresTheCount(t *testing.T) {
 		t.Fatal("a wrong count must refuse the batch")
 	}
 	var fe FieldErrors
-	if _, err := f.svc.DeleteMany(f.ctx, ids, ""); !errors.As(err, &fe) || fe["confirm"] == "" {
+	if _, err := f.svc.DeleteMany(f.ctx, ids, ""); !errors.As(err, &fe) || fe["confirm"].Error() == "" {
 		t.Errorf("the refusal should name the confirmation field, got %#v", err)
 	}
 	if _, err := f.svc.DeleteMany(f.ctx, nil, "0"); err == nil {

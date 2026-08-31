@@ -150,3 +150,56 @@ func TestCheckoutToAnEntityCanNameAnOwner(t *testing.T) {
 		t.Errorf("owner = %+v, want the account that was named", a.Owner)
 	}
 }
+
+func TestHolderDeleteAndUsage(t *testing.T) {
+	h := newHarness(t)
+
+	res := h.do(t, http.MethodPost, "/api/holders", `{"type":"company","name":"旧客户"}`)
+	var co model.HolderEntity
+	if err := json.Unmarshal(res.Body.Bytes(), &co); err != nil {
+		t.Fatal(err)
+	}
+
+	res = h.do(t, http.MethodGet, "/api/holders/"+co.ID+"/usage", "")
+	if res.Code != http.StatusOK {
+		t.Fatalf("usage: %d %s", res.Code, res.Body)
+	}
+	var usage struct {
+		Assets, Children, History int
+	}
+	if err := json.Unmarshal(res.Body.Bytes(), &usage); err != nil {
+		t.Fatal(err)
+	}
+	if usage != (struct{ Assets, Children, History int }{0, 0, 0}) {
+		t.Errorf("an unused holder should cost nothing, got %+v", usage)
+	}
+
+	if res := h.do(t, http.MethodDelete, "/api/holders/"+co.ID, ""); res.Code != http.StatusNoContent {
+		t.Fatalf("delete: %d %s", res.Code, res.Body)
+	}
+	if res := h.do(t, http.MethodGet, "/api/holders/"+co.ID+"/usage", ""); res.Code != http.StatusNotFound {
+		t.Errorf("the holder should be gone, got %d", res.Code)
+	}
+}
+
+func TestDeletingAParentIsRefusedAndNamesTheCount(t *testing.T) {
+	h := newHarness(t)
+
+	res := h.do(t, http.MethodPost, "/api/holders", `{"type":"company","name":"XX 集团"}`)
+	var co model.HolderEntity
+	if err := json.Unmarshal(res.Body.Bytes(), &co); err != nil {
+		t.Fatal(err)
+	}
+	if res := h.do(t, http.MethodPost, "/api/holders",
+		`{"type":"department","name":"运维部","parent_id":"`+co.ID+`"}`); res.Code != http.StatusCreated {
+		t.Fatalf("create department: %d %s", res.Code, res.Body)
+	}
+
+	res = h.do(t, http.MethodDelete, "/api/holders/"+co.ID, "")
+	if res.Code != http.StatusConflict {
+		t.Fatalf("got %d, want 409: %s", res.Code, res.Body)
+	}
+	if !strings.Contains(res.Body.String(), "下级") {
+		t.Errorf("the refusal should say what is in the way, got %s", res.Body)
+	}
+}

@@ -11,7 +11,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
-import { zh } from "@/i18n/zh"
+import { t } from "@/i18n"
 
 interface Props {
   isLoading: boolean
@@ -41,7 +41,7 @@ export function StateBoundary({
 }: Props) {
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-3" role="status" aria-label={zh.common.loading}>
+      <div className="flex flex-col gap-3" role="status" aria-label={t.common.loading}>
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-8 w-full" />
         <Skeleton className="h-8 w-full" />
@@ -53,12 +53,12 @@ export function StateBoundary({
     return (
       <Alert variant="destructive">
         <AlertCircleIcon />
-        <AlertTitle>{zh.common.error}</AlertTitle>
+        <AlertTitle>{t.common.error}</AlertTitle>
         <AlertDescription>
           {error.message}
           {onRetry && (
             <Button variant="outline" size="sm" className="mt-2" onClick={onRetry}>
-              {zh.common.retry}
+              {t.common.retry}
             </Button>
           )}
         </AlertDescription>

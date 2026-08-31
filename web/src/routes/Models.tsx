@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import type { Category } from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
-import { zhMeta } from "@/i18n/zh"
+import { tMeta } from "@/i18n"
 import { CrudPage } from "@/features/metadata/CrudPage"
 import {
   AttrDefaultsEditor,
@@ -36,10 +36,10 @@ export function Models() {
 
   return (
     <CrudPage<ProductModelRow>
-      title={zhMeta.models.title}
+      title={tMeta.models.title}
       queryKey="models"
       list={() => api.get<ProductModelRow[]>("/models")}
-      createLabel={zhMeta.models.create}
+      createLabel={tMeta.models.create}
       createDisabled={name === ""}
       onCreated={() => {
         setName("")
@@ -55,26 +55,26 @@ export function Models() {
           attr_defaults: toAttrDefaults(defaults),
         })
       }
-      emptyTitle={zhMeta.models.empty}
-      emptyHint={zhMeta.models.emptyHint}
+      emptyTitle={tMeta.models.empty}
+      emptyHint={tMeta.models.emptyHint}
       columns={[
-        { header: zhMeta.models.name, cell: (m) => m.name },
-        { header: zhMeta.models.vendor, cell: (m) => m.vendor ?? "" },
+        { header: tMeta.models.name, cell: (m) => m.name },
+        { header: tMeta.models.vendor, cell: (m) => m.vendor ?? "" },
         {
-          header: zhMeta.models.category,
+          header: tMeta.models.category,
           cell: (m) =>
             (m.category_ids ?? []).map((id) => byId.get(id) ?? id).join("、") ||
-            zhMeta.models.noCategory,
+            tMeta.models.noCategory,
         },
       ]}
       form={
         <div className="grid gap-4 sm:grid-cols-3">
           <Field>
-            <FieldLabel htmlFor="m-name">{zhMeta.models.name}</FieldLabel>
+            <FieldLabel htmlFor="m-name">{tMeta.models.name}</FieldLabel>
             <Input id="m-name" value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="m-vendor">{zhMeta.models.vendor}</FieldLabel>
+            <FieldLabel htmlFor="m-vendor">{tMeta.models.vendor}</FieldLabel>
             <Input id="m-vendor" value={vendor} onChange={(e) => setVendor(e.target.value)} />
           </Field>
           {/* One device can genuinely be both a router and a spare, so several
@@ -82,8 +82,8 @@ export function Models() {
               multi-select list box hides the choices behind a scroll -- here
               the whole set is visible at once. */}
           <FieldSet className="sm:col-span-3">
-            <FieldLegend variant="label">{zhMeta.models.category}</FieldLegend>
-            <FieldDescription>{zhMeta.models.categoryHint}</FieldDescription>
+            <FieldLegend variant="label">{tMeta.models.category}</FieldLegend>
+            <FieldDescription>{tMeta.models.categoryHint}</FieldDescription>
             <FieldGroup className="flex flex-row flex-wrap items-center gap-4">
               {(categories.data ?? []).map((c) => (
                 <Field key={c.id} orientation="horizontal" className="w-auto">

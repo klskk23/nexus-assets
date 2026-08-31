@@ -6,11 +6,11 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 
 	"github.com/klskk23/nexus-assets/internal/asset"
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 )
 
@@ -55,10 +55,10 @@ func parse(r io.Reader) ([]parsedRow, error) {
 
 	records, err := cr.ReadAll()
 	if err != nil {
-		return nil, fmt.Errorf("解析 CSV 失败：%w", err)
+		return nil, i18n.M(i18n.KeyImportParseFailed, err)
 	}
 	if len(records) < 2 {
-		return nil, fmt.Errorf("文件至少需要两行表头：中文标题行与键名行")
+		return nil, i18n.M(i18n.KeyImportNeedsHeaders)
 	}
 
 	// The second row carries the keys; the first is for the human filling it in.
@@ -109,22 +109,22 @@ func stripBOM(r io.Reader) []byte {
 // rows are inserted in the same transaction, a MAC repeated twice inside the
 // file is caught just like a collision with an existing asset. Checking rows in
 // isolation would let that pair through and fail at commit instead.
-func (s *Service) Preview(ctx context.Context, categoryID, actorID string, file io.Reader) (Report, error) {
+func (s *Service) Preview(ctx context.Context, lang i18n.Lang, categoryID, actorID string, file io.Reader) (Report, error) {
 	rows, err := parse(file)
 	if err != nil {
 		return Report{}, err
 	}
-	return s.check(ctx, categoryID, actorID, rows, nil)
+	return s.check(ctx, lang, categoryID, actorID, rows, nil)
 }
 
 // check runs the rows through the pipeline. With batchID nil it rolls back;
 // with a batch id it commits.
-func (s *Service) check(ctx context.Context, categoryID, actorID string,
+func (s *Service) check(ctx context.Context, lang i18n.Lang, categoryID, actorID string,
 	rows []parsedRow, batchID *string) (Report, error) {
 
 	report := Report{Total: len(rows), Rows: make([]RowResult, 0, len(rows))}
 	if len(rows) == 0 {
-		return report, fmt.Errorf("文件中没有数据行")
+		return report, i18n.M(i18n.KeyImportNoRows)
 	}
 
 	look, err := s.buildLookups(ctx, categoryID)
@@ -138,7 +138,7 @@ func (s *Service) check(ctx context.Context, categoryID, actorID string,
 		report.OK = 0
 
 		for _, row := range rows {
-			res := s.checkRow(ctx, tx, categoryID, actorID, look, row, batchID)
+			res := s.checkRow(ctx, tx, lang, categoryID, actorID, look, row, batchID)
 			if res.Status == "ok" {
 				report.OK++
 			}
@@ -157,7 +157,7 @@ func (s *Service) check(ctx context.Context, categoryID, actorID string,
 	return report, nil
 }
 
-func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, categoryID, actorID string,
+func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, lang i18n.Lang, categoryID, actorID string,
 	look *lookups, row parsedRow, batchID *string) RowResult {
 
 	res := RowResult{Line: row.line, Status: "error", Fields: map[string]string{}}
@@ -183,10 +183,10 @@ func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, categoryID, actorID 
 
 	entity, err := look.resolveHolder(row.byKey[ColHolder])
 	if err != nil {
-		res.Fields[ColHolder] = err.Error()
+		res.Fields[ColHolder] = i18n.Text(err, lang)
 	} else {
 		if entity.Type != model.EntityLocation {
-			res.Fields[ColHolder] = fmt.Sprintf("「%s」不是位置，在库资产的持有方必须是位置", entity.Name)
+			res.Fields[ColHolder] = i18n.M(i18n.KeyImportNotLocation, entity.Name).In(lang)
 		}
 		in.Holder = model.Holder{Type: model.HolderTypeEntity, ID: entity.ID}
 	}
@@ -219,12 +219,12 @@ func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, categoryID, actorID 
 
 	prep, err := s.assets.Prepare(ctx, in)
 	if err != nil {
-		collect(&res, err)
+		collect(&res, err, lang)
 		return res
 	}
 	created, err := s.assets.Persist(ctx, tx, prep)
 	if err != nil {
-		collect(&res, err)
+		collect(&res, err, lang)
 		return res
 	}
 
@@ -236,13 +236,17 @@ func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, categoryID, actorID 
 
 // collect turns a pipeline error into per-field messages, keeping the row's
 // verdict actionable rather than a bare failure.
-func collect(res *RowResult, err error) {
+//
+// Rendered here rather than at the edge: a preview report is built for one
+// request and shown to one reader, so the language is known and the result is
+// a plain string the table can print.
+func collect(res *RowResult, err error, lang i18n.Lang) {
 	var fe asset.FieldErrors
 	if errors.As(err, &fe) {
-		for k, v := range fe {
+		for k, v := range fe.In(lang) {
 			res.Fields[k] = v
 		}
 		return
 	}
-	res.Fields["_row"] = err.Error()
+	res.Fields["_row"] = i18n.Text(err, lang)
 }

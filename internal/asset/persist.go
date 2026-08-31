@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
@@ -104,7 +105,7 @@ func probeUnique(ctx context.Context, tx *sql.Tx, fields []model.BoundField,
 			 WHERE field_key = ? AND value = ? AND archived_at IS NULL AND asset_id != ? LIMIT 1`,
 			k, want[k], selfID).Scan(&otherID)
 		if err == nil {
-			return FieldErrors{k: fmt.Sprintf("该值已被资产 %s 占用", describeAsset(ctx, tx, otherID))}
+			return FieldErrors{k: i18n.M(i18n.KeyFieldValueTaken, describeAsset(ctx, tx, otherID))}
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
 			return err
@@ -168,7 +169,7 @@ func syncUniqueValues(ctx context.Context, tx *sql.Tx, assetID string,
 			assetID, k, want[k], store.FormatTime(now)); err != nil {
 			// The probe should have caught this; reaching here means a
 			// collision the probe could not see, so report it as one.
-			return FieldErrors{k: fmt.Sprintf("该值已被占用：%v", err)}
+			return FieldErrors{k: i18n.M(i18n.KeyFieldValuesTaken, err)}
 		}
 	}
 	return nil

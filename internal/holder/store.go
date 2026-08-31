@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
@@ -32,23 +33,20 @@ type Store struct{ db *store.Store }
 // New builds a holder store.
 func New(db *store.Store) *Store { return &Store{db: db} }
 
-const cols = `id, type, name, parent_id, note, is_default_stock, attrs, archived_at, created_at, updated_at`
+const cols = `id, type, name, parent_id, note, is_default_stock, attrs, created_at, updated_at`
 
 func scan(row interface{ Scan(...any) error }) (model.HolderEntity, error) {
 	var h model.HolderEntity
-	var parent, archived sql.NullString
+	var parent sql.NullString
 	var attrs, created, updated string
 	var isDefault int
-	if err := row.Scan(&h.ID, &h.Type, &h.Name, &parent, &h.Note, &isDefault, &attrs, &archived, &created, &updated); err != nil {
+	if err := row.Scan(&h.ID, &h.Type, &h.Name, &parent, &h.Note, &isDefault, &attrs, &created, &updated); err != nil {
 		return h, err
 	}
 	h.ParentID = store.StrPtr(parent)
 	h.IsDefaultStock = isDefault == 1
 	var err error
 	if h.Attrs, err = store.UnmarshalJSONMap(attrs); err != nil {
-		return h, err
-	}
-	if h.ArchivedAt, err = store.ScanTime(archived); err != nil {
 		return h, err
 	}
 	if h.CreatedAt, err = store.ParseTime(created); err != nil {
@@ -185,40 +183,89 @@ func (s *Store) SetDefaultStock(ctx context.Context, id string) error {
 	})
 }
 
-// Archive disables an entity.
+// ErrHasChildren blocks removing an entity something hangs from.
+var ErrHasChildren = errors.New("holder entity still has children")
+
+// Usage is what deleting an entity would cost.
+type Usage struct {
+	// Assets currently hold it, or name it in a reference field. Refuses.
+	Assets int `json:"assets"`
+	// Children hang from it. Refuses -- reparenting them silently would move
+	// somebody's org chart without asking.
+	Children int `json:"children"`
+	// History mentions it in a transfer event. Warns only: the timeline
+	// degrades to showing an id, and no record is lost.
+	History int `json:"history"`
+}
+
+// Usage counts everything standing in the way of deleting one entity.
+func (s *Store) Usage(ctx context.Context, id string) (Usage, error) {
+	var u Usage
+	db := s.db.ReadDB()
+	if err := db.QueryRowContext(ctx, countBlockersSQL, id, id).Scan(&u.Assets); err != nil {
+		return u, fmt.Errorf("count blocking assets: %w", err)
+	}
+	if err := db.QueryRowContext(ctx,
+		`SELECT count(*) FROM holder_entities WHERE parent_id = ?`, id).Scan(&u.Children); err != nil {
+		return u, fmt.Errorf("count children: %w", err)
+	}
+	// An event names two holders; a move within one would otherwise count
+	// twice, so the two columns are unioned rather than added.
+	if err := db.QueryRowContext(ctx,
+		`SELECT count(*) FROM (
+		   SELECT id FROM asset_transfers WHERE from_holder_type = 'entity' AND from_holder_id = ?
+		   UNION
+		   SELECT id FROM asset_transfers WHERE to_holder_type = 'entity' AND to_holder_id = ?
+		 )`, id, id).Scan(&u.History); err != nil {
+		return u, fmt.Errorf("count transfers mentioning the entity: %w", err)
+	}
+	return u, nil
+}
+
+// Delete removes a holder entity.
 //
-// Refused while anything still points at it: an asset that holds it, or a
-// reference field whose stored value names it. The same "referenced means
-// refused" rule covers fields and accounts, so there is one behaviour to
-// remember rather than three.
-func (s *Store) Archive(ctx context.Context, id string) error {
+// Archiving used to sit here. It existed to protect history, and it did -- but
+// it protected a warehouse created by mistake exactly as firmly as one with a
+// decade of transfers behind it, and the system can tell those apart. Three
+// checks, and only the first two refuse:
+//
+//   - assets hold it or reference it: refused, and the blockers are named
+//   - children hang from it: refused, because reparenting an org chart without
+//     asking is not a side effect anyone wants
+//   - transfer events mention it: allowed. The timeline falls back to showing
+//     the raw id, which is a loss of readability rather than of data, and
+//     refusing would make a warehouse used once undeletable for good.
+//
+// The default stock marker is refused separately: it moves, it does not vanish.
+func (s *Store) Delete(ctx context.Context, id string) (Usage, error) {
 	e, err := s.Get(ctx, id)
 	if err != nil {
-		return err
+		return Usage{}, err
 	}
-	blockers, total, err := s.Blockers(ctx, id)
-	if err != nil {
-		return err
-	}
-	if total > 0 {
-		return fmt.Errorf("%w: %s", ErrReferenced, describeBlockers(e.Name, blockers, total))
-	}
-
-	// Archiving used to clear the marker on the way out, which was a back door
-	// around ErrDefaultStockRequired: disable the default location and the
-	// system quietly had no default at all.
 	if e.IsDefaultStock {
-		return fmt.Errorf("%w：「%s」是当前默认库存点，请先把默认库存点转移到其他位置再停用它",
-			ErrDefaultStockRequired, e.Name)
+		return Usage{}, i18n.Wrap(ErrDefaultStockRequired, i18n.KeyHolderDefaultStockDel, e.Name)
 	}
 
-	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		now := time.Now().UTC()
-		_, err = tx.ExecContext(ctx,
-			`UPDATE holder_entities SET archived_at = ?, updated_at = ? WHERE id = ?`,
-			store.FormatTime(now), store.FormatTime(now), id)
+	usage, err := s.Usage(ctx, id)
+	if err != nil {
+		return usage, err
+	}
+	if usage.Assets > 0 {
+		blockers, total, err := s.Blockers(ctx, id)
+		if err != nil {
+			return usage, err
+		}
+		return usage, describeBlockers(e.Name, blockers, total)
+	}
+	if usage.Children > 0 {
+		return usage, i18n.Wrap(ErrHasChildren, i18n.KeyHolderHasChildren, e.Name, usage.Children)
+	}
+
+	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `DELETE FROM holder_entities WHERE id = ?`, id)
 		return err
 	})
+	return usage, err
 }
 
 // UpdateInput carries the editable parts of a holder entity.
@@ -238,7 +285,7 @@ func (s *Store) Update(ctx context.Context, id string, in UpdateInput) (model.Ho
 	}
 	if in.Name != nil {
 		if strings.TrimSpace(*in.Name) == "" {
-			return cur, fmt.Errorf("%w：名称不能为空", ErrParentInvalid)
+			return cur, i18n.Wrap(ErrParentInvalid, i18n.KeyHolderNameEmpty)
 		}
 		cur.Name = *in.Name
 	}
@@ -257,7 +304,7 @@ func (s *Store) Update(ctx context.Context, id string, in UpdateInput) (model.Ho
 				return cur, err
 			}
 			if descends || **in.ParentID == id {
-				return cur, fmt.Errorf("%w：不能把「%s」挂到它自己或它的下级上", ErrParentInvalid, cur.Name)
+				return cur, i18n.Wrap(ErrParentInvalid, i18n.KeyHolderCycle, cur.Name)
 			}
 		}
 		cur.ParentID = *in.ParentID
@@ -280,22 +327,23 @@ func (s *Store) Update(ctx context.Context, id string, in UpdateInput) (model.Ho
 func (s *Store) checkParent(ctx context.Context, typ model.EntityType, parentID *string) error {
 	allowed, known := allowedParents[typ]
 	if !known {
-		return fmt.Errorf("%w：未知的持有方类型 %q", ErrParentInvalid, typ)
+		return i18n.Wrap(ErrParentInvalid, i18n.KeyHolderTypeUnknown, string(typ))
 	}
 	if parentID == nil || *parentID == "" {
 		if parentRequired[typ] {
-			return fmt.Errorf("%w：%s", ErrParentRequired, requiredParentMessage(typ, allowed))
+			return i18n.Wrap(ErrParentRequired, i18n.KeyHolderParentRequired,
+				typeLabel(typ), labelList(allowed), labelList(allowed))
 		}
 		return nil
 	}
 	if len(allowed) == 0 {
-		return fmt.Errorf("%w：%s不能属于其他持有方", ErrParentInvalid, typeLabel(typ))
+		return i18n.Wrap(ErrParentInvalid, i18n.KeyHolderNoParentAllowed, typeLabel(typ))
 	}
 
 	parent, err := s.Get(ctx, *parentID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			return fmt.Errorf("%w：上级不存在", ErrParentInvalid)
+			return i18n.Wrap(ErrParentInvalid, i18n.KeyHolderParentMissing)
 		}
 		return err
 	}
@@ -304,8 +352,8 @@ func (s *Store) checkParent(ctx context.Context, typ model.EntityType, parentID 
 			return nil
 		}
 	}
-	return fmt.Errorf("%w：%s只能属于%s，「%s」是%s",
-		ErrParentInvalid, typeLabel(typ), labelList(allowed), parent.Name, typeLabel(parent.Type))
+	return i18n.Wrap(ErrParentInvalid, i18n.KeyHolderParentKind,
+		typeLabel(typ), labelList(allowed), parent.Name, typeLabel(parent.Type))
 }
 
 // descendsFrom reports whether candidate sits somewhere under root.
@@ -338,31 +386,27 @@ func (s *Store) descendsFrom(ctx context.Context, candidate, root string) (bool,
 	return false, nil
 }
 
-// The labels below are the one place holder kinds are named in Chinese on the
-// server. They exist because these messages tell an operator what to fix, and
-// "department may only belong to company" helps nobody here.
-var typeLabels = map[model.EntityType]string{
-	model.EntityCompany:    "公司",
-	model.EntityDepartment: "部门",
-	model.EntityLocation:   "位置",
+// Holder kinds name themselves inside these messages, so they are lazily
+// rendered rather than resolved to one language at construction time: the
+// argument is a Message, and Sprintf calls String() on it in whatever language
+// the reader asked for.
+var typeKeys = map[model.EntityType]string{
+	model.EntityCompany:    i18n.KeyEntityCompany,
+	model.EntityDepartment: i18n.KeyEntityDepartment,
+	model.EntityLocation:   i18n.KeyEntityLocation,
 }
 
-func typeLabel(t model.EntityType) string {
-	if l, ok := typeLabels[t]; ok {
-		return l
+func typeLabel(t model.EntityType) any {
+	if k, ok := typeKeys[t]; ok {
+		return i18n.M(k)
 	}
 	return string(t)
 }
 
-func labelList(types []model.EntityType) string {
-	parts := make([]string, 0, len(types))
+func labelList(types []model.EntityType) any {
+	parts := make([]any, 0, len(types))
 	for _, t := range types {
 		parts = append(parts, typeLabel(t))
 	}
-	return strings.Join(parts, "或")
-}
-
-func requiredParentMessage(typ model.EntityType, allowed []model.EntityType) string {
-	return fmt.Sprintf("%s必须属于一个%s，请先建立%s",
-		typeLabel(typ), labelList(allowed), labelList(allowed))
+	return i18n.Join(i18n.KeyJoinOr, parts...)
 }

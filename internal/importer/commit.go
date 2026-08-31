@@ -2,9 +2,9 @@ package importer
 
 import (
 	"context"
-	"fmt"
 	"io"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
 
@@ -22,20 +22,19 @@ type CommitResult struct {
 // file then trips over the rows that did land. Every row also gets a create
 // event sharing one batch id, so "which devices came in with that file" stays
 // answerable afterwards.
-func (s *Service) Commit(ctx context.Context, categoryID, actorID string, file io.Reader) (CommitResult, error) {
+func (s *Service) Commit(ctx context.Context, lang i18n.Lang, categoryID, actorID string, file io.Reader) (CommitResult, error) {
 	rows, err := parse(file)
 	if err != nil {
 		return CommitResult{}, err
 	}
 
 	batchID := store.NewID()
-	report, err := s.check(ctx, categoryID, actorID, rows, &batchID)
+	report, err := s.check(ctx, lang, categoryID, actorID, rows, &batchID)
 	if err != nil {
 		return CommitResult{Report: report}, err
 	}
 	if report.Failed() {
-		return CommitResult{Report: report}, fmt.Errorf("有 %d 行未通过校验，本次导入未写入任何数据",
-			report.Total-report.OK)
+		return CommitResult{Report: report}, i18n.M(i18n.KeyImportRowsFailed, report.Total-report.OK)
 	}
 	return CommitResult{Created: report.OK, BatchID: batchID, Report: report}, nil
 }

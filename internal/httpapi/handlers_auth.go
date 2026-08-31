@@ -5,6 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
+
 	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/model"
 )
@@ -22,18 +24,18 @@ type loginResponse struct {
 func (s *Server) login(c *gin.Context) {
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	u, err := s.users.ByEmail(c.Request.Context(), req.Email)
 	if err != nil || u.AuthType != model.AuthLocal || !auth.CheckPassword(u.PasswordHash, req.Password) {
 		// One message for both causes so the endpoint cannot be used to probe
 		// which addresses exist.
-		Fail(c, http.StatusUnauthorized, CodeUnauthenticated, MsgLoginFailed, nil)
+		FailMsg(c, http.StatusUnauthorized, CodeUnauthenticated, i18n.KeyLoginFailed)
 		return
 	}
 	if u.Status != model.UserActive {
-		Fail(c, http.StatusForbidden, CodeUnauthenticated, MsgAccountDisabled, nil)
+		FailMsg(c, http.StatusForbidden, CodeUnauthenticated, i18n.KeyAccountDisabled)
 		return
 	}
 	tok, err := s.issuer.Issue(u.ID, u.Email, u.Name, u.TokenVersion)
@@ -47,7 +49,7 @@ func (s *Server) login(c *gin.Context) {
 func (s *Server) me(c *gin.Context) {
 	u, ok := auth.CurrentUser(c)
 	if !ok {
-		Fail(c, http.StatusUnauthorized, CodeUnauthenticated, MsgUnauthenticated, nil)
+		FailMsg(c, http.StatusUnauthorized, CodeUnauthenticated, i18n.KeyUnauthenticated)
 		return
 	}
 	c.JSON(http.StatusOK, u)

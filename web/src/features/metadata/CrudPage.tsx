@@ -3,7 +3,7 @@ import { useState, type ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { ApiError } from "@/lib/api"
-import { zh } from "@/i18n/zh"
+import { t } from "@/i18n"
 import { StateBoundary } from "@/components/StateBoundary"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -125,7 +125,7 @@ export function CrudPage<T extends { id: string }>({
                 <Alert variant="destructive">
                   <AlertCircleIcon />
                   <AlertDescription>
-                    {mutation.error instanceof ApiError ? mutation.error.message : zh.common.error}
+                    {mutation.error instanceof ApiError ? mutation.error.message : t.common.error}
                   </AlertDescription>
                 </Alert>
               )}
@@ -133,14 +133,14 @@ export function CrudPage<T extends { id: string }>({
 
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="ghost">{zh.common.cancel}</Button>
+                <Button variant="ghost">{t.common.cancel}</Button>
               </DialogClose>
               <Button
                 onClick={() => mutation.mutate()}
                 disabled={createDisabled || mutation.isPending}
               >
                 {mutation.isPending && <Spinner data-icon="inline-start" aria-hidden />}
-                {mutation.isPending ? zh.assets.saving : createLabel}
+                {mutation.isPending ? t.assets.saving : createLabel}
               </Button>
             </DialogFooter>
           </DialogContent>

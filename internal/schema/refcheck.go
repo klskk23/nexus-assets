@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/klskk23/nexus-assets/internal/compute"
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
@@ -28,13 +28,19 @@ type Referrer struct {
 	Label string `json:"label"`
 }
 
-// String renders a referrer for an error message.
-func (r Referrer) String() string {
+// Message renders a referrer as a translatable fragment.
+//
+// It is a Message rather than a string so it can be an argument of the refusal
+// that quotes it: the language is chosen once, at the edge, not here.
+func (r Referrer) Message() i18n.Message {
 	if r.Kind == "display_key" {
-		return fmt.Sprintf("类别「%s」的显示编号", r.Label)
+		return i18n.M(i18n.KeyRefDisplayKey, r.Label)
 	}
-	return fmt.Sprintf("表达式键「%s」", r.Label)
+	return i18n.M(i18n.KeyRefComputedKey, r.Label)
 }
+
+// String keeps Referrer printable in logs and tests.
+func (r Referrer) String() string { return r.Message().Error() }
 
 // ReferrersOf lists every expression key whose template reads the given field.
 //
@@ -158,12 +164,12 @@ func (s *Store) DeleteField(ctx context.Context, id string) ([]Referrer, []Block
 	}
 	referrers = append(referrers, users...)
 	if len(referrers) > 0 {
-		names := make([]string, 0, len(referrers))
+		names := make([]any, 0, len(referrers))
 		for _, r := range referrers {
-			names = append(names, r.String())
+			names = append(names, r.Message())
 		}
-		return referrers, nil, 0, fmt.Errorf("%w：%s正在引用「%s」，请先修改它们",
-			ErrFieldReferenced, strings.Join(names, "、"), f.Label)
+		return referrers, nil, 0, i18n.Wrap(ErrFieldReferenced, i18n.KeyFieldReferenced,
+			i18n.Join(i18n.KeyListSeparator, names...), f.Label)
 	}
 
 	blockers, total, err := s.AssetsUsing(ctx, f.Key)
@@ -171,13 +177,12 @@ func (s *Store) DeleteField(ctx context.Context, id string) ([]Referrer, []Block
 		return nil, nil, 0, err
 	}
 	if total > 0 {
-		partial := ""
+		var partial any = ""
 		if len(blockers) < total {
-			partial = fmt.Sprintf("，此处仅列出前 %d 台", len(blockers))
+			partial = i18n.M(i18n.KeyListTruncated, len(blockers))
 		}
-		return nil, blockers, total, fmt.Errorf(
-			"%w：仍有 %d 台设备填写了「%s」%s。要下线它，请改为从类别上解绑",
-			ErrFieldInUse, total, f.Label, partial)
+		return nil, blockers, total, i18n.Wrap(ErrFieldInUse,
+			i18n.KeyFieldInUseByAssets, total, f.Label, partial)
 	}
 
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {

@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, ApiError } from "@/lib/api"
 import type { AssetStatus, HolderEntity, User } from "@/lib/types"
 import type { TransferResult } from "@/lib/transferTypes"
-import { zh, zhTransfer } from "@/i18n/zh"
+import { t, tTransfer } from "@/i18n"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { useAuth } from "@/features/auth/useAuth"
 import { FieldDescription } from "@/components/ui/field"
@@ -37,13 +37,22 @@ export type TransferAction = "checkout" | "checkin" | "transfer" | "reassign" | 
 /** "leave the owner alone". Radix reserves the empty string. */
 const KEEP = "__keep"
 
-export const transferActions: [TransferAction, string][] = [
-  ["checkout", zhTransfer.actions.checkout],
-  ["checkin", zhTransfer.actions.checkin],
-  ["transfer", zhTransfer.actions.transfer],
-  ["reassign", zhTransfer.actions.reassign],
-  ["status", zhTransfer.actions.changeStatus],
-]
+/**
+ * The actions, in the order they are offered.
+ *
+ * A function rather than a constant: a module-level array is evaluated once at
+ * import time, and would still be holding the labels of whatever language the
+ * page was first loaded in.
+ */
+export function transferActions(): [TransferAction, string][] {
+  return [
+    ["checkout", tTransfer.actions.checkout],
+    ["checkin", tTransfer.actions.checkin],
+    ["transfer", tTransfer.actions.transfer],
+    ["reassign", tTransfer.actions.reassign],
+    ["status", tTransfer.actions.changeStatus],
+  ]
+}
 
 interface Props {
   assetIDs: string[]
@@ -141,7 +150,7 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
       onDone(res.transfers.length)
       onOpenChange(false)
     },
-    onError: (err) => setBanner(err instanceof ApiError ? err.message : zh.common.error),
+    onError: (err) => setBanner(err instanceof ApiError ? err.message : t.common.error),
   })
 
   const needsHolder = action === "checkout" || action === "transfer"
@@ -158,13 +167,13 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{zhTransfer.actions.title}</DialogTitle>
-          <DialogDescription>{zhTransfer.actions.selected(assetIDs.length)}</DialogDescription>
+          <DialogTitle>{tTransfer.actions.title}</DialogTitle>
+          <DialogDescription>{tTransfer.actions.selected(assetIDs.length)}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
           <Field>
-            <FieldLabel htmlFor="td-action">{zhTransfer.actions.action}</FieldLabel>
+            <FieldLabel htmlFor="td-action">{tTransfer.actions.action}</FieldLabel>
             <ToggleGroup
               id="td-action"
               type="single"
@@ -173,7 +182,7 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
               value={action ?? ""}
               onValueChange={(v) => setAction((v || null) as TransferAction | null)}
             >
-              {transferActions.map(([a, label]) => (
+              {transferActions().map(([a, label]) => (
                 <ToggleGroupItem key={a} value={a} aria-label={label}>
                   {label}
                 </ToggleGroupItem>
@@ -184,7 +193,7 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
           {needsHolder && (
             <>
               <Field>
-                <FieldLabel htmlFor="td-holder-type">{zhTransfer.actions.target}</FieldLabel>
+                <FieldLabel htmlFor="td-holder-type">{tTransfer.actions.target}</FieldLabel>
                 <Select
                   value={holderType}
                   onValueChange={(v) => {
@@ -197,19 +206,19 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value="user">{zh.common.user}</SelectItem>
-                      <SelectItem value="entity">{zh.common.entityGroup}</SelectItem>
+                      <SelectItem value="user">{t.common.user}</SelectItem>
+                      <SelectItem value="entity">{t.common.entityGroup}</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
               </Field>
               <Field>
                 <FieldLabel htmlFor="td-holder">
-                  {holderType === "user" ? zh.common.user : zh.common.holder}
+                  {holderType === "user" ? t.common.user : t.common.holder}
                 </FieldLabel>
                 <Select value={holderID} onValueChange={setHolderID}>
                   <SelectTrigger id="td-holder">
-                    <SelectValue placeholder={zh.common.select} />
+                    <SelectValue placeholder={t.common.select} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
@@ -227,7 +236,7 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
 
           {needsResponsible && (
             <Field>
-              <FieldLabel htmlFor="td-responsible">{zhTransfer.actions.owner}</FieldLabel>
+              <FieldLabel htmlFor="td-responsible">{tTransfer.actions.owner}</FieldLabel>
               <Select value={responsibleID} onValueChange={setResponsibleID}>
                 <SelectTrigger id="td-responsible">
                   <SelectValue />
@@ -236,7 +245,7 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
                   <SelectGroup>
                     {/* Leaving it alone has to be sayable: a warehouse-to-
                         warehouse move need not change who is answerable. */}
-                    <SelectItem value={KEEP}>{zhTransfer.actions.keepOwner}</SelectItem>
+                    <SelectItem value={KEEP}>{tTransfer.actions.keepOwner}</SelectItem>
                     {(users.data ?? [])
                       .filter((u) => u.status === "active")
                       .map((u) => (
@@ -247,16 +256,16 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
                   </SelectGroup>
                 </SelectContent>
               </Select>
-              <FieldDescription>{zhTransfer.actions.ownerHint}</FieldDescription>
+              <FieldDescription>{tTransfer.actions.ownerHint}</FieldDescription>
             </Field>
           )}
 
           {action === "reassign" && (
             <Field>
-              <FieldLabel htmlFor="td-owner">{zhTransfer.actions.owner}</FieldLabel>
+              <FieldLabel htmlFor="td-owner">{tTransfer.actions.owner}</FieldLabel>
               <Select value={ownerID} onValueChange={setOwnerID}>
                 <SelectTrigger id="td-owner">
-                  <SelectValue placeholder={zh.common.select} />
+                  <SelectValue placeholder={t.common.select} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -273,7 +282,7 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
 
           {action === "status" && (
             <Field>
-              <FieldLabel htmlFor="td-status">{zhTransfer.actions.status}</FieldLabel>
+              <FieldLabel htmlFor="td-status">{tTransfer.actions.status}</FieldLabel>
               <Select value={status} onValueChange={(v) => setStatus(v as AssetStatus)}>
                 <SelectTrigger id="td-status">
                   <SelectValue />
@@ -292,11 +301,11 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
           )}
 
           {action === "checkin" && (
-            <p className="text-sm text-muted-foreground">{zhTransfer.actions.checkinHint}</p>
+            <p className="text-sm text-muted-foreground">{tTransfer.actions.checkinHint}</p>
           )}
 
           <Field>
-            <FieldLabel htmlFor="td-note">{zhTransfer.actions.note}</FieldLabel>
+            <FieldLabel htmlFor="td-note">{tTransfer.actions.note}</FieldLabel>
             <Input id="td-note" value={note} onChange={(e) => setNote(e.target.value)} />
           </Field>
 
@@ -310,11 +319,11 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            {zh.common.cancel}
+            {t.common.cancel}
           </Button>
           <Button disabled={!canSubmit || submit.isPending} onClick={() => submit.mutate()}>
             {submit.isPending && <Spinner data-icon="inline-start" aria-hidden />}
-              {submit.isPending ? zhTransfer.actions.submitting : zhTransfer.actions.submit}
+              {submit.isPending ? tTransfer.actions.submitting : tTransfer.actions.submit}
           </Button>
         </DialogFooter>
       </DialogContent>

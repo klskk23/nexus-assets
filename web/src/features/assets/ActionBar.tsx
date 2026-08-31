@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Trash2Icon } from "lucide-react"
 
 import { api, ApiError } from "@/lib/api"
-import { zh, zhTransfer } from "@/i18n/zh"
+import { t, tTransfer } from "@/i18n"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import {
   TransferDialog,
@@ -43,10 +43,10 @@ export function ActionBar({ selected, onClear, onDone }: Props) {
       }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["assets"] })
-      onDone(zh.assets.deletedCount(res.deleted))
+      onDone(t.assets.deletedCount(res.deleted))
       onClear()
     },
-    onError: (e) => onDone(e instanceof ApiError ? e.message : zh.common.error),
+    onError: (e) => onDone(e instanceof ApiError ? e.message : t.common.error),
   })
 
   if (selected.length === 0) return null
@@ -54,10 +54,10 @@ export function ActionBar({ selected, onClear, onDone }: Props) {
   return (
     <Card className="sticky bottom-4 shadow-lg">
       <CardContent className="flex flex-wrap items-center gap-3 p-3">
-        <span className="text-sm font-medium">{zhTransfer.actions.selected(selected.length)}</span>
+        <span className="text-sm font-medium">{tTransfer.actions.selected(selected.length)}</span>
 
         <ButtonGroup>
-          {transferActions.map(([a, label]) => (
+          {transferActions().map(([a, label]) => (
             <Button
               key={a}
               size="sm"
@@ -77,12 +77,12 @@ export function ActionBar({ selected, onClear, onDone }: Props) {
             trigger={
               <Button size="sm" variant="outline" className="text-destructive">
                 <Trash2Icon data-icon="inline-start" />
-                {zh.assets.delete}
+                {t.assets.delete}
               </Button>
             }
-            title={zh.assets.deleteTitle}
-            description={zh.assets.deleteManyHint(selected.length)}
-            confirmLabel={zh.assets.delete}
+            title={t.assets.deleteTitle}
+            description={t.assets.deleteManyHint(selected.length)}
+            confirmLabel={t.assets.delete}
             // A batch cannot ask for every number to be typed out, so it asks
             // for its size: you cannot confirm without having looked at it.
             requirePhrase={String(selected.length)}
@@ -91,7 +91,7 @@ export function ActionBar({ selected, onClear, onDone }: Props) {
         </ButtonGroup>
 
         <Button size="sm" variant="ghost" className="ml-auto" onClick={onClear}>
-          {zhTransfer.actions.clear}
+          {tTransfer.actions.clear}
         </Button>
       </CardContent>
 
@@ -101,7 +101,7 @@ export function ActionBar({ selected, onClear, onDone }: Props) {
         onOpenChange={setOpen}
         initialAction={action}
         onDone={(n) => {
-          onDone(zhTransfer.actions.done(n))
+          onDone(tTransfer.actions.done(n))
           onClear()
         }}
       />

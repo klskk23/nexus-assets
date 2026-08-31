@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
@@ -71,14 +72,14 @@ type CreateStatusInput struct {
 func (s *Store) CreateStatus(ctx context.Context, in CreateStatusInput) (model.Status, error) {
 	key := strings.TrimSpace(in.Key)
 	if !statusKeyPattern.MatchString(key) {
-		return model.Status{}, fmt.Errorf("%w：状态键名只能是小写字母、数字与下划线，且以字母开头", ErrStatusInvalid)
+		return model.Status{}, i18n.Wrap(ErrStatusInvalid, i18n.KeyStatusKeyShape)
 	}
 	if strings.TrimSpace(in.Label) == "" {
-		return model.Status{}, fmt.Errorf("%w：状态需要一个显示名", ErrStatusInvalid)
+		return model.Status{}, i18n.Wrap(ErrStatusInvalid, i18n.KeyStatusNeedsLabel)
 	}
 	color := in.Color
 	if !validColor(color) {
-		return model.Status{}, fmt.Errorf("%w：%q 不在色板里", ErrStatusInvalid, color)
+		return model.Status{}, i18n.Wrap(ErrStatusInvalid, i18n.KeyStatusBadColor, color)
 	}
 
 	now := time.Now().UTC()
@@ -102,7 +103,7 @@ func (s *Store) CreateStatus(ctx context.Context, in CreateStatusInput) (model.S
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			return st, fmt.Errorf("%w：状态键名 %q 已存在", ErrKeyConflict, key)
+			return st, i18n.Wrap(ErrKeyConflict, i18n.KeyStatusKeyTaken, key)
 		}
 		return st, fmt.Errorf("create status: %w", err)
 	}
@@ -135,13 +136,13 @@ func (s *Store) UpdateStatus(ctx context.Context, key string, in UpdateStatusInp
 	}
 	if in.Label != nil {
 		if strings.TrimSpace(*in.Label) == "" {
-			return cur, fmt.Errorf("%w：状态需要一个显示名", ErrStatusInvalid)
+			return cur, i18n.Wrap(ErrStatusInvalid, i18n.KeyStatusNeedsLabel)
 		}
 		cur.Label = *in.Label
 	}
 	if in.Color != nil {
 		if !validColor(*in.Color) {
-			return cur, fmt.Errorf("%w：%q 不在色板里", ErrStatusInvalid, *in.Color)
+			return cur, i18n.Wrap(ErrStatusInvalid, i18n.KeyStatusBadColor, *in.Color)
 		}
 		cur.Color = *in.Color
 	}
@@ -266,7 +267,7 @@ func (s *Store) DeleteStatus(ctx context.Context, key string) (int, error) {
 		return 0, err
 	}
 	if cur.Builtin {
-		return 0, fmt.Errorf("%w：「%s」是内置状态，它承载着系统写死的行为，不能删除", ErrStatusBuiltin, cur.Label)
+		return 0, i18n.Wrap(ErrStatusBuiltin, i18n.KeyStatusBuiltin, cur.Label)
 	}
 
 	assets, _, err := s.StatusUsage(ctx, key)
@@ -274,8 +275,7 @@ func (s *Store) DeleteStatus(ctx context.Context, key string) (int, error) {
 		return 0, err
 	}
 	if assets > 0 {
-		return assets, fmt.Errorf("%w：还有 %d 台设备处于「%s」，请先把它们改到别的状态",
-			ErrStatusInUse, assets, cur.Label)
+		return assets, i18n.Wrap(ErrStatusInUse, i18n.KeyStatusInUse, assets, cur.Label)
 	}
 
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {

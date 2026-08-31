@@ -17,6 +17,7 @@ import (
 	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/config"
 	"github.com/klskk23/nexus-assets/internal/holder"
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/importer"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
@@ -126,7 +127,7 @@ func (h *harness) seed(t *testing.T, from, n int) {
 		})
 		if err != nil {
 			if fe, ok := err.(asset.FieldErrors); ok {
-				t.Fatalf("seed %d: %v", i, map[string]string(fe))
+				t.Fatalf("seed %d: %v", i, fe.In(i18n.ZH))
 			}
 			t.Fatalf("seed %d: %v", i, err)
 		}
@@ -134,6 +135,13 @@ func (h *harness) seed(t *testing.T, from, n int) {
 }
 
 func (h *harness) do(t *testing.T, method, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	return h.doLang(t, "", method, path, body)
+}
+
+// doLang sends the request with an Accept-Language header, which is how the
+// server decides what language to answer in.
+func (h *harness) doLang(t *testing.T, lang, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	var req *http.Request
 	if body == "" {
@@ -143,6 +151,9 @@ func (h *harness) do(t *testing.T, method, path, body string) *httptest.Response
 		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("Authorization", "Bearer "+h.token)
+	if lang != "" {
+		req.Header.Set("Accept-Language", lang)
+	}
 	rec := httptest.NewRecorder()
 	h.router.ServeHTTP(rec, req)
 	return rec

@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
 import type { User } from "@/lib/types"
-import { zh, zhMeta } from "@/i18n/zh"
+import { t, tMeta } from "@/i18n"
 import { CrudPage } from "@/features/metadata/CrudPage"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -27,15 +27,15 @@ export function Users() {
     },
     // Refusing to disable someone who still owns devices is the point, so the
     // reason has to reach the screen rather than vanish.
-    onError: (err) => setBanner(err instanceof ApiError ? err.message : zh.common.error),
+    onError: (err) => setBanner(err instanceof ApiError ? err.message : t.common.error),
   })
 
   return (
     <CrudPage<User>
-      title={zhMeta.users.title}
+      title={tMeta.users.title}
       queryKey="users"
       list={() => api.get<User[]>("/users")}
-      createLabel={zhMeta.users.create}
+      createLabel={tMeta.users.create}
       // Disabling an account is a row action; its refusal has to appear next
       // to the rows rather than inside the create dialog.
       notice={
@@ -53,18 +53,18 @@ export function Users() {
         setPassword("")
       }}
       create={() => api.post("/users", { email, name, password })}
-      emptyTitle={zhMeta.users.empty}
-      emptyHint={zhMeta.users.emptyHint}
+      emptyTitle={tMeta.users.empty}
+      emptyHint={tMeta.users.emptyHint}
       columns={[
-        { header: zhMeta.users.email, cell: (u) => u.email },
-        { header: zhMeta.users.name, cell: (u) => u.name },
+        { header: tMeta.users.email, cell: (u) => u.email },
+        { header: tMeta.users.name, cell: (u) => u.name },
         {
-          header: zhMeta.users.status,
+          header: tMeta.users.status,
           cell: (u) =>
             u.status === "active" ? (
-              <Badge variant="secondary">{zhMeta.users.active}</Badge>
+              <Badge variant="secondary">{tMeta.users.active}</Badge>
             ) : (
-              <Badge variant="outline">{zhMeta.users.disabled}</Badge>
+              <Badge variant="outline">{tMeta.users.disabled}</Badge>
             ),
         },
         {
@@ -72,7 +72,7 @@ export function Users() {
           cell: (u) =>
             u.status === "active" ? (
               <Button variant="ghost" size="sm" onClick={() => disable.mutate(u.id)}>
-                {zhMeta.users.disable}
+                {tMeta.users.disable}
               </Button>
             ) : null,
         },
@@ -81,15 +81,15 @@ export function Users() {
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="u-email">{zhMeta.users.email}</Label>
+              <Label htmlFor="u-email">{tMeta.users.email}</Label>
               <Input id="u-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="u-name">{zhMeta.users.name}</Label>
+              <Label htmlFor="u-name">{tMeta.users.name}</Label>
               <Input id="u-name" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="u-password">{zhMeta.users.password}</Label>
+              <Label htmlFor="u-password">{tMeta.users.password}</Label>
               <Input
                 id="u-password"
                 type="password"

@@ -278,7 +278,6 @@ type HolderEntity struct {
 	Note           string         `json:"note"`
 	IsDefaultStock bool           `json:"is_default_stock"`
 	Attrs          map[string]any `json:"attrs"`
-	ArchivedAt     *time.Time     `json:"archived_at,omitempty"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
 }

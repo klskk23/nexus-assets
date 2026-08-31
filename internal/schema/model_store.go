@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
@@ -253,11 +254,11 @@ func (s *Store) CreateModel(ctx context.Context, in CreateModelInput) (model.Pro
 		// The unique index is the guarantee; this turns its violation into
 		// something the person filling in the form can act on.
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			who := m.Vendor
-			if who == "" {
-				who = "（未填厂商）"
+			var who any = m.Vendor
+			if m.Vendor == "" {
+				who = i18n.M(i18n.KeyModelNoVendor)
 			}
-			return m, fmt.Errorf("%w：%s 已经有一款叫「%s」的产品", ErrModelDuplicate, who, m.Name)
+			return m, i18n.Wrap(ErrModelDuplicate, i18n.KeyModelDuplicate, who, m.Name)
 		}
 		return m, fmt.Errorf("create model: %w", err)
 	}

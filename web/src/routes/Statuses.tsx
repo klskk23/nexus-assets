@@ -4,7 +4,7 @@ import { AlertCircleIcon, Trash2Icon } from "lucide-react"
 
 import { api, ApiError } from "@/lib/api"
 import type { Status, StatusUsage } from "@/lib/types"
-import { zh, zhStatuses } from "@/i18n/zh"
+import { t, tStatuses } from "@/i18n"
 import { CrudPage } from "@/features/metadata/CrudPage"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { STATUSES_KEY, statusesQuery, useStatuses } from "@/features/statuses/useStatuses"
@@ -74,7 +74,7 @@ export function Statuses() {
     mutationFn: (v: { key: string; color: string }) =>
       api.patch(`/statuses/${v.key}`, { color: v.color }),
     onSuccess: invalidate,
-    onError: (e) => setNotice(e instanceof ApiError ? e.message : zh.common.error),
+    onError: (e) => setNotice(e instanceof ApiError ? e.message : t.common.error),
   })
 
   // The location constraint is the one switch a built-in will accept, because
@@ -85,7 +85,7 @@ export function Statuses() {
     mutationFn: (v: { key: string; on: boolean }) =>
       api.patch(`/statuses/${v.key}`, { requires_location: v.on }),
     onSuccess: invalidate,
-    onError: (e) => setNotice(e instanceof ApiError ? e.message : zh.common.error),
+    onError: (e) => setNotice(e instanceof ApiError ? e.message : t.common.error),
   })
 
   const remove = useMutation({
@@ -94,17 +94,17 @@ export function Statuses() {
       setNotice(null)
       invalidate()
     },
-    onError: (e) => setNotice(e instanceof ApiError ? e.message : zh.common.error),
+    onError: (e) => setNotice(e instanceof ApiError ? e.message : t.common.error),
   })
 
   return (
     <CrudPage<StatusRow>
-      title={zhStatuses.title}
+      title={tStatuses.title}
       queryKey={STATUSES_KEY}
       // The same query useStatuses runs, mapped for the table: one cache
       // entry, so recolouring a row refreshes every badge in the app.
       list={async () => (await statusesQuery().queryFn()).map((s) => ({ ...s, id: s.key }))}
-      createLabel={zhStatuses.create}
+      createLabel={tStatuses.create}
       createDisabled={key === "" || label === ""}
       onCreated={() => {
         setKey("")
@@ -124,13 +124,13 @@ export function Statuses() {
           terminal,
         })
       }
-      emptyTitle={zhStatuses.empty}
-      emptyHint={zhStatuses.emptyHint}
+      emptyTitle={tStatuses.empty}
+      emptyHint={tStatuses.emptyHint}
       notice={
         <>
           {/* Said once above the table rather than repeated on five rows: the
               built-ins have no delete button, and this is the answer to why. */}
-          <p className="text-muted-foreground text-sm">{zhStatuses.builtinLocked}</p>
+          <p className="text-muted-foreground text-sm">{tStatuses.builtinLocked}</p>
           {notice && (
             <Alert variant="destructive">
               <AlertCircleIcon />
@@ -141,28 +141,28 @@ export function Statuses() {
       }
       columns={[
         {
-          header: zhStatuses.label,
+          header: tStatuses.label,
           cell: (s) => (
             <Badge variant="outline" className={cn("status-chip", `status-${s.color}`)}>
               {s.label}
             </Badge>
           ),
         },
-        { header: zhStatuses.key, cell: (s) => <span className="font-mono text-xs">{s.key}</span> },
+        { header: tStatuses.key, cell: (s) => <span className="font-mono text-xs">{s.key}</span> },
         {
-          header: zhStatuses.color,
+          header: tStatuses.color,
           // Recolouring is the one edit people come here to make, so it is a
           // control in the row rather than a trip through an edit dialog.
           cell: (s) => (
             <Select value={s.color} onValueChange={(c) => recolor.mutate({ key: s.key, color: c })}>
-              <SelectTrigger size="sm" aria-label={`${s.label} ${zhStatuses.color}`}>
+              <SelectTrigger size="sm" aria-label={`${s.label} ${tStatuses.color}`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
                   {colors.map((c) => (
                     <SelectItem key={c} value={c}>
-                      {zhStatuses.colors[c] ?? c}
+                      {tStatuses.colors[c] ?? c}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -171,11 +171,11 @@ export function Statuses() {
           ),
         },
         {
-          header: zhStatuses.kind,
-          cell: (s) => (s.builtin ? zhStatuses.builtin : zhStatuses.custom),
+          header: tStatuses.kind,
+          cell: (s) => (s.builtin ? tStatuses.builtin : tStatuses.custom),
         },
         {
-          header: zhStatuses.requiresLocation,
+          header: tStatuses.requiresLocation,
           cell: (s) => (
             <Field orientation="horizontal" className="w-auto">
               <Checkbox
@@ -185,19 +185,19 @@ export function Statuses() {
                 onCheckedChange={(v) => setLocationRule.mutate({ key: s.key, on: v === true })}
               />
               <FieldLabel htmlFor={`loc-${s.key}`} className="sr-only">
-                {`${s.label} ${zhStatuses.requiresLocation}`}
+                {`${s.label} ${tStatuses.requiresLocation}`}
               </FieldLabel>
             </Field>
           ),
         },
         {
-          header: zhStatuses.behaviour,
+          header: tStatuses.behaviour,
           cell: (s) => {
             // The other two are fixed on the built-ins, so they are shown, not
             // offered.
             const on = [
-              s.terminal && zhStatuses.terminal,
-              !s.counts_as_available && zhStatuses.notCounted,
+              s.terminal && tStatuses.terminal,
+              !s.counts_as_available && tStatuses.notCounted,
             ].filter(Boolean) as string[]
             if (on.length === 0) return <span className="text-muted-foreground">—</span>
             return (
@@ -212,19 +212,19 @@ export function Statuses() {
           },
         },
         {
-          header: zhStatuses.usage,
+          header: tStatuses.usage,
           cell: (s) => {
             const u = usage[s.key] ?? { assets: 0, history: 0 }
             return (
               <span className="text-muted-foreground text-sm">
-                {u.assets > 0 ? zhStatuses.inUse(u.assets) : zhStatuses.unused}
-                {u.history > 0 ? `・${zhStatuses.inHistory(u.history)}` : ""}
+                {u.assets > 0 ? tStatuses.inUse(u.assets) : tStatuses.unused}
+                {u.history > 0 ? `・${tStatuses.inHistory(u.history)}` : ""}
               </span>
             )
           },
         },
         {
-          header: zh.common.actions,
+          header: t.common.actions,
           cell: (s) => {
             // A built-in has no delete control at all: offering one that always
             // refuses would be a worse explanation than its absence.
@@ -235,19 +235,19 @@ export function Statuses() {
                 trigger={
                   <Button size="sm" variant="ghost" className="text-destructive">
                     <Trash2Icon data-icon="inline-start" />
-                    {zhStatuses.delete}
+                    {tStatuses.delete}
                   </Button>
                 }
-                title={zhStatuses.deleteTitle}
+                title={tStatuses.deleteTitle}
                 // History only degrades the timeline, so it is stated rather
                 // than used to refuse -- otherwise a status used once could
                 // never be removed.
                 description={
                   u.history > 0
-                    ? zhStatuses.deleteHistoryHint(s.label, u.history)
-                    : zhStatuses.deleteHint(s.label)
+                    ? tStatuses.deleteHistoryHint(s.label, u.history)
+                    : tStatuses.deleteHint(s.label)
                 }
-                confirmLabel={zhStatuses.delete}
+                confirmLabel={tStatuses.delete}
                 requirePhrase={s.key}
                 onConfirm={() => remove.mutate(s.key)}
               />
@@ -258,21 +258,21 @@ export function Statuses() {
       form={
         <div className="grid gap-4 sm:grid-cols-3">
           <Field>
-            <FieldLabel htmlFor="st-key">{zhStatuses.key}</FieldLabel>
+            <FieldLabel htmlFor="st-key">{tStatuses.key}</FieldLabel>
             <Input
               id="st-key"
               className="font-mono"
               value={key}
               onChange={(e) => setKey(e.target.value)}
             />
-            <FieldDescription>{zhStatuses.keyHint}</FieldDescription>
+            <FieldDescription>{tStatuses.keyHint}</FieldDescription>
           </Field>
           <Field>
-            <FieldLabel htmlFor="st-label">{zhStatuses.label}</FieldLabel>
+            <FieldLabel htmlFor="st-label">{tStatuses.label}</FieldLabel>
             <Input id="st-label" value={label} onChange={(e) => setLabel(e.target.value)} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="st-color">{zhStatuses.color}</FieldLabel>
+            <FieldLabel htmlFor="st-color">{tStatuses.color}</FieldLabel>
             <Select value={color} onValueChange={setColor}>
               <SelectTrigger id="st-color">
                 <SelectValue />
@@ -281,7 +281,7 @@ export function Statuses() {
                 <SelectGroup>
                   {colors.map((c) => (
                     <SelectItem key={c} value={c}>
-                      {zhStatuses.colors[c] ?? c}
+                      {tStatuses.colors[c] ?? c}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -289,13 +289,13 @@ export function Statuses() {
             </Select>
             <FieldDescription>
               <Badge variant="outline" className={cn("status-chip", `status-${color}`)}>
-                {label || zhStatuses.label}
+                {label || tStatuses.label}
               </Badge>
             </FieldDescription>
           </Field>
 
           <FieldSet className="sm:col-span-3">
-            <FieldLegend variant="label">{zhStatuses.behaviour}</FieldLegend>
+            <FieldLegend variant="label">{tStatuses.behaviour}</FieldLegend>
             <FieldGroup className="gap-3">
               <Field orientation="horizontal">
                 <Checkbox
@@ -303,27 +303,27 @@ export function Statuses() {
                   checked={requiresLocation}
                   onCheckedChange={(v) => setRequiresLocation(v === true)}
                 />
-                <FieldLabel htmlFor="st-loc">{zhStatuses.requiresLocation}</FieldLabel>
+                <FieldLabel htmlFor="st-loc">{tStatuses.requiresLocation}</FieldLabel>
               </Field>
-              <FieldDescription>{zhStatuses.requiresLocationHint}</FieldDescription>
+              <FieldDescription>{tStatuses.requiresLocationHint}</FieldDescription>
               <Field orientation="horizontal">
                 <Checkbox
                   id="st-counts"
                   checked={countsAsAvailable}
                   onCheckedChange={(v) => setCountsAsAvailable(v === true)}
                 />
-                <FieldLabel htmlFor="st-counts">{zhStatuses.countsAsAvailable}</FieldLabel>
+                <FieldLabel htmlFor="st-counts">{tStatuses.countsAsAvailable}</FieldLabel>
               </Field>
-              <FieldDescription>{zhStatuses.countsAsAvailableHint}</FieldDescription>
+              <FieldDescription>{tStatuses.countsAsAvailableHint}</FieldDescription>
               <Field orientation="horizontal">
                 <Checkbox
                   id="st-terminal"
                   checked={terminal}
                   onCheckedChange={(v) => setTerminal(v === true)}
                 />
-                <FieldLabel htmlFor="st-terminal">{zhStatuses.terminal}</FieldLabel>
+                <FieldLabel htmlFor="st-terminal">{tStatuses.terminal}</FieldLabel>
               </Field>
-              <FieldDescription>{zhStatuses.terminalHint}</FieldDescription>
+              <FieldDescription>{tStatuses.terminalHint}</FieldDescription>
             </FieldGroup>
           </FieldSet>
         </div>

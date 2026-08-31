@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
+
 	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/model"
 )
@@ -18,7 +20,7 @@ const stateCookie = "nexus_oidc_state"
 // so a restart mid-sign-in does not strand anyone and nothing has to be swept.
 func (s *Server) oidcStart(c *gin.Context) {
 	if s.oidc == nil {
-		Fail(c, http.StatusNotFound, CodeNotFound, MsgOIDCDisabled, nil)
+		FailMsg(c, http.StatusNotFound, CodeNotFound, i18n.KeyOIDCDisabled)
 		return
 	}
 	state, err := auth.NewState()
@@ -34,13 +36,13 @@ func (s *Server) oidcStart(c *gin.Context) {
 // oidcCallback finishes the flow and hands the session token to the frontend.
 func (s *Server) oidcCallback(c *gin.Context) {
 	if s.oidc == nil {
-		Fail(c, http.StatusNotFound, CodeNotFound, MsgOIDCDisabled, nil)
+		FailMsg(c, http.StatusNotFound, CodeNotFound, i18n.KeyOIDCDisabled)
 		return
 	}
 
 	want, err := c.Cookie(stateCookie)
 	if err != nil || want == "" || c.Query("state") != want {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgOIDCStateMismatch, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyOIDCStateMismatch)
 		return
 	}
 	c.SetCookie(stateCookie, "", -1, "/", "", c.Request.TLS != nil, true)
@@ -59,7 +61,7 @@ func (s *Server) oidcCallback(c *gin.Context) {
 		return
 	}
 	if u.Status != model.UserActive {
-		c.Redirect(http.StatusFound, "/login?error="+url.QueryEscape(MsgAccountDisabled))
+		c.Redirect(http.StatusFound, "/login?error="+url.QueryEscape(i18n.M(i18n.KeyAccountDisabled).In(LangOf(c))))
 		return
 	}
 

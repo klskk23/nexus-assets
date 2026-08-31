@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
@@ -150,7 +151,7 @@ func (s *Store) Disable(ctx context.Context, id string) error {
 			return err
 		}
 		if owned > 0 {
-			return fmt.Errorf("%w：该账号仍是 %d 台设备的负责人，请先改派再停用", ErrStillOwnsAssets, owned)
+			return i18n.Wrap(ErrStillOwnsAssets, i18n.KeyUserStillOwns, owned)
 		}
 		now := time.Now().UTC()
 		res, err := tx.ExecContext(ctx,

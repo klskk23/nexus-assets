@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, ApiError, type FieldErrors } from "@/lib/api"
 import type { Asset, CategorySchema } from "@/lib/types"
 import type { Transfer } from "@/lib/transferTypes"
-import { zh, zhTransfer } from "@/i18n/zh"
+import { t, tTransfer } from "@/i18n"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { StateBoundary } from "@/components/StateBoundary"
 import { DynamicForm } from "@/features/assets/DynamicForm"
@@ -91,9 +91,9 @@ export function AssetDetail() {
     onSuccess: (updated) => {
       setFieldErrors({})
       if (asset && updated.display_name !== asset.display_name) {
-        setBanner(zh.assets.snChanged(asset.display_name, updated.display_name))
+        setBanner(t.assets.snChanged(asset.display_name, updated.display_name))
       } else {
-        setBanner(zh.assets.saved)
+        setBanner(t.assets.saved)
       }
       queryClient.invalidateQueries({ queryKey: ["asset", id] })
       queryClient.invalidateQueries({ queryKey: ["assets"] })
@@ -115,7 +115,7 @@ export function AssetDetail() {
       queryClient.invalidateQueries({ queryKey: ["assets"] })
       navigate("/assets", { replace: true })
     },
-    onError: (err) => setBanner(err instanceof ApiError ? err.message : zh.common.error),
+    onError: (err) => setBanner(err instanceof ApiError ? err.message : t.common.error),
   })
 
   const archived = Object.entries(asset?.archived_attrs ?? {})
@@ -134,7 +134,7 @@ export function AssetDetail() {
           <Button variant="ghost" size="sm" className="w-fit -ml-2" asChild>
             <Link to="/assets">
               <ArrowLeftIcon data-icon="inline-start" />
-              {zh.assets.backToList}
+              {t.assets.backToList}
             </Link>
           </Button>
 
@@ -142,7 +142,7 @@ export function AssetDetail() {
             <h1 className="font-mono text-xl font-semibold">{asset.display_name}</h1>
             <StatusBadge status={asset.status} />
             <Button className="ml-auto" onClick={() => setTransferOpen(true)}>
-              {zh.assets.transfer}
+              {t.assets.transfer}
             </Button>
           </div>
 
@@ -151,7 +151,7 @@ export function AssetDetail() {
             open={transferOpen}
             onOpenChange={setTransferOpen}
             onDone={() => {
-              setBanner(zhTransfer.actions.done(1))
+              setBanner(tTransfer.actions.done(1))
               queryClient.invalidateQueries({ queryKey: ["asset", id] })
               queryClient.invalidateQueries({ queryKey: ["timeline", id] })
             }}
@@ -166,17 +166,17 @@ export function AssetDetail() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{zh.assets.title}</CardTitle>
+              <CardTitle>{t.assets.title}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-6">
               <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                 <div>
-                  <dt className="text-muted-foreground">{zh.assets.holder}</dt>
+                  <dt className="text-muted-foreground">{t.assets.holder}</dt>
                   <dd>{asset.holder.name ?? asset.holder.id}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">{zh.assets.owner}</dt>
-                  <dd>{asset.owner?.name ?? zh.common.none}</dd>
+                  <dt className="text-muted-foreground">{t.assets.owner}</dt>
+                  <dd>{asset.owner?.name ?? t.common.none}</dd>
                 </div>
               </dl>
 
@@ -203,7 +203,7 @@ export function AssetDetail() {
               <div>
                 <Button onClick={() => save.mutate()} disabled={save.isPending}>
                   {save.isPending && <Spinner data-icon="inline-start" aria-hidden />}
-              {save.isPending ? zh.assets.saving : zh.assets.save}
+              {save.isPending ? t.assets.saving : t.assets.save}
                 </Button>
               </div>
             </CardContent>
@@ -211,7 +211,7 @@ export function AssetDetail() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{zhTransfer.timeline}</CardTitle>
+              <CardTitle>{tTransfer.timeline}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
               {editing && (
@@ -230,10 +230,10 @@ export function AssetDetail() {
           {(detail.data?.value_history ?? []).length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>{zh.assets.valueHistory}</CardTitle>
+                <CardTitle>{t.assets.valueHistory}</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-2">
-                <p className="text-sm text-muted-foreground">{zh.assets.valueHistoryHint}</p>
+                <p className="text-sm text-muted-foreground">{t.assets.valueHistoryHint}</p>
                 <ul className="grid gap-1 font-mono text-sm">
                   {(detail.data?.value_history ?? []).map((h, i) => (
                     <li key={i}>
@@ -248,11 +248,11 @@ export function AssetDetail() {
           {archived.length > 0 && (
             <Collapsible>
               <CollapsibleTrigger asChild>
-                <Button variant="outline">{zh.assets.archivedFields}（{archived.length}）</Button>
+                <Button variant="outline">{t.assets.archivedFields}（{archived.length}）</Button>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="mt-3 rounded-md border p-4">
-                  <p className="mb-3 text-sm text-muted-foreground">{zh.assets.archivedHint}</p>
+                  <p className="mb-3 text-sm text-muted-foreground">{t.assets.archivedHint}</p>
                   <dl className="grid gap-2 text-sm">
                     {archived.map(([k, v]) => (
                       <div key={k} className="flex gap-3">
@@ -268,18 +268,18 @@ export function AssetDetail() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{zh.assets.deleteTitle}</CardTitle>
+              <CardTitle>{t.assets.deleteTitle}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3">
               <ConfirmDialog
                 trigger={
                   <Button variant="destructive" className="w-fit" disabled={remove.isPending}>
-                    {zh.assets.delete}
+                    {t.assets.delete}
                   </Button>
                 }
-                title={zh.assets.deleteTitle}
-                description={zh.assets.deleteHint(asset.display_name)}
-                confirmLabel={zh.assets.delete}
+                title={t.assets.deleteTitle}
+                description={t.assets.deleteHint(asset.display_name)}
+                confirmLabel={t.assets.delete}
                 requirePhrase={asset.display_name}
                 onConfirm={() => remove.mutate()}
               />

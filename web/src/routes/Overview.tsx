@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import type { AssetStatus, Category } from "@/lib/types"
 import type { Transfer } from "@/lib/transferTypes"
-import { zh, zhOverview } from "@/i18n/zh"
+import { t, tOverview } from "@/i18n"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { StateBoundary } from "@/components/StateBoundary"
@@ -66,7 +66,7 @@ export function Overview() {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-xl font-semibold">{zhOverview.title}</h1>
+      <h1 className="text-xl font-semibold">{tOverview.title}</h1>
 
       <StateBoundary
         isLoading={overview.isLoading}
@@ -74,11 +74,11 @@ export function Overview() {
         onRetry={() => overview.refetch()}
       >
         <div className="grid gap-6">
-          <section aria-label={zhOverview.statusTitle} className="grid gap-3">
+          <section aria-label={tOverview.statusTitle} className="grid gap-3">
             <div className="flex items-baseline gap-3">
-              <h2 className="font-medium">{zhOverview.statusTitle}</h2>
+              <h2 className="font-medium">{tOverview.statusTitle}</h2>
               <span className="text-sm text-muted-foreground">
-                {zhOverview.total(overview.data?.total ?? 0)}
+                {tOverview.total(overview.data?.total ?? 0)}
               </span>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -87,7 +87,7 @@ export function Overview() {
                   key={s.status}
                   role="button"
                   tabIndex={0}
-                  aria-label={`${statuses.label(s.status)} ${s.count} ${zhOverview.unit}`}
+                  aria-label={`${statuses.label(s.status)} ${s.count} ${tOverview.unit}`}
                   className="cursor-pointer transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   onClick={() => navigate(`/assets?status=${s.status}`)}
                   onKeyDown={(e) => {
@@ -110,15 +110,15 @@ export function Overview() {
             <Card>
               <CardHeader>
                 <CardTitle>
-                  {zhOverview.categoryTitle}
+                  {tOverview.categoryTitle}
                   <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    {zhOverview.categoryHint}
+                    {tOverview.categoryHint}
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {distribution.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{zhOverview.emptyDistribution}</p>
+                  <p className="text-sm text-muted-foreground">{tOverview.emptyDistribution}</p>
                 ) : (
                   <ul className="grid gap-3">
                     {distribution.map((d) => (
@@ -133,7 +133,7 @@ export function Overview() {
                             {d.name}
                           </button>
                           <span className="tabular-nums text-muted-foreground">
-                            {d.count} {zhOverview.unit}
+                            {d.count} {tOverview.unit}
                           </span>
                         </div>
                         {/* A bar and a number say everything a chart would here,
@@ -148,17 +148,17 @@ export function Overview() {
 
             <Card>
               <CardHeader>
-                <CardTitle>{zhOverview.quickTitle}</CardTitle>
+                <CardTitle>{tOverview.quickTitle}</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4">
                 {hasCategories ? (
                   <>
-                    <p className="text-sm text-muted-foreground">{zhOverview.quickHint}</p>
+                    <p className="text-sm text-muted-foreground">{tOverview.quickHint}</p>
                     <Field>
-                      <FieldLabel htmlFor="ov-category">{zhOverview.quickCategory}</FieldLabel>
+                      <FieldLabel htmlFor="ov-category">{tOverview.quickCategory}</FieldLabel>
                       <Select value={quickCategory} onValueChange={setQuickCategory}>
                         <SelectTrigger id="ov-category">
-                          <SelectValue placeholder={zh.common.select} />
+                          <SelectValue placeholder={t.common.select} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
@@ -176,7 +176,7 @@ export function Overview() {
                         disabled={quickCategory === ""}
                         onClick={() => navigate(`/assets?new=1&category_id=${quickCategory}`)}
                       >
-                        {zhOverview.quickStart}
+                        {tOverview.quickStart}
                       </Button>
                     </div>
                   </>
@@ -184,11 +184,11 @@ export function Overview() {
                   // A fresh install has nothing configured, so the card points
                   // at the one thing that has to happen first.
                   <>
-                    <p className="font-medium">{zhOverview.noCategories}</p>
-                    <p className="text-sm text-muted-foreground">{zhOverview.noCategoriesHint}</p>
+                    <p className="font-medium">{tOverview.noCategories}</p>
+                    <p className="text-sm text-muted-foreground">{tOverview.noCategoriesHint}</p>
                     <div>
                       <Button onClick={() => navigate("/categories")}>
-                        {zhOverview.goConfigure}
+                        {tOverview.goConfigure}
                       </Button>
                     </div>
                   </>
@@ -199,12 +199,12 @@ export function Overview() {
 
           <Card>
             <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-              <CardTitle>{zhOverview.recentTitle}</CardTitle>
+              <CardTitle>{tOverview.recentTitle}</CardTitle>
               {/* Each entry is a multi-line block, so how many belong here is a
                   matter of taste rather than a constant worth guessing at. */}
               <Field orientation="horizontal" className="ml-auto w-auto">
                 <FieldLabel htmlFor="recent-count" className="sr-only">
-                  {zhOverview.recentCount}
+                  {tOverview.recentCount}
                 </FieldLabel>
                 <Select value={String(recentCount)} onValueChange={(v) => setRecentCount(Number(v))}>
                   <SelectTrigger id="recent-count" size="sm" className="w-24">
@@ -214,7 +214,7 @@ export function Overview() {
                     <SelectGroup>
                       {RECENT_COUNTS.map((n) => (
                         <SelectItem key={n} value={String(n)}>
-                          {zhOverview.recentCountUnit(n)}
+                          {tOverview.recentCountUnit(n)}
                         </SelectItem>
                       ))}
                     </SelectGroup>

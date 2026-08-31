@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
@@ -201,7 +202,9 @@ func recheckBoundCategories(ctx context.Context, tx *sql.Tx, key string) error {
 	}
 	for _, b := range targets {
 		if err := checkBindDeps(ctx, tx, b.path, key); err != nil {
-			return fmt.Errorf("%w（类别「%s」）", err, b.name)
+			// The category is appended without losing the sentinel underneath, so the
+			// HTTP layer still maps it to the right status.
+			return fmt.Errorf("%w%s", err, i18n.M(i18n.KeyFieldInCategory, b.name))
 		}
 	}
 	return nil

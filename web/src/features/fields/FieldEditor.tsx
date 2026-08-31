@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, ApiError, blockerKey, type Blocker, type Referrer } from "@/lib/api"
 import type { EnumChoice, FieldOptions } from "@/lib/types"
 import type { FieldDefinitionRow } from "@/lib/metaTypes"
-import { zh, zhConfig, zhMeta } from "@/i18n/zh"
+import { t, tConfig, tMeta } from "@/i18n"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -58,7 +58,7 @@ export function FieldEditor({ field, onClose }: Props) {
       queryClient.invalidateQueries({ queryKey: ["fields"] })
       onClose()
     },
-    onError: (e) => setBanner(e instanceof ApiError ? e.message : zh.common.error),
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
   })
 
   const remove = useMutation({
@@ -77,7 +77,7 @@ export function FieldEditor({ field, onClose }: Props) {
         setRefBlockers(e.referrers ?? (e.blockers ? [] : referrers.data ?? []))
         setAssetBlockers(e.blockers ?? [])
       } else {
-        setBanner(zh.common.error)
+        setBanner(t.common.error)
       }
     },
   })
@@ -99,22 +99,22 @@ export function FieldEditor({ field, onClose }: Props) {
     <Card>
       <CardHeader>
         <CardTitle>
-          {zhConfig.field.edit}：{field.label}
+          {tConfig.field.edit}：{field.label}
           <Badge variant="secondary" className="ml-2">
-            {zhMeta.fieldTypes[field.type] ?? field.type}
+            {tMeta.fieldTypes[field.type] ?? field.type}
           </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4">
         <Field>
-          <FieldLabel htmlFor="fe-label">{zhMeta.fields.label}</FieldLabel>
+          <FieldLabel htmlFor="fe-label">{tMeta.fields.label}</FieldLabel>
           <Input id="fe-label" value={label} onChange={(e) => setLabel(e.target.value)} />
         </Field>
 
         {field.type === "text" && (
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
-              <FieldLabel htmlFor="fe-regex">{zhConfig.field.regex}</FieldLabel>
+              <FieldLabel htmlFor="fe-regex">{tConfig.field.regex}</FieldLabel>
               <Input
                 id="fe-regex"
                 className="font-mono"
@@ -123,7 +123,7 @@ export function FieldEditor({ field, onClose }: Props) {
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="fe-regex-hint">{zhConfig.field.regexHint}</FieldLabel>
+              <FieldLabel htmlFor="fe-regex-hint">{tConfig.field.regexHint}</FieldLabel>
               <Input
                 id="fe-regex-hint"
                 value={options.regex_hint ?? ""}
@@ -136,7 +136,7 @@ export function FieldEditor({ field, onClose }: Props) {
         {field.type === "number" && (
           <div className="grid gap-4 sm:grid-cols-3">
             <Field>
-              <FieldLabel htmlFor="fe-min">{zhConfig.field.min}</FieldLabel>
+              <FieldLabel htmlFor="fe-min">{tConfig.field.min}</FieldLabel>
               <Input
                 id="fe-min"
                 type="number"
@@ -145,7 +145,7 @@ export function FieldEditor({ field, onClose }: Props) {
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="fe-max">{zhConfig.field.max}</FieldLabel>
+              <FieldLabel htmlFor="fe-max">{tConfig.field.max}</FieldLabel>
               <Input
                 id="fe-max"
                 type="number"
@@ -154,7 +154,7 @@ export function FieldEditor({ field, onClose }: Props) {
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="fe-unit">{zhConfig.field.unit}</FieldLabel>
+              <FieldLabel htmlFor="fe-unit">{tConfig.field.unit}</FieldLabel>
               <Input
                 id="fe-unit"
                 value={options.unit ?? ""}
@@ -166,15 +166,15 @@ export function FieldEditor({ field, onClose }: Props) {
 
         {field.type === "enum" && (
           <div className="grid gap-3">
-            <FieldLabel>{zhConfig.field.choices}</FieldLabel>
-            <p className="text-xs text-muted-foreground">{zhConfig.field.deprecateHint}</p>
+            <FieldLabel>{tConfig.field.choices}</FieldLabel>
+            <p className="text-xs text-muted-foreground">{tConfig.field.deprecateHint}</p>
             {(options.choices ?? []).map((c, i) => {
               const retired = (options.deprecated ?? []).includes(c.value)
               return (
                 <div key={i} className="flex flex-wrap items-end gap-2">
                   <div className="grid gap-1">
                     <FieldLabel htmlFor={`fe-choice-value-${i}`} className="text-xs">
-                      {zhConfig.field.choiceValue}
+                      {tConfig.field.choiceValue}
                     </FieldLabel>
                     <Input
                       id={`fe-choice-value-${i}`}
@@ -185,7 +185,7 @@ export function FieldEditor({ field, onClose }: Props) {
                   </div>
                   <div className="grid gap-1">
                     <FieldLabel htmlFor={`fe-choice-label-${i}`} className="text-xs">
-                      {zhConfig.field.choiceLabel}
+                      {tConfig.field.choiceLabel}
                     </FieldLabel>
                     <Input
                       id={`fe-choice-label-${i}`}
@@ -194,20 +194,20 @@ export function FieldEditor({ field, onClose }: Props) {
                       onChange={(e) => setChoice(i, { label: e.target.value })}
                     />
                   </div>
-                  {retired && <Badge variant="outline">{zhConfig.field.deprecated}</Badge>}
+                  {retired && <Badge variant="outline">{tConfig.field.deprecated}</Badge>}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => toggleDeprecated(c.value)}
                   >
-                    {retired ? zhConfig.field.restore : zhConfig.field.deprecate}
+                    {retired ? tConfig.field.restore : tConfig.field.deprecate}
                   </Button>
                 </div>
               )
             })}
             <div>
               <Button variant="outline" size="sm" onClick={addChoice}>
-                {zhConfig.field.addChoice}
+                {tConfig.field.addChoice}
               </Button>
             </div>
           </div>
@@ -215,7 +215,7 @@ export function FieldEditor({ field, onClose }: Props) {
 
         {field.type === "reference" && (
           <Field>
-            <FieldLabel htmlFor="fe-target">{zhConfig.field.target}</FieldLabel>
+            <FieldLabel htmlFor="fe-target">{tConfig.field.target}</FieldLabel>
             <Select
               value={options.target ?? "user"}
               onValueChange={(v) => set({ target: v as "user" | "entity" })}
@@ -225,8 +225,8 @@ export function FieldEditor({ field, onClose }: Props) {
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="user">{zhConfig.field.targetUser}</SelectItem>
-                  <SelectItem value="entity">{zhConfig.field.targetEntity}</SelectItem>
+                  <SelectItem value="user">{tConfig.field.targetUser}</SelectItem>
+                  <SelectItem value="entity">{tConfig.field.targetEntity}</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -235,21 +235,21 @@ export function FieldEditor({ field, onClose }: Props) {
 
         {field.type === "computed" && (
           <Field>
-            <FieldLabel htmlFor="fe-template">{zhConfig.field.template}</FieldLabel>
+            <FieldLabel htmlFor="fe-template">{tConfig.field.template}</FieldLabel>
             <Input
               id="fe-template"
               className="font-mono"
               value={options.template ?? ""}
               onChange={(e) => set({ template: e.target.value })}
             />
-            <p className="text-xs text-muted-foreground">{zhConfig.field.templateHint}</p>
-            <p className="text-xs text-muted-foreground">{zhConfig.field.depsHint}</p>
+            <p className="text-xs text-muted-foreground">{tConfig.field.templateHint}</p>
+            <p className="text-xs text-muted-foreground">{tConfig.field.depsHint}</p>
           </Field>
         )}
 
         {(referrers.data ?? []).length > 0 && (
           <p className="text-sm text-muted-foreground">
-            {zhConfig.field.referrers}
+            {tConfig.field.referrers}
             {(referrers.data ?? []).map((r) => r.label).join("、")}
           </p>
         )}
@@ -268,7 +268,7 @@ export function FieldEditor({ field, onClose }: Props) {
               )}
               {assetBlockers.length > 0 && (
                 <>
-                  <p className="text-xs">{zhConfig.field.blockedByAssets}</p>
+                  <p className="text-xs">{tConfig.field.blockedByAssets}</p>
                   <ul className="grid gap-0.5 font-mono text-xs">
                     {assetBlockers.map((b) => (
                       <li key={blockerKey(b)}>{b.name}</li>
@@ -283,21 +283,21 @@ export function FieldEditor({ field, onClose }: Props) {
         <div className="flex gap-2">
           <Button onClick={() => save.mutate()} disabled={save.isPending}>
             {save.isPending && <Spinner data-icon="inline-start" aria-hidden />}
-              {save.isPending ? zhConfig.field.saving : zhConfig.field.save}
+              {save.isPending ? tConfig.field.saving : tConfig.field.save}
           </Button>
           <ConfirmDialog
             trigger={
               <Button variant="destructive" disabled={remove.isPending}>
-                {zhConfig.field.delete}
+                {tConfig.field.delete}
               </Button>
             }
-            title={zhConfig.field.deleteTitle}
-            description={zhConfig.field.deleteHint(field.label)}
-            confirmLabel={zhConfig.field.delete}
+            title={tConfig.field.deleteTitle}
+            description={tConfig.field.deleteHint(field.label)}
+            confirmLabel={tConfig.field.delete}
             onConfirm={() => remove.mutate()}
           />
           <Button variant="ghost" onClick={onClose}>
-            {zh.common.cancel}
+            {t.common.cancel}
           </Button>
         </div>
       </CardContent>

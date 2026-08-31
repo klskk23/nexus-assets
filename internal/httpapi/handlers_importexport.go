@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
+
 	"github.com/klskk23/nexus-assets/internal/asset"
 	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/importer"
@@ -18,7 +20,7 @@ import (
 const maxUploadBytes = 8 << 20 // 8 MiB
 
 func (s *Server) importTemplate(c *gin.Context) {
-	body, err := s.importer.Template(c.Request.Context(), c.Param("id"))
+	body, err := s.importer.Template(c.Request.Context(), LangOf(c), c.Param("id"))
 	if err != nil {
 		FailErr(c, err)
 		return
@@ -33,7 +35,7 @@ func (s *Server) importPreview(c *gin.Context) {
 	}
 	actor, _ := auth.CurrentUser(c)
 
-	report, err := s.importer.Preview(c.Request.Context(), categoryID, actor.ID, file)
+	report, err := s.importer.Preview(c.Request.Context(), LangOf(c), categoryID, actor.ID, file)
 	if err != nil {
 		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, err.Error(), nil)
 		return
@@ -48,7 +50,7 @@ func (s *Server) importCommit(c *gin.Context) {
 	}
 	actor, _ := auth.CurrentUser(c)
 
-	res, err := s.importer.Commit(c.Request.Context(), categoryID, actor.ID, file)
+	res, err := s.importer.Commit(c.Request.Context(), LangOf(c), categoryID, actor.ID, file)
 	if err != nil {
 		// The report travels with the refusal so the page can keep showing
 		// which rows are in the way instead of just saying it failed.
@@ -68,19 +70,17 @@ func (s *Server) importCommit(c *gin.Context) {
 func (s *Server) readUpload(c *gin.Context) (string, *strings.Reader, bool) {
 	categoryID := c.PostForm("category_id")
 	if categoryID == "" {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest,
-			map[string]string{"category_id": "请选择要导入的类别"})
+		FailField(c, http.StatusBadRequest, "category_id", i18n.KeyImportNeedCat)
 		return "", nil, false
 	}
 
 	header, err := c.FormFile("file")
 	if err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest,
-			map[string]string{"file": "请选择要上传的 CSV 文件"})
+		FailField(c, http.StatusBadRequest, "file", i18n.KeyImportNeedFile)
 		return "", nil, false
 	}
 	if header.Size > maxUploadBytes {
-		Fail(c, http.StatusRequestEntityTooLarge, CodeValidationFailed, MsgUploadTooLarge, nil)
+		FailMsg(c, http.StatusRequestEntityTooLarge, CodeValidationFailed, i18n.KeyUploadTooLarge)
 		return "", nil, false
 	}
 
@@ -118,7 +118,7 @@ func (s *Server) exportCSV(c *gin.Context) {
 		}
 	}
 
-	body, err := s.importer.Export(c.Request.Context(), f)
+	body, err := s.importer.Export(c.Request.Context(), LangOf(c), f)
 	if err != nil {
 		FailErr(c, err)
 		return

@@ -5,6 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
+
 	"github.com/klskk23/nexus-assets/internal/audit"
 	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/model"
@@ -29,7 +31,7 @@ func (s *Server) createUser(c *gin.Context) {
 		Password string `json:"password" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	out, err := s.users.Create(c.Request.Context(), auth.CreateInput{
@@ -50,7 +52,7 @@ func (s *Server) patchUser(c *gin.Context) {
 		Disable *bool `json:"disable"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	ctx := c.Request.Context()

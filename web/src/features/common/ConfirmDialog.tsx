@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { zhConfirm } from "@/i18n/zh"
+import { tConfirm } from "@/i18n"
 
 interface Props {
   /** The control that opens the dialog. */
@@ -63,7 +63,7 @@ export function ConfirmDialog({
         {requirePhrase !== undefined && (
           <div className="grid gap-2">
             <Label htmlFor="confirm-phrase">
-              {phraseLabel ?? zhConfirm.typeToConfirm(requirePhrase)}
+              {phraseLabel ?? tConfirm.typeToConfirm(requirePhrase)}
             </Label>
             <Input
               id="confirm-phrase"
@@ -76,7 +76,7 @@ export function ConfirmDialog({
         )}
 
         <AlertDialogFooter>
-          <AlertDialogCancel>{zhConfirm.cancel}</AlertDialogCancel>
+          <AlertDialogCancel>{tConfirm.cancel}</AlertDialogCancel>
           <AlertDialogAction
             disabled={!armed}
             onClick={() => {

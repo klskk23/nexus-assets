@@ -194,7 +194,7 @@ func TestRecomputeReportsAnUnevaluableRule(t *testing.T) {
 		t.Fatal("a rule that cannot be evaluated must be reported, not applied")
 	}
 	var fe FieldErrors
-	if !errors.As(err, &fe) || fe["sn"] == "" {
+	if !errors.As(err, &fe) || fe["sn"].Error() == "" {
 		t.Errorf("the error should point at the expression key, got %#v", err)
 	}
 }

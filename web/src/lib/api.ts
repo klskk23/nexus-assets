@@ -1,4 +1,5 @@
-import { zh } from "@/i18n/zh"
+import { t } from "@/i18n"
+import { getLang } from "@/i18n"
 
 /** Field-level messages keyed by field key, straight from the error envelope. */
 export type FieldErrors = Record<string, string>
@@ -79,7 +80,9 @@ export function setToken(token: string | null) {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = {}
+  // The server answers in whatever this asks for, so a refusal comes back in
+  // the same language as the button that caused it.
+  const headers: Record<string, string> = { "Accept-Language": getLang() }
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
   if (body !== undefined) headers["Content-Type"] = "application/json"
@@ -100,7 +103,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     throw new ApiError(
       res.status,
       e.code ?? "internal_error",
-      e.message ?? zh.common.requestFailed,
+      e.message ?? t.common.requestFailed,
       e.fields,
       e.referrers,
       e.blockers,

@@ -1,19 +1,19 @@
 <!-- SPECKIT START -->
-当前计划：`specs/005-holder-hierarchy-and-custody/plan.md`
+当前计划：`specs/006-bilingual-and-holder-lifecycle/plan.md`
 
 开工前必读，按优先级：
 
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
-2. `specs/005-holder-hierarchy-and-custody/` —— 本轮特性的规格、计划、决策与任务
+2. `specs/006-bilingual-and-holder-lifecycle/` —— 本轮特性的规格、计划、决策与任务
 3. `docs/design-baseline-v4.md`（决策 53–60）—— 状态成为可配置的数据。
-   **冲突时以最新一版为准：005 的 research.md > v4 > v3 > v2 > v1**
+   **冲突时以最新一版为准：006 > 005 的 research.md > v4 > v3 > v2 > v1**
 4. `docs/design-baseline-v3.md`（决策 41–52）—— 信息项可删除、型号多对多
 5. `docs/design-baseline-v2.md`（决策 25–40）—— 编号模型、依赖门禁、流转
 6. `docs/design-baseline.md` —— 原始设计基线（决策 1–24）
-7. `specs/001-asset-ledger-demo/` ~ `specs/004-configurable-statuses/` —— 前四轮特性。
+7. `specs/001-asset-ledger-demo/` ~ `specs/005-holder-hierarchy-and-custody/` —— 前五轮特性。
    001 的 `contracts/openapi.yaml` 仍是**全量**端点清单
 
-**最容易违反的八条硬规则**
+**最容易违反的九条硬规则**
 
 - **组件必须来自 shadcn/ui。** 不存在时必须先与开发者确认才能自定义，**不接受事后补批**。
   类别树用 `Collapsible` 递归组合，不引入树组件。
@@ -23,8 +23,15 @@
   `user.selectOptions`；`SelectItem` 不接受空字符串值，「未选/全部」走 `lib/select.ts` 的哨兵。
 - **前端测试必须含 DOM 测试**（Vitest + React Testing Library，断言 `getByRole` 与
   `userEvent`）。只测纯函数或只做快照比对不算数。触及 UI 的 PR 必须新增或更新 DOM 测试。
-- **文档中文、代码英文。** 例外是 i18n 文案（UI 文本、`label`、`error.message`），
-  集中在 `web/src/i18n/zh.ts` 与 `internal/httpapi/messages.go`。
+- **文档中文、代码英文；用户可见文案走目录，且必须两种语言都有。**
+  前端 `web/src/i18n/{zh,en}.ts`（`en.ts` 由 `typeof zh` 约束，漏一条是编译错误），
+  服务端 `internal/i18n/catalog.go`（漏一条由 `TestCatalogsCoverTheSameKeys` 抓）。
+  **领域层不自己拼文案** —— 返回 `i18n.M(key, args...)` 或 `i18n.Wrap(sentinel, key, ...)`，
+  由 HTTP 边界按 `Accept-Language` 渲染一次。两种语言的**参数个数与顺序必须一致**。
+  标识符、日志、`error.code`、`error.fields` 的**键**、CSV 模板的键名行**都不翻译**。
+- **前端字典是模块级 live binding（`export let t`）。** 在模块**加载时**求值的东西
+  会冻结在首次加载的语言里，而 typecheck 看不见。导航数组、`transferActions`
+  已经改成函数；下次再写 `const x = [{ label: t.… }]` 之前先想一遍。
 - **SQLite 写事务一律 `BEGIN IMMEDIATE`，写连接池为 1。** 唯一性现在由
   `asset_unique_values` 上的部分唯一索引保证（v2 决策 32），所以这条不再是正确性前提，
   但保持不变 —— 放宽没有收益。
@@ -36,10 +43,12 @@
   转换规则**内置对内置沿用原 5×5 矩阵**，涉及自定义才放行，这是为了不放松任何既有护栏。
   三个行为开关里，`requires_location` 自 005 起是**策略**（任何状态可改，出厂全关），
   `counts_as_available` 与 `terminal` 仍对内置锁死 —— 判据是「除了约束本身还有谁在读它」。
-- **持有方是一棵有规则的树。** 部门必须属于公司，位置可挂公司或部门、也可不挂，
-  公司无上级。规则写在 `internal/holder` 的 `allowedParents` 表里，前端有同形一份
-  （`web/src/lib/types.ts`）**只用于不提供非法选项**，把关的仍然是服务端。
+- **持有方是一棵有规则的树，且可编辑可删除。** 部门必须属于公司，位置可挂公司或部门、
+  也可不挂，公司无上级。规则写在 `internal/holder` 的 `allowedParents` 表里，
+  前端有同形一份（`web/src/lib/types.ts`）**只用于不提供非法选项**，把关的仍然是服务端。
   移动要防成环。迁移**不回填**存量的无上级部门。
+  **持有方没有「停用」**（006 起）：删除在有设备、有下级、是默认库存点时拒绝；
+  仅在流转历史中出现只提示不拒绝 —— 与状态删除同一条规则。类型不可改。
 - **信息项没有「停用」。** 只有删除（无关联时）与解绑（有存量数据时）。
   `archived_attrs` 是**解绑**产生的孤儿键，与停用无关，不要跟着一起清理掉 ——
   删掉它会让「解绑后仍能查看旧值」当场失效，且没有任何现有测试会失败。

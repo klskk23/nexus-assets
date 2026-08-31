@@ -88,29 +88,38 @@ func TestMigrateUpAndDown(t *testing.T) {
 			retiredTerminal, retiredCounts)
 	}
 
-	// The holder side of 005.
-	var note int
-	if err := s.read.QueryRowContext(ctx,
-		`SELECT count(*) FROM pragma_table_info('holder_entities') WHERE name = 'note'`).
-		Scan(&note); err != nil {
-		t.Fatalf("check holder_entities.note: %v", err)
+	// The holder side: note arrived with 005, archiving left with 006.
+	column := func(table, name string) int {
+		t.Helper()
+		var n int
+		if err := s.read.QueryRowContext(ctx,
+			`SELECT count(*) FROM pragma_table_info(?) WHERE name = ?`, table, name).Scan(&n); err != nil {
+			t.Fatalf("check %s.%s: %v", table, name, err)
+		}
+		return n
 	}
-	if note != 1 {
+	if column("holder_entities", "note") != 1 {
 		t.Error("holder_entities should carry note after 005")
 	}
+	if column("holder_entities", "archived_at") != 0 {
+		t.Error("holder_entities should have lost archived_at in 006 -- a column nothing can set is worse than none")
+	}
 
-	// Rolling back one revision must restore the pre-005 shape exactly, so a
-	// half-applied upgrade can be undone rather than requiring a fresh file.
+	// Rolling back one revision at a time must restore each earlier shape
+	// exactly, so a half-applied upgrade can be undone rather than requiring a
+	// fresh file.
 	if err := s.MigrateDown(ctx); err != nil {
-		t.Fatalf("MigrateDown: %v", err)
+		t.Fatalf("MigrateDown 006: %v", err)
 	}
-	if err := s.read.QueryRowContext(ctx,
-		`SELECT count(*) FROM pragma_table_info('holder_entities') WHERE name = 'note'`).
-		Scan(&note); err != nil {
-		t.Fatalf("check holder_entities.note after down: %v", err)
+	if column("holder_entities", "archived_at") != 1 {
+		t.Error("down from 006 should have restored archived_at")
 	}
-	if note != 0 {
-		t.Error("down should have dropped holder_entities.note")
+
+	if err := s.MigrateDown(ctx); err != nil {
+		t.Fatalf("MigrateDown 005: %v", err)
+	}
+	if column("holder_entities", "note") != 0 {
+		t.Error("down from 005 should have dropped holder_entities.note")
 	}
 	if err := s.read.QueryRowContext(ctx,
 		`SELECT requires_location FROM statuses WHERE key = 'in_stock'`).
@@ -118,12 +127,12 @@ func TestMigrateUpAndDown(t *testing.T) {
 		t.Fatalf("read in_stock after down: %v", err)
 	}
 	if stockNeedsLocation != 1 {
-		t.Error("down should have restored in_stock.requires_location")
+		t.Error("down from 005 should have restored in_stock.requires_location")
 	}
 
 	// One more revision back takes the statuses table with it.
 	if err := s.MigrateDown(ctx); err != nil {
-		t.Fatalf("second MigrateDown: %v", err)
+		t.Fatalf("MigrateDown 004: %v", err)
 	}
 	for table, wantN := range map[string]int{"statuses": 0, "product_model_categories": 1} {
 		var n int

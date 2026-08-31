@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
@@ -169,7 +170,7 @@ func (s *Store) UpdateCategory(ctx context.Context, id string, in UpdateCategory
 				return err
 			}
 			if n > 0 {
-				return fmt.Errorf("%w：「%s」的子树下还有 %d 台资产，请先把它们移到别处再移动类别", ErrCategoryHasAssets, cur.Name, n)
+				return i18n.Wrap(ErrCategoryHasAssets, i18n.KeyCategoryHasAssetsMove, cur.Name, n)
 			}
 			parentPath := ""
 			if *in.ParentID != nil {
@@ -257,14 +258,13 @@ func validateDisplayKey(ctx context.Context, tx *sql.Tx, path, key string) error
 	var isUnique int
 	err := tx.QueryRowContext(ctx, q, key, path).Scan(&label, &isUnique)
 	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("%w: 信息项 %q 未绑定到该类别，请先绑定再设为显示编号", ErrDisplayKeyInvalid, key)
+		return i18n.Wrap(ErrDisplayKeyInvalid, i18n.KeyDisplayKeyUnbound, key)
 	}
 	if err != nil {
 		return err
 	}
 	if isUnique != 1 {
-		return fmt.Errorf("%w: 信息项「%s」未标为唯一，两台设备可能显示同一个编号；请先将它标为唯一",
-			ErrDisplayKeyInvalid, label)
+		return i18n.Wrap(ErrDisplayKeyInvalid, i18n.KeyDisplayKeyNotUnique, label)
 	}
 	return nil
 }
@@ -322,8 +322,8 @@ func (s *Store) DeleteCategory(ctx context.Context, id string) ([]CategoryBlocke
 		return nil, 0, err
 	}
 	if len(children) > 0 {
-		return children, len(children), fmt.Errorf(
-			"%w：「%s」下还有 %d 个子类别，请先删除或移走它们", ErrCategoryHasChildren, cur.Name, len(children))
+		return children, len(children), i18n.Wrap(ErrCategoryHasChildren,
+			i18n.KeyCategoryHasChildren, cur.Name, len(children))
 	}
 
 	assets, total, err := s.assetsUnder(ctx, cur.Path)
@@ -331,12 +331,12 @@ func (s *Store) DeleteCategory(ctx context.Context, id string) ([]CategoryBlocke
 		return nil, 0, err
 	}
 	if total > 0 {
-		partial := ""
+		var partial any = ""
 		if len(assets) < total {
-			partial = fmt.Sprintf("，此处仅列出前 %d 台", len(assets))
+			partial = i18n.M(i18n.KeyListTruncated, len(assets))
 		}
-		return assets, total, fmt.Errorf(
-			"%w：「%s」下还有 %d 台资产%s，请先把它们移到别处", ErrCategoryHasAssets, cur.Name, total, partial)
+		return assets, total, i18n.Wrap(ErrCategoryHasAssets,
+			i18n.KeyCategoryHasAssets, cur.Name, total, partial)
 	}
 
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {

@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
+
 	"github.com/klskk23/nexus-assets/internal/audit"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
@@ -36,7 +38,7 @@ func (s *Server) createStatus(c *gin.Context) {
 		Terminal          bool   `json:"terminal"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	if req.Color == "" {
@@ -74,7 +76,7 @@ func (s *Server) patchStatus(c *gin.Context) {
 		Terminal          *bool   `json:"terminal"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	ctx := c.Request.Context()
@@ -132,7 +134,7 @@ func (s *Server) deleteStatus(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
 			"error": gin.H{
 				"code":    CodeReferenceBlocked,
-				"message": userText(err, unwrapSentinel(err)),
+				"message": userText(c, err),
 				"total":   total,
 			},
 		})

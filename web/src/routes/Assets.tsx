@@ -7,7 +7,7 @@ import { api } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { AssetPage, Category, CategorySchema, HolderEntity, User } from "@/lib/types"
-import { zh, zhImport } from "@/i18n/zh"
+import { t, tImport } from "@/i18n"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { StateBoundary } from "@/components/StateBoundary"
@@ -85,8 +85,8 @@ function pageWindow(current: number, count: number): (number | null)[] {
 
 /** Renders one custom attribute. Booleans read as words, not as true/false. */
 function cellText(v: unknown): string {
-  if (v === true) return zh.common.yes
-  if (v === false) return zh.common.no
+  if (v === true) return t.common.yes
+  if (v === false) return t.common.no
   return String(v ?? "")
 }
 
@@ -192,13 +192,13 @@ export function Assets() {
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-end gap-3">
-        <h1 className="mr-auto text-xl font-semibold">{zh.assets.title}</h1>
+        <h1 className="mr-auto text-xl font-semibold">{t.assets.title}</h1>
         <Button variant="outline" asChild>
-          <a href={`/api/export.csv?${params.toString()}`} download title={zhImport.exportHint}>
-            {zhImport.export}
+          <a href={`/api/export.csv?${params.toString()}`} download title={tImport.exportHint}>
+            {tImport.export}
           </a>
         </Button>
-        <Button onClick={() => setCreating(true)}>{zh.assets.newAsset}</Button>
+        <Button onClick={() => setCreating(true)}>{t.assets.newAsset}</Button>
       </div>
 
       {/* One row. The labels are read out but not drawn: each control already
@@ -207,7 +207,7 @@ export function Assets() {
       <div className="flex flex-wrap items-center gap-2">
         <Field className="w-auto">
           <FieldLabel htmlFor="q" className="sr-only">
-            {zh.assets.search}
+            {t.assets.search}
           </FieldLabel>
           <InputGroup className="w-64">
             <InputGroupAddon>
@@ -216,7 +216,7 @@ export function Assets() {
             <InputGroupInput
               id="q"
               ref={searchRef}
-              placeholder={zh.assets.searchPlaceholder}
+              placeholder={t.assets.searchPlaceholder}
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
@@ -225,7 +225,7 @@ export function Assets() {
 
         <Field className="w-auto">
           <FieldLabel htmlFor="category" className="sr-only">
-            {zh.assets.category}
+            {t.assets.category}
           </FieldLabel>
           <Select value={toNone(categoryId)} onValueChange={(v) => setCategoryId(fromNone(v))}>
             <SelectTrigger id="category" className="w-44">
@@ -233,7 +233,7 @@ export function Assets() {
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value={NONE}>{zh.assets.allCategories}</SelectItem>
+                <SelectItem value={NONE}>{t.assets.allCategories}</SelectItem>
                 {(categories.data ?? []).map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
@@ -246,7 +246,7 @@ export function Assets() {
 
         <Field className="w-auto">
           <FieldLabel htmlFor="status" className="sr-only">
-            {zh.assets.statusLabel}
+            {t.assets.statusLabel}
           </FieldLabel>
           <Select value={toNone(status)} onValueChange={(v) => setStatus(fromNone(v))}>
             <SelectTrigger id="status" className="w-36">
@@ -254,7 +254,7 @@ export function Assets() {
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value={NONE}>{zh.assets.allStatuses}</SelectItem>
+                <SelectItem value={NONE}>{t.assets.allStatuses}</SelectItem>
                 {statuses.statuses.map(({ key: k, label: v }) => (
                   <SelectItem key={k} value={k}>
                     {v}
@@ -267,7 +267,7 @@ export function Assets() {
 
         <Field className="w-auto">
           <FieldLabel htmlFor="owner" className="sr-only">
-            {zh.assets.owner}
+            {t.assets.owner}
           </FieldLabel>
           <Select value={toNone(ownerId)} onValueChange={(v) => setOwnerId(fromNone(v))}>
             <SelectTrigger id="owner" className="w-40">
@@ -275,7 +275,7 @@ export function Assets() {
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value={NONE}>{zh.assets.allOwners}</SelectItem>
+                <SelectItem value={NONE}>{t.assets.allOwners}</SelectItem>
                 {(users.data ?? [])
                   .filter((u) => u.status === "active")
                   .map((u) => (
@@ -290,7 +290,7 @@ export function Assets() {
 
         <Field className="w-auto">
           <FieldLabel htmlFor="holder" className="sr-only">
-            {zh.assets.holderFilter}
+            {t.assets.holderFilter}
           </FieldLabel>
           <Select value={toNone(holderId)} onValueChange={(v) => setHolderId(fromNone(v))}>
             <SelectTrigger id="holder" className="w-40">
@@ -298,7 +298,7 @@ export function Assets() {
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value={NONE}>{zh.assets.allHolders}</SelectItem>
+                <SelectItem value={NONE}>{t.assets.allHolders}</SelectItem>
                 {(holders.data ?? []).map((h) => (
                   <SelectItem key={h.id} value={h.id}>
                     {h.name}
@@ -316,14 +316,14 @@ export function Assets() {
               checked={includeDescendants}
               onCheckedChange={(v) => setIncludeDescendants(v === true)}
             />
-            <FieldLabel htmlFor="descendants">{zh.assets.includeDescendants}</FieldLabel>
+            <FieldLabel htmlFor="descendants">{t.assets.includeDescendants}</FieldLabel>
           </Field>
         )}
       </div>
 
       {available.length > 0 && (
         <FieldSet className="rounded-md border p-3">
-          <FieldLegend variant="label">{zh.assets.columns}</FieldLegend>
+          <FieldLegend variant="label">{t.assets.columns}</FieldLegend>
           <FieldGroup className="flex flex-row flex-wrap items-center gap-4">
             {available.map((f) => (
               <Field key={f.key} orientation="horizontal" className="w-auto">
@@ -343,14 +343,14 @@ export function Assets() {
         isLoading={assets.isLoading}
         error={assets.error as Error | null}
         isEmpty={assets.data?.items.length === 0}
-        emptyTitle={zh.assets.empty}
-        emptyHint={zh.assets.emptyHint}
+        emptyTitle={t.assets.empty}
+        emptyHint={t.assets.emptyHint}
         onRetry={() => assets.refetch()}
       >
         <>
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-sm text-muted-foreground">
-              {zh.assets.rangeOf(
+              {t.assets.rangeOf(
                 total === 0 ? 0 : page * pageSize + 1,
                 Math.min((page + 1) * pageSize, total),
                 total,
@@ -358,7 +358,7 @@ export function Assets() {
             </p>
             <Field orientation="horizontal" className="ml-auto w-auto">
               <FieldLabel htmlFor="page-size" className="text-sm text-muted-foreground">
-                {zh.assets.perPage}
+                {t.assets.perPage}
               </FieldLabel>
               <Select
                 value={String(pageSize)}
@@ -371,7 +371,7 @@ export function Assets() {
                   <SelectGroup>
                     {PAGE_SIZES.map((n) => (
                       <SelectItem key={n} value={String(n)}>
-                        {zh.assets.perPageUnit(n)}
+                        {t.assets.perPageUnit(n)}
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -384,12 +384,12 @@ export function Assets() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">
-                    <span className="sr-only">{zh.common.select}</span>
+                    <span className="sr-only">{t.common.select}</span>
                   </TableHead>
-                  <TableHead>{zh.assets.sn}</TableHead>
-                  <TableHead>{zh.assets.statusLabel}</TableHead>
-                  <TableHead>{zh.assets.holder}</TableHead>
-                  <TableHead>{zh.assets.owner}</TableHead>
+                  <TableHead>{t.assets.sn}</TableHead>
+                  <TableHead>{t.assets.statusLabel}</TableHead>
+                  <TableHead>{t.assets.holder}</TableHead>
+                  <TableHead>{t.assets.owner}</TableHead>
                   {extraColumns.map((k) => (
                     <TableHead key={k}>{available.find((f) => f.key === k)?.label ?? k}</TableHead>
                   ))}
@@ -400,7 +400,7 @@ export function Assets() {
                   <TableRow key={a.id} className="cursor-pointer">
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
-                        aria-label={zh.common.selectOne(a.display_name)}
+                        aria-label={t.common.selectOne(a.display_name)}
                         checked={selected.includes(a.id)}
                         onCheckedChange={() => toggleSelected(a.id)}
                       />
@@ -414,8 +414,8 @@ export function Assets() {
                     <TableCell>
                       <StatusBadge status={a.status} />
                     </TableCell>
-                    <TableCell>{a.holder.name ?? zh.common.none}</TableCell>
-                    <TableCell>{a.owner?.name ?? zh.common.none}</TableCell>
+                    <TableCell>{a.holder.name ?? t.common.none}</TableCell>
+                    <TableCell>{a.owner?.name ?? t.common.none}</TableCell>
                     {extraColumns.map((k) => (
                       <TableCell key={k}>{cellText(a.attrs[k])}</TableCell>
                     ))}
@@ -431,7 +431,7 @@ export function Assets() {
                 <PaginationItem>
                   <PaginationPrevious
                     href="#"
-                    aria-label={zh.assets.prevPage}
+                    aria-label={t.assets.prevPage}
                     aria-disabled={page === 0}
                     className={cn(page === 0 && "pointer-events-none opacity-50")}
                     onClick={(e) => {
@@ -463,7 +463,7 @@ export function Assets() {
                 <PaginationItem>
                   <PaginationNext
                     href="#"
-                    aria-label={zh.assets.nextPage}
+                    aria-label={t.assets.nextPage}
                     aria-disabled={page >= pageCount - 1}
                     className={cn(page >= pageCount - 1 && "pointer-events-none opacity-50")}
                     onClick={(e) => {

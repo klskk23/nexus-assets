@@ -9,6 +9,7 @@ import (
 	"github.com/klskk23/nexus-assets/internal/asset"
 	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/holder"
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
 	"github.com/klskk23/nexus-assets/internal/store"
@@ -115,7 +116,7 @@ func (f *fixture) count(t *testing.T) int {
 func TestTemplateKeyRowMatchesTheEffectiveFieldSet(t *testing.T) {
 	f := newFixture(t)
 
-	keys, labels, err := f.svc.Columns(f.ctx, f.catID)
+	keys, labels, err := f.svc.Columns(f.ctx, i18n.ZH, f.catID)
 	if err != nil {
 		t.Fatalf("columns: %v", err)
 	}
@@ -132,7 +133,7 @@ func TestTemplateKeyRowMatchesTheEffectiveFieldSet(t *testing.T) {
 		t.Errorf("a required field should say so in the label, got %q", labels[3])
 	}
 
-	body, err := f.svc.Template(f.ctx, f.catID)
+	body, err := f.svc.Template(f.ctx, i18n.ZH, f.catID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +161,7 @@ func TestPreviewReportsPerRowErrorsAndWritesNothing(t *testing.T) {
 		"SDWAN-X100,上海仓库,,not-a-mac,2.1.3",         // bad MAC
 		"SDWAN-X100,上海仓库,,,2.1.3",                  // missing required MAC
 	)
-	report, err := f.svc.Preview(f.ctx, f.catID, f.userID, file)
+	report, err := f.svc.Preview(f.ctx, i18n.ZH, f.catID, f.userID, file)
 	if err != nil {
 		t.Fatalf("preview: %v", err)
 	}
@@ -193,7 +194,7 @@ func TestDuplicateMACWithinTheFileIsCaught(t *testing.T) {
 		"SDWAN-X100,上海仓库,,001A2B3C4D5E,2.1.3",
 		"SDWAN-X100,上海仓库,,00:1a:2b:3c:4d:5e,2.2.0", // the same card, written differently
 	)
-	report, err := f.svc.Preview(f.ctx, f.catID, f.userID, file)
+	report, err := f.svc.Preview(f.ctx, i18n.ZH, f.catID, f.userID, file)
 	if err != nil {
 		t.Fatalf("preview: %v", err)
 	}
@@ -217,7 +218,7 @@ func TestUnknownModelOrHolderErrorsInsteadOfBeingCreated(t *testing.T) {
 		"SDWAN-X100,不存在的仓库,,001A2B3C4D02,",
 		"SDWAN-X100,XX 集团,,001A2B3C4D03,", // a company, not a location
 	)
-	report, err := f.svc.Preview(f.ctx, f.catID, f.userID, file)
+	report, err := f.svc.Preview(f.ctx, i18n.ZH, f.catID, f.userID, file)
 	if err != nil {
 		t.Fatalf("preview: %v", err)
 	}
@@ -248,7 +249,7 @@ func TestCommitIsAllOrNothing(t *testing.T) {
 		"SDWAN-X100,上海仓库,,not-a-mac,",
 		"SDWAN-X100,上海仓库,,001A2B3C4D03,",
 	)
-	if _, err := f.svc.Commit(f.ctx, f.catID, f.userID, bad); err == nil {
+	if _, err := f.svc.Commit(f.ctx, i18n.ZH, f.catID, f.userID, bad); err == nil {
 		t.Fatal("a file with a bad row must not commit")
 	}
 	if n := f.count(t); n != 0 {
@@ -260,7 +261,7 @@ func TestCommitIsAllOrNothing(t *testing.T) {
 		"SDWAN-X100,上海仓库,首批,001A2B3C4D02,2.1.3",
 		",上海仓库,,001A2B3C4D03,",
 	)
-	res, err := f.svc.Commit(f.ctx, f.catID, f.userID, good)
+	res, err := f.svc.Commit(f.ctx, i18n.ZH, f.catID, f.userID, good)
 	if err != nil {
 		t.Fatalf("commit: %v", err)
 	}
@@ -275,7 +276,7 @@ func TestCommitIsAllOrNothing(t *testing.T) {
 // "Which devices came in with that file" has to stay answerable.
 func TestCommitGroupsEveryRowUnderOneBatch(t *testing.T) {
 	f := newFixture(t)
-	res, err := f.svc.Commit(f.ctx, f.catID, f.userID, csvOf(
+	res, err := f.svc.Commit(f.ctx, i18n.ZH, f.catID, f.userID, csvOf(
 		"SDWAN-X100,上海仓库,,001A2B3C4D01,",
 		"SDWAN-X100,上海仓库,,001A2B3C4D02,",
 	))
@@ -296,7 +297,7 @@ func TestCommitGroupsEveryRowUnderOneBatch(t *testing.T) {
 
 func TestComputedColumnsAreDerivedNotImported(t *testing.T) {
 	f := newFixture(t)
-	if _, err := f.svc.Commit(f.ctx, f.catID, f.userID,
+	if _, err := f.svc.Commit(f.ctx, i18n.ZH, f.catID, f.userID,
 		csvOf("SDWAN-X100,上海仓库,,001A2B3C4D5E,2.1.3")); err != nil {
 		t.Fatalf("commit: %v", err)
 	}
@@ -311,20 +312,20 @@ func TestComputedColumnsAreDerivedNotImported(t *testing.T) {
 
 func TestEmptyAndMalformedFilesAreRejected(t *testing.T) {
 	f := newFixture(t)
-	if _, err := f.svc.Preview(f.ctx, f.catID, f.userID, strings.NewReader("")); err == nil {
+	if _, err := f.svc.Preview(f.ctx, i18n.ZH, f.catID, f.userID, strings.NewReader("")); err == nil {
 		t.Error("an empty file must be rejected")
 	}
-	if _, err := f.svc.Preview(f.ctx, f.catID, f.userID, strings.NewReader("只有一行\n")); err == nil {
+	if _, err := f.svc.Preview(f.ctx, i18n.ZH, f.catID, f.userID, strings.NewReader("只有一行\n")); err == nil {
 		t.Error("a file with one header row must be rejected")
 	}
-	if _, err := f.svc.Preview(f.ctx, f.catID, f.userID, csvOf()); err == nil {
+	if _, err := f.svc.Preview(f.ctx, i18n.ZH, f.catID, f.userID, csvOf()); err == nil {
 		t.Error("a file with headers but no data must be rejected")
 	}
 }
 
 func TestExportHonoursTheFilter(t *testing.T) {
 	f := newFixture(t)
-	if _, err := f.svc.Commit(f.ctx, f.catID, f.userID, csvOf(
+	if _, err := f.svc.Commit(f.ctx, i18n.ZH, f.catID, f.userID, csvOf(
 		"SDWAN-X100,上海仓库,,001A2B3C4D01,2.1.3",
 		"SDWAN-X100,上海仓库,,001A2B3C4D02,2.2.0",
 		"SDWAN-X100,上海仓库,,001A2B3C4D03,2.1.3",
@@ -332,7 +333,7 @@ func TestExportHonoursTheFilter(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	all, err := f.svc.Export(f.ctx, asset.ListFilter{CategoryID: f.catID, IncludeDescendants: true})
+	all, err := f.svc.Export(f.ctx, i18n.ZH, asset.ListFilter{CategoryID: f.catID, IncludeDescendants: true})
 	if err != nil {
 		t.Fatalf("export: %v", err)
 	}
@@ -344,7 +345,7 @@ func TestExportHonoursTheFilter(t *testing.T) {
 		t.Errorf("a filtered category should contribute its own columns: %q", lines[0])
 	}
 
-	filtered, err := f.svc.Export(f.ctx, asset.ListFilter{
+	filtered, err := f.svc.Export(f.ctx, i18n.ZH, asset.ListFilter{
 		CategoryID: f.catID, IncludeDescendants: true,
 		AttrFilters: map[string]string{"firmware": "2.2.0"},
 	})

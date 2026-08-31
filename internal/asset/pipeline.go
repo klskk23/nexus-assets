@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/klskk23/nexus-assets/internal/compute"
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
 	"github.com/klskk23/nexus-assets/internal/store"
@@ -290,7 +290,7 @@ func evalComputed(fields []model.BoundField, ctx compute.Context) (map[string]an
 		}
 		t, err := compute.Parse(f.Key, f.Options.Template)
 		if err != nil {
-			return nil, FieldErrors{f.Key: err.Error()}
+			return nil, FieldErrors{f.Key: asMessage(err)}
 		}
 		tmplByKey[f.Key] = f.Options.Template
 		deps[f.Key] = compute.AttrReferences(t.Tree.Root)
@@ -300,7 +300,7 @@ func evalComputed(fields []model.BoundField, ctx compute.Context) (map[string]an
 	}
 	order, err := compute.TopoSort(deps)
 	if err != nil {
-		return nil, FieldErrors{"_computed": err.Error()}
+		return nil, FieldErrors{"_computed": asMessage(err)}
 	}
 
 	attrs, _ := ctx["attrs"].(map[string]any)
@@ -308,7 +308,7 @@ func evalComputed(fields []model.BoundField, ctx compute.Context) (map[string]an
 	for _, key := range order {
 		v, err := compute.Eval(key, tmplByKey[key], ctx)
 		if err != nil {
-			return nil, FieldErrors{key: fmt.Sprintf("计算失败：%v", err)}
+			return nil, FieldErrors{key: i18n.M(i18n.KeyFieldComputeFail, err)}
 		}
 		out[key] = v
 		attrs[key] = v // later fields may read this one

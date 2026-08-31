@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
+
 	"github.com/klskk23/nexus-assets/internal/audit"
 	"github.com/klskk23/nexus-assets/internal/auth"
 )
@@ -29,8 +31,7 @@ func (s *Server) listAudit(c *gin.Context) {
 		}
 		t, err := time.Parse(time.RFC3339, raw)
 		if err != nil {
-			Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, MsgValidationFailed,
-				map[string]string{spec.param: "时间格式应为 RFC3339"})
+			FailField(c, http.StatusUnprocessableEntity, spec.param, i18n.KeyTimeShapeRFC3339)
 			return
 		}
 		*spec.dest = &t

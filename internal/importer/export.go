@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/klskk23/nexus-assets/internal/asset"
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
 )
@@ -20,7 +21,7 @@ const exportLimit = 10000
 // It takes the same filter the list page uses, so what is exported is exactly
 // what the person is looking at -- an export that quietly ignored the filters
 // would be worse than no export at all.
-func (s *Service) Export(ctx context.Context, f asset.ListFilter) ([]byte, error) {
+func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter) ([]byte, error) {
 	f.Offset = 0
 	f.Limit = exportLimit
 
@@ -65,7 +66,13 @@ func (s *Service) Export(ctx context.Context, f asset.ListFilter) ([]byte, error
 		catName[c.ID] = c.Name
 	}
 
-	header := []string{"资产编号", "类别", "状态", "持有方", "负责人", "创建时间"}
+	header := make([]string, 0, 6+len(fields))
+	for _, k := range []string{
+		i18n.KeyColSN, i18n.KeyColCategory, i18n.KeyColStatus,
+		i18n.KeyColHolder, i18n.KeyColOwner, i18n.KeyColCreatedAt,
+	} {
+		header = append(header, i18n.M(k).In(lang))
+	}
 	for _, fd := range fields {
 		header = append(header, fd.Label)
 	}

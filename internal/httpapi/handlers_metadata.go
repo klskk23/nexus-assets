@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
+
 	"github.com/klskk23/nexus-assets/internal/audit"
 	"github.com/klskk23/nexus-assets/internal/holder"
 	"github.com/klskk23/nexus-assets/internal/model"
@@ -33,7 +35,7 @@ func (s *Server) createCategory(c *gin.Context) {
 		DisplayKey string  `json:"display_key"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	out, err := s.schema.CreateCategory(c.Request.Context(), schema.CreateCategoryInput{
@@ -60,7 +62,7 @@ func (s *Server) patchCategory(c *gin.Context) {
 		ParentID json.RawMessage `json:"parent_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 
@@ -68,8 +70,7 @@ func (s *Server) patchCategory(c *gin.Context) {
 	if len(req.ParentID) > 0 {
 		var parent *string
 		if err := json.Unmarshal(req.ParentID, &parent); err != nil {
-			Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest,
-				map[string]string{"parent_id": "上级类别必须是 id 或 null"})
+			FailField(c, http.StatusBadRequest, "parent_id", i18n.KeyCategoryIDShape)
 			return
 		}
 		in.ParentID = &parent
@@ -134,7 +135,7 @@ func (s *Server) createField(c *gin.Context) {
 		IsUnique bool               `json:"is_unique"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	out, err := s.schema.CreateField(c.Request.Context(), schema.CreateFieldInput{
@@ -156,7 +157,7 @@ func (s *Server) patchField(c *gin.Context) {
 		Options *model.FieldOptions `json:"options"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	ctx := c.Request.Context()
@@ -184,7 +185,7 @@ func (s *Server) bindField(c *gin.Context) {
 		Sort     int    `json:"sort"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	if err := s.schema.Bind(c.Request.Context(), c.Param("id"), req.FieldID, req.Required, req.Sort); err != nil {
@@ -218,7 +219,7 @@ func (s *Server) createModel(c *gin.Context) {
 		AttrDefaults map[string]any `json:"attr_defaults"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	out, err := s.schema.CreateModel(c.Request.Context(), schema.CreateModelInput{
@@ -256,7 +257,7 @@ func (s *Server) createHolder(c *gin.Context) {
 		Attrs    map[string]any   `json:"attrs"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	out, err := s.holders.Create(c.Request.Context(), holder.CreateInput{
@@ -276,7 +277,6 @@ func (s *Server) createHolder(c *gin.Context) {
 func (s *Server) patchHolder(c *gin.Context) {
 	var req struct {
 		DefaultStock *bool   `json:"is_default_stock"`
-		Archive      *bool   `json:"archive"`
 		Name         *string `json:"name"`
 		Note         *string `json:"note"`
 		// RawMessage, not **string: unmarshalling JSON null into a double
@@ -285,7 +285,7 @@ func (s *Server) patchHolder(c *gin.Context) {
 		ParentID json.RawMessage `json:"parent_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest, nil)
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	ctx := c.Request.Context()
@@ -296,8 +296,7 @@ func (s *Server) patchHolder(c *gin.Context) {
 		if len(req.ParentID) > 0 {
 			var parent *string
 			if err := json.Unmarshal(req.ParentID, &parent); err != nil {
-				Fail(c, http.StatusBadRequest, CodeValidationFailed, MsgBadRequest,
-					map[string]string{"parent_id": "上级必须是 id 或 null"})
+				FailField(c, http.StatusBadRequest, "parent_id", i18n.KeyParentIDShape)
 				return
 			}
 			in.ParentID = &parent
@@ -313,18 +312,12 @@ func (s *Server) patchHolder(c *gin.Context) {
 		// request that did nothing came back 200. The marker moves; it does not
 		// switch off.
 		if !*req.DefaultStock {
-			Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, MsgDefaultStockRequired,
-				map[string]string{"is_default_stock": MsgDefaultStockRequired})
+			Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, i18n.M(i18n.KeyHolderDefaultStock).In(LangOf(c)),
+				map[string]string{"is_default_stock": i18n.M(i18n.KeyHolderDefaultStock).In(LangOf(c))})
 			return
 		}
 		if err := s.holders.SetDefaultStock(ctx, c.Param("id")); err != nil {
 			FailErr(c, err)
-			return
-		}
-	}
-	if req.Archive != nil && *req.Archive {
-		if err := s.holders.Archive(ctx, c.Param("id")); err != nil {
-			s.failHolder(c, err)
 			return
 		}
 	}
@@ -333,14 +326,47 @@ func (s *Server) patchHolder(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
-	action := audit.ActionUpdate
-	if req.Archive != nil && *req.Archive {
-		action = audit.ActionArchive
-	}
-	if !s.record(c, action, audit.TargetHolder, out.ID, before, out) {
+	if !s.record(c, audit.ActionUpdate, audit.TargetHolder, out.ID, before, out) {
 		return
 	}
 	c.JSON(http.StatusOK, out)
+}
+
+// holderUsage answers "what would deleting this cost" before anyone commits to
+// it. Assets and children refuse; history only degrades the timeline.
+func (s *Server) holderUsage(c *gin.Context) {
+	ctx := c.Request.Context()
+	// Existence first: the counts of a holder that is not there are all zero,
+	// which reads as "safe to delete" rather than as "no such thing".
+	if _, err := s.holders.Get(ctx, c.Param("id")); err != nil {
+		FailErr(c, err)
+		return
+	}
+	usage, err := s.holders.Usage(ctx, c.Param("id"))
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, usage)
+}
+
+func (s *Server) deleteHolder(c *gin.Context) {
+	ctx := c.Request.Context()
+	before, err := s.holders.Get(ctx, c.Param("id"))
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+
+	usage, err := s.holders.Delete(ctx, c.Param("id"))
+	if err != nil {
+		s.failHolderDelete(c, err, usage)
+		return
+	}
+	if !s.record(c, audit.ActionDelete, audit.TargetHolder, before.ID, before, nil) {
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 // recompute re-evaluates the expression keys of a category subtree.
@@ -378,24 +404,38 @@ func (s *Server) listFieldReferrers(c *gin.Context) {
 	c.JSON(http.StatusOK, refs)
 }
 
-// failHolder attaches the blocking assets to a refusal so the page can show
-// exactly what is in the way rather than a bare conflict.
-func (s *Server) failHolder(c *gin.Context, err error) {
-	if !errors.Is(err, holder.ErrReferenced) {
+// failHolderDelete attaches what is in the way to a refusal, so the page can
+// show it rather than a bare conflict.
+//
+// Two shapes because the operator does different things about them: blocking
+// assets are moved or re-pointed one at a time, while children are a count you
+// deal with in the tree.
+func (s *Server) failHolderDelete(c *gin.Context, err error, usage holder.Usage) {
+	switch {
+	case errors.Is(err, holder.ErrReferenced):
+		blockers, total, listErr := s.holders.Blockers(c.Request.Context(), c.Param("id"))
+		if listErr != nil {
+			blockers, total = nil, usage.Assets
+		}
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+			"error": gin.H{
+				"code":     CodeReferenceBlocked,
+				"message":  userText(c, err),
+				"blockers": blockers,
+				"total":    total,
+			},
+		})
+	case errors.Is(err, holder.ErrHasChildren):
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+			"error": gin.H{
+				"code":    CodeReferenceBlocked,
+				"message": userText(c, err),
+				"total":   usage.Children,
+			},
+		})
+	default:
 		FailErr(c, err)
-		return
 	}
-	blockers, _, listErr := s.holders.Blockers(c.Request.Context(), c.Param("id"))
-	if listErr != nil {
-		blockers = nil
-	}
-	c.AbortWithStatusJSON(http.StatusConflict, gin.H{
-		"error": gin.H{
-			"code":     CodeReferenceBlocked,
-			"message":  userText(err, holder.ErrReferenced),
-			"blockers": blockers,
-		},
-	})
 }
 
 // deleteField removes an information item.
@@ -417,7 +457,7 @@ func (s *Server) deleteField(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
 			"error": gin.H{
 				"code":      CodeReferenceBlocked,
-				"message":   userText(err, schema.ErrFieldReferenced),
+				"message":   userText(c, err),
 				"referrers": referrers,
 			},
 		})
@@ -426,7 +466,7 @@ func (s *Server) deleteField(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
 			"error": gin.H{
 				"code":     CodeReferenceBlocked,
-				"message":  userText(err, schema.ErrFieldInUse),
+				"message":  userText(c, err),
 				"blockers": blockers,
 				"total":    total,
 			},
@@ -481,7 +521,7 @@ func (s *Server) deleteCategory(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
 			"error": gin.H{
 				"code":     CodeReferenceBlocked,
-				"message":  userText(err, unwrapSentinel(err)),
+				"message":  userText(c, err),
 				"blockers": blockers,
 				"total":    total,
 			},

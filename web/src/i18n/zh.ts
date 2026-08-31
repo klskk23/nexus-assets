@@ -1,9 +1,13 @@
 /**
- * Every string a person reads lives here.
+ * The Chinese dictionary, and the shape every other language must match.
  *
  * Constitution principle V: identifiers, comments and error codes are English;
- * user-facing copy is Chinese. Keeping it in one file is what makes that rule
- * checkable rather than aspirational.
+ * user-facing copy lives in this directory. Keeping it out of the components
+ * is what makes that rule checkable rather than aspirational.
+ *
+ * No `as const` here on purpose: it would freeze every string into a literal
+ * type, and `typeof zh` would then demand that the English dictionary repeat
+ * the Chinese text word for word to typecheck.
  */
 export const zh = {
   appName: "Nexus Assets",
@@ -22,6 +26,7 @@ export const zh = {
     signOut: "退出登录",
     toLight: "切换到浅色",
     toDark: "切换到深色",
+    language: "切换语言",
   },
 
   login: {
@@ -113,7 +118,7 @@ export const zh = {
     lineNo: (n: number) => `第 ${n} 行`,
     actions: "操作",
   },
-} as const
+}
 
 export const zhMeta = {
   fields: {
@@ -150,6 +155,15 @@ export const zhMeta = {
     type: "类型",
     note: "备注",
     notePlaceholder: "货架区间、联系人、用途…",
+    edit: "编辑",
+    editTitle: "编辑持有方",
+    save: "保存",
+    delete: "删除",
+    deleteTitle: "删除持有方",
+    deleteHint: (name: string) =>
+      `「${name}」将被删除。仍有设备持有或引用它、或它下面还有下级时会被拒绝，届时会列出是哪些。`,
+    deleteHistoryHint: (name: string, n: number) =>
+      `「${name}」在 ${n} 条流转记录中出现过。删除后那些记录会显示原始 id 而不是名字，记录本身不会丢失。`,
     parent: "上级",
     noParent: "无上级",
     // The list is joined here rather than at the call site, so the separator
@@ -157,7 +171,7 @@ export const zhMeta = {
     parentRequired: (kind: string, allowed: string[]) => `${kind}必须属于一个${allowed.join("或")}`,
     noCompanyYet: "还没有公司，无法新建部门。请先建一个公司。",
     defaultStock: "默认库存点",
-    blocked: "无法停用",
+    blocked: "无法删除",
     blockedBy: "以下设备正在使用它：",
     blockedMore: (n: number) => `等共 ${n} 台`,
     setDefault: "设为默认库存点",
@@ -206,7 +220,7 @@ export const zhMeta = {
     text: "文本", number: "数字", boolean: "布尔", date: "日期", enum: "单选",
     reference: "引用", mac: "MAC 地址", ip: "IP 地址", url: "网址", computed: "计算项",
   } as Record<string, string>,
-} as const
+}
 
 export const zhTransfer = {
   timeline: "流转历史",
@@ -252,7 +266,7 @@ export const zhTransfer = {
     action: "操作",
     done: (n: number) => `已完成 ${n} 台的流转`,
   },
-} as const
+}
 
 export const zhConfig = {
   displayKey: {
@@ -313,7 +327,7 @@ export const zhConfig = {
     save: "保存",
     saving: "保存中…",
   },
-} as const
+}
 
 export const zhImport = {
   title: "批量导入",
@@ -340,7 +354,7 @@ export const zhImport = {
 
   export: "导出 CSV",
   exportHint: "按当前筛选条件导出",
-} as const
+}
 
 export const zhAudit = {
   title: "变更审计",
@@ -362,12 +376,12 @@ export const zhAudit = {
   total: (n: number) => `共 ${n} 条`,
   actions: { create: "新建", update: "修改", archive: "停用", delete: "删除", recompute: "重算" } as Record<string, string>,
   targets: { category: "类别", field: "信息项", binding: "字段绑定", model: "型号", holder: "持有方", user: "账号", status: "状态" } as Record<string, string>,
-} as const
+}
 
 export const zhConfirm = {
   cancel: "取消",
   typeToConfirm: (what: string) => `此操作不可撤销。请输入 ${what} 以确认。`,
-} as const
+}
 
 export const zhOverview = {
   title: "概览",
@@ -387,7 +401,7 @@ export const zhOverview = {
   noCategoriesHint: "类别决定设备要记录哪些信息。先建一个类别才能录入设备。",
   goConfigure: "去配置类别",
   emptyDistribution: "还没有任何设备",
-} as const
+}
 
 export const zhStatuses = {
   title: "状态",
@@ -429,4 +443,4 @@ export const zhStatuses = {
     teal: "青",
     rose: "玫红",
   } as Record<string, string>,
-} as const
+}

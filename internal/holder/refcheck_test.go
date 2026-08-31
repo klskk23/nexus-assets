@@ -85,7 +85,7 @@ func TestBlockersFindsBothPossessionAndReference(t *testing.T) {
 	}
 }
 
-func TestArchiveRefusedWithAnActionableMessage(t *testing.T) {
+func TestDeleteRefusedWithAnActionableMessage(t *testing.T) {
 	hs, db, ctx := newFixture(t)
 	warehouse, err := hs.Create(ctx, CreateInput{Type: model.EntityLocation, Name: "上海仓库"})
 	if err != nil {
@@ -98,7 +98,7 @@ func TestArchiveRefusedWithAnActionableMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = hs.Archive(ctx, warehouse.ID)
+	_, err = hs.Delete(ctx, warehouse.ID)
 	if !errors.Is(err, ErrReferenced) {
 		t.Fatalf("want ErrReferenced, got %v", err)
 	}
@@ -108,27 +108,22 @@ func TestArchiveRefusedWithAnActionableMessage(t *testing.T) {
 		}
 	}
 
-	still, err := hs.Get(ctx, warehouse.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if still.ArchivedAt != nil {
-		t.Error("the entity must not have been archived")
+	if _, err := hs.Get(ctx, warehouse.ID); err != nil {
+		t.Errorf("the entity must still be there: %v", err)
 	}
 }
 
-func TestArchiveSucceedsOnceNothingPointsAtIt(t *testing.T) {
+func TestDeleteSucceedsOnceNothingPointsAtIt(t *testing.T) {
 	hs, _, ctx := newFixture(t)
 	e, err := hs.Create(ctx, CreateInput{Type: model.EntityCompany, Name: "旧客户"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := hs.Archive(ctx, e.ID); err != nil {
-		t.Fatalf("archive: %v", err)
+	if _, err := hs.Delete(ctx, e.ID); err != nil {
+		t.Fatalf("delete: %v", err)
 	}
-	got, _ := hs.Get(ctx, e.ID)
-	if got.ArchivedAt == nil {
-		t.Error("the entity should be archived")
+	if _, err := hs.Get(ctx, e.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("the entity should be gone, got %v", err)
 	}
 }
 
@@ -157,7 +152,7 @@ func TestBlockerListIsCappedButTheTotalIsNot(t *testing.T) {
 		t.Errorf("the listed sample should be capped at %d, got %d", blockerLimit, len(blockers))
 	}
 	// The message has to say the list is partial, or it reads as the whole set.
-	msg := describeBlockers("上海仓库", blockers, total)
+	msg := describeBlockers("上海仓库", blockers, total).Error()
 	if !strings.Contains(msg, "仅列出前") {
 		t.Errorf("the message should say the list is truncated: %s", msg)
 	}
@@ -180,7 +175,7 @@ func TestArchivingTheDefaultStockPointIsRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = hs.Archive(ctx, a.ID)
+	_, err = hs.Delete(ctx, a.ID)
 	if !errors.Is(err, ErrDefaultStockRequired) {
 		t.Fatalf("want ErrDefaultStockRequired, got %v", err)
 	}
@@ -188,18 +183,18 @@ func TestArchivingTheDefaultStockPointIsRefused(t *testing.T) {
 		t.Errorf("the message should name the location, got %v", err)
 	}
 
-	// Still the default, and still active.
+	// Still the default, and still there.
 	cur, ok, err := hs.DefaultStock(ctx)
 	if err != nil || !ok || cur.ID != a.ID {
-		t.Fatalf("the marker must survive the refused archive: %v %v %+v", err, ok, cur)
+		t.Fatalf("the marker must survive the refused delete: %v %v %+v", err, ok, cur)
 	}
 
-	// Move it first, then the archive goes through.
+	// Move it first, then the delete goes through.
 	if err := hs.SetDefaultStock(ctx, b.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := hs.Archive(ctx, a.ID); err != nil {
-		t.Fatalf("once the marker has moved, archiving must succeed: %v", err)
+	if _, err := hs.Delete(ctx, a.ID); err != nil {
+		t.Fatalf("once the marker has moved, deleting must succeed: %v", err)
 	}
 	cur, ok, err = hs.DefaultStock(ctx)
 	if err != nil || !ok || cur.ID != b.ID {

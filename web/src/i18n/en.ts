@@ -1,0 +1,465 @@
+import type { zh, zhMeta, zhTransfer, zhConfig, zhImport, zhAudit, zhConfirm, zhOverview, zhStatuses } from "./zh"
+
+/**
+ * The English dictionary.
+ *
+ * Typed against the Chinese one, so a key added on either side and forgotten
+ * on the other fails the build rather than showing up as `undefined` on
+ * somebody's screen. The parity test in tests/i18n.test.ts covers what types
+ * cannot: that no Chinese survives in here.
+ */
+export const en: typeof zh = {
+  appName: "Nexus Assets",
+
+  nav: {
+    overview: "Overview",
+    assets: "Assets",
+    categories: "Categories",
+    fields: "Information items",
+    models: "Models",
+    statuses: "Statuses",
+    holders: "Holders",
+    users: "Accounts",
+    importPage: "Import",
+    audit: "Audit",
+    signOut: "Sign out",
+    toLight: "Switch to light",
+    toDark: "Switch to dark",
+    language: "Switch language",
+  },
+
+  login: {
+    title: "Sign in",
+    email: "Email",
+    password: "Password",
+    submit: "Sign in",
+    google: "Sign in with Google",
+    submitting: "Signing in…",
+  },
+
+  assets: {
+    title: "Assets",
+    search: "Search assets",
+    searchPlaceholder: "Search",
+    perPage: "Per page",
+    perPageUnit: (n: number) => `${n}`,
+    rangeOf: (from: number, to: number, total: number) =>
+      `${from}–${to} of ${total.toLocaleString("en-GB")}`,
+    prevPage: "Previous",
+    nextPage: "Next",
+    newAsset: "Add device",
+    columns: "Columns",
+    includeDescendants: "Include subcategories",
+    allCategories: "All categories",
+    allStatuses: "All statuses",
+    allOwners: "All owners",
+    allHolders: "All holders",
+    holderFilter: "Holder",
+    sn: "Number",
+    category: "Category",
+    statusLabel: "Status",
+    holder: "Holder",
+    owner: "Owner",
+    empty: "No assets yet",
+    emptyHint: "Set up a category and its information items first, then record the first device.",
+    snChanged: (from: string, to: string) => `Number ${from} became ${to}`,
+    modelLabel: "Model",
+    noModel: "No model",
+    modelChangeTitle: "Apply the new model's defaults?",
+    modelChangeHint:
+      "This model carries defaults. Tick to overwrite the current values; leave it clear to keep them.",
+    modelChangeApply: "Apply and overwrite",
+    modelChangeSkip: "Change the model only",
+    valueHistory: "Previous numbers",
+    valueHistoryHint: "Old values still match a search but no longer hold their uniqueness slot.",
+    archivedFields: "Retired fields",
+    archivedHint:
+      "These items no longer belong to this category. They are kept visible and are not validated.",
+    save: "Save",
+    saving: "Saving…",
+    saved: "Saved",
+    delete: "Delete",
+    deleteTitle: "Delete asset",
+    deleteHint: (sn: string) => `This cannot be undone. Type the number ${sn} to confirm.`,
+    deletedCount: (n: number) => `Deleted ${n} device(s)`,
+    deleteManyHint: (n: number) =>
+      `This cannot be undone. It deletes the ${n} selected device(s) and their whole transfer history.`,
+    generatedSN: "The number is derived from this category's display key; leave it alone",
+    inStockNeedsLocation: "A device in this status must sit in a location",
+    noLocationYet: "No locations on file yet, so this status is unreachable. Create one first.",
+    transfer: "Transfer",
+    backToList: "Back to assets",
+  },
+
+  common: {
+    loading: "Loading…",
+    error: "Something went wrong",
+    retry: "Retry",
+    cancel: "Cancel",
+    required: "This field is required",
+    yes: "Yes",
+    no: "No",
+    none: "None",
+    user: "Account",
+    holder: "Holder",
+    entityGroup: "Company / location / department",
+    inherited: "Inherited",
+    unique: "Unique",
+    computedHint: "Derived from other items; not filled in directly",
+    deprecatedSuffix: " (deprecated)",
+    defaultStockSuffix: " (default stock point)",
+    template: "Template",
+    requestFailed: "Request failed",
+    expand: (name: string) => `Expand ${name}`,
+    collapse: (name: string) => `Collapse ${name}`,
+    select: "Select",
+    selectOne: (name: string) => `Select ${name}`,
+    lineNo: (n: number) => `Line ${n}`,
+    actions: "Actions",
+  },
+}
+
+export const enMeta: typeof zhMeta = {
+  fields: {
+    title: "Information items",
+    create: "New item",
+    key: "Key",
+    label: "Display name",
+    type: "Type",
+    unique: "Globally unique",
+    empty: "No information items yet",
+    emptyHint:
+      "Items are shared system-wide: one key means one thing everywhere. Create it here, then bind it on a category.",
+  },
+  models: {
+    title: "Models",
+    create: "New model",
+    name: "Model",
+    vendor: "Vendor",
+    category: "Categories",
+    noCategory: "No category",
+    categoryHint:
+      "Several may be ticked. The model appears in the entry form of each chosen category and its subcategories.",
+    defaults: "Defaults",
+    defaultsHint:
+      "Used to prefill fields left empty when this model is chosen. Keys the category does not have are skipped.",
+    defaultKey: "Key",
+    defaultValue: "Value",
+    addDefault: "Add one",
+    removeDefault: "Remove",
+    empty: "No models yet",
+    emptyHint:
+      "A model can belong to several categories and supply default values, prefilled during entry.",
+  },
+  holders: {
+    title: "Holders",
+    create: "New holder",
+    name: "Name",
+    type: "Type",
+    note: "Note",
+    notePlaceholder: "Rack range, contact, purpose…",
+    edit: "Edit",
+    editTitle: "Edit holder",
+    save: "Save",
+    delete: "Delete",
+    deleteTitle: "Delete holder",
+    deleteHint: (name: string) =>
+      `${name} will be deleted. Refused while devices hold or reference it, or while anything hangs from it — you will be told which.`,
+    deleteHistoryHint: (name: string, n: number) =>
+      `${name} appears in ${n} transfer record(s). After deletion those show its raw id instead of its name; the records themselves survive.`,
+    parent: "Parent",
+    noParent: "No parent",
+    parentRequired: (kind: string, allowed: string[]) =>
+      `A ${kind} must belong to a ${allowed.join(" or ")}`,
+    noCompanyYet: "No companies yet, so a department cannot be created. Create a company first.",
+    defaultStock: "Default stock point",
+    blocked: "Cannot delete",
+    blockedBy: "These devices are using it:",
+    blockedMore: (n: number) => `and ${n} in total`,
+    setDefault: "Make default stock point",
+    empty: "No holders yet",
+    emptyHint:
+      "Locations, companies and departments are all holders. Check-in points at whichever location is marked the default stock point.",
+  },
+  users: {
+    title: "Accounts",
+    create: "New local account",
+    email: "Email",
+    name: "Name",
+    password: "Password",
+    status: "Status",
+    active: "Active",
+    disabled: "Disabled",
+    disable: "Disable",
+    empty: "No accounts yet",
+    emptyHint:
+      "Accounts can be disabled but not deleted; reassign their devices before disabling one.",
+  },
+  categories: {
+    title: "Categories",
+    create: "New category",
+    code: "Code (usable in templates)",
+    name: "Name",
+    parent: "Parent category",
+    noParent: "None (a top-level category)",
+    delete: "Delete category",
+    deleteTitle: "Delete category",
+    deleteHint: (name: string) =>
+      `${name} and its field bindings will be deleted. Refused while it has subcategories or assets beneath it — you will be told which.`,
+    deleteDetaches: (names: string) =>
+      `These models will no longer be attached to it (the models themselves survive): ${names}.`,
+    fields: "Items on this category",
+    inheritedFrom: "Inherited from",
+    bind: "Bind an item",
+    required: "Required",
+    unbind: "Unbind",
+    unbindTitle: "Unbind from this category",
+    unbindHint: (label: string) =>
+      `New devices will no longer be asked for ${label}; values on existing devices are kept, shown read-only and no longer validated.`,
+    empty: "No categories yet",
+    emptyHint:
+      "A category decides what a device records. Subcategories inherit every item from above.",
+  },
+  entityTypes: { company: "Company", location: "Location", department: "Department" },
+  fieldTypes: {
+    text: "Text", number: "Number", boolean: "Yes/no", date: "Date", enum: "Choice",
+    reference: "Reference", mac: "MAC address", ip: "IP address", url: "URL", computed: "Expression",
+  },
+}
+
+export const enTransfer: typeof zhTransfer = {
+  timeline: "Transfer history",
+  empty: "No transfers yet",
+  emptyHint: "Check this device out, return it or move it, and the record appears here.",
+  kind: {
+    create: "Recorded",
+    checkout: "Checked out",
+    checkin: "Returned",
+    transfer: "Moved",
+    reassign: "Owner changed",
+    status_change: "Status changed",
+  },
+  batch: (n: number) => `Batch (${n} devices)`,
+  by: "By",
+  note: "Note",
+  edited: (who: string) => `Corrected by ${who}`,
+  editTail: "Correct this record",
+  editHint: "Only the newest record can be corrected; a later transfer locks this one.",
+  cancel: "Cancel",
+  save: "Save correction",
+  from: "from",
+  to: "to",
+
+  actions: {
+    selected: (n: number) => `${n} selected`,
+    checkout: "Check out",
+    checkin: "Return",
+    transfer: "Move",
+    reassign: "Change owner",
+    changeStatus: "Change status",
+    clear: "Clear selection",
+    target: "Target",
+    owner: "Owner",
+    ownerHint: "Handing it to a company, department or location still needs somebody answerable.",
+    keepOwner: "Unchanged",
+    status: "Status",
+    note: "Note",
+    submit: "Submit",
+    submitting: "Submitting…",
+    checkinHint: "Returns to the default stock point",
+    title: "Transfer",
+    action: "Action",
+    done: (n: number) => `Transferred ${n} device(s)`,
+  },
+}
+
+export const enConfig: typeof zhConfig = {
+  displayKey: {
+    title: "Display number",
+    label: "Item used as the number",
+    none: "Not set (shows the first 8 of the UUID)",
+    hint:
+      "Only items marked unique may be chosen. The number is usually an expression key derived from a static one such as the MAC.",
+    save: "Save",
+    saved: "Saved",
+    recompute: "Recompute existing data",
+    previewTitle: "Recompute preview",
+    previewing: "Working it out…",
+    affected: (n: number, total: number) => `Would affect ${n} of ${total} in this subtree`,
+    noChange: "No asset's value would change",
+    conflicts: (n: number) => `${n} value conflict(s) found`,
+    conflictHint: "Nothing is written while conflicts remain. Change the expression first.",
+    conflictRow: (key: string, value: string, who: string) => `${key} = ${value} ← ${who}`,
+    samples: "Examples",
+    sampleRow: (asset: string, key: string, from: string, to: string) =>
+      `${asset}: ${key} ${from} → ${to}`,
+    apply: "Recompute",
+    applying: "Recomputing…",
+    applied: (n: number) => `Recomputed ${n}; the old values are archived as searchable aliases`,
+    cancel: "Cancel",
+    ruleChangedHint:
+      "Changing the expression only affects assets created afterwards. Existing ones need an explicit recompute.",
+  },
+  field: {
+    edit: "Edit item",
+    staticGroup: "Static keys (typed in or imported)",
+    expressionGroup: "Expression keys (derived from other keys)",
+    templateHint:
+      "Available: {{ .attrs.key }}, {{ .category.code }}, {{ .model.name }}, {{ .id }}. Pipes work, e.g. {{ .attrs.mac | hex2dec }}. No if/range.",
+    depsHint:
+      "When bound to a category, every static key it depends on must already be bound and marked required, or the binding is refused.",
+    regex: "Validation pattern",
+    regexHint: "Hint shown when the pattern does not match",
+    min: "Minimum",
+    max: "Maximum",
+    unit: "Unit",
+    choices: "Options",
+    addChoice: "Add an option",
+    choiceValue: "Value",
+    choiceLabel: "Display name",
+    deprecate: "Deprecate",
+    deprecated: "Deprecated",
+    restore: "Restore",
+    deprecateHint:
+      "A deprecated option still shows on existing assets but cannot be chosen for new ones.",
+    target: "Reference target",
+    targetUser: "Account",
+    targetEntity: "Holder entity",
+    entityTypes: "Limit to types",
+    template: "Expression",
+    delete: "Delete item",
+    deleteTitle: "Delete item",
+    deleteHint: (label: string) =>
+      `${label} will be removed outright, including its bindings on every category. Refused while any device has a value for it — ` +
+      `unbind it from the category instead in that case.`,
+    blockedByAssets: "These devices are using it:",
+    referrers: "These are referencing it:",
+    save: "Save",
+    saving: "Saving…",
+  },
+}
+
+export const enImport: typeof zhImport = {
+  title: "Bulk import",
+  step1: "1. Download the template",
+  step1Hint:
+    "The first row is prose for whoever fills the sheet in; the second is the machine key. Only the key row is read back, so renaming a display name never breaks a template already downloaded.",
+  download: "Download template",
+  step2: "2. Upload and preview",
+  step2Hint:
+    "The preview validates every row with exactly the rules manual entry uses, and writes nothing.",
+  category: "Import into category",
+  file: "CSV file",
+  preview: "Preview",
+  previewing: "Validating…",
+  step3: "3. Confirm the import",
+  step3Hint: "The whole file is written at once. If any row fails, nothing is written.",
+  commit: "Import",
+  committing: "Importing…",
+  summary: (ok: number, total: number) => `${ok} of ${total} rows can be imported`,
+  allGood: (n: number) => `All ${n} rows passed`,
+  hasErrors: (n: number) => `${n} row(s) need fixing; upload again once they are`,
+  line: "Line",
+  problem: "Problem",
+  generatedSN: "Number to be generated",
+  done: (n: number) => `Imported ${n} device(s)`,
+
+  export: "Export CSV",
+  exportHint: "Exports what the current filters show",
+}
+
+export const enAudit: typeof zhAudit = {
+  title: "Change audit",
+  hint:
+    "Asset transfers have their own timeline; this records configuration changes to categories, items, models, holders and accounts.",
+  targetType: "Object type",
+  allTypes: "All types",
+  from: "From",
+  to: "To",
+  actor: "By",
+  action: "Action",
+  target: "Object",
+  when: "When",
+  changes: "Change",
+  showChanges: "Show before and after",
+  before: "Before",
+  after: "After",
+  empty: "No configuration changes yet",
+  emptyHint:
+    "Create or change a category, item, model, holder or account and the record appears here.",
+  total: (n: number) => `${n} in total`,
+  actions: { create: "Created", update: "Changed", archive: "Disabled", delete: "Deleted", recompute: "Recomputed" },
+  targets: { category: "Category", field: "Item", binding: "Binding", model: "Model", holder: "Holder", user: "Account", status: "Status" },
+}
+
+export const enConfirm: typeof zhConfirm = {
+  cancel: "Cancel",
+  typeToConfirm: (what: string) => `This cannot be undone. Type ${what} to confirm.`,
+}
+
+export const enOverview: typeof zhOverview = {
+  title: "Overview",
+  statusTitle: "Device status",
+  total: (n: number) => `${n} in total`,
+  unit: "devices",
+  categoryTitle: "By category",
+  categoryHint: "Includes subcategories, excludes retired",
+  recentTitle: "Recent transfers",
+  recentCount: "Show",
+  recentCountUnit: (n: number) => `${n}`,
+  quickTitle: "Quick entry",
+  quickHint: "Pick a category to go straight to the entry form",
+  quickCategory: "Category",
+  quickStart: "Start",
+  noCategories: "No categories configured yet",
+  noCategoriesHint:
+    "A category decides what a device records. Create one before recording a device.",
+  goConfigure: "Configure categories",
+  emptyDistribution: "No devices yet",
+}
+
+export const enStatuses: typeof zhStatuses = {
+  title: "Statuses",
+  create: "New status",
+  key: "Key",
+  keyHint: "Lowercase letters, digits and underscores. Fixed once created.",
+  label: "Display name",
+  color: "Colour",
+  kind: "Kind",
+  builtin: "Built in",
+  custom: "Custom",
+  behaviour: "Behaviour",
+  requiresLocation: "Holder must be a location",
+  requiresLocationHint: "Suits a status that means “on a shelf in a warehouse”.",
+  countsAsAvailable: "Counts towards the category totals",
+  countsAsAvailableHint:
+    "Turn it off and devices in this status stay out of the overview's per-category count.",
+  notCounted: "Not counted per category",
+  terminal: "Terminal",
+  terminalHint:
+    "A device in a terminal status cannot move on; correct the last transfer record instead.",
+  builtinLocked:
+    "Built-in statuses cannot be deleted. Apart from “holder must be a location” their behaviour is fixed; only the name and colour can change.",
+  usage: "Usage",
+  inUse: (n: number) => `${n} device(s)`,
+  unused: "Unused",
+  inHistory: (n: number) => `${n} in history`,
+  delete: "Delete",
+  deleteTitle: "Delete status",
+  deleteHint: (label: string) => `${label} will disappear from every dropdown.`,
+  deleteHistoryHint: (label: string, n: number) =>
+    `${label} appears in ${n} transfer record(s). After deletion those show the raw key instead of this name; the records themselves survive.`,
+  empty: "No statuses",
+  emptyHint:
+    "Five statuses ship with the system. If this list is empty, a database migration did not finish.",
+  colors: {
+    slate: "Slate",
+    green: "Green",
+    blue: "Blue",
+    amber: "Amber",
+    red: "Red",
+    violet: "Violet",
+    teal: "Teal",
+    rose: "Rose",
+  },
+}

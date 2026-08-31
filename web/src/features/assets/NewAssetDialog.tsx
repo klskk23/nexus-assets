@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError, type FieldErrors } from "@/lib/api"
 import type { Asset, AssetStatus, Category, CategorySchema, HolderEntity } from "@/lib/types"
-import { zh } from "@/i18n/zh"
+import { t } from "@/i18n"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { useAuth } from "@/features/auth/useAuth"
 import { DynamicForm } from "@/features/assets/DynamicForm"
@@ -127,7 +127,7 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
         setFieldErrors(err.fields ?? {})
         setBanner(err.message)
       } else {
-        setBanner(zh.common.error)
+        setBanner(t.common.error)
       }
     },
   })
@@ -136,12 +136,12 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] gap-4 overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{zh.assets.newAsset}</DialogTitle>
+          <DialogTitle>{t.assets.newAsset}</DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field>
-            <FieldLabel htmlFor="new-category">{zh.assets.category}</FieldLabel>
+            <FieldLabel htmlFor="new-category">{t.assets.category}</FieldLabel>
             <Select
               value={categoryId}
               onValueChange={(v) => {
@@ -152,7 +152,7 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
               }}
             >
               <SelectTrigger id="new-category">
-                <SelectValue placeholder={zh.common.select} />
+                <SelectValue placeholder={t.common.select} />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -167,7 +167,7 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="new-status">{zh.assets.statusLabel}</FieldLabel>
+            <FieldLabel htmlFor="new-status">{t.assets.statusLabel}</FieldLabel>
             <Select value={status} onValueChange={(v) => setStatus(v as AssetStatus)}>
               <SelectTrigger id="new-status">
                 <SelectValue />
@@ -188,11 +188,11 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
                 </SelectGroup>
               </SelectContent>
             </Select>
-            {!canStock && <FieldDescription>{zh.assets.noLocationYet}</FieldDescription>}
+            {!canStock && <FieldDescription>{t.assets.noLocationYet}</FieldDescription>}
           </Field>
 
           <Field className="sm:col-span-2">
-            <FieldLabel htmlFor="new-holder">{zh.assets.holder}</FieldLabel>
+            <FieldLabel htmlFor="new-holder">{t.assets.holder}</FieldLabel>
             <Select value={holderId} onValueChange={setHolderId}>
               <SelectTrigger id="new-holder">
                 <SelectValue />
@@ -202,25 +202,25 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
                   {/* In stock has to be a location, so the account is not on
                       offer while that status is chosen. */}
                   <SelectItem value={SELF} disabled={requiresLocation}>
-                    {user?.name ?? zh.common.none}
+                    {user?.name ?? t.common.none}
                   </SelectItem>
                   {locations.map((h) => (
                     <SelectItem key={h.id} value={h.id}>
                       {h.name}
-                      {h.is_default_stock ? zh.common.defaultStockSuffix : ""}
+                      {h.is_default_stock ? t.common.defaultStockSuffix : ""}
                     </SelectItem>
                   ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
-            {requiresLocation && <FieldDescription>{zh.assets.inStockNeedsLocation}</FieldDescription>}
+            {requiresLocation && <FieldDescription>{t.assets.inStockNeedsLocation}</FieldDescription>}
           </Field>
         </div>
 
         {categoryId && (
           <StateBoundary isLoading={schema.isLoading} error={schema.error as Error | null}>
             <div className="grid gap-4">
-              <p className="text-sm text-muted-foreground">{zh.assets.generatedSN}</p>
+              <p className="text-sm text-muted-foreground">{t.assets.generatedSN}</p>
               <ModelPicker
                 categoryID={categoryId}
                 value={modelId}
@@ -251,11 +251,11 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
 
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="ghost">{zh.common.cancel}</Button>
+            <Button variant="ghost">{t.common.cancel}</Button>
           </DialogClose>
           <Button onClick={() => create.mutate()} disabled={categoryId === "" || create.isPending}>
             {create.isPending && <Spinner data-icon="inline-start" aria-hidden />}
-            {create.isPending ? zh.assets.saving : zh.assets.save}
+            {create.isPending ? t.assets.saving : t.assets.save}
           </Button>
         </DialogFooter>
       </DialogContent>

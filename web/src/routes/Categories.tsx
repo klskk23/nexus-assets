@@ -6,7 +6,7 @@ import { api, ApiError, blockerKey, type Blocker } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category, CategorySchema } from "@/lib/types"
 import type { FieldDefinitionRow, ProductModelRow } from "@/lib/metaTypes"
-import { zh, zhMeta } from "@/i18n/zh"
+import { t, tMeta } from "@/i18n"
 import { StateBoundary } from "@/components/StateBoundary"
 import { CollapsibleTree, buildTree } from "@/features/tree/CollapsibleTree"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
@@ -72,7 +72,7 @@ export function Categories() {
       queryClient.invalidateQueries({ queryKey: ["schema", selected] })
       queryClient.invalidateQueries({ queryKey: ["category-schema", selected] })
     },
-    onError: (e) => setBanner(e instanceof ApiError ? e.message : zh.common.error),
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
   })
 
   const selectedCategory = (categories.data ?? []).find((c) => c.id === selected)
@@ -114,7 +114,7 @@ export function Categories() {
         setRemoveBanner(e.message)
         setRemoveBlockers(e.blockers ?? [])
       } else {
-        setRemoveBanner(zh.common.error)
+        setRemoveBanner(t.common.error)
       }
     },
   })
@@ -134,7 +134,7 @@ export function Categories() {
       queryClient.invalidateQueries({ queryKey: ["schema", selected] })
     },
     // A key already bound higher on the chain is refused; the message names it.
-    onError: (e) => setBanner(e instanceof ApiError ? e.message : zh.common.error),
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
   })
 
   return (
@@ -142,7 +142,7 @@ export function Categories() {
       {/* The tree and its bindings are what this page is for; creating a
           category is occasional, so the form waits behind a button. */}
       <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold">{zhMeta.categories.title}</h1>
+        <h1 className="text-xl font-semibold">{tMeta.categories.title}</h1>
         <Dialog
           open={createOpen}
           onOpenChange={(next) => {
@@ -153,32 +153,32 @@ export function Categories() {
           <DialogTrigger asChild>
             <Button className="ml-auto">
               <PlusIcon data-icon="inline-start" />
-              {zhMeta.categories.create}
+              {tMeta.categories.create}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{zhMeta.categories.create}</DialogTitle>
+              <DialogTitle>{tMeta.categories.create}</DialogTitle>
             </DialogHeader>
 
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="c-code">{zhMeta.categories.code}</FieldLabel>
+                <FieldLabel htmlFor="c-code">{tMeta.categories.code}</FieldLabel>
                 <Input id="c-code" value={code} onChange={(e) => setCode(e.target.value)} />
               </Field>
               <Field>
-                <FieldLabel htmlFor="c-name">{zhMeta.categories.name}</FieldLabel>
+                <FieldLabel htmlFor="c-name">{tMeta.categories.name}</FieldLabel>
                 <Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} />
               </Field>
               <Field>
-                <FieldLabel htmlFor="c-parent">{zhMeta.categories.parent}</FieldLabel>
+                <FieldLabel htmlFor="c-parent">{tMeta.categories.parent}</FieldLabel>
                 <Select value={toNone(parentId)} onValueChange={(v) => setParentId(fromNone(v))}>
                   <SelectTrigger id="c-parent">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value={NONE}>{zhMeta.categories.noParent}</SelectItem>
+                      <SelectItem value={NONE}>{tMeta.categories.noParent}</SelectItem>
                       {(categories.data ?? []).map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}
@@ -194,21 +194,21 @@ export function Categories() {
               <Alert variant="destructive">
                 <AlertCircleIcon />
                 <AlertDescription>
-                  {create.error instanceof ApiError ? create.error.message : zh.common.error}
+                  {create.error instanceof ApiError ? create.error.message : t.common.error}
                 </AlertDescription>
               </Alert>
             )}
 
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="ghost">{zh.common.cancel}</Button>
+                <Button variant="ghost">{t.common.cancel}</Button>
               </DialogClose>
               <Button
                 onClick={() => create.mutate()}
                 disabled={code === "" || name === "" || create.isPending}
               >
                 {create.isPending && <Spinner data-icon="inline-start" aria-hidden />}
-                {zhMeta.categories.create}
+                {tMeta.categories.create}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -227,15 +227,15 @@ export function Categories() {
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>{zhMeta.categories.title}</CardTitle>
+            <CardTitle>{tMeta.categories.title}</CardTitle>
           </CardHeader>
           <CardContent>
             <StateBoundary
               isLoading={categories.isLoading}
               error={categories.error as Error | null}
               isEmpty={categories.data?.length === 0}
-              emptyTitle={zhMeta.categories.empty}
-              emptyHint={zhMeta.categories.emptyHint}
+              emptyTitle={tMeta.categories.empty}
+              emptyHint={tMeta.categories.emptyHint}
             >
               <CollapsibleTree
                 nodes={buildTree(categories.data ?? [])}
@@ -254,17 +254,17 @@ export function Categories() {
                 <ConfirmDialog
                   trigger={
                     <Button variant="destructive" size="sm" className="ml-auto">
-                      {zhMeta.categories.delete}
+                      {tMeta.categories.delete}
                     </Button>
                   }
-                  title={zhMeta.categories.deleteTitle}
+                  title={tMeta.categories.deleteTitle}
                   description={
-                    zhMeta.categories.deleteHint(selectedCategory.name) +
+                    tMeta.categories.deleteHint(selectedCategory.name) +
                     (detaching.length > 0
-                      ? zhMeta.categories.deleteDetaches(detaching.map((m) => m.name).join("、"))
+                      ? tMeta.categories.deleteDetaches(detaching.map((m) => m.name).join("、"))
                       : "")
                   }
-                  confirmLabel={zhMeta.categories.delete}
+                  confirmLabel={tMeta.categories.delete}
                   requirePhrase={selectedCategory.name}
                   onConfirm={() => remove.mutate()}
                 />
@@ -298,15 +298,15 @@ export function Categories() {
             )}
           <Card>
             <CardHeader>
-              <CardTitle>{zhMeta.categories.fields}</CardTitle>
+              <CardTitle>{tMeta.categories.fields}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
               <div className="flex flex-wrap items-end gap-3">
                 <Field>
-                  <FieldLabel htmlFor="c-bind">{zhMeta.categories.bind}</FieldLabel>
+                  <FieldLabel htmlFor="c-bind">{tMeta.categories.bind}</FieldLabel>
                   <Select value={bindField} onValueChange={setBindField}>
                     <SelectTrigger id="c-bind" className="w-56">
-                      <SelectValue placeholder={zh.common.select} />
+                      <SelectValue placeholder={t.common.select} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
@@ -325,14 +325,14 @@ export function Categories() {
                     checked={bindRequired}
                     onCheckedChange={(v) => setBindRequired(v === true)}
                   />
-                  <FieldLabel htmlFor="c-required">{zhMeta.categories.required}</FieldLabel>
+                  <FieldLabel htmlFor="c-required">{tMeta.categories.required}</FieldLabel>
                 </Field>
                 <Button
                   className="mb-0.5"
                   onClick={() => bind.mutate()}
                   disabled={bindField === ""}
                 >
-                  {zhMeta.categories.bind}
+                  {tMeta.categories.bind}
                 </Button>
               </div>
 
@@ -341,10 +341,10 @@ export function Categories() {
                   <li key={f.key} aria-label={f.label} className="flex items-center gap-2 text-sm">
                     <span className="font-mono text-muted-foreground">{f.key}</span>
                     <span>{f.label}</span>
-                    {f.required && <Badge variant="outline">{zhMeta.categories.required}</Badge>}
+                    {f.required && <Badge variant="outline">{tMeta.categories.required}</Badge>}
                     {f.inherited_from ? (
                       <Badge variant="secondary">
-                        {zhMeta.categories.inheritedFrom}
+                        {tMeta.categories.inheritedFrom}
                         {(categories.data ?? []).find((c) => c.id === f.inherited_from)?.name ?? ""}
                       </Badge>
                     ) : (
@@ -355,12 +355,12 @@ export function Categories() {
                       <ConfirmDialog
                         trigger={
                           <Button variant="ghost" size="sm" className="ml-auto">
-                            {zhMeta.categories.unbind}
+                            {tMeta.categories.unbind}
                           </Button>
                         }
-                        title={zhMeta.categories.unbindTitle}
-                        description={zhMeta.categories.unbindHint(f.label)}
-                        confirmLabel={zhMeta.categories.unbind}
+                        title={tMeta.categories.unbindTitle}
+                        description={tMeta.categories.unbindHint(f.label)}
+                        confirmLabel={tMeta.categories.unbind}
                         onConfirm={() => unbind.mutate(f.id)}
                       />
                     )}

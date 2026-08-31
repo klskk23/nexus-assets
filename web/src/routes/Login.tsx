@@ -5,7 +5,7 @@ import { useNavigate } from "react-router"
 import { api, ApiError, setToken } from "@/lib/api"
 import type { User } from "@/lib/types"
 import { useAuth } from "@/features/auth/useAuth"
-import { zh } from "@/i18n/zh"
+import { t } from "@/i18n"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,7 +46,7 @@ export function Login() {
         window.location.hash = ""
         navigate("/", { replace: true })
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : zh.common.error))
+      .catch((err) => setError(err instanceof ApiError ? err.message : t.common.error))
   }, [signIn, navigate])
 
   async function onSubmit(e: FormEvent) {
@@ -58,7 +58,7 @@ export function Login() {
       signIn(res.token, res.user)
       navigate("/", { replace: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : zh.common.error)
+      setError(err instanceof ApiError ? err.message : t.common.error)
     } finally {
       setSubmitting(false)
     }
@@ -68,12 +68,12 @@ export function Login() {
     <div className="flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>{zh.appName}</CardTitle>
+          <CardTitle>{t.appName}</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={onSubmit} className="grid gap-4" aria-label={zh.login.title}>
+          <form onSubmit={onSubmit} className="grid gap-4" aria-label={t.login.title}>
             <div className="grid gap-2">
-              <Label htmlFor="email">{zh.login.email}</Label>
+              <Label htmlFor="email">{t.login.email}</Label>
               <Input
                 id="email"
                 type="email"
@@ -84,7 +84,7 @@ export function Login() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">{zh.login.password}</Label>
+              <Label htmlFor="password">{t.login.password}</Label>
               <Input
                 id="password"
                 type="password"
@@ -103,14 +103,14 @@ export function Login() {
             )}
 
             <Button type="submit" disabled={submitting}>
-              {submitting ? zh.login.submitting : zh.login.submit}
+              {submitting ? t.login.submitting : t.login.submit}
             </Button>
           </form>
 
           <Separator className="my-6" />
 
           <Button variant="outline" className="w-full" asChild>
-            <a href="/api/auth/oidc/start">{zh.login.google}</a>
+            <a href="/api/auth/oidc/start">{t.login.google}</a>
           </Button>
         </CardContent>
       </Card>
