@@ -154,7 +154,8 @@ describe("Audit page", () => {
     renderWithProviders(<Audit />)
     const user = userEvent.setup()
     const row = await screen.findByRole("row", { name: /管理员/ })
-    expect(within(row).getByText("没有前后值")).toBeInTheDocument()
+    // Nothing in the row advertises a change, and clicking it opens nothing.
+    expect(row).not.toHaveClass("cursor-pointer")
     await user.click(row)
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })

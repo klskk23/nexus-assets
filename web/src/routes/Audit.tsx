@@ -234,7 +234,6 @@ export function Audit() {
                   <TableHead>{tAudit.actor}</TableHead>
                   <TableHead>{tAudit.action}</TableHead>
                   <TableHead>{tAudit.target}</TableHead>
-                  <TableHead>{tAudit.changes}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -264,9 +263,6 @@ export function Audit() {
                             <span className="text-muted-foreground ml-2 text-xs">
                               {e.target_label ?? e.target_id}
                             </span>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {hasChange ? tAudit.viewChanges : tAudit.noChanges}
                           </TableCell>
                         </TableRow>
                       </ContextMenuTrigger>
