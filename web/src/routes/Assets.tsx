@@ -346,14 +346,6 @@ export function Assets() {
         onRetry={() => assets.refetch()}
       >
         <>
-          <Pager
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onPage={setPage}
-            onPageSize={setPageSize}
-          />
-
           <div className="overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
@@ -421,6 +413,15 @@ export function Assets() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Under the table, where you land after reading it. */}
+          <Pager
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onPage={setPage}
+            onPageSize={setPageSize}
+          />
         </>
       </StateBoundary>
 
