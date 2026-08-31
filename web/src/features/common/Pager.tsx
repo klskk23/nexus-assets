@@ -66,39 +66,21 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
 
   return (
-    <>
-      <div className="flex flex-wrap items-center gap-3">
-        <p className="text-muted-foreground text-sm">
-          {t.assets.rangeOf(
-            total === 0 ? 0 : page * pageSize + 1,
-            Math.min((page + 1) * pageSize, total),
-            total,
-          )}
-        </p>
-        {children}
-        <Field orientation="horizontal" className="ml-auto w-auto">
-          <FieldLabel htmlFor="page-size" className="text-muted-foreground text-sm">
-            {t.assets.perPage}
-          </FieldLabel>
-          <Select value={String(pageSize)} onValueChange={(v) => onPageSize(Number(v))}>
-            <SelectTrigger id="page-size" size="sm" className="w-24">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {PAGE_SIZES.map((n) => (
-                  <SelectItem key={n} value={String(n)}>
-                    {t.assets.perPageUnit(n)}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-      </div>
+    // One row: the range on the left, the page links in the middle, the size
+    // picker on the right. Stacked in two rows they read as two unrelated
+    // controls that happen to sit near each other.
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <p className="text-muted-foreground text-sm">
+        {t.assets.rangeOf(
+          total === 0 ? 0 : page * pageSize + 1,
+          Math.min((page + 1) * pageSize, total),
+          total,
+        )}
+      </p>
+      {children}
 
       {pageCount > 1 && (
-        <Pagination>
+        <Pagination className="mx-0 w-auto flex-1">
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
@@ -110,7 +92,9 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
                   e.preventDefault()
                   onPage(Math.max(0, page - 1))
                 }}
-              />
+              >
+                {t.assets.prevPage}
+              </PaginationPrevious>
             </PaginationItem>
             {pageWindow(page, pageCount).map((n, i) =>
               n === null ? (
@@ -142,11 +126,33 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
                   e.preventDefault()
                   onPage(Math.min(pageCount - 1, page + 1))
                 }}
-              />
+              >
+                {t.assets.nextPage}
+              </PaginationNext>
             </PaginationItem>
           </PaginationContent>
         </Pagination>
       )}
-    </>
+
+      <Field orientation="horizontal" className="w-auto">
+        <FieldLabel htmlFor="page-size" className="text-muted-foreground text-sm">
+          {t.assets.perPage}
+        </FieldLabel>
+        <Select value={String(pageSize)} onValueChange={(v) => onPageSize(Number(v))}>
+          <SelectTrigger id="page-size" size="sm" className="w-24">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {PAGE_SIZES.map((n) => (
+                <SelectItem key={n} value={String(n)}>
+                  {t.assets.perPageUnit(n)}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </Field>
+    </div>
   )
 }

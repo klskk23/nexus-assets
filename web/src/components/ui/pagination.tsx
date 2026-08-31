@@ -65,8 +65,11 @@ function PaginationLink({
   )
 }
 
+// The label is a prop rather than the literal upstream ships: this product is
+// bilingual, and "Previous" is the one word on the page no catalogue reached.
 function PaginationPrevious({
   className,
+  children = "Previous",
   ...props
 }: React.ComponentProps<typeof PaginationLink>) {
   return (
@@ -77,13 +80,14 @@ function PaginationPrevious({
       {...props}
     >
       <ChevronLeftIcon />
-      <span className="hidden sm:block">Previous</span>
+      <span className="hidden sm:block">{children}</span>
     </PaginationLink>
   )
 }
 
 function PaginationNext({
   className,
+  children = "Next",
   ...props
 }: React.ComponentProps<typeof PaginationLink>) {
   return (
@@ -93,7 +97,7 @@ function PaginationNext({
       className={cn("gap-1 px-2.5 sm:pr-2.5", className)}
       {...props}
     >
-      <span className="hidden sm:block">Next</span>
+      <span className="hidden sm:block">{children}</span>
       <ChevronRightIcon />
     </PaginationLink>
   )

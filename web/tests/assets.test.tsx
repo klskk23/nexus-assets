@@ -206,6 +206,16 @@ describe("Assets paging", () => {
     await waitFor(() => expect(lastAssetCall().get("offset")).toBe("20"))
   })
 
+  // The accessible name comes from an aria-label we pass, so it stayed right
+  // while the words on screen were shadcn's own English literals.
+  it("writes the page links in the reader's language, not the component's", async () => {
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 137 条/)
+
+    expect(screen.getByRole("link", { name: "上一页" })).toHaveTextContent("上一页")
+    expect(screen.getByRole("link", { name: "下一页" })).toHaveTextContent("下一页")
+  })
+
   it("offers 20, 50 and 100 rows a page", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
