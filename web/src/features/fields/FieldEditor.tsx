@@ -10,7 +10,14 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { Input } from "@/components/ui/input"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -96,16 +103,16 @@ export function FieldEditor({ field, onClose }: Props) {
     })
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {tConfig.field.edit}：{field.label}
-          <Badge variant="secondary" className="ml-2">
-            {tMeta.fieldTypes[field.type] ?? field.type}
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-4">
+    <Dialog open onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="max-h-[85vh] gap-4 overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {tConfig.field.edit}：{field.label}
+            <Badge variant="secondary">{tMeta.fieldTypes[field.type] ?? field.type}</Badge>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="grid gap-4">
         <Field>
           <FieldLabel htmlFor="fe-label">{tMeta.fields.label}</FieldLabel>
           <Input id="fe-label" value={label} onChange={(e) => setLabel(e.target.value)} />
@@ -280,27 +287,32 @@ export function FieldEditor({ field, onClose }: Props) {
           </Alert>
         )}
 
-        <div className="flex gap-2">
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>
-            {save.isPending && <Spinner data-icon="inline-start" aria-hidden />}
-              {save.isPending ? tConfig.field.saving : tConfig.field.save}
-          </Button>
+        </div>
+
+        <DialogFooter>
+          {/* Deleting sits on the far side of the footer, away from the two
+              buttons that get pressed on the way out. */}
           <ConfirmDialog
             trigger={
-              <Button variant="destructive" disabled={remove.isPending}>
+              <Button variant="destructive" className="mr-auto" disabled={remove.isPending}>
                 {tConfig.field.delete}
               </Button>
             }
             title={tConfig.field.deleteTitle}
             description={tConfig.field.deleteHint(field.label)}
             confirmLabel={tConfig.field.delete}
+            requirePhrase={field.key}
             onConfirm={() => remove.mutate()}
           />
-          <Button variant="ghost" onClick={onClose}>
-            {t.common.cancel}
+          <DialogClose asChild>
+            <Button variant="ghost">{t.common.cancel}</Button>
+          </DialogClose>
+          <Button onClick={() => save.mutate()} disabled={save.isPending}>
+            {save.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+            {save.isPending ? tConfig.field.saving : tConfig.field.save}
           </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

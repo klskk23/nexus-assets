@@ -1,17 +1,17 @@
 <!-- SPECKIT START -->
-当前计划：`specs/007-asset-home-and-table-conventions/plan.md`
+当前计划：`specs/008-field-dialog-and-chart/plan.md`
 
 开工前必读，按优先级：
 
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
-2. `specs/007-asset-home-and-table-conventions/` —— 本轮特性的规格、计划、决策与任务
+2. `specs/008-field-dialog-and-chart/` —— 本轮特性的规格、计划、决策与任务
 3. `docs/design-baseline-v5.md`（决策 61–63）—— 状态不再约束持有方。
-   **冲突时以最新一版为准：007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
+   **冲突时以最新一版为准：008 > 007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
 4. `docs/design-baseline-v4.md`（决策 53–60）—— 状态成为可配置的数据
 5. `docs/design-baseline-v3.md`（决策 41–52）—— 信息项可删除、型号多对多
 6. `docs/design-baseline-v2.md`（决策 25–40）—— 编号模型、依赖门禁、流转
 7. `docs/design-baseline.md` —— 原始设计基线（决策 1–24）
-8. `specs/001-asset-ledger-demo/` ~ `specs/006-bilingual-and-holder-lifecycle/` —— 前六轮特性。
+8. `specs/001-asset-ledger-demo/` ~ `specs/007-asset-home-and-table-conventions/` —— 前七轮特性。
    001 的 `contracts/openapi.yaml` 仍是**全量**端点清单
 
 **最容易违反的十条硬规则**
@@ -62,6 +62,11 @@
   约定集中在 `CrudPage` 的 `onRowClick` / `rowActions`，不要在页面里各写一遍。
   **类别页有意不套用** —— 它是树不是列表。
   右键菜单在触发时关闭，所以确认框必须渲染在菜单之外（`ConfirmDialog` 有受控模式）。
+  **元数据的编辑器一律是 `Dialog`**，不是内联展开的 `Card` —— 那会把整张表推下去。
+- **重的库要 `lazy` 到自己的 chunk 里。** `recharts` 走 `features/overview/CategoryChart.tsx`
+  + `Suspense`：入口 chunk 与概览页 chunk 都不含它（否则概览页 chunk 是 358KB 而非 4.4KB）。
+  测试环境的 `ResizeObserver` 桩会回报固定尺寸，否则图表在 jsdom 里根本不渲染，
+  断言会因为与图表无关的原因通过。
 - **信息项没有「停用」。** 只有删除（无关联时）与解绑（有存量数据时）。
   `archived_attrs` 是**解绑**产生的孤儿键，与停用无关，不要跟着一起清理掉 ——
   删掉它会让「解绑后仍能查看旧值」当场失效，且没有任何现有测试会失败。

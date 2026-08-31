@@ -57,9 +57,29 @@ if (!Element.prototype.hasPointerCapture) {
   Element.prototype.setPointerCapture = () => {}
   Element.prototype.releasePointerCapture = () => {}
 }
+/**
+ * jsdom lays nothing out, so every element measures 0x0 and a chart's
+ * responsive container concludes there is no room to draw in. A stub that only
+ * swallows the calls leaves recharts rendering an empty SVG -- the assertions
+ * then pass or fail for reasons that have nothing to do with the chart.
+ *
+ * So this one reports a fixed size, once, on observe. The number is arbitrary;
+ * what matters is that it is not zero.
+ */
 if (typeof globalThis.ResizeObserver === "undefined") {
+  const SIZE = { width: 640, height: 320 }
   globalThis.ResizeObserver = class {
-    observe() {}
+    constructor(private readonly callback: ResizeObserverCallback) {}
+    observe(target: Element) {
+      const entry = {
+        target,
+        contentRect: { ...SIZE, top: 0, left: 0, bottom: SIZE.height, right: SIZE.width, x: 0, y: 0 },
+        borderBoxSize: [{ inlineSize: SIZE.width, blockSize: SIZE.height }],
+        contentBoxSize: [{ inlineSize: SIZE.width, blockSize: SIZE.height }],
+        devicePixelContentBoxSize: [{ inlineSize: SIZE.width, blockSize: SIZE.height }],
+      } as unknown as ResizeObserverEntry
+      this.callback([entry], this)
+    }
     unobserve() {}
     disconnect() {}
   }

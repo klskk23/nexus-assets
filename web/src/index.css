@@ -71,6 +71,23 @@
   --color-ring: var(--ring);
 }
 
+/* Chart palette.
+ *
+ * One series, one colour: the category distribution counts the same thing for
+ * every bar, and giving each its own hue would imply a difference that is not
+ * there. Extra slots go here when a chart genuinely has several series.
+ *
+ * Like the status palette below, it is defined per theme rather than picked
+ * once -- a fill that reads on white does not read on the dark ground this app
+ * defaults to.
+ */
+:root {
+  --chart-1: oklch(0.55 0.14 250);
+}
+.dark {
+  --chart-1: oklch(0.68 0.14 250);
+}
+
 /* Status palette.
  *
  * A status stores a palette name, not a hex value. The name is a semantic

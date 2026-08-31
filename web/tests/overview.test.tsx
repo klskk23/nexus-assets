@@ -98,7 +98,36 @@ describe("Overview", () => {
     renderWithProviders(<Overview />)
     const section = await screen.findByText("类别分布")
     expect(section).toHaveTextContent("含子类别，不含已报废")
-    expect(screen.getByText("62 台")).toBeInTheDocument()
+  })
+
+  // The chart replaced a list of bars and numbers, so it has to carry the same
+  // two things: which category, and how many.
+  it("draws each category as a bar labelled with its name and count", async () => {
+    const { container } = renderWithProviders(<Overview />)
+    await screen.findByText("类别分布")
+
+    await waitFor(() => {
+      const texts = [...container.querySelectorAll("svg text")].map((n) => n.textContent)
+      expect(texts).toContain("网络设备")
+      expect(texts).toContain("62")
+    })
+    expect(container.querySelectorAll(".recharts-bar-rectangle")).toHaveLength(1)
+  })
+
+  // The list it replaced was clickable; losing that would be a step back.
+  it("navigates from a bar into the filtered asset list", async () => {
+    const user = userEvent.setup()
+    const { container } = renderWithProviders(<Overview />)
+    await screen.findByText("类别分布")
+
+    const bar = await waitFor(() => {
+      const el = container.querySelector(".recharts-bar-rectangle path")
+      expect(el).not.toBeNull()
+      return el as Element
+    })
+    await user.click(bar)
+
+    expect(navigate).toHaveBeenCalledWith("/assets?category_id=net&include_descendants=true")
   })
 
   it("folds a batch in the recent list", async () => {

@@ -114,6 +114,9 @@ describe("FieldEditor", () => {
 
     await user.click(screen.getByRole("button", { name: "删除信息项" }))
     const dialog = await screen.findByRole("alertdialog")
+    // Deleting an item is irreversible, so it asks for the key first -- the
+    // same bar every other destructive action in the app sets.
+    await user.type(within(dialog).getByRole("textbox"), "k")
     await user.click(within(dialog).getByRole("button", { name: "删除信息项" }))
 
     const alerts = await screen.findAllByRole("alert")
@@ -144,6 +147,9 @@ describe("FieldEditor", () => {
 
     await user.click(screen.getByRole("button", { name: "删除信息项" }))
     const dialog = await screen.findByRole("alertdialog")
+    // Deleting an item is irreversible, so it asks for the key first -- the
+    // same bar every other destructive action in the app sets.
+    await user.type(within(dialog).getByRole("textbox"), "k")
     await user.click(within(dialog).getByRole("button", { name: "删除信息项" }))
 
     const alerts = await screen.findAllByRole("alert")
@@ -163,6 +169,9 @@ describe("FieldEditor", () => {
 
     await user.click(screen.getByRole("button", { name: "删除信息项" }))
     const dialog = await screen.findByRole("alertdialog")
+    // Deleting an item is irreversible, so it asks for the key first -- the
+    // same bar every other destructive action in the app sets.
+    await user.type(within(dialog).getByRole("textbox"), "k")
     await user.click(within(dialog).getByRole("button", { name: "删除信息项" }))
 
     await waitFor(() => expect(del).toHaveBeenCalledWith("/fields/spare"))

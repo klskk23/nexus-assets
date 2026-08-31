@@ -1,9 +1,10 @@
-import { useState } from "react"
+import { Suspense, lazy, useState } from "react"
 import { useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 
 import { api } from "@/lib/api"
 import type { AssetStatus, Category } from "@/lib/types"
+import type { CategoryCount } from "@/features/overview/CategoryChart"
 import type { Transfer } from "@/lib/transferTypes"
 import { t, tOverview } from "@/i18n"
 import { useStatuses } from "@/features/statuses/useStatuses"
@@ -13,6 +14,11 @@ import { Timeline } from "@/features/transfers/Timeline"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldLabel } from "@/components/ui/field"
+import { Skeleton } from "@/components/ui/skeleton"
+
+// The charting library outweighs the rest of this page, and the status cards
+// and recent transfers have no reason to wait for it.
+const CategoryChart = lazy(() => import("@/features/overview/CategoryChart"))
 import {
   Select,
   SelectContent,
@@ -21,18 +27,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Progress } from "@/components/ui/progress"
 
 interface StatusCount {
   status: AssetStatus
   count: number
 }
 
-interface CategoryCount {
-  category_id: string
-  name: string
-  count: number
-}
 
 interface OverviewData {
   status_counts: StatusCount[]
@@ -61,7 +61,6 @@ export function Overview() {
   })
 
   const distribution = overview.data?.category_distribution ?? []
-  const largest = Math.max(1, ...distribution.map((d) => d.count))
   const hasCategories = (categories.data ?? []).length > 0
 
   return (
@@ -120,28 +119,14 @@ export function Overview() {
                 {distribution.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{tOverview.emptyDistribution}</p>
                 ) : (
-                  <ul className="grid gap-3">
-                    {distribution.map((d) => (
-                      <li key={d.category_id} className="grid gap-1">
-                        <div className="flex items-baseline justify-between text-sm">
-                          <button
-                            className="text-left hover:underline"
-                            onClick={() =>
-                              navigate(`/assets?category_id=${d.category_id}&include_descendants=true`)
-                            }
-                          >
-                            {d.name}
-                          </button>
-                          <span className="tabular-nums text-muted-foreground">
-                            {d.count} {tOverview.unit}
-                          </span>
-                        </div>
-                        {/* A bar and a number say everything a chart would here,
-                            and keep the charting library out of the bundle. */}
-                        <Progress value={(d.count / largest) * 100} />
-                      </li>
-                    ))}
-                  </ul>
+                  <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+                    <CategoryChart
+                      data={distribution}
+                      onSelect={(id) =>
+                        navigate(`/assets?category_id=${id}&include_descendants=true`)
+                      }
+                    />
+                  </Suspense>
                 )}
               </CardContent>
             </Card>
