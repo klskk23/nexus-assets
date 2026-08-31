@@ -130,14 +130,21 @@ describe("Assets list", () => {
     await screen.findByText(/共 1 条/)
 
     await chooseByLabel(user, "类别", "网络设备")
-    const toggle = await screen.findByLabelText("固件版本")
-    await user.click(toggle)
+    await user.click(await screen.findByRole("button", { name: "显示列" }))
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: "固件版本" }))
 
     await waitFor(() =>
       expect(screen.getByRole("columnheader", { name: "固件版本" })).toBeInTheDocument(),
     )
     expect(screen.getByRole("cell", { name: "2.1.3" })).toBeInTheDocument()
     expect(JSON.parse(localStorage.getItem("nexus.assetColumns")!)).toContain("firmware")
+
+    // The menu stays open: picking columns is several decisions in a row, and
+    // closing after each one would make it one trip per column.
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "固件版本" }))
+    await waitFor(() =>
+      expect(screen.queryByRole("columnheader", { name: "固件版本" })).not.toBeInTheDocument(),
+    )
   })
 
   it("jumps straight to the device when the search hits exactly one", async () => {

@@ -63,6 +63,10 @@
   约定集中在 `CrudPage` 的 `onRowClick` / `rowActions`，不要在页面里各写一遍。
   **资产表格是手写的**（勾选、分页、动态列），不走 `CrudPage` —— 改这条约定时
   要记得它也要跟上；007 定规范时就漏了它一次。
+  **显示列是筛选行右端的三点 `DropdownMenu`**（`DropdownMenuCheckboxItem`），
+  不是一整块复选框。菜单要 `modal={false}` 且 `onSelect` 里 `preventDefault()`：
+  勾一列就是为了看它出现，模态菜单会把表格设成 `aria-hidden`（测试也因此找不到表头），
+  而每勾一次就关一次会让选四列跑四趟。
   **翻页只有一份实现**：`features/common/Pager.tsx`（区间行、每页条数、页码），
   **一整行**（左区间、中页码、右每页条数），且**放在表格下方**——读完一页才需要它。
   资产表与审计表都用它，不要再抄一份。

@@ -1,4 +1,4 @@
-import { InfoIcon, SearchIcon } from "lucide-react"
+import { InfoIcon, MoreVerticalIcon, SearchIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -36,12 +36,15 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group"
 import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field"
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Field, FieldLabel } from "@/components/ui/field"
 import {
   Select,
   SelectContent,
@@ -317,25 +320,42 @@ export function Assets() {
             <FieldLabel htmlFor="descendants">{t.assets.includeDescendants}</FieldLabel>
           </Field>
         )}
-      </div>
 
-      {available.length > 0 && (
-        <FieldSet className="rounded-md border p-3">
-          <FieldLegend variant="label">{t.assets.columns}</FieldLegend>
-          <FieldGroup className="flex flex-row flex-wrap items-center gap-4">
-            {available.map((f) => (
-              <Field key={f.key} orientation="horizontal" className="w-auto">
-                <Checkbox
-                  id={`col-${f.key}`}
-                  checked={extraColumns.includes(f.key)}
-                  onCheckedChange={() => toggle(f.key)}
-                />
-                <FieldLabel htmlFor={`col-${f.key}`}>{f.label}</FieldLabel>
-              </Field>
-            ))}
-          </FieldGroup>
-        </FieldSet>
-      )}
+        {/* The column picker used to be a bordered box of checkboxes standing
+            between the filters and the table, as tall as it had fields. It is
+            a menu on the table's own bar now: a category with twelve fields no
+            longer pushes the rows off the screen. */}
+        {available.length > 0 && (
+          // Not modal: the point of ticking a column is watching it appear,
+          // and a modal menu makes the table behind it inert and aria-hidden
+          // while you choose.
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="ml-auto" aria-label={t.assets.columns}>
+                <MoreVerticalIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>{t.assets.columns}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                {available.map((f) => (
+                  <DropdownMenuCheckboxItem
+                    key={f.key}
+                    checked={extraColumns.includes(f.key)}
+                    // Kept open: choosing columns is a handful of decisions in
+                    // a row, and closing after each one makes it four trips.
+                    onSelect={(e) => e.preventDefault()}
+                    onCheckedChange={() => toggle(f.key)}
+                  >
+                    {f.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
 
       <StateBoundary
         isLoading={assets.isLoading}
