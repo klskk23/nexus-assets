@@ -19,6 +19,7 @@ func (s *Server) listAudit(c *gin.Context) {
 		TargetType: c.Query("target_type"),
 		TargetID:   c.Query("target_id"),
 		ActorID:    c.Query("actor_id"),
+		Action:     c.Query("action"),
 		Offset:     offset,
 		Limit:      limit,
 	}

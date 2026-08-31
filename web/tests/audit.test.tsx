@@ -68,8 +68,28 @@ function page(items: AuditEntry[] = entries) {
   return { items, total: items.length, offset: 0, limit: 50 }
 }
 
+/** Answers /users with the account list and everything else with `body`. */
+function serve(body: unknown) {
+  get.mockImplementation((path: string) =>
+    Promise.resolve(path.startsWith("/users") ? users : body),
+  )
+}
+
+const users = [
+  { id: "u-admin", email: "a@x.com", name: "管理员", auth_type: "local", status: "active" },
+  { id: "u-zhang", email: "z@x.com", name: "张三", auth_type: "local", status: "active" },
+]
+
+/** The parameters of the most recent audit request -- the page also asks for
+ * the account list, which must not be mistaken for one. */
+function lastAuditCall(): URLSearchParams {
+  const calls = get.mock.calls.map((c) => c[0] as string).filter((p) => p.startsWith("/audit"))
+  return new URLSearchParams(calls[calls.length - 1].split("?")[1])
+}
+
 beforeEach(() => {
-  get.mockReset().mockResolvedValue(page())
+  get.mockReset()
+  serve(page())
 })
 
 describe("Audit page", () => {
@@ -87,8 +107,7 @@ describe("Audit page", () => {
 
     await chooseByLabel(user, "对象类型", "字段")
     await waitFor(() => {
-      const last = get.mock.calls[get.mock.calls.length - 1][0] as string
-      expect(new URLSearchParams(last.split("?")[1]).get("target_type")).toBe("field")
+      expect(lastAuditCall().get("target_type")).toBe("field")
     })
   })
 
@@ -103,8 +122,7 @@ describe("Audit page", () => {
     await user.click(day(5))
 
     await waitFor(() => {
-      const last = get.mock.calls[get.mock.calls.length - 1][0] as string
-      const params = new URLSearchParams(last.split("?")[1])
+      const params = lastAuditCall()
       // The end of the range has to cover the whole day, or today's entries
       // vanish the moment someone filters "up to today".
       expect(params.get("from")).toMatch(/-01T00:00:00Z$/)
@@ -122,9 +140,7 @@ describe("Audit page", () => {
     await user.click(day(9))
 
     await waitFor(() => {
-      const params = new URLSearchParams(
-        (get.mock.calls[get.mock.calls.length - 1][0] as string).split("?")[1],
-      )
+      const params = lastAuditCall()
       expect(params.get("from")).toMatch(/-09T00:00:00Z$/)
       expect(params.get("to")).toMatch(/-09T23:59:59Z$/)
     })
@@ -148,7 +164,7 @@ describe("Audit page", () => {
   })
 
   it("says so, rather than opening nothing, when an entry has no values", async () => {
-    get.mockResolvedValue(
+    serve(
       page([{ id: 3, actor_id: "u-admin", actor_name: "管理员", action: "delete", target_type: "user", target_id: "u9", created_at: "2026-08-28T09:00:00Z" }]),
     )
     renderWithProviders(<Audit />)
@@ -162,14 +178,13 @@ describe("Audit page", () => {
 
   it("pages, and asks for the page it is on", async () => {
     const user = userEvent.setup()
-    get.mockResolvedValue({ items: entries, total: 60, offset: 0, limit: 20 })
+    serve({ items: entries, total: 60, offset: 0, limit: 20 })
     renderWithProviders(<Audit />)
     await screen.findByRole("row", { name: /管理员/ })
 
     await user.click(screen.getByRole("link", { name: "2" }))
     await waitFor(() => {
-      const last = get.mock.calls[get.mock.calls.length - 1][0] as string
-      const params = new URLSearchParams(last.split("?")[1])
+      const params = lastAuditCall()
       expect(params.get("offset")).toBe("20")
       expect(params.get("limit")).toBe("20")
     })
@@ -184,15 +199,32 @@ describe("Audit page", () => {
     await chooseFromMenu(user, row, "只看这个操作人")
 
     await waitFor(() => {
-      const last = get.mock.calls[get.mock.calls.length - 1][0] as string
-      expect(new URLSearchParams(last.split("?")[1]).get("actor_id")).toBe("u-zhang")
+      expect(lastAuditCall().get("actor_id")).toBe("u-zhang")
     })
-    expect(screen.getByText("只看操作人 张三")).toBeInTheDocument()
+    // Set from the row, shown in the control -- so it is undone where every
+    // other filter is undone, not by a button that exists only for it.
+    expect(screen.getByRole("combobox", { name: "操作人" })).toHaveTextContent("张三")
 
-    await user.click(screen.getByRole("button", { name: "清除筛选" }))
+    await chooseByLabel(user, "操作人", "全部操作人")
     await waitFor(() => {
-      const last = get.mock.calls[get.mock.calls.length - 1][0] as string
-      expect(new URLSearchParams(last.split("?")[1]).get("actor_id")).toBeNull()
+      expect(lastAuditCall().get("actor_id")).toBeNull()
+    })
+  })
+
+  it("filters by what was done and by who did it", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Audit />)
+    await screen.findByRole("row", { name: /管理员/ })
+
+    await chooseByLabel(user, "操作", "删除")
+    await waitFor(() => expect(lastAuditCall().get("action")).toBe("delete"))
+
+    await chooseByLabel(user, "操作人", "张三")
+    await waitFor(() => {
+      const params = lastAuditCall()
+      expect(params.get("actor_id")).toBe("u-zhang")
+      // Both at once: "who deleted it" is one question, not two.
+      expect(params.get("action")).toBe("delete")
     })
   })
 
@@ -204,13 +236,12 @@ describe("Audit page", () => {
     await chooseFromMenu(user, row, "只看这个对象")
 
     await waitFor(() => {
-      const last = get.mock.calls[get.mock.calls.length - 1][0] as string
-      expect(new URLSearchParams(last.split("?")[1]).get("target_id")).toBe("f1")
+      expect(lastAuditCall().get("target_id")).toBe("f1")
     })
   })
 
   it("shows an empty state rather than a blank table", async () => {
-    get.mockResolvedValue(page([]))
+    serve(page([]))
     renderWithProviders(<Audit />)
     expect(await screen.findByText("还没有配置变更记录")).toBeInTheDocument()
   })

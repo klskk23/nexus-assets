@@ -242,3 +242,37 @@ func TestAuditFiltersByActor(t *testing.T) {
 		t.Errorf("filtering by a stranger = %d entries, want 0", none.Total)
 	}
 }
+
+// "Who deleted it" is the question people actually arrive with, and it takes
+// both filters at once.
+func TestAuditFiltersByAction(t *testing.T) {
+	h := newHarness(t)
+	rec := h.post(t, "/api/holders", `{"type":"company","name":"客户乙"}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatal(rec.Body.String())
+	}
+	created := decode[struct {
+		ID string `json:"id"`
+	}](t, rec)
+	if rec := h.do(t, http.MethodDelete, "/api/holders/"+created.ID, ""); rec.Code != http.StatusNoContent {
+		t.Fatal(rec.Body.String())
+	}
+
+	deletes := decode[audit.Page](t, h.get(t, "/api/audit?action=delete"))
+	if deletes.Total != 1 {
+		t.Fatalf("delete entries = %d, want 1", deletes.Total)
+	}
+	if deletes.Items[0].TargetID != created.ID {
+		t.Errorf("deleted target = %q, want %q", deletes.Items[0].TargetID, created.ID)
+	}
+
+	// Together with the actor filter, since the screen offers both at once.
+	both := decode[audit.Page](t, h.get(t, "/api/audit?action=create&actor_id="+h.userID))
+	if both.Total != 1 {
+		t.Errorf("create entries by this actor = %d, want 1", both.Total)
+	}
+	none := decode[audit.Page](t, h.get(t, "/api/audit?action=create&actor_id=nobody"))
+	if none.Total != 0 {
+		t.Errorf("create entries by a stranger = %d, want 0", none.Total)
+	}
+}

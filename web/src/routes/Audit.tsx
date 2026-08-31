@@ -5,6 +5,7 @@ import type { DateRange } from "react-day-picker"
 import { enUS, zhCN } from "react-day-picker/locale"
 
 import { api } from "@/lib/api"
+import type { User } from "@/lib/types"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import { cn } from "@/lib/utils"
 import { getLang, locale, tAudit } from "@/i18n"
@@ -86,7 +87,11 @@ export function Audit() {
   const [targetType, setTargetType] = useState("")
   const [targetID, setTargetID] = useState("")
   const [actorID, setActorID] = useState("")
+  // The name the row menu came from, for an actor the account list no longer
+  // has -- a deleted account still leaves its changes behind, which is the
+  // point of an audit trail.
   const [actorName, setActorName] = useState("")
+  const [action, setAction] = useState("")
   const [range, setRange] = useState<DateRange | undefined>()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
@@ -99,6 +104,7 @@ export function Audit() {
   if (targetType) params.set("target_type", targetType)
   if (targetID) params.set("target_id", targetID)
   if (actorID) params.set("actor_id", actorID)
+  if (action) params.set("action", action)
   if (range?.from) params.set("from", toRFC3339(range.from, false))
   // One picked day is a range of one, not a range with no end.
   if (range?.from) params.set("to", toRFC3339(range.to ?? range.from, true))
@@ -113,6 +119,11 @@ export function Audit() {
   listParams.set("offset", String(page * pageSize))
   const listKey = listParams.toString()
 
+  const users = useQuery({
+    queryKey: ["users"],
+    queryFn: () => api.get<User[]>("/users"),
+  })
+
   const query = useQuery({
     queryKey: ["audit", listKey],
     queryFn: () => api.get<Page>(`/audit?${listKey}`),
@@ -121,12 +132,10 @@ export function Audit() {
     placeholderData: (prev) => prev,
   })
 
-  const narrowed = targetID !== "" || actorID !== ""
-  const clear = () => {
-    setTargetID("")
-    setActorID("")
-    setActorName("")
-  }
+  // Everything except the object filter has a control of its own; that one is
+  // reachable only from a row menu, so it says so and can be undone.
+  const knownActors = users.data ?? []
+  const actorMissing = actorID !== "" && !knownActors.some((u) => u.id === actorID)
 
   const rangeText = !range?.from
     ? tAudit.anyDate
@@ -170,6 +179,51 @@ export function Audit() {
           </Select>
         </Field>
 
+        <Field className="w-auto">
+          <FieldLabel htmlFor="au-action" className="sr-only">
+            {tAudit.action}
+          </FieldLabel>
+          <Select value={toNone(action)} onValueChange={(v) => setAction(fromNone(v))}>
+            <SelectTrigger id="au-action" className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={NONE}>{tAudit.allActions}</SelectItem>
+                {Object.entries(tAudit.actions).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>
+                    {v}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field className="w-auto">
+          <FieldLabel htmlFor="au-actor" className="sr-only">
+            {tAudit.actor}
+          </FieldLabel>
+          <Select value={toNone(actorID)} onValueChange={(v) => setActorID(fromNone(v))}>
+            <SelectTrigger id="au-actor" className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={NONE}>{tAudit.allActors}</SelectItem>
+                {knownActors.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name}
+                  </SelectItem>
+                ))}
+                {actorMissing && (
+                  <SelectItem value={actorID}>{actorName || actorID}</SelectItem>
+                )}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
+
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -204,13 +258,10 @@ export function Audit() {
           </PopoverContent>
         </Popover>
 
-        {/* The row menu can narrow to one object or one person, which is
-            otherwise invisible -- so what it set says so, and can be undone. */}
-        {narrowed && (
+        {targetID && (
           <>
-            {targetID && <Badge variant="outline">{tAudit.onlyTarget(targetID)}</Badge>}
-            {actorID && <Badge variant="outline">{tAudit.onlyActor(actorName || actorID)}</Badge>}
-            <Button variant="ghost" size="sm" onClick={clear}>
+            <Badge variant="outline">{tAudit.onlyTarget(targetID)}</Badge>
+            <Button variant="ghost" size="sm" onClick={() => setTargetID("")}>
               {tAudit.clearFilters}
             </Button>
           </>

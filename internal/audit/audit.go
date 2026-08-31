@@ -110,10 +110,13 @@ type Filter struct {
 	// ActorID answers "what did this person change", which is a question an
 	// audit log exists for and could not be asked until now.
 	ActorID string
-	From    *time.Time
-	To      *time.Time
-	Offset  int
-	Limit   int
+	// Action narrows to one kind of change. Deletions are the ones people come
+	// looking for, and they are the rarest rows in the table.
+	Action string
+	From   *time.Time
+	To     *time.Time
+	Offset int
+	Limit  int
 }
 
 // Page is one page of entries plus the total.
@@ -141,6 +144,10 @@ func (s *Store) List(ctx context.Context, f Filter) (Page, error) {
 	if f.ActorID != "" {
 		where = append(where, "a.actor_id = ?")
 		args = append(args, f.ActorID)
+	}
+	if f.Action != "" {
+		where = append(where, "a.action = ?")
+		args = append(args, f.Action)
 	}
 	if f.From != nil {
 		where = append(where, "a.created_at >= ?")
