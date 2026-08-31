@@ -10,7 +10,15 @@ import { StateBoundary } from "@/components/StateBoundary"
 import { Timeline } from "@/features/transfers/Timeline"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
+import { Field, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 
 interface StatusCount {
@@ -140,22 +148,23 @@ export function Overview() {
                 {hasCategories ? (
                   <>
                     <p className="text-sm text-muted-foreground">{zhOverview.quickHint}</p>
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="ov-category">{zhOverview.quickCategory}</Label>
-                      <select
-                        id="ov-category"
-                        className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                        value={quickCategory}
-                        onChange={(e) => setQuickCategory(e.target.value)}
-                      >
-                        <option value="">—</option>
-                        {(categories.data ?? []).map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <Field>
+                      <FieldLabel htmlFor="ov-category">{zhOverview.quickCategory}</FieldLabel>
+                      <Select value={quickCategory} onValueChange={setQuickCategory}>
+                        <SelectTrigger id="ov-category">
+                          <SelectValue placeholder={zh.common.select} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {(categories.data ?? []).map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </Field>
                     <div>
                       <Button
                         disabled={quickCategory === ""}

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { Assets } from "@/routes/Assets"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { chooseByLabel } from "@/test/choose"
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router")
@@ -49,9 +50,8 @@ describe("export from the asset list", () => {
     await screen.findByRole("link", { name: "导出 CSV" })
 
     await user.type(screen.getByLabelText(/搜索编号/), "4D5E")
-    await screen.findByRole("option", { name: "网络设备" })
-    await user.selectOptions(screen.getByLabelText("类别"), "net")
-    await user.selectOptions(screen.getByLabelText("状态"), "in_use")
+    await chooseByLabel(user, "类别", "网络设备")
+    await chooseByLabel(user, "状态", "已签出")
 
     const href = screen.getByRole("link", { name: "导出 CSV" }).getAttribute("href")!
     const params = new URLSearchParams(href.split("?")[1])
@@ -64,9 +64,9 @@ describe("export from the asset list", () => {
   it("follows the descendants switch", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByRole("option", { name: "网络设备" })
+    await screen.findByRole("link", { name: "导出 CSV" })
 
-    await user.selectOptions(screen.getByLabelText("类别"), "net")
+    await chooseByLabel(user, "类别", "网络设备")
     await user.click(screen.getByLabelText("含子类别"))
 
     const href = screen.getByRole("link", { name: "导出 CSV" }).getAttribute("href")!

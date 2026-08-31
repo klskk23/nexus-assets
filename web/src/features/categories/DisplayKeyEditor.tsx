@@ -2,11 +2,21 @@ import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
+import { NONE, fromNone, toNone } from "@/lib/select"
 import type { BoundField } from "@/lib/types"
 import { zh, zhConfig } from "@/i18n/zh"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface RecomputeSample {
   asset: string
@@ -93,30 +103,33 @@ export function DisplayKeyEditor({ categoryID, categoryName, displayKey, fields 
         <CardTitle>{zhConfig.displayKey.title}</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-3">
-        <div className="grid gap-1.5">
-          <Label htmlFor="display-key">{zhConfig.displayKey.label}</Label>
-          <select
-            id="display-key"
-            className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          >
-            <option value="">{zhConfig.displayKey.none}</option>
-            {candidates.map((f) => (
-              <option key={f.key} value={f.key}>
-                {f.label}（{f.key}）
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-muted-foreground">{zhConfig.displayKey.hint}</p>
-        </div>
+        <Field>
+          <FieldLabel htmlFor="display-key">{zhConfig.displayKey.label}</FieldLabel>
+          <Select value={toNone(value)} onValueChange={(v) => setValue(fromNone(v))}>
+            <SelectTrigger id="display-key">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={NONE}>{zhConfig.displayKey.none}</SelectItem>
+                {candidates.map((f) => (
+                  <SelectItem key={f.key} value={f.key}>
+                    {f.label}（{f.key}）
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <FieldDescription>{zhConfig.displayKey.hint}</FieldDescription>
+        </Field>
 
         <div className="flex flex-wrap gap-2">
           <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>
             {zhConfig.displayKey.save}
           </Button>
           <Button size="sm" variant="outline" disabled={preview.isPending} onClick={() => preview.mutate()}>
-            {preview.isPending ? zhConfig.displayKey.previewing : zhConfig.displayKey.recompute}
+            {preview.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+              {preview.isPending ? zhConfig.displayKey.previewing : zhConfig.displayKey.recompute}
           </Button>
         </div>
 
@@ -168,7 +181,8 @@ export function DisplayKeyEditor({ categoryID, categoryName, displayKey, fields 
                 disabled={conflicts.length > 0 || report.affected === 0 || apply.isPending}
                 onClick={() => apply.mutate()}
               >
-                {apply.isPending ? zhConfig.displayKey.applying : zhConfig.displayKey.apply}
+                {apply.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+              {apply.isPending ? zhConfig.displayKey.applying : zhConfig.displayKey.apply}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setReport(null)}>
                 {zhConfig.displayKey.cancel}

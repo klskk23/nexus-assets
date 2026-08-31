@@ -1,3 +1,4 @@
+import { InfoIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -18,8 +19,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface HistoricValue {
@@ -145,9 +148,10 @@ export function AssetDetail() {
           />
 
           {banner && (
-            <p role="status" className="rounded-md border bg-secondary px-3 py-2 text-sm">
-              {banner}
-            </p>
+            <Alert role="status">
+              <InfoIcon />
+              <AlertDescription>{banner}</AlertDescription>
+            </Alert>
           )}
 
           <Card>
@@ -188,7 +192,8 @@ export function AssetDetail() {
 
               <div>
                 <Button onClick={() => save.mutate()} disabled={save.isPending}>
-                  {save.isPending ? zh.assets.saving : zh.assets.save}
+                  {save.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+              {save.isPending ? zh.assets.saving : zh.assets.save}
                 </Button>
               </div>
             </CardContent>

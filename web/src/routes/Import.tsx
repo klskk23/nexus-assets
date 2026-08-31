@@ -1,14 +1,25 @@
+import { AlertCircleIcon } from "lucide-react"
 import { useRef, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 
 import { api, ApiError, getToken } from "@/lib/api"
 import type { Category } from "@/lib/types"
 import { zh, zhImport } from "@/i18n/zh"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Field, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -109,25 +120,29 @@ export function Import() {
         <CardContent className="grid gap-4">
           <p className="text-sm text-muted-foreground">{zhImport.step1Hint}</p>
           <div className="flex flex-wrap items-end gap-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="im-category">{zhImport.category}</Label>
-              <select
-                id="im-category"
-                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+            <Field>
+              <FieldLabel htmlFor="im-category">{zhImport.category}</FieldLabel>
+              <Select
                 value={categoryID}
-                onChange={(e) => {
-                  setCategoryID(e.target.value)
+                onValueChange={(v) => {
+                  setCategoryID(v)
                   setReport(null)
                 }}
               >
-                <option value="">—</option>
-                {(categories.data ?? []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <SelectTrigger id="im-category" className="w-56">
+                  <SelectValue placeholder={zh.common.select} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {(categories.data ?? []).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
             {/* An anchor ignores `disabled`, so without a category selected we
                 render a real button instead of a live link to a broken URL. */}
             {categoryID === "" ? (
@@ -152,8 +167,8 @@ export function Import() {
         <CardContent className="grid gap-4">
           <p className="text-sm text-muted-foreground">{zhImport.step2Hint}</p>
           <div className="flex flex-wrap items-end gap-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="im-file">{zhImport.file}</Label>
+            <Field>
+              <FieldLabel htmlFor="im-file">{zhImport.file}</FieldLabel>
               <Input
                 id="im-file"
                 ref={fileInput}
@@ -164,20 +179,22 @@ export function Import() {
                   setReport(null)
                 }}
               />
-            </div>
+            </Field>
             <Button
               className="mb-0.5"
               disabled={!canPreview || preview.isPending}
               onClick={() => preview.mutate()}
             >
+              {preview.isPending && <Spinner data-icon="inline-start" aria-hidden />}
               {preview.isPending ? zhImport.previewing : zhImport.preview}
             </Button>
           </div>
 
           {banner && (
-            <p role="alert" className="text-sm text-destructive">
-              {banner}
-            </p>
+            <Alert variant="destructive">
+              <AlertCircleIcon />
+              <AlertDescription>{banner}</AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>
@@ -232,7 +249,8 @@ export function Import() {
 
             <div>
               <Button disabled={!canCommit || commit.isPending} onClick={() => commit.mutate()}>
-                {commit.isPending ? zhImport.committing : zhImport.commit}
+                {commit.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+              {commit.isPending ? zhImport.committing : zhImport.commit}
               </Button>
             </div>
           </CardContent>

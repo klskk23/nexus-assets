@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 
 import { api } from "@/lib/api"
+import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category } from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
 import { zh } from "@/i18n/zh"
@@ -14,7 +15,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+import { Field, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface Props {
   categoryID: string
@@ -97,22 +106,24 @@ export function ModelPicker({ categoryID, value, onChange, values, confirmOverwr
 
   return (
     <>
-      <div className="grid gap-1.5">
-        <Label htmlFor="asset-model">{zh.assets.modelLabel}</Label>
-        <select
-          id="asset-model"
-          className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-          value={value ?? ""}
-          onChange={(e) => select(e.target.value)}
-        >
-          <option value="">{zh.assets.noModel}</option>
-          {candidates.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.vendor ? `${m.vendor} ${m.name}` : m.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Field>
+        <FieldLabel htmlFor="asset-model">{zh.assets.modelLabel}</FieldLabel>
+        <Select value={toNone(value)} onValueChange={(v) => select(fromNone(v))}>
+          <SelectTrigger id="asset-model">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value={NONE}>{zh.assets.noModel}</SelectItem>
+              {candidates.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.vendor ? `${m.vendor} ${m.name}` : m.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </Field>
 
       <Dialog open={pending !== null} onOpenChange={(o) => !o && setPending(null)}>
         <DialogContent>

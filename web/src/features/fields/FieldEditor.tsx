@@ -1,3 +1,4 @@
+import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -6,11 +7,21 @@ import type { EnumChoice, FieldOptions } from "@/lib/types"
 import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import { zh, zhConfig, zhMeta } from "@/i18n/zh"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Field, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface Props {
   field: FieldDefinitionRow
@@ -95,76 +106,76 @@ export function FieldEditor({ field, onClose }: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <div className="grid gap-1.5">
-          <Label htmlFor="fe-label">{zhMeta.fields.label}</Label>
+        <Field>
+          <FieldLabel htmlFor="fe-label">{zhMeta.fields.label}</FieldLabel>
           <Input id="fe-label" value={label} onChange={(e) => setLabel(e.target.value)} />
-        </div>
+        </Field>
 
         {field.type === "text" && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label htmlFor="fe-regex">{zhConfig.field.regex}</Label>
+            <Field>
+              <FieldLabel htmlFor="fe-regex">{zhConfig.field.regex}</FieldLabel>
               <Input
                 id="fe-regex"
                 className="font-mono"
                 value={options.regex ?? ""}
                 onChange={(e) => set({ regex: e.target.value })}
               />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="fe-regex-hint">{zhConfig.field.regexHint}</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="fe-regex-hint">{zhConfig.field.regexHint}</FieldLabel>
               <Input
                 id="fe-regex-hint"
                 value={options.regex_hint ?? ""}
                 onChange={(e) => set({ regex_hint: e.target.value })}
               />
-            </div>
+            </Field>
           </div>
         )}
 
         {field.type === "number" && (
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="fe-min">{zhConfig.field.min}</Label>
+            <Field>
+              <FieldLabel htmlFor="fe-min">{zhConfig.field.min}</FieldLabel>
               <Input
                 id="fe-min"
                 type="number"
                 value={options.min ?? ""}
                 onChange={(e) => set({ min: e.target.value === "" ? undefined : Number(e.target.value) })}
               />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="fe-max">{zhConfig.field.max}</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="fe-max">{zhConfig.field.max}</FieldLabel>
               <Input
                 id="fe-max"
                 type="number"
                 value={options.max ?? ""}
                 onChange={(e) => set({ max: e.target.value === "" ? undefined : Number(e.target.value) })}
               />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="fe-unit">{zhConfig.field.unit}</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="fe-unit">{zhConfig.field.unit}</FieldLabel>
               <Input
                 id="fe-unit"
                 value={options.unit ?? ""}
                 onChange={(e) => set({ unit: e.target.value })}
               />
-            </div>
+            </Field>
           </div>
         )}
 
         {field.type === "enum" && (
           <div className="grid gap-3">
-            <Label>{zhConfig.field.choices}</Label>
+            <FieldLabel>{zhConfig.field.choices}</FieldLabel>
             <p className="text-xs text-muted-foreground">{zhConfig.field.deprecateHint}</p>
             {(options.choices ?? []).map((c, i) => {
               const retired = (options.deprecated ?? []).includes(c.value)
               return (
                 <div key={i} className="flex flex-wrap items-end gap-2">
                   <div className="grid gap-1">
-                    <Label htmlFor={`fe-choice-value-${i}`} className="text-xs">
+                    <FieldLabel htmlFor={`fe-choice-value-${i}`} className="text-xs">
                       {zhConfig.field.choiceValue}
-                    </Label>
+                    </FieldLabel>
                     <Input
                       id={`fe-choice-value-${i}`}
                       className="w-40 font-mono"
@@ -173,9 +184,9 @@ export function FieldEditor({ field, onClose }: Props) {
                     />
                   </div>
                   <div className="grid gap-1">
-                    <Label htmlFor={`fe-choice-label-${i}`} className="text-xs">
+                    <FieldLabel htmlFor={`fe-choice-label-${i}`} className="text-xs">
                       {zhConfig.field.choiceLabel}
-                    </Label>
+                    </FieldLabel>
                     <Input
                       id={`fe-choice-label-${i}`}
                       className="w-40"
@@ -203,23 +214,28 @@ export function FieldEditor({ field, onClose }: Props) {
         )}
 
         {field.type === "reference" && (
-          <div className="grid gap-1.5">
-            <Label htmlFor="fe-target">{zhConfig.field.target}</Label>
-            <select
-              id="fe-target"
-              className="border-input bg-background h-9 w-56 rounded-md border px-3 text-sm"
+          <Field>
+            <FieldLabel htmlFor="fe-target">{zhConfig.field.target}</FieldLabel>
+            <Select
               value={options.target ?? "user"}
-              onChange={(e) => set({ target: e.target.value as "user" | "entity" })}
+              onValueChange={(v) => set({ target: v as "user" | "entity" })}
             >
-              <option value="user">{zhConfig.field.targetUser}</option>
-              <option value="entity">{zhConfig.field.targetEntity}</option>
-            </select>
-          </div>
+              <SelectTrigger id="fe-target" className="w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="user">{zhConfig.field.targetUser}</SelectItem>
+                  <SelectItem value="entity">{zhConfig.field.targetEntity}</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
         )}
 
         {field.type === "computed" && (
-          <div className="grid gap-1.5">
-            <Label htmlFor="fe-template">{zhConfig.field.template}</Label>
+          <Field>
+            <FieldLabel htmlFor="fe-template">{zhConfig.field.template}</FieldLabel>
             <Input
               id="fe-template"
               className="font-mono"
@@ -228,7 +244,7 @@ export function FieldEditor({ field, onClose }: Props) {
             />
             <p className="text-xs text-muted-foreground">{zhConfig.field.templateHint}</p>
             <p className="text-xs text-muted-foreground">{zhConfig.field.depsHint}</p>
-          </div>
+          </Field>
         )}
 
         {(referrers.data ?? []).length > 0 && (
@@ -239,31 +255,35 @@ export function FieldEditor({ field, onClose }: Props) {
         )}
 
         {banner && (
-          <div role="alert" className="grid gap-1 text-sm text-destructive">
-            <p>{banner}</p>
-            {refBlockers.length > 0 && (
-              <ul className="grid gap-0.5 text-xs">
-                {refBlockers.map((b) => (
-                  <li key={b.id}>{b.label}</li>
-                ))}
-              </ul>
-            )}
-            {assetBlockers.length > 0 && (
-              <>
-                <p className="text-xs">{zhConfig.field.blockedByAssets}</p>
-                <ul className="grid gap-0.5 font-mono text-xs">
-                  {assetBlockers.map((b) => (
-                    <li key={b.asset_id}>{b.name}</li>
+          <Alert variant="destructive">
+            <AlertCircleIcon />
+            <AlertDescription className="grid gap-1">
+              {banner}
+              {refBlockers.length > 0 && (
+                <ul className="grid gap-0.5 text-xs">
+                  {refBlockers.map((b) => (
+                    <li key={b.id}>{b.label}</li>
                   ))}
                 </ul>
-              </>
-            )}
-          </div>
+              )}
+              {assetBlockers.length > 0 && (
+                <>
+                  <p className="text-xs">{zhConfig.field.blockedByAssets}</p>
+                  <ul className="grid gap-0.5 font-mono text-xs">
+                    {assetBlockers.map((b) => (
+                      <li key={b.asset_id}>{b.name}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </AlertDescription>
+          </Alert>
         )}
 
         <div className="flex gap-2">
           <Button onClick={() => save.mutate()} disabled={save.isPending}>
-            {save.isPending ? zhConfig.field.saving : zhConfig.field.save}
+            {save.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+              {save.isPending ? zhConfig.field.saving : zhConfig.field.save}
           </Button>
           <ConfirmDialog
             trigger={

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { AssetDetail } from "@/routes/AssetDetail"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { choose } from "@/test/choose"
 import { ApiError } from "@/lib/api"
 
 const navigate = vi.fn()
@@ -152,6 +153,28 @@ describe("AssetDetail", () => {
     )
   })
 
+  // The five operations are the point of the dialog, so they are a row of
+  // toggles rather than a dropdown: all of them readable at a glance, and one
+  // click to choose instead of two.
+  it("shows every transfer operation without opening anything", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+
+    await user.click(screen.getByRole("button", { name: "流转" }))
+    const dialog = await screen.findByRole("dialog")
+    for (const label of ["签出", "归还", "转移", "改负责人", "改状态"]) {
+      expect(within(dialog).getByRole("radio", { name: label })).toBeInTheDocument()
+    }
+
+    // Choosing one marks it pressed, so the current choice is visible too.
+    await user.click(within(dialog).getByRole("radio", { name: "转移" }))
+    expect(within(dialog).getByRole("radio", { name: "转移" })).toHaveAttribute(
+      "data-state",
+      "on",
+    )
+  })
+
   // The gap that sent us here: an asset could be recorded and then never moved
   // or have its status changed, because the only transfer controls lived on the
   // list page behind a multi-select.
@@ -164,8 +187,8 @@ describe("AssetDetail", () => {
     const dialog = await screen.findByRole("dialog")
     expect(within(dialog).getByText("已选 1 台")).toBeInTheDocument()
 
-    await user.selectOptions(within(dialog).getByLabelText("操作"), "checkout")
-    await user.selectOptions(await within(dialog).findByLabelText("账号"), "u2")
+    await user.click(within(dialog).getByRole("radio", { name: "签出" }))
+    await choose(user, await within(dialog).findByRole("combobox", { name: "账号" }), "张三")
     await user.type(within(dialog).getByLabelText("备注"), "借给张三")
     await user.click(within(dialog).getByRole("button", { name: "提交" }))
 
@@ -189,8 +212,8 @@ describe("AssetDetail", () => {
 
     await user.click(screen.getByRole("button", { name: "流转" }))
     const dialog = await screen.findByRole("dialog")
-    await user.selectOptions(within(dialog).getByLabelText("操作"), "status")
-    await user.selectOptions(within(dialog).getByLabelText("状态"), "in_repair")
+    await user.click(within(dialog).getByRole("radio", { name: "改状态" }))
+    await choose(user, within(dialog).getByRole("combobox", { name: "状态" }), "维修中")
     await user.click(within(dialog).getByRole("button", { name: "提交" }))
 
     await waitFor(() =>

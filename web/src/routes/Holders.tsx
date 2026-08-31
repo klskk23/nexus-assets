@@ -1,3 +1,4 @@
+import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
@@ -5,10 +6,19 @@ import { api, ApiError, type Blocker } from "@/lib/api"
 import type { HolderEntity } from "@/lib/types"
 import { zh, zhMeta } from "@/i18n/zh"
 import { CrudPage } from "@/features/metadata/CrudPage"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Field, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export function Holders() {
   const [name, setName] = useState("")
@@ -75,42 +85,48 @@ export function Holders() {
       form={
         <div className="grid gap-4 sm:grid-cols-2">
           {banner && (
-            <div role="alert" className="grid gap-1 text-sm text-destructive sm:col-span-2">
-              <p>{banner}</p>
-              {blockers.length > 0 && (
-                <>
-                  <p className="text-xs">{zhMeta.holders.blockedBy}</p>
-                  <ul className="grid gap-0.5 font-mono text-xs">
-                    {blockers.map((b) => (
-                      <li key={b.asset_id}>{b.name}</li>
-                    ))}
-                    {blockerTotal > blockers.length && (
-                      <li>{zhMeta.holders.blockedMore(blockerTotal)}</li>
-                    )}
-                  </ul>
-                </>
-              )}
-            </div>
+            <Alert variant="destructive" className="sm:col-span-2">
+              <AlertCircleIcon />
+              <AlertTitle>{zhMeta.holders.blocked}</AlertTitle>
+              <AlertDescription className="grid gap-1">
+                {banner}
+                {blockers.length > 0 && (
+                  <>
+                    <p className="text-xs">{zhMeta.holders.blockedBy}</p>
+                    <ul className="grid gap-0.5 font-mono text-xs">
+                      {blockers.map((b) => (
+                        <li key={b.asset_id}>{b.name}</li>
+                      ))}
+                      {blockerTotal > blockers.length && (
+                        <li>{zhMeta.holders.blockedMore(blockerTotal)}</li>
+                      )}
+                    </ul>
+                  </>
+                )}
+              </AlertDescription>
+            </Alert>
           )}
-          <div className="grid gap-1.5">
-            <Label htmlFor="h-name">{zhMeta.holders.name}</Label>
+          <Field>
+            <FieldLabel htmlFor="h-name">{zhMeta.holders.name}</FieldLabel>
             <Input id="h-name" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="h-type">{zhMeta.holders.type}</Label>
-            <select
-              id="h-type"
-              className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-            >
-              {Object.entries(zhMeta.entityTypes).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </div>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="h-type">{zhMeta.holders.type}</FieldLabel>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger id="h-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {Object.entries(zhMeta.entityTypes).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
         </div>
       }
     />

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { ActionBar } from "@/features/assets/ActionBar"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { chooseByLabel } from "@/test/choose"
 import { ApiError } from "@/lib/api"
 
 const get = vi.fn()
@@ -41,7 +42,7 @@ describe("ActionBar", () => {
 
     expect(screen.getByText("已选 20 台")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "签出" }))
-    await user.selectOptions(await screen.findByLabelText("账号"), "u2")
+    await chooseByLabel(user, "账号", "张三")
     await user.type(screen.getByLabelText("备注"), "发往 XX 集团")
     await user.click(screen.getByRole("button", { name: "提交" }))
 
@@ -83,7 +84,7 @@ describe("ActionBar", () => {
     await user.click(screen.getByRole("button", { name: "转移" }))
     expect(screen.getByRole("button", { name: "提交" })).toBeDisabled()
 
-    await user.selectOptions(await screen.findByLabelText("账号"), "u2")
+    await chooseByLabel(user, "账号", "张三")
     expect(screen.getByRole("button", { name: "提交" })).toBeEnabled()
   })
 

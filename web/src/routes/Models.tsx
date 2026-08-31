@@ -12,7 +12,15 @@ import {
   type DefaultRow,
 } from "@/features/metadata/AttrDefaultsEditor"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export function Models() {
   const [name, setName] = useState("")
@@ -55,37 +63,38 @@ export function Models() {
       ]}
       form={
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="grid gap-1.5">
-            <Label htmlFor="m-name">{zhMeta.models.name}</Label>
+          <Field>
+            <FieldLabel htmlFor="m-name">{zhMeta.models.name}</FieldLabel>
             <Input id="m-name" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="m-vendor">{zhMeta.models.vendor}</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="m-vendor">{zhMeta.models.vendor}</FieldLabel>
             <Input id="m-vendor" value={vendor} onChange={(e) => setVendor(e.target.value)} />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="m-category">{zhMeta.models.category}</Label>
-            {/* One device can genuinely be both a router and a spare, so this
-                is a multi-select rather than a choice between two right
-                answers. */}
-            <select
-              id="m-category"
-              multiple
-              size={4}
-              className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-              value={categoryIds}
-              onChange={(e) =>
-                setCategoryIds(Array.from(e.target.selectedOptions, (o) => o.value))
-              }
-            >
+          </Field>
+          {/* One device can genuinely be both a router and a spare, so several
+              categories can be ticked. A dropdown cannot express that, and a
+              multi-select list box hides the choices behind a scroll -- here
+              the whole set is visible at once. */}
+          <FieldSet className="sm:col-span-3">
+            <FieldLegend variant="label">{zhMeta.models.category}</FieldLegend>
+            <FieldDescription>{zhMeta.models.categoryHint}</FieldDescription>
+            <FieldGroup className="flex flex-row flex-wrap items-center gap-4">
               {(categories.data ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
+                <Field key={c.id} orientation="horizontal" className="w-auto">
+                  <Checkbox
+                    id={`m-cat-${c.id}`}
+                    checked={categoryIds.includes(c.id)}
+                    onCheckedChange={(v) =>
+                      setCategoryIds((cur) =>
+                        v === true ? [...cur, c.id] : cur.filter((id) => id !== c.id),
+                      )
+                    }
+                  />
+                  <FieldLabel htmlFor={`m-cat-${c.id}`}>{c.name}</FieldLabel>
+                </Field>
               ))}
-            </select>
-            <p className="text-xs text-muted-foreground">{zhMeta.models.categoryHint}</p>
-          </div>
+            </FieldGroup>
+          </FieldSet>
           <div className="sm:col-span-3">
             <AttrDefaultsEditor rows={defaults} onChange={setDefaults} />
           </div>

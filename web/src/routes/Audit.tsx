@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 
 import { api } from "@/lib/api"
+import { NONE, fromNone, toNone } from "@/lib/select"
 import { zhAudit } from "@/i18n/zh"
 import { StateBoundary } from "@/components/StateBoundary"
 import { Badge } from "@/components/ui/badge"
@@ -12,7 +13,15 @@ import {
 } from "@/components/ui/collapsible"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Field, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -69,30 +78,32 @@ export function Audit() {
       </div>
 
       <div className="flex flex-wrap items-end gap-4">
-        <div className="grid gap-1.5">
-          <Label htmlFor="au-type">{zhAudit.targetType}</Label>
-          <select
-            id="au-type"
-            className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-            value={targetType}
-            onChange={(e) => setTargetType(e.target.value)}
-          >
-            <option value="">{zhAudit.allTypes}</option>
-            {Object.entries(zhAudit.targets).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="au-from">{zhAudit.from}</Label>
+        <Field>
+          <FieldLabel htmlFor="au-type">{zhAudit.targetType}</FieldLabel>
+          <Select value={toNone(targetType)} onValueChange={(v) => setTargetType(fromNone(v))}>
+            <SelectTrigger id="au-type" className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={NONE}>{zhAudit.allTypes}</SelectItem>
+                {Object.entries(zhAudit.targets).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>
+                    {v}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="au-from">{zhAudit.from}</FieldLabel>
           <Input id="au-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="au-to">{zhAudit.to}</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="au-to">{zhAudit.to}</FieldLabel>
           <Input id="au-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-        </div>
+        </Field>
       </div>
 
       <StateBoundary

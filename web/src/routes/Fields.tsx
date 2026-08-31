@@ -9,7 +9,17 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 // Static keys carry what someone typed or imported; an expression key carries
 // what the system worked out from them. One enum in the database, two groups
@@ -66,52 +76,55 @@ export function Fields() {
       ]}
       form={
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-1.5">
-            <Label htmlFor="f-key">{zhMeta.fields.key}</Label>
+          <Field>
+            <FieldLabel htmlFor="f-key">{zhMeta.fields.key}</FieldLabel>
             <Input id="f-key" value={key} onChange={(e) => setKey(e.target.value)} />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="f-label">{zhMeta.fields.label}</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="f-label">{zhMeta.fields.label}</FieldLabel>
             <Input id="f-label" value={label} onChange={(e) => setLabel(e.target.value)} />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="f-type">{zhMeta.fields.type}</Label>
-            <select
-              id="f-type"
-              className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-              value={type}
-              onChange={(e) => setType(e.target.value as FieldType)}
-            >
-              {/* The two kinds are one enum in the database; the split lives
-                  here, where it is the difference a person actually cares
-                  about: is this value typed in, or worked out? */}
-              <optgroup label={zhConfig.field.staticGroup}>
-                {staticTypes.map((t) => (
-                  <option key={t} value={t}>
-                    {zhMeta.fieldTypes[t]}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label={zhConfig.field.expressionGroup}>
-                {expressionTypes.map((t) => (
-                  <option key={t} value={t}>
-                    {zhMeta.fieldTypes[t]}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
-          <div className="flex items-center gap-2 pt-6">
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="f-type">{zhMeta.fields.type}</FieldLabel>
+            <Select value={type} onValueChange={(v) => setType(v as FieldType)}>
+              <SelectTrigger id="f-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {/* The two kinds are one enum in the database; the split lives
+                    here, where it is the difference a person actually cares
+                    about: is this value typed in, or worked out? */}
+                <SelectGroup>
+                  <SelectLabel>{zhConfig.field.staticGroup}</SelectLabel>
+                  {staticTypes.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {zhMeta.fieldTypes[t]}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel>{zhConfig.field.expressionGroup}</SelectLabel>
+                  {expressionTypes.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {zhMeta.fieldTypes[t]}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field orientation="horizontal" className="pt-6">
             <Checkbox
               id="f-unique"
               checked={isUnique}
               onCheckedChange={(v) => setIsUnique(v === true)}
             />
-            <Label htmlFor="f-unique">{zhMeta.fields.unique}</Label>
-          </div>
+            <FieldLabel htmlFor="f-unique">{zhMeta.fields.unique}</FieldLabel>
+          </Field>
           {type === "computed" && (
-            <div className="grid gap-1.5 sm:col-span-2">
-              <Label htmlFor="f-template">{zh.common.template}</Label>
+            <Field className="sm:col-span-2">
+              <FieldLabel htmlFor="f-template">{zh.common.template}</FieldLabel>
               <Input
                 id="f-template"
                 className="font-mono"
@@ -119,9 +132,9 @@ export function Fields() {
                 value={template}
                 onChange={(e) => setTemplate(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">{zhConfig.field.templateHint}</p>
-              <p className="text-xs text-muted-foreground">{zhConfig.field.depsHint}</p>
-            </div>
+              <FieldDescription>{zhConfig.field.templateHint}</FieldDescription>
+              <FieldDescription>{zhConfig.field.depsHint}</FieldDescription>
+            </Field>
           )}
         </div>
       }

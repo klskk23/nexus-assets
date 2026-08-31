@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { Assets } from "@/routes/Assets"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { chooseByLabel } from "@/test/choose"
 
 const navigate = vi.fn()
 vi.mock("react-router", async () => {
@@ -84,7 +85,7 @@ describe("Assets list", () => {
     renderWithProviders(<Assets />)
     await screen.findByText("共 1 条")
 
-    await user.selectOptions(screen.getByLabelText("类别"), "net")
+    await chooseByLabel(user, "类别", "网络设备")
     await waitFor(() =>
       expect(get).toHaveBeenCalledWith(expect.stringContaining("include_descendants=true")),
     )
@@ -100,7 +101,7 @@ describe("Assets list", () => {
     renderWithProviders(<Assets />)
     await screen.findByText("共 1 条")
 
-    await user.selectOptions(screen.getByLabelText("类别"), "net")
+    await chooseByLabel(user, "类别", "网络设备")
     const toggle = await screen.findByLabelText("固件版本")
     await user.click(toggle)
 

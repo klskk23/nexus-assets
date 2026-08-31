@@ -7,6 +7,7 @@ import { Holders } from "@/routes/Holders"
 import { Users } from "@/routes/Users"
 import { Categories } from "@/routes/Categories"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { chooseByLabel } from "@/test/choose"
 import { ApiError } from "@/lib/api"
 
 const get = vi.fn()
@@ -83,7 +84,7 @@ describe("Fields page", () => {
     await screen.findByRole("row", { name: /基准 MAC/ })
 
     expect(screen.queryByLabelText("模板")).not.toBeInTheDocument()
-    await user.selectOptions(screen.getByLabelText("类型"), "computed")
+    await chooseByLabel(user, "类型", "计算项")
     expect(screen.getByLabelText("模板")).toBeInTheDocument()
   })
 
@@ -202,7 +203,7 @@ describe("Categories page", () => {
     renderWithProviders(<Categories />)
 
     await user.click(await screen.findByRole("button", { name: "SDWAN 路由器" }))
-    await user.selectOptions(await screen.findByLabelText("绑定信息项"), "f1")
+    await chooseByLabel(user, "绑定信息项", "基准 MAC")
     await user.click(screen.getByRole("button", { name: "绑定信息项" }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/already bound/)

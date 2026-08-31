@@ -1,7 +1,21 @@
 import { zh } from "@/i18n/zh"
+import { fromNone, toNone } from "@/lib/select"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import type { BoundField, FieldOptions } from "@/lib/types"
@@ -46,27 +60,27 @@ function FieldRow({
   const describedBy = error ? `${id}-error` : undefined
 
   return (
-    <div className="grid gap-2">
+    // data-invalid marks the whole field; the control carries aria-invalid, so
+    // the styling and the accessibility signal cannot drift apart.
+    <Field data-invalid={error ? true : undefined}>
       <div className="flex items-center gap-2">
-        <Label htmlFor={id}>
+        <FieldLabel htmlFor={id}>
           {field.label}
           {field.required && <span className="ml-1 text-destructive">*</span>}
-        </Label>
+        </FieldLabel>
         {field.inherited_from && <Badge variant="secondary">{zh.common.inherited}</Badge>}
         {field.is_unique && <Badge variant="outline">{zh.common.unique}</Badge>}
       </div>
 
       <FieldControl id={id} field={field} value={value} describedBy={describedBy} onChange={onChange} />
 
-      {field.type === "computed" && (
-        <p className="text-xs text-muted-foreground">{zh.common.computedHint}</p>
-      )}
+      {field.type === "computed" && <FieldDescription>{zh.common.computedHint}</FieldDescription>}
       {error && (
-        <p id={`${id}-error`} role="alert" className="text-sm text-destructive">
+        <FieldError id={`${id}-error`} role="alert">
           {error}
-        </p>
+        </FieldError>
       )}
-    </div>
+    </Field>
   )
 }
 
@@ -101,21 +115,27 @@ function FieldControl({
 
     case "enum":
       return (
-        <select
-          id={id}
-          className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-          value={str}
-          aria-describedby={describedBy}
-          onChange={(e) => onChange(field.key, e.target.value)}
-        >
-          <option value="">—</option>
-          {(field.options.choices ?? []).map((c) => (
-            <option key={c.value} value={c.value} disabled={isDeprecated(field.options, c.value)}>
-              {c.label}
-              {isDeprecated(field.options, c.value) ? zh.common.deprecatedSuffix : ""}
-            </option>
-          ))}
-        </select>
+        <Select value={toNone(str)} onValueChange={(v) => onChange(field.key, fromNone(v))}>
+          <SelectTrigger id={id} aria-describedby={describedBy}>
+            <SelectValue placeholder={zh.common.select} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {(field.options.choices ?? []).map((c) => (
+                <SelectItem
+                  key={c.value}
+                  value={c.value}
+                  // A retired choice stays visible on the assets that already
+                  // carry it, but cannot be picked anew.
+                  disabled={isDeprecated(field.options, c.value)}
+                >
+                  {c.label}
+                  {isDeprecated(field.options, c.value) ? zh.common.deprecatedSuffix : ""}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
       )
 
     case "number":

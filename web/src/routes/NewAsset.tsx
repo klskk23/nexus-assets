@@ -1,17 +1,29 @@
+import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import { useMutation, useQuery } from "@tanstack/react-query"
 
 import { api, ApiError, type FieldErrors } from "@/lib/api"
+import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Asset, Category, CategorySchema, HolderEntity } from "@/lib/types"
 import { zh } from "@/i18n/zh"
 import { useAuth } from "@/features/auth/useAuth"
 import { DynamicForm } from "@/features/assets/DynamicForm"
 import { ModelPicker } from "@/features/assets/ModelPicker"
 import { StateBoundary } from "@/components/StateBoundary"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
+import { Field, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export function NewAsset() {
   const navigate = useNavigate()
@@ -72,45 +84,51 @@ export function NewAsset() {
           <CardTitle>{zh.assets.selectCategory}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <div className="grid gap-1.5">
-            <Label htmlFor="new-category">{zh.assets.category}</Label>
-            <select
-              id="new-category"
-              className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+          <Field>
+            <FieldLabel htmlFor="new-category">{zh.assets.category}</FieldLabel>
+            <Select
               value={categoryId}
-              onChange={(e) => {
-                setCategoryId(e.target.value)
+              onValueChange={(v) => {
+                setCategoryId(v)
                 // A model belongs to one category chain; keeping the old choice
                 // across a category change would silently attach the wrong one.
                 setModelId(null)
               }}
             >
-              <option value="">—</option>
-              {(categories.data ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+              <SelectTrigger id="new-category">
+                <SelectValue placeholder={zh.common.select} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {(categories.data ?? []).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="new-holder">{zh.assets.holder}</Label>
-            <select
-              id="new-holder"
-              className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-              value={holderId}
-              onChange={(e) => setHolderId(e.target.value)}
-            >
-              <option value="">{user?.name ?? zh.common.none}</option>
-              {locations.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.name}
-                  {h.is_default_stock ? zh.common.defaultStockSuffix : ""}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Field>
+            <FieldLabel htmlFor="new-holder">{zh.assets.holder}</FieldLabel>
+            <Select value={toNone(holderId)} onValueChange={(v) => setHolderId(fromNone(v))}>
+              <SelectTrigger id="new-holder">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={NONE}>{user?.name ?? zh.common.none}</SelectItem>
+                  {locations.map((h) => (
+                    <SelectItem key={h.id} value={h.id}>
+                      {h.name}
+                      {h.is_default_stock ? zh.common.defaultStockSuffix : ""}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
         </CardContent>
       </Card>
 
@@ -144,14 +162,16 @@ export function NewAsset() {
             </StateBoundary>
 
             {banner && (
-              <p role="alert" className="text-sm text-destructive">
-                {banner}
-              </p>
+              <Alert variant="destructive">
+                <AlertCircleIcon />
+                <AlertDescription>{banner}</AlertDescription>
+              </Alert>
             )}
 
             <div>
               <Button onClick={() => create.mutate()} disabled={create.isPending}>
-                {create.isPending ? zh.assets.saving : zh.assets.save}
+                {create.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+              {create.isPending ? zh.assets.saving : zh.assets.save}
               </Button>
             </div>
           </CardContent>

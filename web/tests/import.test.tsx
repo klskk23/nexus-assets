@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { Import } from "@/routes/Import"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { chooseByLabel } from "@/test/choose"
 
 const get = vi.fn()
 vi.mock("@/lib/api", async () => {
@@ -33,9 +34,7 @@ function ok(body: unknown, status = 200) {
 }
 
 async function chooseCategory(user: ReturnType<typeof userEvent.setup>) {
-  // The select renders immediately; its options arrive with the query.
-  await screen.findByRole("option", { name: "SDWAN 路由器" })
-  await user.selectOptions(screen.getByLabelText("导入到类别"), "rt")
+  await chooseByLabel(user, "导入到类别", "SDWAN 路由器")
 }
 
 async function uploadAndPreview(user: ReturnType<typeof userEvent.setup>) {

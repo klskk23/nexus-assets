@@ -28,7 +28,7 @@ interface Props {
  */
 export function CollapsibleTree({ nodes, selectedId, onSelect }: Props) {
   return (
-    <ul className="space-y-0.5" role="tree">
+    <ul className="flex flex-col gap-0.5" role="tree">
       {nodes.map((n) => (
         <TreeItem key={n.id} node={n} depth={0} selectedId={selectedId} onSelect={onSelect} />
       ))}
@@ -81,7 +81,7 @@ function TreeItem({
 
         {hasChildren && (
           <CollapsibleContent>
-            <ul className="space-y-0.5" role="group">
+            <ul className="flex flex-col gap-0.5" role="group">
               {node.children.map((c) => (
                 <TreeItem key={c.id} node={c} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} />
               ))}

@@ -1,7 +1,9 @@
+import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
+import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category, CategorySchema } from "@/lib/types"
 import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import { zh, zhMeta } from "@/i18n/zh"
@@ -9,12 +11,21 @@ import { StateBoundary } from "@/components/StateBoundary"
 import { CollapsibleTree, buildTree } from "@/features/tree/CollapsibleTree"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { DisplayKeyEditor } from "@/features/categories/DisplayKeyEditor"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Field, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export function Categories() {
   const queryClient = useQueryClient()
@@ -88,35 +99,38 @@ export function Categories() {
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label htmlFor="c-code">{zhMeta.categories.code}</Label>
+            <Field>
+              <FieldLabel htmlFor="c-code">{zhMeta.categories.code}</FieldLabel>
               <Input id="c-code" value={code} onChange={(e) => setCode(e.target.value)} />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="c-name">{zhMeta.categories.name}</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="c-name">{zhMeta.categories.name}</FieldLabel>
               <Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="c-parent">{zhMeta.categories.parent}</Label>
-              <select
-                id="c-parent"
-                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                value={parentId}
-                onChange={(e) => setParentId(e.target.value)}
-              >
-                <option value="">—</option>
-                {(categories.data ?? []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="c-parent">{zhMeta.categories.parent}</FieldLabel>
+              <Select value={toNone(parentId)} onValueChange={(v) => setParentId(fromNone(v))}>
+                <SelectTrigger id="c-parent">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value={NONE}>{zhMeta.categories.noParent}</SelectItem>
+                    {(categories.data ?? []).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
           </div>
           {banner && (
-            <p role="alert" className="text-sm text-destructive">
-              {banner}
-            </p>
+            <Alert variant="destructive">
+              <AlertCircleIcon />
+              <AlertDescription>{banner}</AlertDescription>
+            </Alert>
           )}
           <div>
             <Button onClick={() => create.mutate()} disabled={code === "" || name === ""}>
@@ -165,30 +179,31 @@ export function Categories() {
             </CardHeader>
             <CardContent className="grid gap-4">
               <div className="flex flex-wrap items-end gap-3">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="c-bind">{zhMeta.categories.bind}</Label>
-                  <select
-                    id="c-bind"
-                    className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                    value={bindField}
-                    onChange={(e) => setBindField(e.target.value)}
-                  >
-                    <option value="">—</option>
-                    {(fields.data ?? []).map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center gap-2 pb-2">
+                <Field>
+                  <FieldLabel htmlFor="c-bind">{zhMeta.categories.bind}</FieldLabel>
+                  <Select value={bindField} onValueChange={setBindField}>
+                    <SelectTrigger id="c-bind" className="w-56">
+                      <SelectValue placeholder={zh.common.select} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {(fields.data ?? []).map((f) => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field orientation="horizontal" className="w-auto pb-2">
                   <Checkbox
                     id="c-required"
                     checked={bindRequired}
                     onCheckedChange={(v) => setBindRequired(v === true)}
                   />
-                  <Label htmlFor="c-required">{zhMeta.categories.required}</Label>
-                </div>
+                  <FieldLabel htmlFor="c-required">{zhMeta.categories.required}</FieldLabel>
+                </Field>
                 <Button
                   className="mb-0.5"
                   onClick={() => bind.mutate()}

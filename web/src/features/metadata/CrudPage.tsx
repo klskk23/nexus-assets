@@ -1,10 +1,13 @@
+import { AlertCircleIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { ApiError } from "@/lib/api"
 import { zh } from "@/i18n/zh"
 import { StateBoundary } from "@/components/StateBoundary"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -71,15 +74,19 @@ export function CrudPage<T extends { id: string }>({
         <CardContent className="grid gap-4">
           {form}
           {mutation.error && (
-            <p role="alert" className="text-sm text-destructive">
-              {mutation.error instanceof ApiError ? mutation.error.message : zh.common.error}
-            </p>
+            <Alert variant="destructive">
+              <AlertCircleIcon />
+              <AlertDescription>
+                {mutation.error instanceof ApiError ? mutation.error.message : zh.common.error}
+              </AlertDescription>
+            </Alert>
           )}
           <div>
             <Button
               onClick={() => mutation.mutate()}
               disabled={createDisabled || mutation.isPending}
             >
+              {mutation.isPending && <Spinner data-icon="inline-start" aria-hidden />}
               {mutation.isPending ? zh.assets.saving : createLabel}
             </Button>
           </div>

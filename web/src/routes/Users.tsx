@@ -1,3 +1,4 @@
+import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
@@ -5,6 +6,7 @@ import { api, ApiError } from "@/lib/api"
 import type { User } from "@/lib/types"
 import { zh, zhMeta } from "@/i18n/zh"
 import { CrudPage } from "@/features/metadata/CrudPage"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -82,9 +84,10 @@ export function Users() {
             </div>
           </div>
           {banner && (
-            <p role="alert" className="text-sm text-destructive">
-              {banner}
-            </p>
+            <Alert variant="destructive">
+              <AlertCircleIcon />
+              <AlertDescription>{banner}</AlertDescription>
+            </Alert>
           )}
         </>
       }

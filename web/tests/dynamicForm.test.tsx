@@ -95,12 +95,18 @@ describe("DynamicForm", () => {
     expect(input).toBeDisabled()
   })
 
-  it("keeps a retired enum option visible but unselectable", () => {
+  // The stored value stays readable on the asset that carries it, and the
+  // option is still listed -- just not choosable for anything new.
+  it("keeps a retired enum option visible but unselectable", async () => {
+    const user = userEvent.setup()
     renderWithProviders(
       <DynamicForm fields={[allTypes[5]]} values={{ tier: "b" }} onChange={vi.fn()} />,
     )
-    const retired = screen.getByRole("option", { name: /B 档（已废弃）/ })
-    expect(retired).toBeInTheDocument()
-    expect(retired).toBeDisabled()
+    // The chosen value shows on the closed trigger.
+    expect(screen.getByRole("combobox", { name: /档次/ })).toHaveTextContent("B 档")
+
+    await user.click(screen.getByRole("combobox", { name: /档次/ }))
+    const retired = await screen.findByRole("option", { name: /B 档（已废弃）/ })
+    expect(retired).toHaveAttribute("aria-disabled", "true")
   })
 })

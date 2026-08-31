@@ -1,6 +1,16 @@
 import type { ReactNode } from "react"
-import { Skeleton } from "@/components/ui/skeleton"
+import { AlertCircleIcon, InboxIcon } from "lucide-react"
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { Skeleton } from "@/components/ui/skeleton"
 import { zh } from "@/i18n/zh"
 
 interface Props {
@@ -31,7 +41,7 @@ export function StateBoundary({
 }: Props) {
   if (isLoading) {
     return (
-      <div className="space-y-3" role="status" aria-label={zh.common.loading}>
+      <div className="flex flex-col gap-3" role="status" aria-label={zh.common.loading}>
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-8 w-full" />
         <Skeleton className="h-8 w-full" />
@@ -41,24 +51,32 @@ export function StateBoundary({
 
   if (error) {
     return (
-      <div role="alert" className="rounded-md border border-destructive/40 p-6 text-center">
-        <p className="font-medium">{zh.common.error}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{error.message}</p>
-        {onRetry && (
-          <Button variant="outline" className="mt-4" onClick={onRetry}>
-            {zh.common.retry}
-          </Button>
-        )}
-      </div>
+      <Alert variant="destructive">
+        <AlertCircleIcon />
+        <AlertTitle>{zh.common.error}</AlertTitle>
+        <AlertDescription>
+          {error.message}
+          {onRetry && (
+            <Button variant="outline" size="sm" className="mt-2" onClick={onRetry}>
+              {zh.common.retry}
+            </Button>
+          )}
+        </AlertDescription>
+      </Alert>
     )
   }
 
   if (isEmpty) {
     return (
-      <div className="rounded-md border border-dashed p-10 text-center">
-        <p className="font-medium">{emptyTitle}</p>
-        {emptyHint && <p className="mt-1 text-sm text-muted-foreground">{emptyHint}</p>}
-      </div>
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <InboxIcon />
+          </EmptyMedia>
+          <EmptyTitle>{emptyTitle}</EmptyTitle>
+          {emptyHint && <EmptyDescription>{emptyHint}</EmptyDescription>}
+        </EmptyHeader>
+      </Empty>
     )
   }
 

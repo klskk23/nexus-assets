@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { ModelPicker } from "@/features/assets/ModelPicker"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { chooseByLabel } from "@/test/choose"
 
 const get = vi.fn()
 vi.mock("@/lib/api", async () => {
@@ -43,12 +44,10 @@ describe("ModelPicker", () => {
     renderWithProviders(
       <ModelPicker categoryID="rt" value={null} values={{}} onChange={vi.fn()} />,
     )
-    // Wait for the model list itself, not just the control that holds it.
-    await screen.findByRole("option", { name: "Acme X100" })
-    const select = screen.getByLabelText("设备型号")
-    const labels = within(select)
-      .getAllByRole("option")
-      .map((o) => o.textContent)
+    // The listbox exists only while it is open, so the options are read there.
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("combobox", { name: "设备型号" }))
+    const labels = (await screen.findAllByRole("option")).map((o) => o.textContent)
 
     expect(labels).toContain("Acme X100")
     expect(labels).toContain("通用机")
@@ -69,8 +68,7 @@ describe("ModelPicker", () => {
         onChange={onChange}
       />,
     )
-    await screen.findByRole("option", { name: "Acme X100" })
-    await user.selectOptions(screen.getByLabelText("设备型号"), "m1")
+    await chooseByLabel(user, "设备型号", "Acme X100")
 
     // firmware was already typed, so it survives; ports was blank, so it fills.
     expect(onChange).toHaveBeenCalledWith("m1", { ports: "8" })
@@ -90,8 +88,7 @@ describe("ModelPicker", () => {
         onChange={onChange}
       />,
     )
-    await screen.findByRole("option", { name: "Acme X100" })
-    await user.selectOptions(screen.getByLabelText("设备型号"), "m1")
+    await chooseByLabel(user, "设备型号", "Acme X100")
 
     const dialog = await screen.findByRole("dialog")
     expect(within(dialog).getByText("firmware: 2.1.3 → 3.0.0")).toBeInTheDocument()
@@ -115,8 +112,7 @@ describe("ModelPicker", () => {
         onChange={onChange}
       />,
     )
-    await screen.findByRole("option", { name: "Acme X100" })
-    await user.selectOptions(screen.getByLabelText("设备型号"), "m1")
+    await chooseByLabel(user, "设备型号", "Acme X100")
 
     const dialog = await screen.findByRole("dialog")
     await user.click(within(dialog).getByRole("button", { name: "仅换型号，保留现值" }))
@@ -129,8 +125,7 @@ describe("ModelPicker", () => {
     renderWithProviders(
       <ModelPicker categoryID="rt" value={null} values={{}} confirmOverwrite onChange={onChange} />,
     )
-    await screen.findByRole("option", { name: "通用机" })
-    await user.selectOptions(screen.getByLabelText("设备型号"), "m2")
+    await chooseByLabel(user, "设备型号", "通用机")
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     expect(onChange).toHaveBeenCalledWith("m2", {})
@@ -145,10 +140,9 @@ describe("ModelPicker inheritance", () => {
     renderWithProviders(
       <ModelPicker categoryID="net" value={null} values={{}} onChange={vi.fn()} />,
     )
-    await screen.findByRole("option", { name: "通用机" })
-    const labels = within(screen.getByLabelText("设备型号"))
-      .getAllByRole("option")
-      .map((o) => o.textContent)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("combobox", { name: "设备型号" }))
+    const labels = (await screen.findAllByRole("option")).map((o) => o.textContent)
 
     expect(labels).toContain("通用机")
     expect(labels).not.toContain("Acme X100")
@@ -160,7 +154,10 @@ describe("ModelPicker inheritance", () => {
       const view = renderWithProviders(
         <ModelPicker categoryID={cat} value={null} values={{}} onChange={vi.fn()} />,
       )
+      const user = userEvent.setup()
+      await user.click(screen.getByRole("combobox", { name: "设备型号" }))
       await screen.findByRole("option", { name: "Acme 两用机" })
+      await user.keyboard("{Escape}")
       view.unmount()
     }
   })

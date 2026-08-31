@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { DisplayKeyEditor } from "@/features/categories/DisplayKeyEditor"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { chooseByLabel } from "@/test/choose"
 import type { BoundField } from "@/lib/types"
 
 const post = vi.fn()
@@ -47,12 +48,13 @@ beforeEach(() => {
 describe("DisplayKeyEditor", () => {
   // A number two devices can share is not an identifier, so a non-unique field
   // must not even be offered.
-  it("offers only the unique fields as the display key", () => {
+  it("offers only the unique fields as the display key", async () => {
+    const user = userEvent.setup()
     render()
-    const select = screen.getByLabelText("用作编号的信息项")
-    const labels = within(select)
-      .getAllByRole("option")
-      .map((o) => o.textContent)
+    // The listbox exists only while it is open, so the options are read there.
+    await user.click(screen.getByRole("combobox", { name: "用作编号的信息项" }))
+    const labels = (await screen.findAllByRole("option")).map((o) => o.textContent)
+
     expect(labels).toContain("设备编号（sn）")
     expect(labels).toContain("基准 MAC（mac）")
     expect(labels.some((l) => l?.includes("固件版本"))).toBe(false)
@@ -63,7 +65,7 @@ describe("DisplayKeyEditor", () => {
     const user = userEvent.setup()
     render()
 
-    await user.selectOptions(screen.getByLabelText("用作编号的信息项"), "mac")
+    await chooseByLabel(user, "用作编号的信息项", "基准 MAC（mac）")
     await user.click(screen.getByRole("button", { name: "保存" }))
 
     await waitFor(() =>

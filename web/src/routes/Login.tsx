@@ -1,3 +1,4 @@
+import { AlertCircleIcon } from "lucide-react"
 import { useEffect, useState, type FormEvent } from "react"
 import { useNavigate } from "react-router"
 
@@ -5,6 +6,7 @@ import { api, ApiError, setToken } from "@/lib/api"
 import type { User } from "@/lib/types"
 import { useAuth } from "@/features/auth/useAuth"
 import { zh } from "@/i18n/zh"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -94,9 +96,10 @@ export function Login() {
             </div>
 
             {error && (
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
+              <Alert variant="destructive">
+                <AlertCircleIcon />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
 
             <Button type="submit" disabled={submitting}>

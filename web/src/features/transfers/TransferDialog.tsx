@@ -1,3 +1,4 @@
+import { AlertCircleIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -5,7 +6,9 @@ import { api, ApiError } from "@/lib/api"
 import type { AssetStatus, HolderEntity, User } from "@/lib/types"
 import type { TransferResult } from "@/lib/transferTypes"
 import { zh, zhTransfer } from "@/i18n/zh"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import {
   Dialog,
   DialogContent,
@@ -15,7 +18,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Field, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 export type TransferAction = "checkout" | "checkin" | "transfer" | "reassign" | "status"
 
@@ -128,111 +140,122 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
         </DialogHeader>
 
         <div className="grid gap-4">
-          <div className="grid gap-1.5">
-            <Label htmlFor="td-action">{zhTransfer.actions.action}</Label>
-            <select
+          <Field>
+            <FieldLabel htmlFor="td-action">{zhTransfer.actions.action}</FieldLabel>
+            <ToggleGroup
               id="td-action"
-              className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+              type="single"
+              variant="outline"
+              className="justify-start"
               value={action ?? ""}
-              onChange={(e) => setAction((e.target.value || null) as TransferAction | null)}
+              onValueChange={(v) => setAction((v || null) as TransferAction | null)}
             >
-              <option value="">—</option>
               {transferActions.map(([a, label]) => (
-                <option key={a} value={a}>
+                <ToggleGroupItem key={a} value={a} aria-label={label}>
                   {label}
-                </option>
+                </ToggleGroupItem>
               ))}
-            </select>
-          </div>
+            </ToggleGroup>
+          </Field>
 
           {needsHolder && (
             <>
-              <div className="grid gap-1.5">
-                <Label htmlFor="td-holder-type">{zhTransfer.actions.target}</Label>
-                <select
-                  id="td-holder-type"
-                  className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+              <Field>
+                <FieldLabel htmlFor="td-holder-type">{zhTransfer.actions.target}</FieldLabel>
+                <Select
                   value={holderType}
-                  onChange={(e) => {
-                    setHolderType(e.target.value as "user" | "entity")
+                  onValueChange={(v) => {
+                    setHolderType(v as "user" | "entity")
                     setHolderID("")
                   }}
                 >
-                  <option value="user">{zh.common.user}</option>
-                  <option value="entity">{zh.common.entityGroup}</option>
-                </select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="td-holder">
+                  <SelectTrigger id="td-holder-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="user">{zh.common.user}</SelectItem>
+                      <SelectItem value="entity">{zh.common.entityGroup}</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="td-holder">
                   {holderType === "user" ? zh.common.user : zh.common.holder}
-                </Label>
-                <select
-                  id="td-holder"
-                  className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                  value={holderID}
-                  onChange={(e) => setHolderID(e.target.value)}
-                >
-                  <option value="">—</option>
-                  {(holderType === "user" ? users.data ?? [] : holders.data ?? []).map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                </FieldLabel>
+                <Select value={holderID} onValueChange={setHolderID}>
+                  <SelectTrigger id="td-holder">
+                    <SelectValue placeholder={zh.common.select} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {(holderType === "user" ? users.data ?? [] : holders.data ?? []).map((o) => (
+                        <SelectItem key={o.id} value={o.id}>
+                          {o.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
             </>
           )}
 
           {action === "reassign" && (
-            <div className="grid gap-1.5">
-              <Label htmlFor="td-owner">{zhTransfer.actions.owner}</Label>
-              <select
-                id="td-owner"
-                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                value={ownerID}
-                onChange={(e) => setOwnerID(e.target.value)}
-              >
-                <option value="">—</option>
-                {(users.data ?? []).map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Field>
+              <FieldLabel htmlFor="td-owner">{zhTransfer.actions.owner}</FieldLabel>
+              <Select value={ownerID} onValueChange={setOwnerID}>
+                <SelectTrigger id="td-owner">
+                  <SelectValue placeholder={zh.common.select} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {(users.data ?? []).map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
           )}
 
           {action === "status" && (
-            <div className="grid gap-1.5">
-              <Label htmlFor="td-status">{zhTransfer.actions.status}</Label>
-              <select
-                id="td-status"
-                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as AssetStatus)}
-              >
-                {Object.entries(zh.status).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Field>
+              <FieldLabel htmlFor="td-status">{zhTransfer.actions.status}</FieldLabel>
+              <Select value={status} onValueChange={(v) => setStatus(v as AssetStatus)}>
+                <SelectTrigger id="td-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {Object.entries(zh.status).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
           )}
 
           {action === "checkin" && (
             <p className="text-sm text-muted-foreground">{zhTransfer.actions.checkinHint}</p>
           )}
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="td-note">{zhTransfer.actions.note}</Label>
+          <Field>
+            <FieldLabel htmlFor="td-note">{zhTransfer.actions.note}</FieldLabel>
             <Input id="td-note" value={note} onChange={(e) => setNote(e.target.value)} />
-          </div>
+          </Field>
 
           {banner && (
-            <p role="alert" className="text-sm text-destructive">
-              {banner}
-            </p>
+            <Alert variant="destructive">
+              <AlertCircleIcon />
+              <AlertDescription>{banner}</AlertDescription>
+            </Alert>
           )}
         </div>
 
@@ -241,7 +264,8 @@ export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, on
             {zh.common.cancel}
           </Button>
           <Button disabled={!canSubmit || submit.isPending} onClick={() => submit.mutate()}>
-            {submit.isPending ? zhTransfer.actions.submitting : zhTransfer.actions.submit}
+            {submit.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+              {submit.isPending ? zhTransfer.actions.submitting : zhTransfer.actions.submit}
           </Button>
         </DialogFooter>
       </DialogContent>

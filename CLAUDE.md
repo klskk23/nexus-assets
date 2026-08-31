@@ -16,6 +16,10 @@
 
 - **组件必须来自 shadcn/ui。** 不存在时必须先与开发者确认才能自定义，**不接受事后补批**。
   类别树用 `Collapsible` 递归组合，不引入树组件。
+  **下拉一律用 `Select`，不写原生 `<select>`**；表单布局用 `Field`/`FieldGroup`/`FieldSet`，
+  不用 `div + Label`；提示用 `Alert`、空状态用 `Empty`、加载用 `Skeleton`/`Spinner`。
+  `Select` 是 Radix 组件不是原生控件，测试要用 `src/test/choose.ts` 的助手而非
+  `user.selectOptions`；`SelectItem` 不接受空字符串值，「未选/全部」走 `lib/select.ts` 的哨兵。
 - **前端测试必须含 DOM 测试**（Vitest + React Testing Library，断言 `getByRole` 与
   `userEvent`）。只测纯函数或只做快照比对不算数。触及 UI 的 PR 必须新增或更新 DOM 测试。
 - **文档中文、代码英文。** 例外是 i18n 文案（UI 文本、`label`、`error.message`），

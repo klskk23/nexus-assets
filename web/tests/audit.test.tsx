@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { Audit } from "@/routes/Audit"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { chooseByLabel } from "@/test/choose"
 
 const get = vi.fn()
 vi.mock("@/lib/api", async () => {
@@ -65,7 +66,7 @@ describe("Audit page", () => {
     renderWithProviders(<Audit />)
     await screen.findByRole("row", { name: /管理员/ })
 
-    await user.selectOptions(screen.getByLabelText("对象类型"), "field")
+    await chooseByLabel(user, "对象类型", "信息项")
     await waitFor(() => expect(get).toHaveBeenCalledWith("/audit?target_type=field"))
   })
 

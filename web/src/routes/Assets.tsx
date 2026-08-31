@@ -1,18 +1,35 @@
+import { InfoIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 
 import { api } from "@/lib/api"
+import { NONE, fromNone, toNone } from "@/lib/select"
 import type { AssetPage, Category, CategorySchema } from "@/lib/types"
 import { zh, zhImport, zhTransfer } from "@/i18n/zh"
 import { StateBoundary } from "@/components/StateBoundary"
 import { useColumnSelection } from "@/features/assets/useColumns"
 import { ActionBar } from "@/features/assets/ActionBar"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -101,8 +118,8 @@ export function Assets() {
       </div>
 
       <div className="flex flex-wrap items-end gap-4">
-        <div className="grid gap-1.5">
-          <Label htmlFor="q">{zh.assets.search}</Label>
+        <Field>
+          <FieldLabel htmlFor="q">{zh.assets.search}</FieldLabel>
           <Input
             id="q"
             ref={searchRef}
@@ -110,68 +127,74 @@ export function Assets() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-        </div>
+        </Field>
 
-        <div className="grid gap-1.5">
-          <Label htmlFor="category">{zh.assets.category}</Label>
-          <select
-            id="category"
-            className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
-            <option value="">{zh.assets.allCategories}</option>
-            {(categories.data ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Field>
+          <FieldLabel htmlFor="category">{zh.assets.category}</FieldLabel>
+          <Select value={toNone(categoryId)} onValueChange={(v) => setCategoryId(fromNone(v))}>
+            <SelectTrigger id="category" className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={NONE}>{zh.assets.allCategories}</SelectItem>
+                {(categories.data ?? []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
 
         {categoryId && (
-          <div className="flex items-center gap-2 pb-2">
+          <Field orientation="horizontal" className="pb-2">
             <Checkbox
               id="descendants"
               checked={includeDescendants}
               onCheckedChange={(v) => setIncludeDescendants(v === true)}
             />
-            <Label htmlFor="descendants">{zh.assets.includeDescendants}</Label>
-          </div>
+            <FieldLabel htmlFor="descendants">{zh.assets.includeDescendants}</FieldLabel>
+          </Field>
         )}
 
-        <div className="grid gap-1.5">
-          <Label htmlFor="status">{zh.assets.statusLabel}</Label>
-          <select
-            id="status"
-            className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="">{zh.assets.allStatuses}</option>
-            {Object.entries(zh.status).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Field>
+          <FieldLabel htmlFor="status">{zh.assets.statusLabel}</FieldLabel>
+          <Select value={toNone(status)} onValueChange={(v) => setStatus(fromNone(v))}>
+            <SelectTrigger id="status" className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={NONE}>{zh.assets.allStatuses}</SelectItem>
+                {Object.entries(zh.status).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>
+                    {v}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
       </div>
 
       {available.length > 0 && (
-        <fieldset className="flex flex-wrap items-center gap-4 rounded-md border p-3">
-          <legend className="px-1 text-sm text-muted-foreground">{zh.assets.columns}</legend>
-          {available.map((f) => (
-            <div key={f.key} className="flex items-center gap-2">
-              <Checkbox
-                id={`col-${f.key}`}
-                checked={extraColumns.includes(f.key)}
-                onCheckedChange={() => toggle(f.key)}
-              />
-              <Label htmlFor={`col-${f.key}`}>{f.label}</Label>
-            </div>
-          ))}
-        </fieldset>
+        <FieldSet className="rounded-md border p-3">
+          <FieldLegend variant="label">{zh.assets.columns}</FieldLegend>
+          <FieldGroup className="flex flex-row flex-wrap items-center gap-4">
+            {available.map((f) => (
+              <Field key={f.key} orientation="horizontal" className="w-auto">
+                <Checkbox
+                  id={`col-${f.key}`}
+                  checked={extraColumns.includes(f.key)}
+                  onCheckedChange={() => toggle(f.key)}
+                />
+                <FieldLabel htmlFor={`col-${f.key}`}>{f.label}</FieldLabel>
+              </Field>
+            ))}
+          </FieldGroup>
+        </FieldSet>
       )}
 
       <StateBoundary
@@ -233,9 +256,10 @@ export function Assets() {
       </StateBoundary>
 
       {done && (
-        <p role="status" className="rounded-md border bg-secondary px-3 py-2 text-sm">
-          {done}
-        </p>
+        <Alert role="status">
+          <InfoIcon />
+          <AlertDescription>{done}</AlertDescription>
+        </Alert>
       )}
 
       <ActionBar
