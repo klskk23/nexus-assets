@@ -73,3 +73,45 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
 })
+
+// A serial number retyped off a screen is a typo waiting to happen, and a
+// dialog is not made safer by that typo. Copying still costs a deliberate
+// press on the thing being deleted.
+describe("ConfirmDialog copying", () => {
+  it("puts the phrase on the clipboard", async () => {
+    const user = userEvent.setup()
+    // After setup: userEvent installs a clipboard stub of its own, and this
+    // test is about the one the page will actually meet.
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true })
+
+    render(vi.fn(), "112394521950")
+    await user.click(screen.getByRole("button", { name: "删除" }))
+
+    const dialog = await screen.findByRole("alertdialog")
+    await user.click(within(dialog).getByRole("button", { name: "复制待输入的内容" }))
+
+    expect(writeText).toHaveBeenCalledWith("112394521950")
+    expect(await within(dialog).findByText("已复制")).toBeInTheDocument()
+  })
+
+  // A browser with no clipboard must leave a usable dialog behind, not a
+  // rejected promise nobody catches.
+  it("says nothing and breaks nothing when there is no clipboard", async () => {
+    const user = userEvent.setup()
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+      configurable: true,
+    })
+
+    render(vi.fn(), "112394521950")
+    await user.click(screen.getByRole("button", { name: "删除" }))
+    const dialog = await screen.findByRole("alertdialog")
+    await user.click(within(dialog).getByRole("button", { name: "复制待输入的内容" }))
+
+    // Still typeable, which is the way it always worked.
+    expect(within(dialog).queryByText("已复制")).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText(/请输入 112394521950/), "112394521950")
+    expect(within(dialog).getByRole("button", { name: "删除" })).toBeEnabled()
+  })
+})

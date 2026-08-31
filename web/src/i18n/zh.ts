@@ -391,6 +391,9 @@ export const zhAudit = {
 export const zhConfirm = {
   cancel: "取消",
   typeToConfirm: (what: string) => `此操作不可撤销。请输入 ${what} 以确认。`,
+  copy: "复制",
+  copied: "已复制",
+  copyPhrase: "复制待输入的内容",
 }
 
 export const zhOverview = {

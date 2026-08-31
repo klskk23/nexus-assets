@@ -1,3 +1,4 @@
+import { CheckIcon, CopyIcon } from "lucide-react"
 import { useState, type ReactNode } from "react"
 
 import {
@@ -11,6 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { tConfirm } from "@/i18n"
@@ -50,6 +52,7 @@ export function ConfirmDialog({
   onConfirm,
 }: Props) {
   const [typed, setTyped] = useState("")
+  const [copied, setCopied] = useState(false)
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
 
   const isControlled = controlledOpen !== undefined
@@ -66,7 +69,10 @@ export function ConfirmDialog({
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
-        if (!next) setTyped("")
+        if (!next) {
+          setTyped("")
+          setCopied(false)
+        }
       }}
     >
       {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
@@ -81,6 +87,33 @@ export function ConfirmDialog({
             <Label htmlFor="confirm-phrase">
               {phraseLabel ?? tConfirm.typeToConfirm(requirePhrase)}
             </Label>
+            {/* The phrase is here to be read and retyped, but a serial number
+                copied off a label by hand is a typo waiting to happen, and the
+                dialog is not made safer by that. Copying it still costs a
+                deliberate press on the thing being deleted. */}
+            <div className="flex items-center gap-2">
+              <code className="bg-muted rounded px-2 py-1 font-mono text-sm break-all">
+                {requirePhrase}
+              </code>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={tConfirm.copyPhrase}
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(requirePhrase)
+                    setCopied(true)
+                  } catch {
+                    // No clipboard (an insecure origin, a locked-down browser):
+                    // the text is selectable, which is what it was before.
+                  }
+                }}
+              >
+                {copied ? <CheckIcon /> : <CopyIcon />}
+                {copied ? tConfirm.copied : tConfirm.copy}
+              </Button>
+            </div>
             <Input
               id="confirm-phrase"
               className="font-mono"

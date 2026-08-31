@@ -416,6 +416,9 @@ export const enAudit: typeof zhAudit = {
 export const enConfirm: typeof zhConfirm = {
   cancel: "Cancel",
   typeToConfirm: (what: string) => `This cannot be undone. Type ${what} to confirm.`,
+  copy: "Copy",
+  copied: "Copied",
+  copyPhrase: "Copy the phrase to type",
 }
 
 export const enOverview: typeof zhOverview = {
