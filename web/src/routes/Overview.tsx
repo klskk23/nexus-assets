@@ -80,7 +80,13 @@ export function Overview() {
                 {tOverview.total(overview.data?.total ?? 0)}
               </span>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {/* One row, sharing the width. Fixed column counts put five
+                statuses on one line and the sixth on a line of its own, which
+                made a configurable list look like two unrelated groups. The
+                cards shrink instead, and only wrap once one of them would go
+                under 6rem -- narrower than that and the label stops fitting,
+                which is the point where wrapping is the lesser evil. */}
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-3">
               {(overview.data?.status_counts ?? []).map((s) => (
                 <Card
                   key={s.status}
@@ -96,7 +102,7 @@ export function Overview() {
                     }
                   }}
                 >
-                  <CardContent className="pt-6">
+                  <CardContent className="px-4 py-4">
                     <StatusBadge status={s.status} />
                     <p className="mt-1 text-2xl font-semibold tabular-nums">{s.count}</p>
                   </CardContent>
