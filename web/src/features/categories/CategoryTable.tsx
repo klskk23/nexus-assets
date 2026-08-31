@@ -1,7 +1,6 @@
 import { useState } from "react"
 
 import type { Category } from "@/lib/types"
-import { cn } from "@/lib/utils"
 import { t, tMeta } from "@/i18n"
 import {
   ContextMenu,
@@ -60,28 +59,20 @@ export function flattenCategories(items: Category[], collapsed: string[]): Categ
 
 interface Props {
   categories: Category[]
-  selectedId: string
-  onSelect: (id: string) => void
+  /** Clicking a row opens it, the way every other table on the product does. */
+  onOpen: (category: Category) => void
   onCreateChild: (parent: Category) => void
-  onEdit: (category: Category) => void
-  onDelete: (category: Category) => void
 }
 
 /**
  * The category tree as the table every other list on this product is.
  *
- * Folding stays available from the row menu rather than a chevron in the name
- * cell: a control inside a clickable row fires the row's handler too, which is
- * one click producing two results.
+ * Folding stays in the row menu rather than a chevron in the name cell: a
+ * control inside a clickable row fires the row's handler too, which is one
+ * click producing two results. Deleting lives in the editor the row opens,
+ * where the confirmation can name the models it would detach.
  */
-export function CategoryTable({
-  categories,
-  selectedId,
-  onSelect,
-  onCreateChild,
-  onEdit,
-  onDelete,
-}: Props) {
+export function CategoryTable({ categories, onOpen, onCreateChild }: Props) {
   const [collapsed, setCollapsed] = useState<string[]>([])
   const rows = flattenCategories(categories, collapsed)
 
@@ -106,15 +97,10 @@ export function CategoryTable({
           {rows.map(({ category: c, depth, hasChildren }) => (
             <ContextMenu key={c.id}>
               <ContextMenuTrigger asChild>
-                <TableRow
-                  className="cursor-pointer"
-                  data-state={c.id === selectedId ? "selected" : undefined}
-                  aria-selected={c.id === selectedId}
-                  onClick={() => onSelect(c.id)}
-                >
+                <TableRow className="cursor-pointer" onClick={() => onOpen(c)}>
                   <TableCell>
                     <span
-                      className={cn("inline-block", c.id === selectedId && "font-medium")}
+                      className="inline-block"
                       style={{ paddingInlineStart: depth * 16 }}
                     >
                       {collapsed.includes(c.id) ? `${c.name} …` : c.name}
@@ -128,20 +114,17 @@ export function CategoryTable({
                 </TableRow>
               </ContextMenuTrigger>
               <ContextMenuContent>
-                <ContextMenuItem onSelect={() => onEdit(c)}>
+                <ContextMenuItem onSelect={() => onOpen(c)}>
                   {tMeta.categories.edit}
                 </ContextMenuItem>
                 <ContextMenuItem onSelect={() => onCreateChild(c)}>
                   {tMeta.categories.createChild}
                 </ContextMenuItem>
+                <ContextMenuSeparator />
                 <ContextMenuItem disabled={!hasChildren} onSelect={() => toggle(c.id)}>
                   {collapsed.includes(c.id)
                     ? tMeta.categories.expand
                     : tMeta.categories.collapse}
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem variant="destructive" onSelect={() => onDelete(c)}>
-                  {tMeta.categories.delete}
                 </ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>

@@ -231,7 +231,7 @@ export const enMeta: typeof zhMeta = {
     collapse: "Hide children",
     displayKey: "Number field",
     save: "Save",
-    selectHint: "Click a row to see and manage that category's fields.",
+    selectHint: "Click a row to edit that category: name, parent, number field and bindings.",
     deleteTitle: "Delete category",
     deleteHint: (name: string) =>
       `${name} and its field bindings will be deleted. Refused while it has subcategories or assets beneath it — you will be told which.`,
@@ -305,13 +305,10 @@ export const enTransfer: typeof zhTransfer = {
 
 export const enConfig: typeof zhConfig = {
   displayKey: {
-    title: "Display number",
     label: "Item used as the number",
     none: "Not set (shows the first 8 of the UUID)",
     hint:
       "Only fields marked unique may be chosen. The number is usually an expression key derived from a static one such as the MAC.",
-    save: "Save",
-    saved: "Saved",
   },
   field: {
     edit: "Edit field",

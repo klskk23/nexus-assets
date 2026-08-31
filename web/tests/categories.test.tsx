@@ -201,7 +201,8 @@ describe("Categories delete", () => {
   it("requires the category name to be typed out", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
-    await chooseFromMenu(user, await categoryRow(), "删除类别")
+    await user.click(await categoryRow())
+    await user.click(await screen.findByRole("button", { name: "删除类别" }))
 
     const dialog = await screen.findByRole("alertdialog")
     const confirm = within(dialog).getByRole("button", { name: "删除类别" })
@@ -231,7 +232,8 @@ describe("Categories delete", () => {
     )
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
-    await chooseFromMenu(user, await categoryRow(), "删除类别")
+    await user.click(await categoryRow())
+    await user.click(await screen.findByRole("button", { name: "删除类别" }))
 
     const dialog = await screen.findByRole("alertdialog")
     await user.type(screen.getByLabelText(/请输入/), "SDWAN 路由器")
@@ -250,7 +252,8 @@ describe("Categories delete", () => {
 it("names the models that will be detached before asking to confirm", async () => {
   const user = userEvent.setup()
   renderWithProviders(<Categories />)
-  await chooseFromMenu(user, await categoryRow(), "删除类别")
+  await user.click(await categoryRow())
+  await user.click(await screen.findByRole("button", { name: "删除类别" }))
 
   const dialog = await screen.findByRole("alertdialog")
   expect(dialog).toHaveTextContent("以下型号将不再关联到该类别")
@@ -316,7 +319,7 @@ describe("Categories table", () => {
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
 
-    await chooseFromMenu(user, await screen.findByRole("row", { name: /^网络设备/ }), "编辑类别")
+    await user.click(await screen.findByRole("row", { name: /^网络设备/ }))
     const dialog = await screen.findByRole("dialog")
     expect(within(dialog).getByLabelText("名称")).toHaveValue("网络设备")
 
@@ -332,7 +335,64 @@ describe("Categories table", () => {
     await user.click(within(dialog).getByRole("button", { name: "保存" }))
 
     await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith("/categories/net", { name: "网络", parent_id: null }),
+      expect(patch).toHaveBeenCalledWith("/categories/net", {
+        name: "网络",
+        parent_id: null,
+        display_key: "",
+      }),
+    )
+  })
+})
+
+// The number field used to have its own card, its own save button and its own
+// recompute button beside it. It is one of the three things this dialog saves.
+describe("Category editor", () => {
+  it("offers only unique fields as the number, and saves it with the rest", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+    await user.click(await categoryRow())
+
+    const dialog = await screen.findByRole("dialog")
+    await user.click(within(dialog).getByRole("combobox", { name: "用作编号的字段" }))
+    const options = (await screen.findAllByRole("option")).map((o) => o.textContent)
+    // A number two devices can share is not an identifier.
+    expect(options.some((o) => o?.includes("基准 MAC"))).toBe(true)
+    expect(options.some((o) => o?.includes("机柜"))).toBe(false)
+
+    await user.click(await screen.findByRole("option", { name: /基准 MAC/ }))
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/categories/rt", {
+        name: "SDWAN 路由器",
+        parent_id: "net",
+        display_key: "mac",
+      }),
+    )
+    // Choosing which number to show renumbers nothing on its own.
+    expect(post).not.toHaveBeenCalled()
+  })
+
+  it("binds a field from inside the dialog", async () => {
+    get.mockImplementation((p: string) =>
+      p === "/fields"
+        ? Promise.resolve([{ id: "f9", key: "rack2", label: "机柜位", type: "text", options: {}, is_unique: false }])
+        : route(p),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+    await user.click(await categoryRow())
+
+    const dialog = await screen.findByRole("dialog")
+    await user.click(within(dialog).getByRole("combobox", { name: "绑定字段" }))
+    await user.click(await screen.findByRole("option", { name: "机柜位" }))
+    await user.click(within(dialog).getByRole("button", { name: "绑定字段" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/categories/rt/bindings", {
+        field_id: "f9",
+        required: false,
+      }),
     )
   })
 })

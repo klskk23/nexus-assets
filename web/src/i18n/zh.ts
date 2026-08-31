@@ -215,7 +215,7 @@ export const zhMeta = {
     collapse: "折叠子类别",
     displayKey: "编号字段",
     save: "保存",
-    selectHint: "点击一行查看并管理该类别的字段。",
+    selectHint: "点击一行编辑该类别：名称、上级、编号字段与字段绑定。",
     deleteTitle: "删除类别",
     deleteHint: (name: string) =>
       `「${name}」及其字段绑定将被删除。有子类别、或子树下有资产时会被拒绝，届时会列出是哪些。`,
@@ -288,12 +288,9 @@ export const zhTransfer = {
 
 export const zhConfig = {
   displayKey: {
-    title: "显示编号",
     label: "用作编号的字段",
     none: "未设置（显示 UUID 前 8 位）",
     hint: "只能选择标为唯一的字段。编号通常是一个表达式键，由 MAC 等静态键推导而来。",
-    save: "保存",
-    saved: "已保存",
   },
   field: {
     edit: "编辑字段",
