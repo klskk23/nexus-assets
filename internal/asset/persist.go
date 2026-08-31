@@ -56,13 +56,23 @@ func loadForUpdate(ctx context.Context, tx *sql.Tx, id string) (model.Asset, err
 	return a, err
 }
 
+// UniqueValue is one value that must not collide, and where it must not.
+//
+// Scope is the category the binding was made on: the field exists across that
+// category's subtree and nowhere else, so that is the reach of its uniqueness.
+// Two categories may now each have a "rack" that counts from one.
+type UniqueValue struct {
+	Value string
+	Scope string
+}
+
 // uniqueValues extracts the values that must not collide, keyed by field.
 //
 // An empty value never occupies a slot: half the devices in a batch may not
 // have their optional asset tag filled in yet, and they must not all collide
 // with each other on the empty string.
-func uniqueValues(fields []model.BoundField, attrs map[string]any) map[string]string {
-	out := map[string]string{}
+func uniqueValues(fields []model.BoundField, attrs map[string]any, categoryID string) map[string]UniqueValue {
+	out := map[string]UniqueValue{}
 	for _, f := range fields {
 		if !f.IsUnique {
 			continue
@@ -75,7 +85,12 @@ func uniqueValues(fields []model.BoundField, attrs map[string]any) map[string]st
 		if s == "" {
 			continue
 		}
-		out[f.Key] = s
+		// InheritedFrom is empty when the binding is the category's own.
+		scope := f.InheritedFrom
+		if scope == "" {
+			scope = categoryID
+		}
+		out[f.Key] = UniqueValue{Value: s, Scope: scope}
 	}
 	return out
 }
@@ -89,7 +104,7 @@ func uniqueValues(fields []model.BoundField, attrs map[string]any) map[string]st
 // select-then-insert window, the single-connection write pool is now a
 // performance choice rather than a correctness requirement.
 func probeUnique(ctx context.Context, tx *sql.Tx, fields []model.BoundField,
-	want map[string]string, selfID string) error {
+	want map[string]UniqueValue, selfID string) error {
 
 	// Static keys are probed before expression keys. When a duplicate MAC also
 	// collides on the number derived from it, both are real conflicts, but only
@@ -110,8 +125,9 @@ func probeUnique(ctx context.Context, tx *sql.Tx, fields []model.BoundField,
 		var otherID string
 		err := tx.QueryRowContext(ctx,
 			`SELECT asset_id FROM asset_unique_values
-			 WHERE field_key = ? AND value = ? AND archived_at IS NULL AND asset_id != ? LIMIT 1`,
-			k, want[k], selfID).Scan(&otherID)
+			 WHERE scope_id = ? AND field_key = ? AND value = ? AND archived_at IS NULL
+			   AND asset_id != ? LIMIT 1`,
+			want[k].Scope, k, want[k].Value, selfID).Scan(&otherID)
 		if err == nil {
 			return FieldErrors{k: i18n.M(i18n.KeyFieldValueTaken, describeAsset(ctx, tx, otherID))}
 		}
@@ -130,35 +146,37 @@ func probeUnique(ctx context.Context, tx *sql.Tx, fields []model.BoundField,
 // that had its mainboard swapped legitimately hands its old MAC to whoever
 // receives the old board, and the scanner should still find the history.
 func syncUniqueValues(ctx context.Context, tx *sql.Tx, assetID string,
-	want map[string]string, now time.Time) error {
+	want map[string]UniqueValue, now time.Time) error {
 
 	rows, err := tx.QueryContext(ctx,
-		`SELECT field_key, value FROM asset_unique_values WHERE asset_id = ? AND archived_at IS NULL`, assetID)
+		`SELECT field_key, value, scope_id FROM asset_unique_values
+		 WHERE asset_id = ? AND archived_at IS NULL`, assetID)
 	if err != nil {
 		return fmt.Errorf("load unique values: %w", err)
 	}
-	live := map[string]string{}
+	live := map[string]UniqueValue{}
 	for rows.Next() {
-		var k, v string
-		if err := rows.Scan(&k, &v); err != nil {
+		var k string
+		var uv UniqueValue
+		if err := rows.Scan(&k, &uv.Value, &uv.Scope); err != nil {
 			rows.Close()
 			return err
 		}
-		live[k] = v
+		live[k] = uv
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
 		return err
 	}
 
-	for k, v := range live {
-		if want[k] == v {
+	for k, uv := range live {
+		if want[k] == uv {
 			continue
 		}
 		if _, err := tx.ExecContext(ctx,
 			`UPDATE asset_unique_values SET archived_at = ?
 			 WHERE asset_id = ? AND field_key = ? AND value = ? AND archived_at IS NULL`,
-			store.FormatTime(now), assetID, k, v); err != nil {
+			store.FormatTime(now), assetID, k, uv.Value); err != nil {
 			return fmt.Errorf("archive unique value: %w", err)
 		}
 	}
@@ -173,8 +191,9 @@ func syncUniqueValues(ctx context.Context, tx *sql.Tx, assetID string,
 			continue
 		}
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO asset_unique_values (asset_id, field_key, value, created_at) VALUES (?, ?, ?, ?)`,
-			assetID, k, want[k], store.FormatTime(now)); err != nil {
+			`INSERT INTO asset_unique_values (asset_id, field_key, value, scope_id, created_at)
+			 VALUES (?, ?, ?, ?, ?)`,
+			assetID, k, want[k].Value, want[k].Scope, store.FormatTime(now)); err != nil {
 			// The probe should have caught this; reaching here means a
 			// collision the probe could not see, so report it as one.
 			return FieldErrors{k: i18n.M(i18n.KeyFieldValuesTaken, err)}

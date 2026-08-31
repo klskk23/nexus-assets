@@ -486,7 +486,7 @@ func (s *Server) listFieldReferrers(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
-	refs, err := s.schema.ReferrersOf(c.Request.Context(), f.Key)
+	refs, err := s.schema.ReferrersOf(c.Request.Context(), f.ID, f.Key)
 	if err != nil {
 		FailErr(c, err)
 		return

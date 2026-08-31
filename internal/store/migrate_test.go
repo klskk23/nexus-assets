@@ -123,12 +123,10 @@ func TestMigrateUpAndDown(t *testing.T) {
 	// Rolling back one revision at a time must restore each earlier shape
 	// exactly, so a half-applied upgrade can be undone rather than requiring a
 	// fresh file.
-	if err := s.MigrateDown(ctx); err != nil {
-		t.Fatalf("MigrateDown 010: %v", err)
-	}
-
-	if err := s.MigrateDown(ctx); err != nil {
-		t.Fatalf("MigrateDown 009: %v", err)
+	for _, rev := range []string{"011", "010", "009"} {
+		if err := s.MigrateDown(ctx); err != nil {
+			t.Fatalf("MigrateDown %s: %v", rev, err)
+		}
 	}
 
 	if err := s.MigrateDown(ctx); err != nil {
@@ -320,10 +318,12 @@ func TestMigrateConvertsEnumAndReferenceFieldsToText(t *testing.T) {
 	if err := s.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}
-	// Back to the revision before the withdrawal, so the rows can be written in
-	// the shape that revision allowed.
-	if err := s.MigrateDown(ctx); err != nil {
-		t.Fatalf("MigrateDown 010: %v", err)
+	// Back past the withdrawal, so the rows can be written in the shape that
+	// revision allowed.
+	for _, rev := range []string{"011", "010"} {
+		if err := s.MigrateDown(ctx); err != nil {
+			t.Fatalf("MigrateDown %s: %v", rev, err)
+		}
 	}
 
 	now := "2026-08-31T00:00:00Z"

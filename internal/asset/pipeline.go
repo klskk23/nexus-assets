@@ -99,8 +99,9 @@ type Prepared struct {
 	// expression key may read id -- which is the natural way to build a
 	// short label out of the UUID now that there is no separate serial column.
 	ID string
-	// Unique holds the values that must not collide, keyed by field.
-	Unique map[string]string
+	// Unique holds the values that must not collide, keyed by field, each with
+	// the category subtree it must not collide inside.
+	Unique map[string]UniqueValue
 	// DisplayKey is the category's nominated identifier, carried through so
 	// the created asset can be handed back already named.
 	DisplayKey string
@@ -170,7 +171,7 @@ func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
 	}
 
 	prep.Fields, prep.Attrs = fields, clean
-	prep.Unique = uniqueValues(fields, clean)
+	prep.Unique = uniqueValues(fields, clean, in.CategoryID)
 	prep.DisplayKey = cat.DisplayKey
 	return prep, nil
 }

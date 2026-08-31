@@ -104,12 +104,14 @@ func (s *Service) Recompute(ctx context.Context, categoryID string, dryRun bool)
 	type change struct {
 		id     string
 		attrs  map[string]any
-		unique map[string]string
+		unique map[string]UniqueValue
 	}
 	var changes []change
 	// Values that will exist once the run completes, so a collision between two
 	// recomputed assets is caught as well as one against an untouched row.
-	claimed := map[[2]string][]string{}
+	// Keyed by scope as well: the same value under two categories is no longer
+	// a collision.
+	claimed := map[[3]string][]string{}
 
 	for rows.Next() {
 		var id, catID, attrsJSON string
@@ -165,9 +167,10 @@ func (s *Service) Recompute(ctx context.Context, categoryID string, dryRun bool)
 			}
 		}
 
-		next := uniqueValues(fields, attrs)
-		for k, v := range next {
-			claimed[[2]string{k, v}] = append(claimed[[2]string{k, v}], display)
+		next := uniqueValues(fields, attrs, catID)
+		for k, uv := range next {
+			at := [3]string{uv.Scope, k, uv.Value}
+			claimed[at] = append(claimed[at], display)
 		}
 		if dirty {
 			changes = append(changes, change{id: id, attrs: attrs, unique: next})
@@ -178,9 +181,9 @@ func (s *Service) Recompute(ctx context.Context, categoryID string, dryRun bool)
 	}
 	report.Affected = len(changes)
 
-	for kv, owners := range claimed {
+	for at, owners := range claimed {
 		if len(owners) > 1 {
-			report.Conflicts = append(report.Conflicts, Conflict{Key: kv[0], Value: kv[1], Assets: owners})
+			report.Conflicts = append(report.Conflicts, Conflict{Key: at[1], Value: at[2], Assets: owners})
 		}
 	}
 	if err := s.collideWithUntouched(ctx, root.Path, claimed, &report); err != nil {
@@ -227,19 +230,19 @@ func (s *Service) Recompute(ctx context.Context, categoryID string, dryRun bool)
 // partial unique index, so a value that was replaced is free to appear again.
 // A mainboard swap really does move a MAC from one device to another.
 func (s *Service) collideWithUntouched(ctx context.Context, rootPath string,
-	claimed map[[2]string][]string, report *RecomputeReport) error {
+	claimed map[[3]string][]string, report *RecomputeReport) error {
 
-	for kv, owners := range claimed {
+	for at, owners := range claimed {
 		var otherID string
 		err := s.db.ReadDB().QueryRowContext(ctx,
 			`SELECT uv.asset_id FROM asset_unique_values uv
 			 JOIN assets a ON a.id = uv.asset_id
 			 JOIN categories c ON c.id = a.category_id
-			 WHERE uv.field_key = ? AND uv.value = ? AND uv.archived_at IS NULL
-			   AND c.path NOT LIKE ? || '%' LIMIT 1`, kv[0], kv[1], rootPath).Scan(&otherID)
+			 WHERE uv.scope_id = ? AND uv.field_key = ? AND uv.value = ? AND uv.archived_at IS NULL
+			   AND c.path NOT LIKE ? || '%' LIMIT 1`, at[0], at[1], at[2], rootPath).Scan(&otherID)
 		if err == nil {
 			report.Conflicts = append(report.Conflicts,
-				Conflict{Key: kv[0], Value: kv[1], Assets: append(owners, model.ShortID(otherID))})
+				Conflict{Key: at[1], Value: at[2], Assets: append(owners, model.ShortID(otherID))})
 			continue
 		}
 		if !errors.Is(err, sql.ErrNoRows) {

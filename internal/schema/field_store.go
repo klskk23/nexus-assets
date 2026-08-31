@@ -157,7 +157,7 @@ func (s *Store) UpdateField(ctx context.Context, id string, in UpdateFieldInput)
 		// already-bound expression key at an optional field is the way around
 		// it.
 		if templateChanged {
-			if err := recheckBoundCategories(ctx, tx, cur.Key); err != nil {
+			if err := recheckBoundCategories(ctx, tx, id, cur.Key); err != nil {
 				return err
 			}
 		}
@@ -174,15 +174,17 @@ func boolInt(b bool) int {
 	return 0
 }
 
-// recheckBoundCategories re-runs the dependency gate for every category the
+// recheckBoundCategories re-runs the dependency gate for every category this
 // field is bound to, so a template edit cannot leave a binding unsatisfiable.
-func recheckBoundCategories(ctx context.Context, tx *sql.Tx, key string) error {
+//
+// By field id, not by key: another category may have a field of the same name,
+// and its bindings are none of this edit's business.
+func recheckBoundCategories(ctx context.Context, tx *sql.Tx, fieldID, key string) error {
 	rows, err := tx.QueryContext(ctx,
 		`SELECT c.id, c.name, c.path
 		 FROM category_fields cf
 		 JOIN categories c ON c.id = cf.category_id
-		 JOIN field_definitions f ON f.id = cf.field_id
-		 WHERE f.key = ?`, key)
+		 WHERE cf.field_id = ?`, fieldID)
 	if err != nil {
 		return fmt.Errorf("load bound categories: %w", err)
 	}

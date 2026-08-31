@@ -515,3 +515,77 @@ func nullableID(id *string) string {
 	}
 	return `"` + *id + `"`
 }
+
+// Uniqueness is a question about a category, not about the whole company.
+// Two categories may each have a "rack" that counts from one; the same value
+// twice inside one of them is still refused.
+func TestUniqueValuesAreScopedToTheBindingCategory(t *testing.T) {
+	h := newHarness(t)
+
+	rec := h.post(t, "/api/fields", `{"key":"rack","label":"机柜位","type":"text","is_unique":true}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatal(rec.Body.String())
+	}
+	rackID := decode[map[string]any](t, rec)["id"].(string)
+
+	// A second category with a field of the same key -- which the library also
+	// allows now -- and its own binding.
+	other := decode[map[string]any](t, h.post(t, "/api/categories", `{"code":"SW","name":"交换机"}`))
+	otherID := other["id"].(string)
+	rec2 := h.post(t, "/api/fields", `{"key":"rack","label":"机柜位","type":"text","is_unique":true}`)
+	if rec2.Code != http.StatusCreated {
+		t.Fatalf("a second field may share the key: %s", rec2.Body.String())
+	}
+	rack2ID := decode[map[string]any](t, rec2)["id"].(string)
+
+	for _, b := range []struct{ cat, field string }{{h.catID, rackID}, {otherID, rack2ID}} {
+		if r := h.post(t, "/api/categories/"+b.cat+"/bindings",
+			`{"field_id":"`+b.field+`","required":false,"sort":40}`); r.Code != http.StatusNoContent {
+			t.Fatalf("bind: %s", r.Body.String())
+		}
+	}
+
+	create := func(catID, mac, rack string) *httptest.ResponseRecorder {
+		return h.post(t, "/api/assets", `{"category_id":"`+catID+`","status":"in_stock","owner_id":"`+
+			h.userID+`","holder_type":"entity","holder_id":"`+h.locID+
+			`","attrs":{"mac":"`+mac+`","rack":"`+rack+`"}}`)
+	}
+
+	if r := create(h.catID, "001A2B3C0001", "A-01"); r.Code != http.StatusCreated {
+		t.Fatalf("first asset: %s", r.Body.String())
+	}
+	// Same rack, different category: allowed, which is the whole change.
+	if r := create(otherID, "001A2B3C0002", "A-01"); r.Code != http.StatusCreated {
+		t.Fatalf("the same value under another category should be fine: %s", r.Body.String())
+	}
+	// Same rack, same category: still refused, and the refusal names the field.
+	dup := create(h.catID, "001A2B3C0003", "A-01")
+	if dup.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("a duplicate inside one category = %d %s", dup.Code, dup.Body.String())
+	}
+	if _, ok := decode[Envelope](t, dup).Error.Fields["rack"]; !ok {
+		t.Errorf("the refusal should hang off rack, got %s", dup.Body.String())
+	}
+}
+
+// A child category inherits the binding, so it shares its ancestor's scope: the
+// field exists across that subtree and so does its uniqueness.
+func TestInheritedUniquenessSpansTheSubtree(t *testing.T) {
+	h := newHarness(t)
+
+	child := decode[map[string]any](t, h.post(t, "/api/categories",
+		`{"code":"SUB","name":"子类","parent_id":"`+h.catID+`"}`))
+	childID := child["id"].(string)
+
+	first := h.post(t, "/api/assets", `{"category_id":"`+h.catID+`","status":"in_stock","owner_id":"`+
+		h.userID+`","holder_type":"entity","holder_id":"`+h.locID+`","attrs":{"mac":"001A2B3C0101"}}`)
+	if first.Code != http.StatusCreated {
+		t.Fatalf("parent asset: %s", first.Body.String())
+	}
+	// mac is bound on the parent and marked unique, so the child may not reuse it.
+	dup := h.post(t, "/api/assets", `{"category_id":"`+childID+`","status":"in_stock","owner_id":"`+
+		h.userID+`","holder_type":"entity","holder_id":"`+h.locID+`","attrs":{"mac":"001A2B3C0101"}}`)
+	if dup.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("reusing an inherited unique value = %d %s", dup.Code, dup.Body.String())
+	}
+}
