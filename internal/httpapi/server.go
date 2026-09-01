@@ -125,6 +125,7 @@ func (s *Server) Router() *gin.Engine {
 	authed.POST("/import/preview", s.importPreview)
 	authed.POST("/import/commit", s.importCommit)
 	authed.GET("/export.csv", s.exportCSV)
+	authed.GET("/rows", s.listRows)
 
 	authed.GET("/audit", s.listAudit)
 	authed.GET("/overview", s.overview)

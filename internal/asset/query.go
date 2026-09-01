@@ -41,7 +41,11 @@ func (s *Service) Get(ctx context.Context, id string) (model.Asset, error) {
 
 // ListFilter carries the supported list-page filters.
 type ListFilter struct {
-	Q                  string
+	Q string
+	// IDs narrows to exactly these assets, for "print the ones I ticked".
+	// Empty means no such narrowing; a non-empty list of ids that match
+	// nothing is an empty result, not everything.
+	IDs                []string
 	CategoryID         string
 	IncludeDescendants bool
 	Status             string
@@ -97,6 +101,14 @@ func (s *Service) List(ctx context.Context, f ListFilter) (ListResult, error) {
 			where = append(where, `category_id = ?`)
 			args = append(args, f.CategoryID)
 		}
+	}
+	if len(f.IDs) > 0 {
+		holes := make([]string, len(f.IDs))
+		for i, id := range f.IDs {
+			holes[i] = "?"
+			args = append(args, id)
+		}
+		where = append(where, `id IN (`+strings.Join(holes, ",")+`)`)
 	}
 	if f.Status != "" {
 		where = append(where, `status = ?`)

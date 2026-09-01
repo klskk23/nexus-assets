@@ -777,6 +777,41 @@ paths:
       responses:
         "204": { description: No Content }
 
+  /rows:
+    get:
+      tags: [metadata]
+      summary: 资产的表格视图（列名是字段键，供外部系统消费）
+      description: >
+        export.csv 的 JSON 兄弟。列名用字段键而不是显示名，所以消费方绑定的东西不会因为
+        有人改了显示名而失效。必须指定类别：字段键只在一个类别的链内唯一。
+      parameters:
+        - { name: category_id, in: query, required: true, schema: { type: string } }
+        - { name: include_descendants, in: query, schema: { type: boolean, default: true } }
+        - { name: ids, in: query, schema: { type: string, description: 逗号分隔的资产 id，用于"只要这几台" } }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: holder_id, in: query, schema: { type: string } }
+        - { name: owner_id, in: query, schema: { type: string } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+        - { name: limit, in: query, schema: { type: integer, default: 1000, maximum: 1000 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  columns: { type: array, items: { type: string } }
+                  rows:
+                    type: array
+                    items: { type: object, additionalProperties: { type: string } }
+                  total: { type: integer }
+                  offset: { type: integer }
+                  limit: { type: integer }
+                  generated_at: { type: string, format: date-time }
+        "422": { description: 未指定类别 }
+
   /import/preview:
     post:
       tags: [import]

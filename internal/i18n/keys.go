@@ -20,7 +20,12 @@ const (
 	KeyOIDCStateMismatch = "err.oidc_state_mismatch"
 	KeySessionExpired    = "err.session_expired"
 	KeyPreferenceUnknown = "err.preference_unknown"
-	KeyKeyDaysRange      = "err.key_days_range"
+	// Yes and no as a reader sees them, for the tabular views that hand values
+	// to something outside this system.
+	KeyYes              = "value.yes"
+	KeyNo               = "value.no"
+	KeyRowsNeedCategory = "rows.category_required"
+	KeyKeyDaysRange     = "err.key_days_range"
 	// Why a Google sign-in was refused. Each one is something the person or
 	// their administrator can act on, so none of them may arrive as the
 	// generic server failure.
