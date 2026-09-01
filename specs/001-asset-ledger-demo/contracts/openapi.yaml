@@ -839,6 +839,14 @@ paths:
             （没配预设、或打印服务拒绝），其余批次照常提交。
         "404": { description: 本部署没有配置打印服务 }
 
+  /print/presets:
+    get:
+      tags: [metadata]
+      summary: 转发打印服务的预设清单，用于把"预设 id"变成一个下拉框
+      responses:
+        "200": { description: OK }
+        "404": { description: 本部署没有配置打印服务 }
+
   /print/jobs/{id}:
     get:
       tags: [metadata]

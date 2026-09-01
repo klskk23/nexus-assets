@@ -105,7 +105,7 @@ func newHarnessWithPrinting(t *testing.T, printURL string) *harness {
 		t.Fatalf("set display key: %v", err)
 	}
 
-	cfg := &config.Config{JWTSecret: []byte("test"), JWTTTL: time.Hour, PrintServiceURL: printURL}
+	cfg := &config.Config{JWTSecret: []byte("test"), JWTTTL: time.Hour, PrinterURL: printURL}
 	issuer := auth.NewIssuer(cfg.JWTSecret, cfg.JWTTTL)
 	tok, err := issuer.Issue(u.ID, u.Email, u.Name, 0)
 	if err != nil {

@@ -72,6 +72,14 @@ func newFakePrintService(t *testing.T) *fakePrintService {
 			},
 		})
 	})
+	mux.HandleFunc("/api/print-presets", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"presets": []map[string]string{
+				{"id": "preset-rt", "name": "路由器标签"},
+				{"id": "preset-sw", "name": "交换机标签"},
+			},
+		})
+	})
 	mux.HandleFunc("/api/print-jobs/", func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Path[len("/api/print-jobs/"):]
 		if body, ok := f.status[id]; ok {
@@ -271,5 +279,30 @@ func TestPrintingIsAbsentWhenUnconfigured(t *testing.T) {
 	}
 	if rec := h.post(t, "/api/print", `{"ids":["x"]}`); rec.Code != http.StatusNotFound {
 		t.Errorf("printing without a service = %d, want 404", rec.Code)
+	}
+}
+
+// Choosing where a category prints should be a menu, not a copied identifier.
+// The list is relayed because the service sends no CORS headers.
+func TestPrintPresetsAreRelayed(t *testing.T) {
+	fake := newFakePrintService(t)
+	h := newHarnessWithPrinting(t, fake.server.URL)
+
+	got := decode[struct {
+		Presets []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"presets"`
+	}](t, h.get(t, "/api/print/presets"))
+
+	if len(got.Presets) != 2 || got.Presets[0].Name != "路由器标签" {
+		t.Errorf("presets = %+v", got.Presets)
+	}
+}
+
+func TestPrintPresetsAreAbsentWhenUnconfigured(t *testing.T) {
+	h := newHarness(t)
+	if rec := h.get(t, "/api/print/presets"); rec.Code != http.StatusNotFound {
+		t.Errorf("presets without a service = %d, want 404", rec.Code)
 	}
 }

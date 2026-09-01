@@ -43,6 +43,14 @@ function route(p: string) {
   if (p === "/categories") return Promise.resolve(categories)
   if (p.startsWith("/fields")) return Promise.resolve({ items: [], total: 0, offset: 0, limit: 20 })
   if (p === "/capabilities") return Promise.resolve({ printing: true })
+  if (p === "/print/presets") {
+    return Promise.resolve({
+      presets: [
+        { id: "preset-rt", name: "路由器标签" },
+        { id: "preset-sw", name: "交换机标签" },
+      ],
+    })
+  }
   if (p === "/models") {
     return Promise.resolve([
       { id: "m1", category_ids: ["rt"], name: "X100", vendor: "Acme", attr_defaults: {} },
@@ -343,13 +351,16 @@ describe("Category editor", () => {
 // The preset is opaque here: what it contains is the print service's business,
 // and an installation without one should not be asked about it at all.
 describe("Category print preset", () => {
-  it("saves the preset id with the rest of the category", async () => {
+  // Picked by name from what the printer can actually do: an identifier
+  // copied between two browser tabs is a step nobody should have to take.
+  it("saves the preset chosen by name", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
     await user.click(await categoryRow())
 
     const dialog = await screen.findByRole("dialog")
-    await user.type(within(dialog).getByLabelText("打印预设 id"), "preset-rt")
+    await user.click(within(dialog).getByRole("combobox", { name: "打印预设" }))
+    await user.click(await screen.findByRole("option", { name: "路由器标签" }))
     await user.click(within(dialog).getByRole("button", { name: "保存" }))
 
     await waitFor(() =>
@@ -371,6 +382,6 @@ describe("Category print preset", () => {
     await user.click(await categoryRow())
 
     const dialog = await screen.findByRole("dialog")
-    expect(within(dialog).queryByLabelText("打印预设 id")).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole("combobox", { name: "打印预设" })).not.toBeInTheDocument()
   })
 })

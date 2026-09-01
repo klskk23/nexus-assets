@@ -167,6 +167,33 @@ func (s *Server) printJobStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, job)
 }
 
+// printPresets relays what the print service can print.
+//
+// Relayed for the same reason job status is: the service sends no CORS headers,
+// so the page cannot ask it directly. It turns the category setting from a
+// pasted identifier into a menu.
+func (s *Server) printPresets(c *gin.Context) {
+	if !s.printer.Configured() {
+		FailMsg(c, http.StatusNotFound, CodeNotFound, i18n.KeyPrintNotConfigured)
+		return
+	}
+	presets, err := s.printer.Presets(c.Request.Context(), string(LangOf(c)))
+	if err != nil {
+		var refused *printing.Rejection
+		if errors.As(err, &refused) {
+			Fail(c, http.StatusBadGateway, CodeInternal, refused.Error(), nil)
+			return
+		}
+		log.Printf("print presets: %v", err)
+		FailMsg(c, http.StatusBadGateway, CodeInternal, i18n.KeyPrintUnreachable)
+		return
+	}
+	if presets == nil {
+		presets = []printing.Preset{}
+	}
+	c.JSON(http.StatusOK, gin.H{"presets": presets})
+}
+
 // printingAvailable tells the interface whether to offer printing at all.
 func (s *Server) printingAvailable(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"printing": s.printer.Configured()})

@@ -113,6 +113,54 @@ func (c *Client) Print(ctx context.Context, presetID string, body any, idempoten
 	return c.do(req)
 }
 
+// Preset is one saved combination of template, printer and paper on the print
+// service. Nexus stores only its id; the name is what a person picks from.
+type Preset struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// Presets lists what can be printed, so choosing one is a menu rather than a
+// copied identifier. Typing a uuid by hand is a step that exists only because
+// nobody wrote this call.
+func (c *Client) Presets(ctx context.Context, lang string) ([]Preset, error) {
+	if !c.Configured() {
+		return nil, ErrNotConfigured
+	}
+	req, err := http.NewRequestWithContext(ctx,
+		http.MethodGet, c.baseURL+"/api/print-presets", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept-Language", lang)
+
+	res, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode >= 400 {
+		var e struct {
+			Code string `json:"code"`
+			What string `json:"what"`
+		}
+		_ = json.Unmarshal(raw, &e)
+		return nil, &Rejection{Status: res.StatusCode, Code: e.Code, Message: e.What}
+	}
+	// The service answers with an envelope, the way it does everywhere else.
+	var body struct {
+		Presets []Preset `json:"presets"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return nil, fmt.Errorf("print service answered with something that is not a preset list: %w", err)
+	}
+	return body.Presets, nil
+}
+
 // Status asks what became of a job.
 func (c *Client) Status(ctx context.Context, jobID, lang string) (Job, error) {
 	var job Job

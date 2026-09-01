@@ -46,7 +46,7 @@ func NewServer(cfg *config.Config, issuer *auth.Issuer, users *auth.Store,
 	return &Server{cfg: cfg, issuer: issuer, users: users, schema: sch,
 		holders: holders, assets: assets, transfers: transfers, importer: imp,
 		audit: aud, oidc: oidcFlow, sessions: sessions, keys: keys,
-		printer: printing.New(cfg.PrintServiceURL), webFS: webFS}
+		printer: printing.New(cfg.PrinterURL), webFS: webFS}
 }
 
 // Router builds the gin engine.
@@ -131,6 +131,7 @@ func (s *Server) Router() *gin.Engine {
 	authed.GET("/rows", s.listRows)
 	authed.GET("/capabilities", s.printingAvailable)
 	authed.POST("/print", s.printAssets)
+	authed.GET("/print/presets", s.printPresets)
 	authed.GET("/print/jobs/:id", s.printJobStatus)
 
 	authed.GET("/audit", s.listAudit)

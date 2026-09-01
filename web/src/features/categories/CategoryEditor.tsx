@@ -8,7 +8,7 @@ import type { Category, CategorySchema } from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
-import { usePrinting } from "@/features/print/usePrinting"
+import { usePresets, usePrinting } from "@/features/print/usePrinting"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -60,6 +60,7 @@ interface Props {
 export function CategoryEditor({ category, categories, onClose }: Props) {
   const queryClient = useQueryClient()
   const printing = usePrinting()
+  const presets = usePresets(printing)
   const [name, setName] = useState(category.name)
   const [parentId, setParentId] = useState(category.parent_id ?? "")
   const [displayKey, setDisplayKey] = useState(category.display_key)
@@ -188,13 +189,31 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
           {printing && (
             <Field>
               <FieldLabel htmlFor="ce-preset">{tMeta.categories.printPreset}</FieldLabel>
-              <Input
-                id="ce-preset"
-                className="font-mono"
-                value={presetID}
-                onChange={(e) => setPresetID(e.target.value)}
-              />
-              <FieldDescription>{tMeta.categories.printPresetHint}</FieldDescription>
+              <Select value={toNone(presetID)} onValueChange={(v) => setPresetID(fromNone(v))}>
+                <SelectTrigger id="ce-preset">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value={NONE}>{tMeta.categories.printPresetNone}</SelectItem>
+                    {(presets.data?.presets ?? []).map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                    {/* A preset that was chosen before it was renamed or
+                        removed is still what this category points at; hiding
+                        it would silently look like "none". */}
+                    {presetID !== "" &&
+                      !(presets.data?.presets ?? []).some((p) => p.id === presetID) && (
+                        <SelectItem value={presetID}>{presetID}</SelectItem>
+                      )}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <FieldDescription>
+                {presets.isError ? tMeta.categories.printPresetOffline : tMeta.categories.printPresetHint}
+              </FieldDescription>
             </Field>
           )}
 

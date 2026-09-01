@@ -17,3 +17,26 @@ export function usePrinting(): boolean {
   })
   return data?.printing ?? false
 }
+
+/** One saved combination of template, printer and paper on the print service. */
+export interface Preset {
+  id: string
+  name: string
+}
+
+/**
+ * What this deployment can print, by name.
+ *
+ * Relayed through this server because the print service sends no CORS headers.
+ * The point of asking at all is that picking where a category prints should be
+ * a menu: an identifier copied between two browser tabs is a step that exists
+ * only because nobody made the call.
+ */
+export function usePresets(enabled: boolean) {
+  return useQuery({
+    queryKey: ["print-presets"],
+    queryFn: () => api.get<{ presets: Preset[] }>("/print/presets"),
+    enabled,
+    staleTime: 60_000,
+  })
+}
