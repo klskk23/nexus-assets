@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 
+	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 )
 
@@ -69,20 +71,27 @@ func (o *OIDC) AuthCodeURL(state string) string {
 func (o *OIDC) Exchange(ctx context.Context, code string) (IDTokenClaims, error) {
 	var claims IDTokenClaims
 
+	// These four are configuration or transport problems -- a wrong client
+	// secret, a redirect_uri Google does not recognise, a clock too far out.
+	// The reader can do nothing about any of them, so they get one honest
+	// sentence while the cause goes to the log, where the administrator is.
 	tok, err := o.oauth.Exchange(ctx, code)
 	if err != nil {
-		return claims, fmt.Errorf("exchange authorisation code: %w", err)
+		return claims, i18n.Wrap(fmt.Errorf("exchange authorisation code: %w", err),
+			i18n.KeyOIDCExchangeFailed)
 	}
 	raw, ok := tok.Extra("id_token").(string)
 	if !ok {
-		return claims, fmt.Errorf("the token response carried no id_token")
+		return claims, i18n.Wrap(errors.New("the token response carried no id_token"),
+			i18n.KeyOIDCExchangeFailed)
 	}
 	idToken, err := o.verifier.Verify(ctx, raw)
 	if err != nil {
-		return claims, fmt.Errorf("verify id_token: %w", err)
+		return claims, i18n.Wrap(fmt.Errorf("verify id_token: %w", err), i18n.KeyOIDCExchangeFailed)
 	}
 	if err := idToken.Claims(&claims); err != nil {
-		return claims, fmt.Errorf("decode id_token claims: %w", err)
+		return claims, i18n.Wrap(fmt.Errorf("decode id_token claims: %w", err),
+			i18n.KeyOIDCExchangeFailed)
 	}
 	claims.Subject = idToken.Subject
 

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"log"
 	"net/http"
 	"net/url"
 
@@ -49,14 +50,18 @@ func (s *Server) oidcCallback(c *gin.Context) {
 
 	claims, err := s.oidc.Exchange(c.Request.Context(), c.Query("code"))
 	if err != nil {
-		// The message says which domain was refused, so the person can see
-		// they signed in with the wrong account rather than guessing.
+		// Two audiences, one failure. The reader gets the sentence -- which
+		// domain was refused, or that the exchange itself did not complete --
+		// and the log gets the cause, because a misconfigured client secret is
+		// invisible from the browser and used to be invisible here too.
+		log.Printf("oidc: sign-in refused: %v", err)
 		c.Redirect(http.StatusFound, "/login?error="+url.QueryEscape(userText(c, err)))
 		return
 	}
 
 	u, err := auth.UpsertUser(c.Request.Context(), s.users, claims)
 	if err != nil {
+		log.Printf("oidc: cannot record the account for %s: %v", claims.Email, err)
 		FailErr(c, err)
 		return
 	}

@@ -18,9 +18,19 @@ const (
 	KeyDomainNotAllowed  = "err.domain_not_allowed"
 	KeyOIDCDisabled      = "err.oidc_disabled"
 	KeyOIDCStateMismatch = "err.oidc_state_mismatch"
-	KeyUploadTooLarge    = "err.upload_too_large"
-	KeyNotTailEvent      = "err.not_tail_event"
-	KeyNoDefaultStock    = "err.no_default_stock"
+	// Why a Google sign-in was refused. Each one is something the person or
+	// their administrator can act on, so none of them may arrive as the
+	// generic server failure.
+	KeyOIDCEmailUnverified = "oidc.email_unverified"
+	KeyOIDCNoEmail         = "oidc.no_email"
+	KeyOIDCNoHostedDomain  = "oidc.no_hosted_domain"
+	KeyOIDCHDNotAllowed    = "oidc.hd_not_allowed"
+	KeyOIDCDomainRefused   = "oidc.domain_refused"
+	KeyOIDCEmailMalformed  = "oidc.email_malformed"
+	KeyOIDCExchangeFailed  = "oidc.exchange_failed"
+	KeyUploadTooLarge      = "err.upload_too_large"
+	KeyNotTailEvent        = "err.not_tail_event"
+	KeyNoDefaultStock      = "err.no_default_stock"
 
 	// Request shape.
 	KeyVersionRequired   = "req.version_required"

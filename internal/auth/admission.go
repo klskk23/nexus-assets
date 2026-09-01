@@ -1,8 +1,9 @@
 package auth
 
 import (
-	"fmt"
 	"strings"
+
+	"github.com/klskk23/nexus-assets/internal/i18n"
 )
 
 // IDTokenClaims is the subset of a Google ID token this project reads.
@@ -29,31 +30,34 @@ type DomainChecker struct {
 // rather than a hard-coded choice because a company that does not use Workspace
 // has no hd claim at all, and refusing everyone would lock the system.
 func (d DomainChecker) Admit(c IDTokenClaims) error {
+	// Every refusal here carries a catalogue key. They all end up on the login
+	// page through userText, which renders a keyless error as "server error" --
+	// and that tells the one person who could act on it, by signing in with
+	// the other account or by correcting the allow list, nothing at all.
 	if !c.EmailVerified {
-		return fmt.Errorf("the Google account's email address is not verified")
+		return i18n.M(i18n.KeyOIDCEmailUnverified)
 	}
 	if c.Email == "" {
-		return fmt.Errorf("the Google account did not provide an email address")
+		return i18n.M(i18n.KeyOIDCNoEmail)
 	}
 
 	if d.RequireHD {
 		if c.HostedDomain == "" {
-			return fmt.Errorf("this sign-in carries no hosted-domain claim; " +
-				"set NEXUS_OIDC_REQUIRE_HD=false if the company does not use Google Workspace")
+			return i18n.M(i18n.KeyOIDCNoHostedDomain)
 		}
 		if !d.allows(c.HostedDomain) {
-			return fmt.Errorf("hosted domain %q is not on the allow list", c.HostedDomain)
+			return i18n.M(i18n.KeyOIDCHDNotAllowed, c.HostedDomain)
 		}
 		return nil
 	}
 
 	at := strings.LastIndex(c.Email, "@")
 	if at < 0 {
-		return fmt.Errorf("malformed email address %q", c.Email)
+		return i18n.M(i18n.KeyOIDCEmailMalformed, c.Email)
 	}
 	suffix := c.Email[at+1:]
 	if !d.allows(suffix) {
-		return fmt.Errorf("email domain %q is not on the allow list", suffix)
+		return i18n.M(i18n.KeyOIDCDomainRefused, suffix)
 	}
 	return nil
 }
