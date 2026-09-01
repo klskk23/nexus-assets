@@ -31,7 +31,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    if (getToken() !== null) return
+    // A token may have appeared since the first render: child effects run
+    // before this one, and the page that reads Google's redirect fragment is a
+    // child. Adopting it here rather than only bailing out is what stops the
+    // shell waiting for a restore that will never happen -- the state this bug
+    // produced, where signing in with Google left a loading skeleton until
+    // somebody reloaded the page.
+    const existing = getToken()
+    if (existing !== null) {
+      setLocalToken(existing)
+      setRestoring(false)
+      return
+    }
     restoreSession().then((next) => {
       if (cancelled) return
       if (next) setLocalToken(next)
