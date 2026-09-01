@@ -239,7 +239,7 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
               {printerURL !== "" && (
                 <FieldDescription>
                   <a
-                    href={printerURL}
+                    href={`${printerURL}/print-presets`}
                     target="_blank"
                     rel="noreferrer"
                     className="underline underline-offset-4"

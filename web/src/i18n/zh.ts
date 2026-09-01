@@ -34,7 +34,9 @@ export const zh = {
     claims: (variable: string, start: number, end: number) =>
       `消耗序号 ${variable}：${start}–${end}`,
     lost: "查不到这个作业的状态",
-    openService: "在打印服务里打开",
+    openService: "去打印服务管理标签",
+    openQueue: "去打印服务看队列",
+    openDesign: "在打印服务里打开这张标签",
     allDone: "全部打印完成",
     someFailed: "有作业没有完成，详见下表",
   },

@@ -50,6 +50,8 @@ beforeEach(() => {
         {
           category_id: "net", category_name: "网络设备", count: 2,
           preset_name: "路由器标签", numbers: ["112394521950", "112394521951"],
+          preset_id: "p1",
+          presets: [{ id: "p1", name: "路由器标签", templateId: "tpl-1" }],
         },
       ],
     },
@@ -98,7 +100,7 @@ describe("printing the ticked devices", () => {
     await user.click(await within(dialog).findByRole("button", { name: "确认打印 2 张" }))
 
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/print", { ids: ["a1", "a2"], presets: {} }),
+      expect(post).toHaveBeenCalledWith("/print", { ids: ["a1", "a2"], presets: { net: "p1" } }),
     )
     expect(within(dialog).getByText("网络设备")).toBeInTheDocument()
     // Watched, not fired and forgotten: the service accepts a job and answers
@@ -180,8 +182,8 @@ describe("choosing which label", () => {
             category_id: "net", category_name: "网络设备", count: 1,
             preset_id: "p-sn", preset_name: "编号标签",
             presets: [
-              { id: "p-sn", name: "编号标签" },
-              { id: "p-loc", name: "位置标签" },
+              { id: "p-sn", name: "编号标签", templateId: "tpl-sn" },
+              { id: "p-loc", name: "位置标签", templateId: "tpl-loc" },
             ],
             numbers: ["112394521950"],
           },
@@ -201,6 +203,13 @@ describe("choosing which label", () => {
     expect(picker).toHaveTextContent("编号标签")
     await user.click(picker)
     await user.click(await screen.findByRole("option", { name: "位置标签" }))
+
+    // The way out to the print service follows the choice on screen, not the
+    // one proposed before anybody touched the list.
+    expect(
+      within(dialog).getByRole("link", { name: "在打印服务里打开这张标签" }),
+    ).toHaveAttribute("href", "http://printer:3000/design/tpl-loc?preset=p-loc")
+
     await user.click(within(dialog).getByRole("button", { name: /确认打印/ }))
 
     await waitFor(() =>
@@ -225,14 +234,40 @@ describe("choosing which label", () => {
 // Nothing here designs a label. When one is wrong, the only useful thing this
 // page can offer is the way over to where it can be fixed.
 describe("getting to the print service", () => {
-  it("links to it from the confirmation", async () => {
+  it("links to where labels are managed, and to the label itself", async () => {
     const user = userEvent.setup()
     renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
 
     await user.click(await screen.findByRole("button", { name: "打印标签" }))
     const dialog = await screen.findByRole("dialog")
-    const link = within(dialog).getByRole("link", { name: /在打印服务里打开/ })
-    expect(link).toHaveAttribute("href", "http://printer:3000")
-    expect(link).toHaveAttribute("target", "_blank")
+
+    const manage = within(dialog).getByRole("link", { name: /去打印服务管理标签/ })
+    expect(manage).toHaveAttribute("href", "http://printer:3000/print-presets")
+    expect(manage).toHaveAttribute("target", "_blank")
+
+    // The label's own name is the link to its design: "this one looks wrong"
+    // is only actionable if it lands on the thing itself.
+    expect(within(dialog).getByRole("link", { name: "路由器标签" })).toHaveAttribute(
+      "href",
+      "http://printer:3000/design/tpl-1?preset=p1",
+    )
+  })
+
+  // Once something has gone wrong at the printer, the useful place is the
+  // queue -- which is also where a paused one has to be released.
+  it("points at the queue after a failure", async () => {
+    get.mockImplementation(route(true, { status: "failed", failureMessage: "缺纸" }))
+    const user = userEvent.setup()
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+
+    await user.click(await screen.findByRole("button", { name: "打印标签" }))
+    const dialog = await screen.findByRole("dialog")
+    await user.click(await within(dialog).findByRole("button", { name: /确认打印/ }))
+    await within(dialog).findByText("失败")
+
+    expect(within(dialog).getByRole("link", { name: /去打印服务看队列/ })).toHaveAttribute(
+      "href",
+      "http://printer:3000/queue",
+    )
   })
 })

@@ -44,7 +44,9 @@ export const en: typeof zh = {
     claims: (variable: string, start: number, end: number) =>
       `Used ${variable} ${start}–${end}`,
     lost: "That job's state could not be read",
-    openService: "Open the print service",
+    openService: "Manage labels in the print service",
+    openQueue: "Open the printer queue",
+    openDesign: "Open this label in the print service",
     allDone: "All labels printed",
     someFailed: "Some jobs did not finish; see below",
   },

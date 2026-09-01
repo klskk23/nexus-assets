@@ -118,6 +118,10 @@ func (c *Client) Print(ctx context.Context, presetID string, body any, idempoten
 type Preset struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+	// TemplateID is the design this preset prints. Carried through so a page
+	// can link to that label rather than to the service's front door: "this
+	// one looks wrong" is only actionable if you land on the thing itself.
+	TemplateID string `json:"templateId"`
 }
 
 // Presets lists what can be printed, so choosing one is a menu rather than a

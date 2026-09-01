@@ -105,10 +105,10 @@ func (s *Server) printAssets(c *gin.Context) {
 	// Named only for the confirmation, and only when the service answers:
 	// a printer that is down must not stop someone from seeing what they
 	// would have printed.
-	presetName := map[string]string{}
+	known := map[string]printing.Preset{}
 	if presets, err := s.printer.Presets(c.Request.Context(), lang); err == nil {
 		for _, p := range presets {
-			presetName[p.ID] = p.Name
+			known[p.ID] = p
 		}
 	} else if !req.DryRun {
 		// A real run only needs the names for the response; a printer that
@@ -132,9 +132,14 @@ func (s *Server) printAssets(c *gin.Context) {
 		batch.CategoryName = cat.Name
 
 		for _, id := range cat.PrintPresetIDs {
-			batch.Presets = append(batch.Presets, printing.Preset{
-				ID: id, Name: nameOr(presetName, id),
-			})
+			p, ok := known[id]
+			if !ok {
+				// Configured here but not there any more, or the service could
+				// not be asked. Either way it is still what this category
+				// points at, so it is listed under the only name available.
+				p = printing.Preset{ID: id, Name: id}
+			}
+			batch.Presets = append(batch.Presets, p)
 		}
 
 		if len(cat.PrintPresetIDs) == 0 {
@@ -158,7 +163,7 @@ func (s *Server) printAssets(c *gin.Context) {
 				// The confirmation is where the choice gets made, so it says
 				// what there is to choose from rather than refusing.
 				batch.PresetID = cat.PrintPresetIDs[0]
-				batch.PresetName = nameOr(presetName, batch.PresetID)
+				batch.PresetName = batch.Presets[0].Name
 				out = append(out, batch)
 				continue
 			}
@@ -167,7 +172,7 @@ func (s *Server) printAssets(c *gin.Context) {
 			continue
 		}
 		batch.PresetID = chosen
-		batch.PresetName = nameOr(presetName, chosen)
+		batch.PresetName = nameOr(known, chosen)
 
 		if req.DryRun {
 			// Everything above is what the confirmation needs: how many labels,
@@ -246,9 +251,9 @@ func (s *Server) printJobStatus(c *gin.Context) {
 
 // nameOr falls back to the id when the print service could not be asked, so a
 // list with no names is still a list rather than a row of blanks.
-func nameOr(names map[string]string, id string) string {
-	if name, ok := names[id]; ok {
-		return name
+func nameOr(known map[string]printing.Preset, id string) string {
+	if p, ok := known[id]; ok && p.Name != "" {
+		return p.Name
 	}
 	return id
 }

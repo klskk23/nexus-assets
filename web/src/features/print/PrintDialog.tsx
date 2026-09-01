@@ -46,7 +46,7 @@ interface Batch {
   category_name: string
   count: number
   /** This category's labels, so the choice is made here rather than guessed. */
-  presets?: { id: string; name: string }[]
+  presets?: { id: string; name: string; templateId?: string }[]
   preset_id?: string
   preset_name?: string
   numbers?: string[]
@@ -141,6 +141,19 @@ export function PrintDialog({ ids, onClose }: Props) {
     return index < 0 ? undefined : polls[index]
   }
 
+  // The design behind a batch's chosen label, when the print service told us
+  // which one it is. The preset rides along in the query: the template alone
+  // opens the right label but leaves the printer and the copies to be picked
+  // again, which is most of what somebody came here to avoid.
+  const designHref = (b: Batch) => {
+    // What is about to be printed, which is the choice on screen rather than
+    // the one the server proposed before anybody touched the list.
+    const preset = chosen[b.category_id] ?? b.preset_id ?? ""
+    if (printerURL === "" || preset === "") return ""
+    const template = (b.presets ?? []).find((p) => p.id === preset)?.templateId
+    return template ? `${printerURL}/design/${template}?preset=${encodeURIComponent(preset)}` : ""
+  }
+
   const label = (status?: string) => {
     switch (status) {
       case "queued":
@@ -218,10 +231,25 @@ export function PrintDialog({ ids, onClose }: Props) {
                       <TableCell>{b.category_name}</TableCell>
                       <TableCell>
                         {confirmed || (b.presets ?? []).length <= 1 ? (
-                          <span className="text-muted-foreground">{b.preset_name ?? ""}</span>
+                          // Linked to the design itself when it can be: "this
+                          // one looks wrong" is only actionable if the link
+                          // lands on the label rather than on a front door.
+                          designHref(b) ? (
+                            <a
+                              href={designHref(b)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline underline-offset-4"
+                            >
+                              {b.preset_name}
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">{b.preset_name ?? ""}</span>
+                          )
                         ) : (
                           // More than one label on this kind of thing, so which
                           // one is a decision, not a default to be guessed at.
+                          <span className="flex items-center gap-1">
                           <Select
                             value={chosen[b.category_id] ?? ""}
                             onValueChange={(v) =>
@@ -245,6 +273,23 @@ export function PrintDialog({ ids, onClose }: Props) {
                               </SelectGroup>
                             </SelectContent>
                           </Select>
+                          {/* The chosen one is still openable: a label picked
+                              from a list is exactly the one somebody may want
+                              to look at before committing paper to it. */}
+                          {designHref(b) && (
+                            <Button variant="ghost" size="icon" asChild>
+                              <a
+                                href={designHref(b)}
+                                target="_blank"
+                                rel="noreferrer"
+                                aria-label={t.print.openDesign}
+                                title={t.print.openDesign}
+                              >
+                                <ExternalLinkIcon />
+                              </a>
+                            </Button>
+                          )}
+                          </span>
                         )}
                       </TableCell>
                       <TableCell className="tabular-nums">{t.print.unit(b.count)}</TableCell>
@@ -303,9 +348,15 @@ export function PrintDialog({ ids, onClose }: Props) {
               can offer is the way over to where that is done. */}
           {printerURL !== "" && (
             <Button variant="ghost" size="sm" className="mr-auto" asChild>
-              <a href={printerURL} target="_blank" rel="noreferrer">
+              {/* Where the labels are managed once printing has started, and
+                  the queue once something has gone wrong there. */}
+              <a
+                href={`${printerURL}${anyFailed && confirmed ? "/queue" : "/print-presets"}`}
+                target="_blank"
+                rel="noreferrer"
+              >
                 <ExternalLinkIcon data-icon="inline-start" />
-                {t.print.openService}
+                {anyFailed && confirmed ? t.print.openQueue : t.print.openService}
               </a>
             </Button>
           )}

@@ -847,14 +847,17 @@ paths:
         "200":
           description: >
             每个类别一个批次，含 numbers（这一批要打的设备编号，供出纸前核对）、
-            presets（该类别可用的标签，供试算时选择）与 preset_id/preset_name。批次里没有 job_id 而有 error，表示这一批没有送出去
+            presets（该类别可用的标签，供试算时选择，每项带 templateId 以便链到那张标签本身）
+            与 preset_id/preset_name。批次里没有 job_id 而有 error，表示这一批没有送出去
             （没配预设、或打印服务拒绝），其余批次照常提交。
         "404": { description: 本部署没有配置打印服务 }
 
   /print/presets:
     get:
       tags: [metadata]
-      summary: 转发打印服务的预设清单，用于把"预设 id"变成一个下拉框
+      summary: >
+        转发打印服务的预设清单，用于把"预设 id"变成一个下拉框。
+        每项带 templateId，界面据此拼出 {printing_url}/design/{templateId}
       responses:
         "200": { description: OK }
         "404": { description: 本部署没有配置打印服务 }
