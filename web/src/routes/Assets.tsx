@@ -12,6 +12,8 @@ import { useStatuses } from "@/features/statuses/useStatuses"
 import { StateBoundary } from "@/components/StateBoundary"
 import { useColumnSelection } from "@/features/assets/useColumns"
 import { ActionBar } from "@/features/assets/ActionBar"
+import { PrintDialog } from "@/features/print/PrintDialog"
+import { usePrinting } from "@/features/print/usePrinting"
 import { PAGE_SIZES, Pager } from "@/features/common/Pager"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import {
@@ -96,6 +98,11 @@ export function Assets() {
   const [holderId, setHolderId] = useState(searchParams.get("holder_id") ?? "")
   const { keys: chosenColumns, toggle } = useColumnSelection(categoryId)
   const [selected, setSelected] = useState<string[]>([])
+  // The row menu prints one device; the bar prints the ticked ones. Two states
+  // because they are two acts, and a menu that printed the selection would be
+  // a surprise for anyone who right-clicked a row they had not ticked.
+  const [printingOne, setPrintingOne] = useState<string | null>(null)
+  const printing = usePrinting()
   const [done, setDone] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   // The overview's quick-entry card links here with a category already picked.
@@ -435,6 +442,13 @@ export function Assets() {
                           {label}
                         </ContextMenuItem>
                       ))}
+                      {/* One device, without ticking it first -- the same
+                          reason every other action is on this menu. */}
+                      {printing && (
+                        <ContextMenuItem onSelect={() => setPrintingOne(a.id)}>
+                          {t.print.action}
+                        </ContextMenuItem>
+                      )}
                       <ContextMenuSeparator />
                       <ContextMenuItem variant="destructive" onSelect={() => setDeleting(a)}>
                         {t.assets.delete}
@@ -475,6 +489,10 @@ export function Assets() {
         onClear={() => setSelected([])}
         onDone={setDone}
       />
+
+      {printingOne && (
+        <PrintDialog ids={[printingOne]} onClose={() => setPrintingOne(null)} />
+      )}
 
       {/* Driven by the context menu, which has already closed by the time
           either of these should appear. */}

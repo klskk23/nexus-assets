@@ -15,12 +15,18 @@ vi.mock("react-router", async () => {
 })
 
 const get = vi.fn()
+const post = vi.fn()
 const del = vi.fn()
 vi.mock("@/lib/api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api")
   return {
     ...actual,
-    api: { get: (p: string) => get(p), post: vi.fn(), patch: vi.fn(), del: (p: string) => del(p) },
+    api: {
+      get: (p: string) => get(p),
+      post: (p: string, b: unknown) => post(p, b),
+      patch: vi.fn(),
+      del: (p: string) => del(p),
+    },
   }
 })
 
@@ -88,6 +94,8 @@ function route(path: string) {
   const st = statusRoute(path)
   if (st) return st
 
+  if (path === "/capabilities") return Promise.resolve({ printing: true })
+  if (path === "/print/presets") return Promise.resolve({ presets: [] })
   if (path === "/categories") return Promise.resolve(categories)
   if (path === "/holders") return Promise.resolve(holders)
   if (path === "/users") return Promise.resolve(users)
@@ -102,6 +110,7 @@ describe("Assets list", () => {
   beforeEach(() => {
     navigate.mockReset()
     get.mockReset()
+    post.mockReset()
     get.mockImplementation(route)
     localStorage.clear()
   })
@@ -490,5 +499,42 @@ describe("Assets row gestures", () => {
     await waitFor(() =>
       expect(del).toHaveBeenCalledWith("/assets/a1?confirm=112394521950"),
     )
+  })
+})
+
+// A single device, without ticking it first: the same reason every other row
+// action lives on this menu.
+describe("printing one row", () => {
+  it("prints the device the menu was opened on", async () => {
+    post.mockResolvedValue({
+      batches: [
+        {
+          category_id: "net", category_name: "网络设备", count: 1,
+          preset_id: "p1", preset_name: "编号标签", numbers: ["112394521950"],
+        },
+      ],
+    })
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+
+    const row = await screen.findByRole("row", { name: /112394521950/ })
+    await chooseFromMenu(user, row, "打印标签")
+
+    // The confirmation is about that one device, and nothing has printed yet.
+    const dialog = await screen.findByRole("dialog")
+    expect(within(dialog).getByText(/1 台设备/)).toBeInTheDocument()
+    expect(post).toHaveBeenCalledWith("/print", { ids: ["a1"], dry_run: true })
+  })
+
+  it("offers nothing to print when no print service is configured", async () => {
+    get.mockImplementation((p: string) =>
+      p === "/capabilities" ? Promise.resolve({ printing: false }) : route(p),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+
+    const row = await screen.findByRole("row", { name: /112394521950/ })
+    const menu = await openMenu(user, row)
+    expect(within(menu).queryByRole("menuitem", { name: "打印标签" })).not.toBeInTheDocument()
   })
 })
