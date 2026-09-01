@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nexus Assets API</title>
+    <link rel="icon" href="/api/docs/favicon-32x32.png" sizes="32x32" />
+    <link rel="stylesheet" href="/api/docs/swagger-ui.css" />
+    <style>
+      body { margin: 0; background: #fafafa; }
+      .topbar { display: none; }
+    </style>
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="/api/docs/swagger-ui-bundle.js"></script>
+    <script src="/api/docs/swagger-ui-standalone-preset.js"></script>
+    <script>
+      // The page is served from the application's own origin, so it can read
+      // the session token the app stored and sign every "Try it out" with it.
+      // Without this, every call from here would be a 401 and the button would
+      // be decoration.
+      window.ui = SwaggerUIBundle({
+        url: "/api/openapi.yaml",
+        dom_id: "#swagger-ui",
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+        layout: "BaseLayout",
+        deepLinking: true,
+        persistAuthorization: true,
+        requestInterceptor: function (req) {
+          try {
+            var token = localStorage.getItem("nexus.token")
+            if (token && !req.headers.Authorization) {
+              req.headers.Authorization = "Bearer " + JSON.parse(token === null ? "null" : '"' + token + '"')
+            }
+          } catch (e) {
+            // A browser with no storage: the Authorize button still works.
+          }
+          return req
+        },
+      })
+    </script>
+  </body>
+</html>

@@ -17,6 +17,7 @@ type Config struct {
 	Addr           string
 	JWTSecret      []byte
 	JWTTTL         time.Duration
+	RefreshTTL     time.Duration
 	AllowedDomains []string
 
 	OIDCClientID     string
@@ -74,12 +75,25 @@ func Load() (*Config, error) {
 	}
 	c.JWTSecret = []byte(secret)
 
-	ttl := envOr("NEXUS_JWT_TTL", "8h")
+	// Short, because it is now refreshable. The long-lived half is the
+	// session cookie, which -- unlike this one -- can be taken away.
+	ttl := envOr("NEXUS_JWT_TTL", "15m")
 	d, err := time.ParseDuration(ttl)
 	if err != nil {
 		return nil, fmt.Errorf("NEXUS_JWT_TTL %q: %w", ttl, err)
 	}
 	c.JWTTTL = d
+
+	refresh := envOr("NEXUS_REFRESH_TTL", "720h")
+	rd, err := time.ParseDuration(refresh)
+	if err != nil {
+		return nil, fmt.Errorf("NEXUS_REFRESH_TTL %q: %w", refresh, err)
+	}
+	if rd <= d {
+		return nil, fmt.Errorf("NEXUS_REFRESH_TTL (%s) must outlast NEXUS_JWT_TTL (%s), "+
+			"or signing in would end before it could be refreshed", refresh, ttl)
+	}
+	c.RefreshTTL = rd
 
 	domains := os.Getenv("NEXUS_ALLOWED_EMAIL_DOMAINS")
 	if domains == "" {

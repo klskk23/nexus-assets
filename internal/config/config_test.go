@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func setEnv(t *testing.T, kv map[string]string) {
 	t.Helper()
@@ -41,8 +44,13 @@ func TestLoadDefaults(t *testing.T) {
 	if c.DBPath != "./nexus.db" {
 		t.Errorf("DBPath = %q, want ./nexus.db", c.DBPath)
 	}
-	if c.JWTTTL.Hours() != 8 {
-		t.Errorf("JWTTTL = %v, want 8h", c.JWTTTL)
+	// Short by default, because a session is refreshable now: the long-lived
+	// half is the cookie, and that one can be revoked.
+	if c.JWTTTL != 15*time.Minute {
+		t.Errorf("JWTTTL = %v, want 15m", c.JWTTTL)
+	}
+	if c.RefreshTTL != 720*time.Hour {
+		t.Errorf("RefreshTTL = %v, want 720h", c.RefreshTTL)
 	}
 	if !c.OIDCRequireHD {
 		t.Error("OIDCRequireHD should default to true")

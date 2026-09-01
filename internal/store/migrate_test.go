@@ -23,7 +23,7 @@ func TestMigrateUpAndDown(t *testing.T) {
 		"users", "holder_entities", "categories", "field_definitions",
 		"category_fields", "product_models", "product_model_categories",
 		"assets", "asset_unique_values", "asset_transfers", "audit_log",
-		"statuses",
+		"statuses", "sessions", "api_keys",
 	}
 	for _, table := range want {
 		var n int
@@ -123,7 +123,7 @@ func TestMigrateUpAndDown(t *testing.T) {
 	// Rolling back one revision at a time must restore each earlier shape
 	// exactly, so a half-applied upgrade can be undone rather than requiring a
 	// fresh file.
-	for _, rev := range []string{"011", "010", "009"} {
+	for _, rev := range []string{"012", "011", "010", "009"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -320,7 +320,7 @@ func TestMigrateConvertsEnumAndReferenceFieldsToText(t *testing.T) {
 	}
 	// Back past the withdrawal, so the rows can be written in the shape that
 	// revision allowed.
-	for _, rev := range []string{"011", "010"} {
+	for _, rev := range []string{"012", "011", "010"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}

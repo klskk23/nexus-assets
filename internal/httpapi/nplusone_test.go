@@ -27,6 +27,7 @@ import (
 
 type harness struct {
 	router    *gin.Engine
+	db        *store.Store
 	schema    *schema.Store
 	token     string
 	assets    *asset.Service
@@ -109,9 +110,10 @@ func newHarness(t *testing.T) *harness {
 	}
 
 	srv := NewServer(cfg, issuer, us, sch, hs, svc, transfer.New(db, hs),
-		importer.New(db, sch, hs, us, svc), audit.New(db), nil, nil)
+		importer.New(db, sch, hs, us, svc), audit.New(db), nil,
+		auth.NewSessions(db, 720*time.Hour), auth.NewKeys(db), nil)
 	return &harness{
-		router: srv.Router(), schema: sch, token: tok, assets: svc,
+		router: srv.Router(), db: db, schema: sch, token: tok, assets: svc,
 		catID: root.ID, locID: loc.ID, userID: u.ID, snFieldID: sn.ID, ctx: ctx,
 	}
 }

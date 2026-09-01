@@ -31,6 +31,8 @@ type Server struct {
 	importer  *importer.Service
 	audit     *audit.Store
 	oidc      *auth.OIDC
+	sessions  *auth.Sessions
+	keys      *auth.Keys
 	webFS     fs.FS
 }
 
@@ -38,10 +40,10 @@ type Server struct {
 func NewServer(cfg *config.Config, issuer *auth.Issuer, users *auth.Store,
 	sch *schema.Store, holders *holder.Store, assets *asset.Service,
 	transfers *transfer.Service, imp *importer.Service, aud *audit.Store,
-	oidcFlow *auth.OIDC, webFS fs.FS) *Server {
+	oidcFlow *auth.OIDC, sessions *auth.Sessions, keys *auth.Keys, webFS fs.FS) *Server {
 	return &Server{cfg: cfg, issuer: issuer, users: users, schema: sch,
 		holders: holders, assets: assets, transfers: transfers, importer: imp,
-		audit: aud, oidc: oidcFlow, webFS: webFS}
+		audit: aud, oidc: oidcFlow, sessions: sessions, keys: keys, webFS: webFS}
 }
 
 // Router builds the gin engine.
@@ -53,13 +55,25 @@ func (s *Server) Router() *gin.Engine {
 	api.POST("/auth/login", s.login)
 	api.GET("/auth/oidc/start", s.oidcStart)
 	api.GET("/auth/oidc/callback", s.oidcCallback)
+	// Refreshing carries its own credential in a cookie, so it cannot sit
+	// behind the middleware that wants an access token.
+	api.POST("/auth/refresh", s.refresh)
+	api.POST("/auth/logout", s.logout)
+	// The contract and a page to exercise it against this very server.
+	api.GET("/openapi.yaml", s.openAPISpec)
+	api.GET("/docs", s.docsIndex)
+	api.GET("/docs/*file", s.docsAsset)
 
 	authed := api.Group("")
-	authed.Use(auth.Middleware(s.issuer, s.users, func(c *gin.Context) {
+	authed.Use(auth.Middleware(s.issuer, s.users, s.keys, func(c *gin.Context) {
 		FailMsg(c, http.StatusUnauthorized, CodeUnauthenticated, i18n.KeyUnauthenticated)
 	}))
 
 	authed.GET("/me", s.me)
+	authed.PATCH("/me", s.patchMe)
+	authed.GET("/api-keys", s.listAPIKeys)
+	authed.POST("/api-keys", s.createAPIKey)
+	authed.DELETE("/api-keys/:id", s.revokeAPIKey)
 
 	authed.GET("/categories", s.listCategories)
 	authed.POST("/categories", s.createCategory)

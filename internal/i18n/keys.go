@@ -18,6 +18,9 @@ const (
 	KeyDomainNotAllowed  = "err.domain_not_allowed"
 	KeyOIDCDisabled      = "err.oidc_disabled"
 	KeyOIDCStateMismatch = "err.oidc_state_mismatch"
+	KeySessionExpired    = "err.session_expired"
+	KeyPreferenceUnknown = "err.preference_unknown"
+	KeyKeyDaysRange      = "err.key_days_range"
 	// Why a Google sign-in was refused. Each one is something the person or
 	// their administrator can act on, so none of them may arrive as the
 	// generic server failure.

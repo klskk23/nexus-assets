@@ -38,12 +38,62 @@ func (s *Server) login(c *gin.Context) {
 		FailMsg(c, http.StatusForbidden, CodeUnauthenticated, i18n.KeyAccountDisabled)
 		return
 	}
-	tok, err := s.issuer.Issue(u.ID, u.Email, u.Name, u.TokenVersion)
+	tok, ok := s.startSession(c, u)
+	if !ok {
+		return
+	}
+	c.JSON(http.StatusOK, loginResponse{Token: tok, User: u})
+}
+
+// patchMe changes the signed-in account's own preferences.
+//
+// Language and theme live on the account rather than in the browser: they are
+// a property of the person, and someone who sets the interface to English on
+// one machine means it everywhere. An empty value means "follow the system",
+// which is what both settings did before there was anywhere to store them.
+func (s *Server) patchMe(c *gin.Context) {
+	u, ok := auth.CurrentUser(c)
+	if !ok {
+		FailMsg(c, http.StatusUnauthorized, CodeUnauthenticated, i18n.KeyUnauthenticated)
+		return
+	}
+	var req struct {
+		Lang  *string `json:"lang"`
+		Theme *string `json:"theme"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
+		return
+	}
+	if req.Lang != nil && !validPreference(*req.Lang, "zh", "en") {
+		FailField(c, http.StatusUnprocessableEntity, "lang", i18n.KeyPreferenceUnknown, *req.Lang)
+		return
+	}
+	if req.Theme != nil && !validPreference(*req.Theme, "light", "dark") {
+		FailField(c, http.StatusUnprocessableEntity, "theme", i18n.KeyPreferenceUnknown, *req.Theme)
+		return
+	}
+
+	out, err := s.users.UpdatePreferences(c.Request.Context(), u.ID, req.Lang, req.Theme)
 	if err != nil {
 		FailErr(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, loginResponse{Token: tok, User: u})
+	c.JSON(http.StatusOK, out)
+}
+
+// validPreference accepts the listed values and the empty one, which means
+// "whatever the system says".
+func validPreference(v string, allowed ...string) bool {
+	if v == "" {
+		return true
+	}
+	for _, a := range allowed {
+		if v == a {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) me(c *gin.Context) {

@@ -9,25 +9,51 @@ import (
 	"github.com/klskk23/nexus-assets/internal/model"
 )
 
-const contextKey = "nexus.user"
+const (
+	contextKey      = "nexus.user"
+	byKeyContextKey = "nexus.by_api_key"
+)
 
-// Middleware verifies the bearer token and loads the account.
+// Middleware verifies the bearer credential and loads the account.
+//
+// Two kinds of credential arrive the same way. A session JWT is minutes long
+// and carries its own claims; an API key is a stored secret that acts as the
+// account which made it. Which one it is can be told from the token itself, so
+// neither has to be tried against the other.
 //
 // No permission checks happen here. The demo deliberately has no roles; the
 // admission boundary is the email-domain whitelist at sign-in.
-func Middleware(issuer *Issuer, users *Store, onFail func(*gin.Context)) gin.HandlerFunc {
+func Middleware(issuer *Issuer, users *Store, keys *Keys, onFail func(*gin.Context)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		raw := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
 		if raw == "" || raw == c.GetHeader("Authorization") {
 			onFail(c)
 			return
 		}
-		claims, err := issuer.Verify(raw)
-		if err != nil {
-			onFail(c)
-			return
+
+		var userID string
+		if strings.HasPrefix(raw, KeyPrefix) {
+			if keys == nil {
+				onFail(c)
+				return
+			}
+			id, err := keys.Resolve(c.Request.Context(), raw)
+			if err != nil {
+				onFail(c)
+				return
+			}
+			userID = id
+			c.Set(byKeyContextKey, true)
+		} else {
+			claims, err := issuer.Verify(raw)
+			if err != nil {
+				onFail(c)
+				return
+			}
+			userID = claims.Subject
 		}
-		u, err := users.Get(c.Request.Context(), claims.Subject)
+
+		u, err := users.Get(c.Request.Context(), userID)
 		if err != nil || u.Status != model.UserActive {
 			onFail(c)
 			return
@@ -35,6 +61,13 @@ func Middleware(issuer *Issuer, users *Store, onFail func(*gin.Context)) gin.Han
 		c.Set(contextKey, u)
 		c.Next()
 	}
+}
+
+// AuthenticatedByKey reports whether this request arrived with an API key
+// rather than a browser session.
+func AuthenticatedByKey(c *gin.Context) bool {
+	v, ok := c.Get(byKeyContextKey)
+	return ok && v == true
 }
 
 // CurrentUser reads the authenticated account off the request context.

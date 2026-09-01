@@ -70,9 +70,8 @@ func (s *Server) oidcCallback(c *gin.Context) {
 		return
 	}
 
-	tok, err := s.issuer.Issue(u.ID, u.Email, u.Name, u.TokenVersion)
-	if err != nil {
-		FailErr(c, err)
+	tok, ok := s.startSession(c, u)
+	if !ok {
 		return
 	}
 	c.Redirect(http.StatusFound, "/login#token="+url.QueryEscape(tok))

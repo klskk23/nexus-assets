@@ -27,14 +27,14 @@ type Store struct{ db *store.Store }
 // NewStore builds a user store.
 func NewStore(db *store.Store) *Store { return &Store{db: db} }
 
-const userCols = `id, email, name, auth_type, password_hash, oidc_subject, status, role, token_version, created_at, updated_at`
+const userCols = `id, email, name, auth_type, password_hash, oidc_subject, status, role, token_version, lang, theme, created_at, updated_at`
 
 func scanUser(row interface{ Scan(...any) error }) (model.User, error) {
 	var u model.User
 	var pw, sub sql.NullString
 	var created, updated string
 	if err := row.Scan(&u.ID, &u.Email, &u.Name, &u.AuthType, &pw, &sub,
-		&u.Status, &u.Role, &u.TokenVersion, &created, &updated); err != nil {
+		&u.Status, &u.Role, &u.TokenVersion, &u.Lang, &u.Theme, &created, &updated); err != nil {
 		return u, err
 	}
 	u.PasswordHash = pw.String
@@ -172,4 +172,37 @@ func nullIfEmpty(s string) any {
 		return nil
 	}
 	return s
+}
+
+// UpdatePreferences changes what the person chose for themselves.
+//
+// Absent means "leave it alone" and empty means "follow the system", which are
+// different answers: the second is a choice, and clearing a preference has to
+// be expressible.
+func (s *Store) UpdatePreferences(ctx context.Context, id string, lang, theme *string) (model.User, error) {
+	var out model.User
+	err := s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		cur, err := scanUser(tx.QueryRowContext(ctx, `SELECT `+userCols+` FROM users WHERE id = ?`, id))
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if lang != nil {
+			cur.Lang = *lang
+		}
+		if theme != nil {
+			cur.Theme = *theme
+		}
+		cur.UpdatedAt = time.Now().UTC()
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE users SET lang = ?, theme = ?, updated_at = ? WHERE id = ?`,
+			cur.Lang, cur.Theme, store.FormatTime(cur.UpdatedAt), id); err != nil {
+			return err
+		}
+		out = cur
+		return nil
+	})
+	return out, err
 }

@@ -127,7 +127,11 @@ func (a *app) serve() error {
 		log.Print("Google sign-in is not configured; local accounts only")
 	}
 
-	srv := httpapi.NewServer(a.cfg, issuer, a.users, a.schema, a.holders, a.assets, a.transfers, a.importer, a.audit, oidcFlow, webFS)
+	sessions := auth.NewSessions(a.db, a.cfg.RefreshTTL)
+	keys := auth.NewKeys(a.db)
+
+	srv := httpapi.NewServer(a.cfg, issuer, a.users, a.schema, a.holders, a.assets,
+		a.transfers, a.importer, a.audit, oidcFlow, sessions, keys, webFS)
 
 	log.Printf("listening on %s (database %s)", a.cfg.Addr, a.cfg.DBPath)
 	return srv.Router().Run(a.cfg.Addr)

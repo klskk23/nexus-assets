@@ -162,8 +162,13 @@ type User struct {
 	Status       UserStatus `json:"status"`
 	Role         string     `json:"-"`
 	TokenVersion int        `json:"-"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	// Lang and Theme are what this person chose for the interface; empty means
+	// follow the system. They live on the account rather than in one browser,
+	// because they are a property of the person and not of the machine.
+	Lang      string    `json:"lang"`
+	Theme     string    `json:"theme"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // Category is a node in the classification tree.
