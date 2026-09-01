@@ -280,7 +280,16 @@ func (s *Server) printPresets(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"presets": presets})
 }
 
-// printingAvailable tells the interface whether to offer printing at all.
+// printingAvailable tells the interface whether to offer printing at all, and
+// where the print service lives.
+//
+// The address is handed over so a page can link to it: when a batch looks
+// wrong, or a label needs editing, somebody has to be able to get there. The
+// browser must be able to reach that address for the link to be worth
+// anything, so there is nothing to hide by withholding it.
 func (s *Server) printingAvailable(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"printing": s.printer.Configured()})
+	c.JSON(http.StatusOK, gin.H{
+		"printing":     s.printer.Configured(),
+		"printing_url": s.cfg.PrinterURL,
+	})
 }

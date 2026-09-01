@@ -815,7 +815,7 @@ paths:
   /capabilities:
     get:
       tags: [metadata]
-      summary: 这套部署具备哪些可选能力（目前只有 printing）
+      summary: 这套部署具备哪些可选能力：printing 是否可用、printing_url 打印服务地址
       responses:
         "200": { description: OK }
 

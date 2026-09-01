@@ -38,7 +38,7 @@ export function ActionBar({ selected, onClear, onDone }: Props) {
   const [action, setAction] = useState<TransferAction | null>(null)
   const [open, setOpen] = useState(false)
   const [printOpen, setPrintOpen] = useState(false)
-  const printing = usePrinting()
+  const { enabled: printing } = usePrinting()
 
   const remove = useMutation({
     mutationFn: () =>

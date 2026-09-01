@@ -3,19 +3,23 @@ import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 
 /**
- * Whether this deployment prints at all.
+ * Whether this deployment prints at all, and where the printer lives.
  *
  * Asked once and cached: it is a property of the installation, not of the
  * session. An installation without a printer shows nothing about printing --
  * no button, no category setting -- rather than a control that answers 404.
+ *
+ * The address is here so pages can link to it. Nothing in this product edits a
+ * label; when one is wrong, the only useful thing to offer is the way over to
+ * where it can be fixed.
  */
-export function usePrinting(): boolean {
+export function usePrinting(): { enabled: boolean; url: string } {
   const { data } = useQuery({
     queryKey: ["capabilities"],
-    queryFn: () => api.get<{ printing: boolean }>("/capabilities"),
+    queryFn: () => api.get<{ printing: boolean; printing_url: string }>("/capabilities"),
     staleTime: Infinity,
   })
-  return data?.printing ?? false
+  return { enabled: data?.printing ?? false, url: data?.printing_url ?? "" }
 }
 
 /** One saved combination of template, printer and paper on the print service. */

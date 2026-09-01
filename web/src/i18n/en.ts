@@ -44,6 +44,7 @@ export const en: typeof zh = {
     claims: (variable: string, start: number, end: number) =>
       `Used ${variable} ${start}–${end}`,
     lost: "That job's state could not be read",
+    openService: "Open the print service",
     allDone: "All labels printed",
     someFailed: "Some jobs did not finish; see below",
   },
@@ -301,6 +302,7 @@ export const enMeta: typeof zhMeta = {
     printPresetHint:
       "Which labels this category has; which one to print is chosen at the printer. None ticked means it prints nothing.",
     printPresetOffline: "The print service did not answer, so only the current choice is available.",
+    printPresetManage: "Design labels in the print service →",
     save: "Save",
     selectHint: "Click a row to edit that category: name, parent, number field and bindings.",
     deleteTitle: "Delete category",

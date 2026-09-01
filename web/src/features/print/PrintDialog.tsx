@@ -1,8 +1,10 @@
+import { ExternalLinkIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useMutation, useQueries } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
 import { t } from "@/i18n"
+import { usePrinting } from "@/features/print/usePrinting"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -85,6 +87,7 @@ const FINISHED = ["completed", "failed", "cancelled"]
  * success.
  */
 export function PrintDialog({ ids, onClose }: Props) {
+  const { url: printerURL } = usePrinting()
   const [batches, setBatches] = useState<Batch[]>([])
   const [banner, setBanner] = useState<string | null>(null)
   // Until this, nothing has reached a printer.
@@ -295,6 +298,17 @@ export function PrintDialog({ ids, onClose }: Props) {
         )}
 
         <DialogFooter>
+          {/* An escape hatch, not a second way to print: when a batch looks
+              wrong, or a label needs changing, the only useful thing this page
+              can offer is the way over to where that is done. */}
+          {printerURL !== "" && (
+            <Button variant="ghost" size="sm" className="mr-auto" asChild>
+              <a href={printerURL} target="_blank" rel="noreferrer">
+                <ExternalLinkIcon data-icon="inline-start" />
+                {t.print.openService}
+              </a>
+            </Button>
+          )}
           <Button variant="ghost" onClick={onClose}>
             {confirmed ? t.common.close : t.common.cancel}
           </Button>

@@ -67,7 +67,7 @@ interface Props {
  */
 export function CategoryEditor({ category, categories, onClose }: Props) {
   const queryClient = useQueryClient()
-  const printing = usePrinting()
+  const { enabled: printing, url: printerURL } = usePrinting()
   const presets = usePresets(printing)
   const [name, setName] = useState(category.name)
   const [parentId, setParentId] = useState(category.parent_id ?? "")
@@ -234,6 +234,19 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
               </FieldGroup>
               {presets.isError && (
                 <FieldDescription>{tMeta.categories.printPresetOffline}</FieldDescription>
+              )}
+              {/* Labels are designed over there; this is the way across. */}
+              {printerURL !== "" && (
+                <FieldDescription>
+                  <a
+                    href={printerURL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline underline-offset-4"
+                  >
+                    {tMeta.categories.printPresetManage}
+                  </a>
+                </FieldDescription>
               )}
             </FieldSet>
           )}

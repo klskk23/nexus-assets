@@ -26,7 +26,9 @@ function route(printing: boolean, job: Record<string, unknown> = { status: "comp
   return (p: string) => {
     const st = statusRoute(p)
     if (st) return st
-    if (p === "/capabilities") return Promise.resolve({ printing })
+    if (p === "/capabilities") {
+      return Promise.resolve({ printing, printing_url: printing ? "http://printer:3000" : "" })
+    }
     if (p.startsWith("/print/jobs/")) return Promise.resolve(job)
     return Promise.resolve([])
   }
@@ -217,5 +219,20 @@ describe("choosing which label", () => {
     const dialog = await screen.findByRole("dialog")
     await within(dialog).findByText("路由器标签")
     expect(within(dialog).queryByRole("combobox")).not.toBeInTheDocument()
+  })
+})
+
+// Nothing here designs a label. When one is wrong, the only useful thing this
+// page can offer is the way over to where it can be fixed.
+describe("getting to the print service", () => {
+  it("links to it from the confirmation", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+
+    await user.click(await screen.findByRole("button", { name: "打印标签" }))
+    const dialog = await screen.findByRole("dialog")
+    const link = within(dialog).getByRole("link", { name: /在打印服务里打开/ })
+    expect(link).toHaveAttribute("href", "http://printer:3000")
+    expect(link).toHaveAttribute("target", "_blank")
   })
 })

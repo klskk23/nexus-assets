@@ -102,7 +102,7 @@ export function Assets() {
   // because they are two acts, and a menu that printed the selection would be
   // a surprise for anyone who right-clicked a row they had not ticked.
   const [printingOne, setPrintingOne] = useState<string | null>(null)
-  const printing = usePrinting()
+  const { enabled: printing } = usePrinting()
   const [done, setDone] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   // The overview's quick-entry card links here with a category already picked.

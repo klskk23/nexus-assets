@@ -34,6 +34,7 @@ export const zh = {
     claims: (variable: string, start: number, end: number) =>
       `消耗序号 ${variable}：${start}–${end}`,
     lost: "查不到这个作业的状态",
+    openService: "在打印服务里打开",
     allDone: "全部打印完成",
     someFailed: "有作业没有完成，详见下表",
   },
@@ -281,6 +282,7 @@ export const zhMeta = {
     printPreset: "可打印的标签",
     printPresetHint: "勾上这个类别能打哪几种标签；打印时再选用哪一种。一个都不勾则它不能打标签。",
     printPresetOffline: "打印服务没有响应，暂时只能保留现在这个选择。",
+    printPresetManage: "去打印服务里设计标签 →",
     save: "保存",
     selectHint: "点击一行编辑该类别：名称、上级、编号字段与字段绑定。",
     deleteTitle: "删除类别",

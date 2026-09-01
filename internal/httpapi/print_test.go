@@ -436,3 +436,21 @@ func TestPrintRefusesAnUnchosenLabel(t *testing.T) {
 		t.Error("a preset outside this category's labels must not be printed")
 	}
 }
+
+// The page needs the address to link to it: when a batch looks wrong or a
+// label needs editing, somebody has to be able to get there.
+func TestCapabilitiesCarryThePrinterAddress(t *testing.T) {
+	fake := newFakePrintService(t)
+	h := newHarnessWithPrinting(t, fake.server.URL)
+
+	caps := decode[map[string]any](t, h.get(t, "/api/capabilities"))
+	if caps["printing"] != true || caps["printing_url"] != fake.server.URL {
+		t.Errorf("capabilities = %v", caps)
+	}
+
+	// Nothing configured, nothing to link to.
+	plain := decode[map[string]any](t, newHarness(t).get(t, "/api/capabilities"))
+	if plain["printing"] != false || plain["printing_url"] != "" {
+		t.Errorf("capabilities = %v", plain)
+	}
+}
