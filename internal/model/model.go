@@ -183,14 +183,16 @@ type Category struct {
 	// ShortID. It is deliberately not inherited from ancestors: a child
 	// category is usually exactly where a different numbering rule belongs.
 	DisplayKey string `json:"display_key"`
-	// PrintPresetID names a preset in whatever print service this deployment
-	// points at. Opaque here on purpose: what a preset contains -- a template,
-	// a printer, a paper profile -- is that service's vocabulary, and an
-	// installation with no printer should not carry a model of one.
-	PrintPresetID string     `json:"print_preset_id"`
-	ArchivedAt    *time.Time `json:"archived_at,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	// PrintPresetIDs names this category's labels in whatever print service
+	// this deployment points at. A list because one device carries more than
+	// one: a permanent number, and a location tag replaced whenever it moves.
+	// Opaque here on purpose -- what a preset contains is that service's
+	// vocabulary, and an installation with no printer should not carry a model
+	// of one.
+	PrintPresetIDs []string   `json:"print_preset_ids"`
+	ArchivedAt     *time.Time `json:"archived_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 // FieldDefinition is a globally registered information item.

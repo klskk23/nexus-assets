@@ -95,7 +95,9 @@ describe("printing the ticked devices", () => {
     const dialog = await screen.findByRole("dialog")
     await user.click(await within(dialog).findByRole("button", { name: "确认打印 2 张" }))
 
-    await waitFor(() => expect(post).toHaveBeenCalledWith("/print", { ids: ["a1", "a2"] }))
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/print", { ids: ["a1", "a2"], presets: {} }),
+    )
     expect(within(dialog).getByText("网络设备")).toBeInTheDocument()
     // Watched, not fired and forgotten: the service accepts a job and answers
     // immediately, so everything that can go wrong happens after the reply.
@@ -161,5 +163,59 @@ describe("printing the ticked devices", () => {
     const dialog = await screen.findByRole("dialog")
     await user.click(await within(dialog).findByRole("button", { name: /确认打印/ }))
     expect(await within(dialog).findByText(/消耗序号 seq：1001–1008/)).toBeInTheDocument()
+  })
+})
+
+// One device carries more than one label -- a permanent number, and a location
+// tag replaced whenever it moves -- so which one is a decision taken here,
+// where the paper is about to come out.
+describe("choosing which label", () => {
+  it("asks when a category has several, and sends the choice", async () => {
+    plans(
+      {
+        batches: [
+          {
+            category_id: "net", category_name: "网络设备", count: 1,
+            preset_id: "p-sn", preset_name: "编号标签",
+            presets: [
+              { id: "p-sn", name: "编号标签" },
+              { id: "p-loc", name: "位置标签" },
+            ],
+            numbers: ["112394521950"],
+          },
+        ],
+      },
+      { batches: [{ category_id: "net", category_name: "网络设备", count: 1, job_id: "job-1", status: "queued" }] },
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+
+    await user.click(await screen.findByRole("button", { name: "打印标签" }))
+    const dialog = await screen.findByRole("dialog")
+
+    const picker = await within(dialog).findByRole("combobox", { name: /网络设备/ })
+    // The first is proposed rather than left blank; a printer with one obvious
+    // answer should not stop to ask.
+    expect(picker).toHaveTextContent("编号标签")
+    await user.click(picker)
+    await user.click(await screen.findByRole("option", { name: "位置标签" }))
+    await user.click(within(dialog).getByRole("button", { name: /确认打印/ }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/print", {
+        ids: ["a1"],
+        presets: { net: "p-loc" },
+      }),
+    )
+  })
+
+  it("does not ask when there is only one label", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+
+    await user.click(await screen.findByRole("button", { name: "打印标签" }))
+    const dialog = await screen.findByRole("dialog")
+    await within(dialog).findByText("路由器标签")
+    expect(within(dialog).queryByRole("combobox")).not.toBeInTheDocument()
   })
 })

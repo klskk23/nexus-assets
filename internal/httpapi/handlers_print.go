@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -20,9 +21,12 @@ type printBatch struct {
 	CategoryID   string `json:"category_id"`
 	CategoryName string `json:"category_name"`
 	Count        int    `json:"count"`
-	// PresetName is what will come out of the printer, named the way the print
-	// service names it. Empty when that service cannot be asked -- the batch
-	// still goes, and the confirmation just says less.
+	// Presets are this category's labels, named the way the print service names
+	// them. Empty when that service cannot be asked -- the batch still goes,
+	// and the confirmation just says less.
+	Presets []printing.Preset `json:"presets,omitempty"`
+	// PresetID is the label this batch will use, or did.
+	PresetID   string `json:"preset_id,omitempty"`
 	PresetName string `json:"preset_name,omitempty"`
 	// Numbers are the devices about to be printed, as they read on screen.
 	// The confirmation is only worth pressing if it says which labels are
@@ -53,6 +57,10 @@ func (s *Server) printAssets(c *gin.Context) {
 		IDs []string `json:"ids" binding:"required"`
 		// Copies applies to every label in the request; the service caps it.
 		Copies int `json:"copies"`
+		// Presets chooses which label each category prints, by category id.
+		// A category with one label needs no entry; one with several does,
+		// because nothing here can guess which of them was meant.
+		Presets map[string]string `json:"presets"`
 		// DryRun works out what would be printed without printing it. Paper
 		// comes out of a real machine in another room, so the person pressing
 		// the button is shown what they are about to spend first.
@@ -98,12 +106,14 @@ func (s *Server) printAssets(c *gin.Context) {
 	// a printer that is down must not stop someone from seeing what they
 	// would have printed.
 	presetName := map[string]string{}
-	if req.DryRun {
-		if presets, err := s.printer.Presets(c.Request.Context(), lang); err == nil {
-			for _, p := range presets {
-				presetName[p.ID] = p.Name
-			}
+	if presets, err := s.printer.Presets(c.Request.Context(), lang); err == nil {
+		for _, p := range presets {
+			presetName[p.ID] = p.Name
 		}
+	} else if !req.DryRun {
+		// A real run only needs the names for the response; a printer that
+		// cannot be listed may still print.
+		log.Printf("print: cannot name presets: %v", err)
 	}
 
 	out := make([]printBatch, 0, len(order))
@@ -121,7 +131,13 @@ func (s *Server) printAssets(c *gin.Context) {
 		}
 		batch.CategoryName = cat.Name
 
-		if cat.PrintPresetID == "" {
+		for _, id := range cat.PrintPresetIDs {
+			batch.Presets = append(batch.Presets, printing.Preset{
+				ID: id, Name: nameOr(presetName, id),
+			})
+		}
+
+		if len(cat.PrintPresetIDs) == 0 {
 			// Not a failure of the printer: nobody has said what this category's
 			// label looks like, and only a person can answer that.
 			batch.Error = i18n.M(i18n.KeyPrintNoPreset, cat.Name).In(LangOf(c))
@@ -129,7 +145,30 @@ func (s *Server) printAssets(c *gin.Context) {
 			continue
 		}
 
-		batch.PresetName = presetName[cat.PrintPresetID]
+		chosen := req.Presets[categoryID]
+		if chosen == "" && len(cat.PrintPresetIDs) == 1 {
+			// One label is not a choice.
+			chosen = cat.PrintPresetIDs[0]
+		}
+		if !slices.Contains(cat.PrintPresetIDs, chosen) {
+			// Either nothing was chosen where a choice was needed, or something
+			// outside this category's labels was. Both are the same refusal:
+			// this category prints these, pick one of them.
+			if req.DryRun {
+				// The confirmation is where the choice gets made, so it says
+				// what there is to choose from rather than refusing.
+				batch.PresetID = cat.PrintPresetIDs[0]
+				batch.PresetName = nameOr(presetName, batch.PresetID)
+				out = append(out, batch)
+				continue
+			}
+			batch.Error = i18n.M(i18n.KeyPrintPresetNotChosen, cat.Name).In(LangOf(c))
+			out = append(out, batch)
+			continue
+		}
+		batch.PresetID = chosen
+		batch.PresetName = nameOr(presetName, chosen)
+
 		if req.DryRun {
 			// Everything above is what the confirmation needs: how many labels,
 			// under which category, and whether anything stands in the way.
@@ -152,7 +191,7 @@ func (s *Server) printAssets(c *gin.Context) {
 		if req.Copies > 0 {
 			body["copies"] = req.Copies
 		}
-		job, err := s.printer.Print(c.Request.Context(), cat.PrintPresetID, body,
+		job, err := s.printer.Print(c.Request.Context(), chosen, body,
 			batchKey+":"+categoryID, lang)
 		if err != nil {
 			var refused *printing.Rejection
@@ -203,6 +242,15 @@ func (s *Server) printJobStatus(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, job)
+}
+
+// nameOr falls back to the id when the print service could not be asked, so a
+// list with no names is still a list rather than a row of blanks.
+func nameOr(names map[string]string, id string) string {
+	if name, ok := names[id]; ok {
+		return name
+	}
+	return id
 }
 
 // printPresets relays what the print service can print.

@@ -832,6 +832,12 @@ paths:
               properties:
                 ids: { type: array, items: { type: string } }
                 copies: { type: integer, minimum: 1 }
+                presets:
+                  type: object
+                  additionalProperties: { type: string }
+                  description: >
+                    每个类别打哪一种标签，键是类别 id。只有一种标签的类别可以不给；
+                    有多种而不给（或给了不属于该类别的），这一批会被拒绝而不是替你猜。
                 dry_run:
                   type: boolean
                   description: >
@@ -840,8 +846,8 @@ paths:
       responses:
         "200":
           description: >
-            每个类别一个批次，含 numbers（这一批要打的设备编号，供出纸前核对）与
-            preset_name。批次里没有 job_id 而有 error，表示这一批没有送出去
+            每个类别一个批次，含 numbers（这一批要打的设备编号，供出纸前核对）、
+            presets（该类别可用的标签，供试算时选择）与 preset_id/preset_name。批次里没有 job_id 而有 error，表示这一批没有送出去
             （没配预设、或打印服务拒绝），其余批次照常提交。
         "404": { description: 本部署没有配置打印服务 }
 

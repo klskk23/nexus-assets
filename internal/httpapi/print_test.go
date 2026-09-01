@@ -97,15 +97,20 @@ func newFakePrintService(t *testing.T) *fakePrintService {
 
 type printResponse struct {
 	Batches []struct {
-		CategoryID   string   `json:"category_id"`
-		CategoryName string   `json:"category_name"`
-		Count        int      `json:"count"`
-		PresetName   string   `json:"preset_name"`
-		Numbers      []string `json:"numbers"`
-		JobID        string   `json:"job_id"`
-		Status       string   `json:"status"`
-		Error        string   `json:"error"`
-		Claims       []struct {
+		CategoryID   string `json:"category_id"`
+		CategoryName string `json:"category_name"`
+		Count        int    `json:"count"`
+		PresetName   string `json:"preset_name"`
+		PresetID     string `json:"preset_id"`
+		Presets      []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"presets"`
+		Numbers []string `json:"numbers"`
+		JobID   string   `json:"job_id"`
+		Status  string   `json:"status"`
+		Error   string   `json:"error"`
+		Claims  []struct {
 			Start int `json:"start"`
 			End   int `json:"end"`
 		} `json:"claims"`
@@ -119,7 +124,7 @@ func TestPrintSendsOneBatchPerCategory(t *testing.T) {
 	h := newHarnessWithPrinting(t, fake.server.URL)
 	h.seed(t, 0, 2)
 
-	if rec := h.patch(t, "/api/categories/"+h.catID, `{"print_preset_id":"preset-rt"}`); rec.Code != http.StatusOK {
+	if rec := h.patch(t, "/api/categories/"+h.catID, `{"print_preset_ids":["preset-rt"]}`); rec.Code != http.StatusOK {
 		t.Fatal(rec.Body.String())
 	}
 	ids := h.assetIDs(t)
@@ -183,7 +188,7 @@ func TestPrintSplitsASelectionByCategory(t *testing.T) {
 	}
 	for _, spec := range []struct{ id, preset string }{{h.catID, "preset-rt"}, {otherID, "preset-sw"}} {
 		if r := h.patch(t, "/api/categories/"+spec.id,
-			`{"print_preset_id":"`+spec.preset+`"}`); r.Code != http.StatusOK {
+			`{"print_preset_ids":["`+spec.preset+`"]}`); r.Code != http.StatusOK {
 			t.Fatal(r.Body.String())
 		}
 	}
@@ -238,7 +243,7 @@ func TestPrintRelaysTheServicesOwnRefusal(t *testing.T) {
 		What: "打印队列已暂停，需要先恢复"}
 	h := newHarnessWithPrinting(t, fake.server.URL)
 	h.seed(t, 0, 1)
-	if r := h.patch(t, "/api/categories/"+h.catID, `{"print_preset_id":"preset-rt"}`); r.Code != http.StatusOK {
+	if r := h.patch(t, "/api/categories/"+h.catID, `{"print_preset_ids":["preset-rt"]}`); r.Code != http.StatusOK {
 		t.Fatal(r.Body.String())
 	}
 
@@ -316,7 +321,7 @@ func TestPrintDryRunSendsNothing(t *testing.T) {
 	fake := newFakePrintService(t)
 	h := newHarnessWithPrinting(t, fake.server.URL)
 	h.seed(t, 0, 3)
-	if r := h.patch(t, "/api/categories/"+h.catID, `{"print_preset_id":"preset-rt"}`); r.Code != http.StatusOK {
+	if r := h.patch(t, "/api/categories/"+h.catID, `{"print_preset_ids":["preset-rt"]}`); r.Code != http.StatusOK {
 		t.Fatal(r.Body.String())
 	}
 
@@ -366,5 +371,68 @@ func TestPrintDryRunReportsAMissingPreset(t *testing.T) {
 		`{"dry_run":true,"ids":["`+h.assetIDs(t)[0]+`"]}`))
 	if len(out.Batches) != 1 || out.Batches[0].Error == "" {
 		t.Fatalf("batches = %+v", out.Batches)
+	}
+}
+
+// One device carries more than one label: a permanent number, and a location
+// tag replaced whenever it moves. Which of them to print is a choice made at
+// the printer, not in the category settings.
+func TestPrintChoosesAmongACategorysLabels(t *testing.T) {
+	fake := newFakePrintService(t)
+	h := newHarnessWithPrinting(t, fake.server.URL)
+	h.seed(t, 0, 1)
+	if r := h.patch(t, "/api/categories/"+h.catID,
+		`{"print_preset_ids":["preset-rt","preset-sw"]}`); r.Code != http.StatusOK {
+		t.Fatal(r.Body.String())
+	}
+	id := h.assetIDs(t)[0]
+
+	// The confirmation offers both, named, and proposes the first.
+	plan := decode[printResponse](t, h.post(t, "/api/print", `{"dry_run":true,"ids":["`+id+`"]}`))
+	if len(plan.Batches) != 1 || len(plan.Batches[0].Presets) != 2 {
+		t.Fatalf("batches = %+v", plan.Batches)
+	}
+	if plan.Batches[0].Presets[1].Name != "交换机标签" {
+		t.Errorf("presets should be named: %+v", plan.Batches[0].Presets)
+	}
+	if plan.Batches[0].PresetID != "preset-rt" {
+		t.Errorf("the first label should be proposed, got %q", plan.Batches[0].PresetID)
+	}
+
+	// And the choice reaches the printer.
+	out := decode[printResponse](t, h.post(t, "/api/print",
+		`{"ids":["`+id+`"],"presets":{"`+h.catID+`":"preset-sw"}}`))
+	if len(out.Batches) != 1 || out.Batches[0].Error != "" {
+		t.Fatalf("batches = %+v", out.Batches)
+	}
+	if len(fake.requests) != 1 || fake.requests[0].PresetID != "preset-sw" {
+		t.Fatalf("the printer was asked for %+v", fake.requests)
+	}
+}
+
+// Nothing here can guess which of two labels was meant, so a real run without
+// a choice is refused rather than printing the first one.
+func TestPrintRefusesAnUnchosenLabel(t *testing.T) {
+	fake := newFakePrintService(t)
+	h := newHarnessWithPrinting(t, fake.server.URL)
+	h.seed(t, 0, 1)
+	if r := h.patch(t, "/api/categories/"+h.catID,
+		`{"print_preset_ids":["preset-rt","preset-sw"]}`); r.Code != http.StatusOK {
+		t.Fatal(r.Body.String())
+	}
+
+	out := decode[printResponse](t, h.post(t, "/api/print", `{"ids":["`+h.assetIDs(t)[0]+`"]}`))
+	if len(out.Batches) != 1 || out.Batches[0].Error == "" {
+		t.Fatalf("batches = %+v", out.Batches)
+	}
+	if len(fake.requests) != 0 {
+		t.Error("nothing should have been printed")
+	}
+
+	// A label from some other category is the same refusal.
+	other := decode[printResponse](t, h.post(t, "/api/print",
+		`{"ids":["`+h.assetIDs(t)[0]+`"],"presets":{"`+h.catID+`":"preset-elsewhere"}}`))
+	if other.Batches[0].Error == "" {
+		t.Error("a preset outside this category's labels must not be printed")
 	}
 }

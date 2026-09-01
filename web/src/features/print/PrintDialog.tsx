@@ -14,6 +14,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import {
   Table,
@@ -35,6 +43,9 @@ interface Batch {
   category_id: string
   category_name: string
   count: number
+  /** This category's labels, so the choice is made here rather than guessed. */
+  presets?: { id: string; name: string }[]
+  preset_id?: string
   preset_name?: string
   numbers?: string[]
   job_id?: string
@@ -78,15 +89,25 @@ export function PrintDialog({ ids, onClose }: Props) {
   const [banner, setBanner] = useState<string | null>(null)
   // Until this, nothing has reached a printer.
   const [confirmed, setConfirmed] = useState(false)
+  // Which label each category prints. One label is not a choice, so the plan
+  // proposes it and this only ever differs when there is something to decide.
+  const [chosen, setChosen] = useState<Record<string, string>>({})
 
   const plan = useMutation({
     mutationFn: () => api.post<{ batches: Batch[] }>("/print", { ids, dry_run: true }),
-    onSuccess: (res) => setBatches(res.batches),
+    onSuccess: (res) => {
+      setBatches(res.batches)
+      setChosen(
+        Object.fromEntries(
+          res.batches.filter((b) => b.preset_id).map((b) => [b.category_id, b.preset_id!]),
+        ),
+      )
+    },
     onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
   })
 
   const submit = useMutation({
-    mutationFn: () => api.post<{ batches: Batch[] }>("/print", { ids }),
+    mutationFn: () => api.post<{ batches: Batch[] }>("/print", { ids, presets: chosen }),
     onSuccess: (res) => {
       setBatches(res.batches)
       setConfirmed(true)
@@ -192,8 +213,36 @@ export function PrintDialog({ ids, onClose }: Props) {
                   return (
                     <TableRow key={b.category_id}>
                       <TableCell>{b.category_name}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {b.preset_name ?? ""}
+                      <TableCell>
+                        {confirmed || (b.presets ?? []).length <= 1 ? (
+                          <span className="text-muted-foreground">{b.preset_name ?? ""}</span>
+                        ) : (
+                          // More than one label on this kind of thing, so which
+                          // one is a decision, not a default to be guessed at.
+                          <Select
+                            value={chosen[b.category_id] ?? ""}
+                            onValueChange={(v) =>
+                              setChosen((cur) => ({ ...cur, [b.category_id]: v }))
+                            }
+                          >
+                            <SelectTrigger
+                              size="sm"
+                              className="w-40"
+                              aria-label={`${b.category_name} ${t.print.label}`}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {(b.presets ?? []).map((p) => (
+                                  <SelectItem key={p.id} value={p.id}>
+                                    {p.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        )}
                       </TableCell>
                       <TableCell className="tabular-nums">{t.print.unit(b.count)}</TableCell>
                       <TableCell className="grid gap-1">

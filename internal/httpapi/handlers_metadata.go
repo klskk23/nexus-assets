@@ -55,9 +55,9 @@ func (s *Server) patchCategory(c *gin.Context) {
 	var req struct {
 		Name       *string `json:"name"`
 		DisplayKey *string `json:"display_key"`
-		// Opaque here: it names a preset in the print service, whose contents
+		// Opaque here: they name presets in the print service, whose contents
 		// are that service's business.
-		PrintPresetID *string `json:"print_preset_id"`
+		PrintPresetIDs *[]string `json:"print_preset_ids"`
 		// RawMessage, not **string: unmarshalling JSON null into a double
 		// pointer clears the outer one, so "move to the root" would be
 		// indistinguishable from "leave the parent alone" and the guard on
@@ -70,7 +70,7 @@ func (s *Server) patchCategory(c *gin.Context) {
 	}
 
 	in := schema.UpdateCategoryInput{
-		Name: req.Name, DisplayKey: req.DisplayKey, PrintPresetID: req.PrintPresetID,
+		Name: req.Name, DisplayKey: req.DisplayKey, PrintPresetIDs: req.PrintPresetIDs,
 	}
 	if len(req.ParentID) > 0 {
 		var parent *string

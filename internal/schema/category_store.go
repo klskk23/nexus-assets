@@ -25,14 +25,19 @@ type Store struct{ db *store.Store }
 // New builds a schema store.
 func New(db *store.Store) *Store { return &Store{db: db} }
 
-const categoryCols = `id, code, name, parent_id, path, display_key, print_preset_id, archived_at, created_at, updated_at`
+const categoryCols = `id, code, name, parent_id, path, display_key, print_preset_ids, archived_at, created_at, updated_at`
 
 func scanCategory(row interface{ Scan(...any) error }) (model.Category, error) {
 	var c model.Category
 	var parent, displayKey, archived sql.NullString
 	var created, updated string
+	var presets string
 	if err := row.Scan(&c.ID, &c.Code, &c.Name, &parent, &c.Path, &displayKey,
-		&c.PrintPresetID, &archived, &created, &updated); err != nil {
+		&presets, &archived, &created, &updated); err != nil {
+		return c, err
+	}
+	c.PrintPresetIDs = []string{}
+	if err := json.Unmarshal([]byte(presets), &c.PrintPresetIDs); err != nil {
 		return c, err
 	}
 	c.ParentID = store.StrPtr(parent)
@@ -134,10 +139,10 @@ func (s *Store) CreateCategory(ctx context.Context, in CreateCategoryInput) (mod
 
 // UpdateCategoryInput carries the mutable parts of a category.
 type UpdateCategoryInput struct {
-	Name          *string
-	DisplayKey    *string
-	PrintPresetID *string
-	ParentID      **string // outer nil means "leave alone"
+	Name           *string
+	DisplayKey     *string
+	PrintPresetIDs *[]string
+	ParentID       **string // outer nil means "leave alone"
 }
 
 // UpdateCategory changes a category.
@@ -163,8 +168,8 @@ func (s *Store) UpdateCategory(ctx context.Context, id string, in UpdateCategory
 		if in.DisplayKey != nil {
 			cur.DisplayKey = *in.DisplayKey
 		}
-		if in.PrintPresetID != nil {
-			cur.PrintPresetID = *in.PrintPresetID
+		if in.PrintPresetIDs != nil {
+			cur.PrintPresetIDs = *in.PrintPresetIDs
 		}
 
 		// Only an actual move is a move. The editor sends the whole category
@@ -199,11 +204,15 @@ func (s *Store) UpdateCategory(ctx context.Context, id string, in UpdateCategory
 		}
 
 		cur.UpdatedAt = time.Now().UTC()
+		presetsJSON, err := json.Marshal(cur.PrintPresetIDs)
+		if err != nil {
+			return err
+		}
 		_, err = tx.ExecContext(ctx,
-			`UPDATE categories SET name = ?, display_key = ?, print_preset_id = ?,
+			`UPDATE categories SET name = ?, display_key = ?, print_preset_ids = ?,
 			        parent_id = ?, path = ?, updated_at = ?
 			 WHERE id = ?`,
-			cur.Name, store.NullString(nilIfEmpty(cur.DisplayKey)), cur.PrintPresetID,
+			cur.Name, store.NullString(nilIfEmpty(cur.DisplayKey)), presetsJSON,
 			store.NullString(cur.ParentID), cur.Path, store.FormatTime(cur.UpdatedAt), id)
 		out = cur
 		return err

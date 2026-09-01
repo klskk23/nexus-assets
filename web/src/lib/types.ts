@@ -74,9 +74,10 @@ export interface Category {
   path: string
   /** Key of the bound field people read aloud; empty falls back to the short UUID. */
   display_key: string
-  /** Names a preset in the print service; opaque here. Empty means this
-   * category has no label. */
-  print_preset_id?: string
+  /** Names this category's labels in the print service; opaque here. A list
+   * because one device carries more than one -- a permanent number, and a
+   * location tag replaced whenever it moves. */
+  print_preset_ids?: string[]
 }
 
 export interface CategorySchema {

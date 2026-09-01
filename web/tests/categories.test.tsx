@@ -310,7 +310,7 @@ describe("Categories table", () => {
         name: "网络",
         parent_id: null,
         display_key: "",
-        print_preset_id: "",
+        print_preset_ids: [],
       }),
     )
   })
@@ -339,7 +339,7 @@ describe("Category editor", () => {
         name: "SDWAN 路由器",
         parent_id: "net",
         display_key: "mac",
-        print_preset_id: "",
+        print_preset_ids: [],
       }),
     )
     // Choosing which number to show renumbers nothing on its own.
@@ -351,16 +351,16 @@ describe("Category editor", () => {
 // The preset is opaque here: what it contains is the print service's business,
 // and an installation without one should not be asked about it at all.
 describe("Category print preset", () => {
-  // Picked by name from what the printer can actually do: an identifier
-  // copied between two browser tabs is a step nobody should have to take.
-  it("saves the preset chosen by name", async () => {
+  // A category has more than one label -- a permanent number, a location tag
+  // replaced whenever it moves -- so this is a set, ticked by name.
+  it("saves the labels this category can print", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Categories />)
     await user.click(await categoryRow())
 
     const dialog = await screen.findByRole("dialog")
-    await user.click(within(dialog).getByRole("combobox", { name: "打印预设" }))
-    await user.click(await screen.findByRole("option", { name: "路由器标签" }))
+    await user.click(within(dialog).getByLabelText("路由器标签"))
+    await user.click(within(dialog).getByLabelText("交换机标签"))
     await user.click(within(dialog).getByRole("button", { name: "保存" }))
 
     await waitFor(() =>
@@ -368,7 +368,7 @@ describe("Category print preset", () => {
         name: "SDWAN 路由器",
         parent_id: "net",
         display_key: "",
-        print_preset_id: "preset-rt",
+        print_preset_ids: ["preset-rt", "preset-sw"],
       }),
     )
   })
@@ -382,6 +382,6 @@ describe("Category print preset", () => {
     await user.click(await categoryRow())
 
     const dialog = await screen.findByRole("dialog")
-    expect(within(dialog).queryByRole("combobox", { name: "打印预设" })).not.toBeInTheDocument()
+    expect(within(dialog).queryByLabelText("路由器标签")).not.toBeInTheDocument()
   })
 })

@@ -297,10 +297,9 @@ export const enMeta: typeof zhMeta = {
     expand: "Show children",
     collapse: "Hide children",
     displayKey: "Number field",
-    printPreset: "Print preset",
+    printPreset: "Labels it can print",
     printPresetHint:
-      "What this category's label looks like and which machine prints it. Empty means it prints nothing.",
-    printPresetNone: "No labels",
+      "Which labels this category has; which one to print is chosen at the printer. None ticked means it prints nothing.",
     printPresetOffline: "The print service did not answer, so only the current choice is available.",
     save: "Save",
     selectHint: "Click a row to edit that category: name, parent, number field and bindings.",

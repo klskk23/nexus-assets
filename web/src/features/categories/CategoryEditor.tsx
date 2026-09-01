@@ -21,7 +21,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -64,7 +72,7 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
   const [name, setName] = useState(category.name)
   const [parentId, setParentId] = useState(category.parent_id ?? "")
   const [displayKey, setDisplayKey] = useState(category.display_key)
-  const [presetID, setPresetID] = useState(category.print_preset_id ?? "")
+  const [presetIDs, setPresetIDs] = useState<string[]>(category.print_preset_ids ?? [])
   const [banner, setBanner] = useState<string | null>(null)
   const [blockers, setBlockers] = useState<Blocker[]>([])
 
@@ -102,7 +110,7 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
         name,
         parent_id: parentId || null,
         display_key: displayKey,
-        ...(printing ? { print_preset_id: presetID } : {}),
+        ...(printing ? { print_preset_ids: presetIDs } : {}),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] })
@@ -187,34 +195,47 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
               preset contains is the print service's business, and an
               installation without one should not be asked about it. */}
           {printing && (
-            <Field>
-              <FieldLabel htmlFor="ce-preset">{tMeta.categories.printPreset}</FieldLabel>
-              <Select value={toNone(presetID)} onValueChange={(v) => setPresetID(fromNone(v))}>
-                <SelectTrigger id="ce-preset">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value={NONE}>{tMeta.categories.printPresetNone}</SelectItem>
-                    {(presets.data?.presets ?? []).map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                    {/* A preset that was chosen before it was renamed or
-                        removed is still what this category points at; hiding
-                        it would silently look like "none". */}
-                    {presetID !== "" &&
-                      !(presets.data?.presets ?? []).some((p) => p.id === presetID) && (
-                        <SelectItem value={presetID}>{presetID}</SelectItem>
-                      )}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              <FieldDescription>
-                {presets.isError ? tMeta.categories.printPresetOffline : tMeta.categories.printPresetHint}
-              </FieldDescription>
-            </Field>
+            <FieldSet>
+              <FieldLegend variant="label">{tMeta.categories.printPreset}</FieldLegend>
+              <FieldDescription>{tMeta.categories.printPresetHint}</FieldDescription>
+              <FieldGroup className="gap-2">
+                {(presets.data?.presets ?? []).map((p) => (
+                  <Field key={p.id} orientation="horizontal" className="w-auto">
+                    <Checkbox
+                      id={`preset-${p.id}`}
+                      checked={presetIDs.includes(p.id)}
+                      onCheckedChange={() =>
+                        setPresetIDs((cur) =>
+                          cur.includes(p.id) ? cur.filter((x) => x !== p.id) : [...cur, p.id],
+                        )
+                      }
+                    />
+                    <FieldLabel htmlFor={`preset-${p.id}`}>{p.name}</FieldLabel>
+                  </Field>
+                ))}
+                {/* Chosen before it was renamed or removed, and still what this
+                    category points at: hiding it would silently unbind it. */}
+                {presetIDs
+                  .filter((id) => !(presets.data?.presets ?? []).some((p) => p.id === id))
+                  .map((id) => (
+                    <Field key={id} orientation="horizontal" className="w-auto">
+                      <Checkbox
+                        id={`preset-${id}`}
+                        checked
+                        onCheckedChange={() =>
+                          setPresetIDs((cur) => cur.filter((x) => x !== id))
+                        }
+                      />
+                      <FieldLabel htmlFor={`preset-${id}`} className="font-mono">
+                        {id}
+                      </FieldLabel>
+                    </Field>
+                  ))}
+              </FieldGroup>
+              {presets.isError && (
+                <FieldDescription>{tMeta.categories.printPresetOffline}</FieldDescription>
+              )}
+            </FieldSet>
           )}
 
           <div className="grid gap-2">
