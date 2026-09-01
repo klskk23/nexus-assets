@@ -25,13 +25,14 @@ type Store struct{ db *store.Store }
 // New builds a schema store.
 func New(db *store.Store) *Store { return &Store{db: db} }
 
-const categoryCols = `id, code, name, parent_id, path, display_key, archived_at, created_at, updated_at`
+const categoryCols = `id, code, name, parent_id, path, display_key, print_preset_id, archived_at, created_at, updated_at`
 
 func scanCategory(row interface{ Scan(...any) error }) (model.Category, error) {
 	var c model.Category
 	var parent, displayKey, archived sql.NullString
 	var created, updated string
-	if err := row.Scan(&c.ID, &c.Code, &c.Name, &parent, &c.Path, &displayKey, &archived, &created, &updated); err != nil {
+	if err := row.Scan(&c.ID, &c.Code, &c.Name, &parent, &c.Path, &displayKey,
+		&c.PrintPresetID, &archived, &created, &updated); err != nil {
 		return c, err
 	}
 	c.ParentID = store.StrPtr(parent)
@@ -133,9 +134,10 @@ func (s *Store) CreateCategory(ctx context.Context, in CreateCategoryInput) (mod
 
 // UpdateCategoryInput carries the mutable parts of a category.
 type UpdateCategoryInput struct {
-	Name       *string
-	DisplayKey *string
-	ParentID   **string // outer nil means "leave alone"
+	Name          *string
+	DisplayKey    *string
+	PrintPresetID *string
+	ParentID      **string // outer nil means "leave alone"
 }
 
 // UpdateCategory changes a category.
@@ -160,6 +162,9 @@ func (s *Store) UpdateCategory(ctx context.Context, id string, in UpdateCategory
 		}
 		if in.DisplayKey != nil {
 			cur.DisplayKey = *in.DisplayKey
+		}
+		if in.PrintPresetID != nil {
+			cur.PrintPresetID = *in.PrintPresetID
 		}
 
 		// Only an actual move is a move. The editor sends the whole category
@@ -195,10 +200,11 @@ func (s *Store) UpdateCategory(ctx context.Context, id string, in UpdateCategory
 
 		cur.UpdatedAt = time.Now().UTC()
 		_, err = tx.ExecContext(ctx,
-			`UPDATE categories SET name = ?, display_key = ?, parent_id = ?, path = ?, updated_at = ?
+			`UPDATE categories SET name = ?, display_key = ?, print_preset_id = ?,
+			        parent_id = ?, path = ?, updated_at = ?
 			 WHERE id = ?`,
-			cur.Name, store.NullString(nilIfEmpty(cur.DisplayKey)), store.NullString(cur.ParentID), cur.Path,
-			store.FormatTime(cur.UpdatedAt), id)
+			cur.Name, store.NullString(nilIfEmpty(cur.DisplayKey)), cur.PrintPresetID,
+			store.NullString(cur.ParentID), cur.Path, store.FormatTime(cur.UpdatedAt), id)
 		out = cur
 		return err
 	})

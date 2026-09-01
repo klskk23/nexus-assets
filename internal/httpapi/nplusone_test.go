@@ -38,7 +38,10 @@ type harness struct {
 	ctx       context.Context
 }
 
-func newHarness(t *testing.T) *harness {
+func newHarness(t *testing.T) *harness { return newHarnessWithPrinting(t, "") }
+
+// newHarnessWithPrinting points the server at a stand-in print service.
+func newHarnessWithPrinting(t *testing.T, printURL string) *harness {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	ctx := context.Background()
@@ -102,7 +105,7 @@ func newHarness(t *testing.T) *harness {
 		t.Fatalf("set display key: %v", err)
 	}
 
-	cfg := &config.Config{JWTSecret: []byte("test"), JWTTTL: time.Hour}
+	cfg := &config.Config{JWTSecret: []byte("test"), JWTTTL: time.Hour, PrintServiceURL: printURL}
 	issuer := auth.NewIssuer(cfg.JWTSecret, cfg.JWTTTL)
 	tok, err := issuer.Issue(u.ID, u.Email, u.Name, 0)
 	if err != nil {
@@ -262,4 +265,18 @@ func TestMoveCategoryWithAssetsIsRefused(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("rename should succeed, got %d: %s", rec.Code, rec.Body.String())
 	}
+}
+
+// assetIDs returns every seeded asset's id, oldest first.
+func (h *harness) assetIDs(t *testing.T) []string {
+	t.Helper()
+	res, err := h.assets.List(h.ctx, asset.ListFilter{Limit: 100})
+	if err != nil {
+		t.Fatalf("list assets: %v", err)
+	}
+	out := make([]string, 0, len(res.Items))
+	for _, a := range res.Items {
+		out = append(out, a.ID)
+	}
+	return out
 }

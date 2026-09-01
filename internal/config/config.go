@@ -13,12 +13,17 @@ import (
 // nothing is read from disk so that a single binary plus a database file is
 // the whole deployment artifact.
 type Config struct {
-	DBPath         string
-	Addr           string
-	JWTSecret      []byte
-	JWTTTL         time.Duration
-	RefreshTTL     time.Duration
-	AllowedDomains []string
+	DBPath     string
+	Addr       string
+	JWTSecret  []byte
+	JWTTTL     time.Duration
+	RefreshTTL time.Duration
+	// PrintServiceURL is the label printer service this deployment prints
+	// through. Empty means there is none, and nothing about printing appears
+	// in the interface -- which is what an installation without a printer
+	// should look like.
+	PrintServiceURL string
+	AllowedDomains  []string
 
 	OIDCClientID     string
 	OIDCClientSecret string
@@ -94,6 +99,8 @@ func Load() (*Config, error) {
 			"or signing in would end before it could be refreshed", refresh, ttl)
 	}
 	c.RefreshTTL = rd
+
+	c.PrintServiceURL = strings.TrimSuffix(os.Getenv("NEXUS_PRINT_SERVICE_URL"), "/")
 
 	domains := os.Getenv("NEXUS_ALLOWED_EMAIL_DOMAINS")
 	if domains == "" {

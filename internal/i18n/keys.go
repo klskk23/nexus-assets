@@ -25,7 +25,11 @@ const (
 	KeyYes              = "value.yes"
 	KeyNo               = "value.no"
 	KeyRowsNeedCategory = "rows.category_required"
-	KeyKeyDaysRange     = "err.key_days_range"
+	// Printing. What the reader is told when a batch does not reach paper.
+	KeyPrintNotConfigured = "print.not_configured"
+	KeyPrintNoPreset      = "print.no_preset"
+	KeyPrintUnreachable   = "print.unreachable"
+	KeyKeyDaysRange       = "err.key_days_range"
 	// Why a Google sign-in was refused. Each one is something the person or
 	// their administrator can act on, so none of them may arrive as the
 	// generic server failure.

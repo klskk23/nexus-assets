@@ -15,6 +15,7 @@ import (
 	"github.com/klskk23/nexus-assets/internal/config"
 	"github.com/klskk23/nexus-assets/internal/holder"
 	"github.com/klskk23/nexus-assets/internal/importer"
+	"github.com/klskk23/nexus-assets/internal/printing"
 	"github.com/klskk23/nexus-assets/internal/schema"
 	"github.com/klskk23/nexus-assets/internal/transfer"
 )
@@ -32,6 +33,7 @@ type Server struct {
 	audit     *audit.Store
 	oidc      *auth.OIDC
 	sessions  *auth.Sessions
+	printer   *printing.Client
 	keys      *auth.Keys
 	webFS     fs.FS
 }
@@ -43,7 +45,8 @@ func NewServer(cfg *config.Config, issuer *auth.Issuer, users *auth.Store,
 	oidcFlow *auth.OIDC, sessions *auth.Sessions, keys *auth.Keys, webFS fs.FS) *Server {
 	return &Server{cfg: cfg, issuer: issuer, users: users, schema: sch,
 		holders: holders, assets: assets, transfers: transfers, importer: imp,
-		audit: aud, oidc: oidcFlow, sessions: sessions, keys: keys, webFS: webFS}
+		audit: aud, oidc: oidcFlow, sessions: sessions, keys: keys,
+		printer: printing.New(cfg.PrintServiceURL), webFS: webFS}
 }
 
 // Router builds the gin engine.
@@ -126,6 +129,9 @@ func (s *Server) Router() *gin.Engine {
 	authed.POST("/import/commit", s.importCommit)
 	authed.GET("/export.csv", s.exportCSV)
 	authed.GET("/rows", s.listRows)
+	authed.GET("/capabilities", s.printingAvailable)
+	authed.POST("/print", s.printAssets)
+	authed.GET("/print/jobs/:id", s.printJobStatus)
 
 	authed.GET("/audit", s.listAudit)
 	authed.GET("/overview", s.overview)
