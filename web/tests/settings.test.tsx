@@ -97,7 +97,39 @@ describe("SettingsDialog", () => {
     expect(screen.getByText(/再也看不到/)).toBeInTheDocument()
   })
 
-  it("revokes a key from the row menu, after confirming", async () => {
+  // Zero days is forever, which the server always accepted and the interface
+  // used not to offer.
+  it("offers a key that never expires", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SettingsDialog onClose={vi.fn()} />)
+    await screen.findByRole("row", { name: /盘点脚本/ })
+
+    await user.click(screen.getByRole("button", { name: "新建密钥" }))
+    await user.type(screen.getByLabelText("名称"), "常驻服务")
+    await user.click(screen.getByRole("combobox", { name: "有效期（天）" }))
+    await user.click(await screen.findByRole("option", { name: "长期有效" }))
+    await user.click(screen.getByRole("button", { name: "生成密钥" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api-keys", { name: "常驻服务", days: 0 }),
+    )
+  })
+
+  // The menu is muscle memory in this app, but a key nobody can find how to
+  // revoke outlives whoever made it.
+  it("revokes a key from a button on the row", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SettingsDialog onClose={vi.fn()} />)
+
+    const row = await screen.findByRole("row", { name: /盘点脚本/ })
+    await user.click(within(row).getByRole("button", { name: /撤销 盘点脚本/ }))
+    const confirm = await screen.findByRole("alertdialog")
+    await user.click(within(confirm).getByRole("button", { name: "撤销" }))
+
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/api-keys/k1"))
+  })
+
+  it("revokes a key from the row menu too, after confirming", async () => {
     const user = userEvent.setup()
     renderWithProviders(<SettingsDialog onClose={vi.fn()} />)
 

@@ -1,4 +1,4 @@
-import { CheckIcon, CopyIcon, ExternalLinkIcon, PlusIcon } from "lucide-react"
+import { CheckIcon, CopyIcon, ExternalLinkIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -59,8 +59,13 @@ interface Props {
   onClose: () => void
 }
 
-/** How long a new key lasts. Ninety days is the middle one, and the default. */
-const KEY_DAYS = [30, 90, 365]
+/**
+ * How long a new key lasts. Zero is forever, which the server has always
+ * accepted and the interface used not to offer -- a key wired into a service
+ * that nobody will remember to rotate is better honest about it than quietly
+ * expiring on a Sunday.
+ */
+const KEY_DAYS = [30, 90, 365, 0]
 
 /**
  * The account's own settings: how the interface looks, and what may call the
@@ -248,7 +253,7 @@ export function SettingsDialog({ onClose }: Props) {
                       <SelectGroup>
                         {KEY_DAYS.map((d) => (
                           <SelectItem key={d} value={String(d)}>
-                            {d}
+                            {d === 0 ? t.settings.keyNoExpiry : d}
                           </SelectItem>
                         ))}
                       </SelectGroup>
@@ -275,6 +280,9 @@ export function SettingsDialog({ onClose }: Props) {
                     <TableHead>{t.settings.keyPrefix}</TableHead>
                     <TableHead>{t.settings.keyExpires}</TableHead>
                     <TableHead>{t.settings.keyLastUsed}</TableHead>
+                    <TableHead className="w-10">
+                      <span className="sr-only">{t.common.actions}</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -293,6 +301,20 @@ export function SettingsDialog({ onClose }: Props) {
                           </TableCell>
                           <TableCell className="text-muted-foreground">
                             {when(k.last_used_at) ?? t.settings.keyNever}
+                          </TableCell>
+                          {/* A button, not only the row menu: these rows have
+                              no click of their own to compete with, and a key
+                              nobody can find how to revoke is a key that stays
+                              alive after the person who made it has left. */}
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`${t.settings.keyRevoke} ${k.name}`}
+                              onClick={() => setRevoking(k)}
+                            >
+                              <Trash2Icon />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       </ContextMenuTrigger>
