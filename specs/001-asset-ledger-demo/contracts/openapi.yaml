@@ -812,6 +812,42 @@ paths:
                   generated_at: { type: string, format: date-time }
         "422": { description: 未指定类别 }
 
+  /capabilities:
+    get:
+      tags: [metadata]
+      summary: 这套部署具备哪些可选能力（目前只有 printing）
+      responses:
+        "200": { description: OK }
+
+  /print:
+    post:
+      tags: [metadata]
+      summary: 把选中的资产送去打标签，按类别拆成多个作业
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids: { type: array, items: { type: string } }
+                copies: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: >
+            每个类别一个批次。批次里没有 job_id 而有 error，表示这一批没有送出去
+            （没配预设、或打印服务拒绝），其余批次照常提交。
+        "404": { description: 本部署没有配置打印服务 }
+
+  /print/jobs/{id}:
+    get:
+      tags: [metadata]
+      summary: 转发打印服务的作业状态（打印服务不发 CORS 头，浏览器不能直接问）
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK }
+
   /import/preview:
     post:
       tags: [import]

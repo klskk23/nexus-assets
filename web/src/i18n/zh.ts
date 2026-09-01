@@ -12,6 +12,29 @@
 export const zh = {
   appName: "Nexus Assets",
 
+  print: {
+    action: "打印标签",
+    title: "打印标签",
+    submitting: "正在提交…",
+    category: "类别",
+    count: "数量",
+    state: "状态",
+    unit: (n: number) => `${n} 张`,
+    splitHint: (assets: number, groups: number) =>
+      `${assets} 台设备，${groups} 个类别，将产生 ${groups} 个打印作业。`,
+    statusQueued: "排队中",
+    statusPrinting: "打印中",
+    statusCompleted: "已完成",
+    statusFailed: "失败",
+    statusCancelled: "已取消",
+    pages: (done: number, total: number) => `已出 ${done}/${total} 张`,
+    claims: (variable: string, start: number, end: number) =>
+      `消耗序号 ${variable}：${start}–${end}`,
+    lost: "查不到这个作业的状态",
+    allDone: "全部打印完成",
+    someFailed: "有作业没有完成，详见下表",
+  },
+
   settings: {
     open: "设置",
     title: "设置",
@@ -251,6 +274,8 @@ export const zhMeta = {
     expand: "展开子类别",
     collapse: "折叠子类别",
     displayKey: "编号字段",
+    printPreset: "打印预设 id",
+    printPresetHint: "打印服务里那套「模板 + 打印机」的 id。留空则这个类别不能打标签。",
     save: "保存",
     selectHint: "点击一行编辑该类别：名称、上级、编号字段与字段绑定。",
     deleteTitle: "删除类别",

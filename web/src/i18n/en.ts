@@ -22,6 +22,29 @@ import type {
 export const en: typeof zh = {
   appName: "Nexus Assets",
 
+  print: {
+    action: "Print labels",
+    title: "Print labels",
+    submitting: "Submitting…",
+    category: "Category",
+    count: "Labels",
+    state: "State",
+    unit: (n: number) => `${n}`,
+    splitHint: (assets: number, groups: number) =>
+      `${assets} devices across ${groups} categories, so ${groups} print jobs.`,
+    statusQueued: "Queued",
+    statusPrinting: "Printing",
+    statusCompleted: "Done",
+    statusFailed: "Failed",
+    statusCancelled: "Cancelled",
+    pages: (done: number, total: number) => `${done} of ${total} printed`,
+    claims: (variable: string, start: number, end: number) =>
+      `Used ${variable} ${start}–${end}`,
+    lost: "That job's state could not be read",
+    allDone: "All labels printed",
+    someFailed: "Some jobs did not finish; see below",
+  },
+
   settings: {
     open: "Settings",
     title: "Settings",
@@ -270,6 +293,9 @@ export const enMeta: typeof zhMeta = {
     expand: "Show children",
     collapse: "Hide children",
     displayKey: "Number field",
+    printPreset: "Print preset id",
+    printPresetHint:
+      "The id of a template-and-printer preset in the print service. Empty means this category prints nothing.",
     save: "Save",
     selectHint: "Click a row to edit that category: name, parent, number field and bindings.",
     deleteTitle: "Delete category",

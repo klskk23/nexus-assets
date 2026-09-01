@@ -10,9 +10,12 @@ import {
   transferActions,
   type TransferAction,
 } from "@/features/transfers/TransferDialog"
+import { PrinterIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup, ButtonGroupSeparator } from "@/components/ui/button-group"
 import { Card, CardContent } from "@/components/ui/card"
+import { PrintDialog } from "@/features/print/PrintDialog"
+import { usePrinting } from "@/features/print/usePrinting"
 
 interface Props {
   selected: string[]
@@ -34,6 +37,8 @@ export function ActionBar({ selected, onClear, onDone }: Props) {
   const queryClient = useQueryClient()
   const [action, setAction] = useState<TransferAction | null>(null)
   const [open, setOpen] = useState(false)
+  const [printOpen, setPrintOpen] = useState(false)
+  const printing = usePrinting()
 
   const remove = useMutation({
     mutationFn: () =>
@@ -73,6 +78,15 @@ export function ActionBar({ selected, onClear, onDone }: Props) {
               {label}
             </Button>
           ))}
+          {/* Printing is a property of the installation: with no print
+              service configured there is no button, rather than one that
+              answers "not configured" after it is pressed. */}
+          {printing && (
+            <Button size="sm" variant="outline" onClick={() => setPrintOpen(true)}>
+              <PrinterIcon data-icon="inline-start" />
+              {t.print.action}
+            </Button>
+          )}
           <ButtonGroupSeparator />
           {/* Destructive, so it sits after a separator rather than in the run
               of transfer actions -- the same click distance, a different act. */}
@@ -108,6 +122,12 @@ export function ActionBar({ selected, onClear, onDone }: Props) {
           onClear()
         }}
       />
+      {printOpen && (
+        <PrintDialog
+          ids={selected}
+          onClose={() => setPrintOpen(false)}
+        />
+      )}
     </Card>
   )
 }

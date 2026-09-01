@@ -42,6 +42,7 @@ const schema = {
 function route(p: string) {
   if (p === "/categories") return Promise.resolve(categories)
   if (p.startsWith("/fields")) return Promise.resolve({ items: [], total: 0, offset: 0, limit: 20 })
+  if (p === "/capabilities") return Promise.resolve({ printing: true })
   if (p === "/models") {
     return Promise.resolve([
       { id: "m1", category_ids: ["rt"], name: "X100", vendor: "Acme", attr_defaults: {} },
@@ -301,6 +302,7 @@ describe("Categories table", () => {
         name: "网络",
         parent_id: null,
         display_key: "",
+        print_preset_id: "",
       }),
     )
   })
@@ -329,10 +331,46 @@ describe("Category editor", () => {
         name: "SDWAN 路由器",
         parent_id: "net",
         display_key: "mac",
+        print_preset_id: "",
       }),
     )
     // Choosing which number to show renumbers nothing on its own.
     expect(post).not.toHaveBeenCalled()
   })
 
+})
+
+// The preset is opaque here: what it contains is the print service's business,
+// and an installation without one should not be asked about it at all.
+describe("Category print preset", () => {
+  it("saves the preset id with the rest of the category", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+    await user.click(await categoryRow())
+
+    const dialog = await screen.findByRole("dialog")
+    await user.type(within(dialog).getByLabelText("打印预设 id"), "preset-rt")
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/categories/rt", {
+        name: "SDWAN 路由器",
+        parent_id: "net",
+        display_key: "",
+        print_preset_id: "preset-rt",
+      }),
+    )
+  })
+
+  it("does not ask for one when nothing can print", async () => {
+    get.mockImplementation((p: string) =>
+      p === "/capabilities" ? Promise.resolve({ printing: false }) : route(p),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<Categories />)
+    await user.click(await categoryRow())
+
+    const dialog = await screen.findByRole("dialog")
+    expect(within(dialog).queryByLabelText("打印预设 id")).not.toBeInTheDocument()
+  })
 })

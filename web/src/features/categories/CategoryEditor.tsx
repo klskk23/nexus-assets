@@ -8,6 +8,7 @@ import type { Category, CategorySchema } from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
+import { usePrinting } from "@/features/print/usePrinting"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -58,9 +59,11 @@ interface Props {
  */
 export function CategoryEditor({ category, categories, onClose }: Props) {
   const queryClient = useQueryClient()
+  const printing = usePrinting()
   const [name, setName] = useState(category.name)
   const [parentId, setParentId] = useState(category.parent_id ?? "")
   const [displayKey, setDisplayKey] = useState(category.display_key)
+  const [presetID, setPresetID] = useState(category.print_preset_id ?? "")
   const [banner, setBanner] = useState<string | null>(null)
   const [blockers, setBlockers] = useState<Blocker[]>([])
 
@@ -98,6 +101,7 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
         name,
         parent_id: parentId || null,
         display_key: displayKey,
+        ...(printing ? { print_preset_id: presetID } : {}),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] })
@@ -177,6 +181,22 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
             </Select>
             <FieldDescription>{tConfig.displayKey.hint}</FieldDescription>
           </Field>
+
+          {/* Only where something can print. The value is opaque here: what a
+              preset contains is the print service's business, and an
+              installation without one should not be asked about it. */}
+          {printing && (
+            <Field>
+              <FieldLabel htmlFor="ce-preset">{tMeta.categories.printPreset}</FieldLabel>
+              <Input
+                id="ce-preset"
+                className="font-mono"
+                value={presetID}
+                onChange={(e) => setPresetID(e.target.value)}
+              />
+              <FieldDescription>{tMeta.categories.printPresetHint}</FieldDescription>
+            </Field>
+          )}
 
           <div className="grid gap-2">
             <p className="text-sm font-medium">{tMeta.categories.fields}</p>
