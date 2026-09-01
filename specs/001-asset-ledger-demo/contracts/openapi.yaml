@@ -832,6 +832,11 @@ paths:
               properties:
                 ids: { type: array, items: { type: string } }
                 copies: { type: integer, minimum: 1 }
+                dry_run:
+                  type: boolean
+                  description: >
+                    只核对不打印：返回与真打完全相同的分批与拒绝，但不联系打印服务。
+                    界面用它做出纸前的确认。
       responses:
         "200":
           description: >

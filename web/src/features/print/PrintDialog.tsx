@@ -35,6 +35,7 @@ interface Batch {
   category_id: string
   category_name: string
   count: number
+  preset_name?: string
   job_id?: string
   status?: string
   error?: string
@@ -56,31 +57,48 @@ interface Props {
 const FINISHED = ["completed", "failed", "cancelled"]
 
 /**
- * Submits the ticked devices and watches until the labels are out.
+ * Asks what is about to be printed, then watches until the labels are out.
  *
- * Watching rather than firing and forgetting: the service accepts a job and
- * answers immediately, so everything that can go wrong at the printer -- paper
- * out, the queue paused by an earlier failure -- happens after the reply. A
- * page that said "submitted" and stopped there would call that a success.
+ * Two steps because paper comes out of a machine in another room. Opening this
+ * works out what would be printed and prints nothing; the second press is the
+ * one that spends the roll. What it can say beforehand is worth the extra
+ * click: how many labels, split across which categories, under which label
+ * design, and which category has no label at all -- that last one being much
+ * better learned before the press than after it.
+ *
+ * The watching half is watching rather than firing and forgetting: the service
+ * accepts a job and answers immediately, so everything that can go wrong at the
+ * printer -- paper out, a queue paused by an earlier failure -- happens after
+ * the reply. A page that said "submitted" and stopped there would call that a
+ * success.
  */
 export function PrintDialog({ ids, onClose }: Props) {
   const [batches, setBatches] = useState<Batch[]>([])
   const [banner, setBanner] = useState<string | null>(null)
+  // Until this, nothing has reached a printer.
+  const [confirmed, setConfirmed] = useState(false)
 
-  const submit = useMutation({
-    mutationFn: () => api.post<{ batches: Batch[] }>("/print", { ids }),
+  const plan = useMutation({
+    mutationFn: () => api.post<{ batches: Batch[] }>("/print", { ids, dry_run: true }),
     onSuccess: (res) => setBatches(res.batches),
     onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
   })
 
-  // Once, on open: pressing print is the decision, and the dialog is the
-  // report of what came of it.
+  const submit = useMutation({
+    mutationFn: () => api.post<{ batches: Batch[] }>("/print", { ids }),
+    onSuccess: (res) => {
+      setBatches(res.batches)
+      setConfirmed(true)
+    },
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
+  })
+
   useEffect(() => {
-    submit.mutate()
+    plan.mutate()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const jobs = batches.filter((b) => b.job_id)
+  const jobs = confirmed ? batches.filter((b) => b.job_id) : []
   const polls = useQueries({
     queries: jobs.map((b) => ({
       queryKey: ["print-job", b.job_id],
@@ -115,6 +133,10 @@ export function PrintDialog({ ids, onClose }: Props) {
     }
   }
 
+  // What would actually reach a printer: a category with no label of its own
+  // contributes nothing, and if that is all of them there is nothing to press.
+  const printable = batches.reduce((n, b) => (b.error ? n : n + b.count), 0)
+
   const settled =
     batches.length > 0 &&
     batches.every((b) => {
@@ -138,10 +160,10 @@ export function PrintDialog({ ids, onClose }: Props) {
           )}
         </DialogHeader>
 
-        {submit.isPending && (
+        {(plan.isPending || submit.isPending) && (
           <p className="text-muted-foreground flex items-center gap-2 text-sm">
             <Spinner aria-hidden />
-            {t.print.submitting}
+            {submit.isPending ? t.print.submitting : t.print.planning}
           </p>
         )}
 
@@ -157,6 +179,7 @@ export function PrintDialog({ ids, onClose }: Props) {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t.print.category}</TableHead>
+                  <TableHead>{t.print.label}</TableHead>
                   <TableHead>{t.print.count}</TableHead>
                   <TableHead>{t.print.state}</TableHead>
                 </TableRow>
@@ -168,12 +191,17 @@ export function PrintDialog({ ids, onClose }: Props) {
                   return (
                     <TableRow key={b.category_id}>
                       <TableCell>{b.category_name}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {b.preset_name ?? ""}
+                      </TableCell>
                       <TableCell className="tabular-nums">{t.print.unit(b.count)}</TableCell>
                       <TableCell className="grid gap-1">
                         {b.error ? (
                           <span className="text-destructive">{b.error}</span>
                         ) : poll?.isError ? (
                           <span className="text-destructive">{t.print.lost}</span>
+                        ) : !confirmed ? (
+                          <span className="text-muted-foreground">{t.print.willPrint}</span>
                         ) : (
                           <span className="flex items-center gap-2">
                             {job && !FINISHED.includes(job.status) && <Spinner aria-hidden />}
@@ -214,8 +242,19 @@ export function PrintDialog({ ids, onClose }: Props) {
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
-            {t.common.close}
+            {confirmed ? t.common.close : t.common.cancel}
           </Button>
+          {/* The press that spends paper. Gone once it has been made, so the
+              same dialog cannot print the same labels twice. */}
+          {!confirmed && (
+            <Button
+              onClick={() => submit.mutate()}
+              disabled={plan.isPending || submit.isPending || printable === 0}
+            >
+              {submit.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+              {t.print.confirm(printable)}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

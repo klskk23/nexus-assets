@@ -20,6 +20,10 @@ type printBatch struct {
 	CategoryID   string `json:"category_id"`
 	CategoryName string `json:"category_name"`
 	Count        int    `json:"count"`
+	// PresetName is what will come out of the printer, named the way the print
+	// service names it. Empty when that service cannot be asked -- the batch
+	// still goes, and the confirmation just says less.
+	PresetName string `json:"preset_name,omitempty"`
 	// JobID is empty when the batch was refused before it reached a printer.
 	JobID  string `json:"job_id,omitempty"`
 	Status string `json:"status,omitempty"`
@@ -45,6 +49,10 @@ func (s *Server) printAssets(c *gin.Context) {
 		IDs []string `json:"ids" binding:"required"`
 		// Copies applies to every label in the request; the service caps it.
 		Copies int `json:"copies"`
+		// DryRun works out what would be printed without printing it. Paper
+		// comes out of a real machine in another room, so the person pressing
+		// the button is shown what they are about to spend first.
+		DryRun bool `json:"dry_run"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || len(req.IDs) == 0 {
 		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyNoAssetsSelected)
@@ -80,6 +88,18 @@ func (s *Server) printAssets(c *gin.Context) {
 		batchKey = store.NewID()
 	}
 
+	// Named only for the confirmation, and only when the service answers:
+	// a printer that is down must not stop someone from seeing what they
+	// would have printed.
+	presetName := map[string]string{}
+	if req.DryRun {
+		if presets, err := s.printer.Presets(c.Request.Context(), lang); err == nil {
+			for _, p := range presets {
+				presetName[p.ID] = p.Name
+			}
+		}
+	}
+
 	out := make([]printBatch, 0, len(order))
 	for _, categoryID := range order {
 		batch := printBatch{CategoryID: categoryID, Count: len(byCategory[categoryID])}
@@ -95,6 +115,14 @@ func (s *Server) printAssets(c *gin.Context) {
 			// Not a failure of the printer: nobody has said what this category's
 			// label looks like, and only a person can answer that.
 			batch.Error = i18n.M(i18n.KeyPrintNoPreset, cat.Name).In(LangOf(c))
+			out = append(out, batch)
+			continue
+		}
+
+		batch.PresetName = presetName[cat.PrintPresetID]
+		if req.DryRun {
+			// Everything above is what the confirmation needs: how many labels,
+			// under which category, and whether anything stands in the way.
 			out = append(out, batch)
 			continue
 		}

@@ -100,6 +100,7 @@ type printResponse struct {
 		CategoryID   string `json:"category_id"`
 		CategoryName string `json:"category_name"`
 		Count        int    `json:"count"`
+		PresetName   string `json:"preset_name"`
 		JobID        string `json:"job_id"`
 		Status       string `json:"status"`
 		Error        string `json:"error"`
@@ -304,5 +305,51 @@ func TestPrintPresetsAreAbsentWhenUnconfigured(t *testing.T) {
 	h := newHarness(t)
 	if rec := h.get(t, "/api/print/presets"); rec.Code != http.StatusNotFound {
 		t.Errorf("presets without a service = %d, want 404", rec.Code)
+	}
+}
+
+// Paper comes out of a machine in another room, so the button asks first.
+// A dry run works out exactly what a real one would do -- the same grouping,
+// the same refusals -- and touches nothing.
+func TestPrintDryRunSendsNothing(t *testing.T) {
+	fake := newFakePrintService(t)
+	h := newHarnessWithPrinting(t, fake.server.URL)
+	h.seed(t, 0, 3)
+	if r := h.patch(t, "/api/categories/"+h.catID, `{"print_preset_id":"preset-rt"}`); r.Code != http.StatusOK {
+		t.Fatal(r.Body.String())
+	}
+
+	ids := h.assetIDs(t)
+	out := decode[printResponse](t, h.post(t, "/api/print",
+		`{"dry_run":true,"ids":["`+ids[0]+`","`+ids[1]+`","`+ids[2]+`"]}`))
+
+	if len(out.Batches) != 1 || out.Batches[0].Count != 3 {
+		t.Fatalf("batches = %+v", out.Batches)
+	}
+	if out.Batches[0].JobID != "" {
+		t.Error("a dry run must not produce a job")
+	}
+	for _, req := range fake.requests {
+		if req.PresetID != "" {
+			t.Fatalf("a dry run reached the printer: %+v", req)
+		}
+	}
+	// The confirmation says what will come out, in the words the print service
+	// uses for it.
+	if out.Batches[0].PresetName != "路由器标签" {
+		t.Errorf("preset name = %q, want 路由器标签", out.Batches[0].PresetName)
+	}
+}
+
+// The thing worth learning before pressing print, not after.
+func TestPrintDryRunReportsAMissingPreset(t *testing.T) {
+	fake := newFakePrintService(t)
+	h := newHarnessWithPrinting(t, fake.server.URL)
+	h.seed(t, 0, 1)
+
+	out := decode[printResponse](t, h.post(t, "/api/print",
+		`{"dry_run":true,"ids":["`+h.assetIDs(t)[0]+`"]}`))
+	if len(out.Batches) != 1 || out.Batches[0].Error == "" {
+		t.Fatalf("batches = %+v", out.Batches)
 	}
 }

@@ -32,13 +32,20 @@ function route(printing: boolean, job: Record<string, unknown> = { status: "comp
   }
 }
 
+/** The dry run answers first, then the real submission. */
+function plans(dry: unknown, real: unknown) {
+  post.mockImplementation((_p: string, body: { dry_run?: boolean }) =>
+    Promise.resolve(body?.dry_run ? dry : real),
+  )
+}
+
 beforeEach(() => {
   get.mockReset().mockImplementation(route(true))
-  post.mockReset().mockResolvedValue({
-    batches: [
-      { category_id: "net", category_name: "网络设备", count: 2, job_id: "job-1", status: "queued" },
-    ],
-  })
+  post.mockReset()
+  plans(
+    { batches: [{ category_id: "net", category_name: "网络设备", count: 2, preset_name: "路由器标签" }] },
+    { batches: [{ category_id: "net", category_name: "网络设备", count: 2, job_id: "job-1", status: "queued" }] },
+  )
 })
 
 describe("printing the ticked devices", () => {
@@ -50,14 +57,35 @@ describe("printing the ticked devices", () => {
     expect(screen.queryByRole("button", { name: "打印标签" })).not.toBeInTheDocument()
   })
 
-  it("sends the selection and watches until the labels are out", async () => {
+  // Paper comes out of a machine in another room, so opening the dialog must
+  // not print anything: it says what would come out and waits to be told.
+  it("asks before it prints, and prints nothing until it is told to", async () => {
     const user = userEvent.setup()
     renderWithProviders(<ActionBar selected={["a1", "a2"]} onClear={vi.fn()} onDone={vi.fn()} />)
 
     await user.click(await screen.findByRole("button", { name: "打印标签" }))
-    await waitFor(() => expect(post).toHaveBeenCalledWith("/print", { ids: ["a1", "a2"] }))
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/print", { ids: ["a1", "a2"], dry_run: true }),
+    )
 
     const dialog = await screen.findByRole("dialog")
+    // What is about to be spent: how many, under which label design.
+    expect(within(dialog).getByText("路由器标签")).toBeInTheDocument()
+    expect(await within(dialog).findByRole("button", { name: "确认打印 2 张" })).toBeInTheDocument()
+    expect(post).toHaveBeenCalledTimes(1)
+    // Nothing has been asked about a job, because there is no job.
+    expect(get).not.toHaveBeenCalledWith(expect.stringContaining("/print/jobs/"))
+  })
+
+  it("prints, and watches until the labels are out", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ActionBar selected={["a1", "a2"]} onClear={vi.fn()} onDone={vi.fn()} />)
+
+    await user.click(await screen.findByRole("button", { name: "打印标签" }))
+    const dialog = await screen.findByRole("dialog")
+    await user.click(await within(dialog).findByRole("button", { name: "确认打印 2 张" }))
+
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/print", { ids: ["a1", "a2"] }))
     expect(within(dialog).getByText("网络设备")).toBeInTheDocument()
     // Watched, not fired and forgotten: the service accepts a job and answers
     // immediately, so everything that can go wrong happens after the reply.
@@ -66,13 +94,17 @@ describe("printing the ticked devices", () => {
     expect(await within(dialog).findByText("全部打印完成")).toBeInTheDocument()
   })
 
-  it("says which category has no label rather than reporting a printer fault", async () => {
-    post.mockResolvedValue({
+  // Much better learned before the press than after it: the confirmation
+  // already knows this category cannot print, and says so while the roll is
+  // still full.
+  it("says which category has no label before anything is printed", async () => {
+    const both = {
       batches: [
-        { category_id: "net", category_name: "网络设备", count: 1, job_id: "job-1", status: "queued" },
+        { category_id: "net", category_name: "网络设备", count: 1, preset_name: "路由器标签" },
         { category_id: "srv", category_name: "服务器", count: 1, error: "类别「服务器」还没有指定打印预设" },
       ],
-    })
+    }
+    plans(both, both)
     const user = userEvent.setup()
     renderWithProviders(<ActionBar selected={["a1", "a2"]} onClear={vi.fn()} onDone={vi.fn()} />)
 
@@ -82,7 +114,8 @@ describe("printing the ticked devices", () => {
     // The split is visible: two categories, two rows, one of them unprintable.
     expect(within(dialog).getByText(/2 台设备，2 个类别/)).toBeInTheDocument()
     expect(within(dialog).getByText(/还没有指定打印预设/)).toBeInTheDocument()
-    expect(await within(dialog).findByText("有作业没有完成，详见下表")).toBeInTheDocument()
+    // And the button counts only what can actually come out.
+    expect(await within(dialog).findByRole("button", { name: "确认打印 1 张" })).toBeInTheDocument()
   })
 
   it("reports a job that failed at the printer", async () => {
@@ -92,26 +125,31 @@ describe("printing the ticked devices", () => {
 
     await user.click(await screen.findByRole("button", { name: "打印标签" }))
     const dialog = await screen.findByRole("dialog")
+    await user.click(await within(dialog).findByRole("button", { name: /确认打印/ }))
     expect(await within(dialog).findByText("失败")).toBeInTheDocument()
     expect(within(dialog).getByText("缺纸")).toBeInTheDocument()
   })
 
   // Numbers minted in the print service are invisible here unless said aloud.
   it("shows the sequence numbers a job consumed", async () => {
-    post.mockResolvedValue({
-      batches: [
-        {
-          category_id: "net", category_name: "网络设备", count: 8,
-          job_id: "job-1", status: "queued",
-          claims: [{ poolId: "p1", variableName: "seq", start: 1001, end: 1008 }],
-        },
-      ],
-    })
+    plans(
+      { batches: [{ category_id: "net", category_name: "网络设备", count: 8 }] },
+      {
+        batches: [
+          {
+            category_id: "net", category_name: "网络设备", count: 8,
+            job_id: "job-1", status: "queued",
+            claims: [{ poolId: "p1", variableName: "seq", start: 1001, end: 1008 }],
+          },
+        ],
+      },
+    )
     const user = userEvent.setup()
     renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
 
     await user.click(await screen.findByRole("button", { name: "打印标签" }))
     const dialog = await screen.findByRole("dialog")
+    await user.click(await within(dialog).findByRole("button", { name: /确认打印/ }))
     expect(await within(dialog).findByText(/消耗序号 seq：1001–1008/)).toBeInTheDocument()
   })
 })
