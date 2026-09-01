@@ -22,6 +22,40 @@ import type {
 export const en: typeof zh = {
   appName: "Nexus Assets",
 
+  settings: {
+    open: "Settings",
+    title: "Settings",
+    appearance: "Appearance",
+    language: "Language",
+    theme: "Theme",
+    themeDark: "Dark",
+    themeLight: "Light",
+    savedToAccount: "Language and theme follow your account, on any machine.",
+    keys: "API keys",
+    keysHint:
+      "A key lets a script call the API with the same permissions you have. It is shown once, when it is created.",
+    keyName: "Name",
+    keyPrefix: "Prefix",
+    keyExpires: "Expires",
+    keyLastUsed: "Last used",
+    keyNever: "Never used",
+    keyNoExpiry: "No expiry",
+    keyCreate: "New key",
+    keyGenerate: "Generate key",
+    keyDays: "Valid for (days)",
+    keyCreated: "Here is the key. This is the only time it is shown.",
+    keyCopyHint: "Once this dialog closes it cannot be shown again.",
+    keyRevoke: "Revoke",
+    keyRevokeTitle: "Revoke key",
+    keyRevokeHint: (name: string) =>
+      `${name} stops working immediately, and anything using it starts getting 401s.`,
+    keysEmpty: "No keys yet",
+    docs: "API documentation",
+    docsHint:
+      "Try the API with your current sign-in (Swagger UI, embedded in the binary, no internet needed).",
+    docsOpen: "Open the API docs",
+  },
+
   nav: {
     overview: "Overview",
     assets: "Assets",
@@ -108,6 +142,7 @@ export const en: typeof zh = {
     error: "Something went wrong",
     retry: "Retry",
     cancel: "Cancel",
+    close: "Close",
     required: "This field is required",
     yes: "Yes",
     no: "No",

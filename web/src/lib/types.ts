@@ -87,6 +87,9 @@ export interface User {
   name: string
   auth_type: "oidc" | "local"
   status: "active" | "disabled"
+  /** What this person chose for the interface; empty follows the system. */
+  lang?: string
+  theme?: string
 }
 
 export type EntityType = "company" | "location" | "department"

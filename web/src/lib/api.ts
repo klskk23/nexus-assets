@@ -79,7 +79,63 @@ export function setToken(token: string | null) {
   }
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+/**
+ * Trades the refresh cookie for a new access token.
+ *
+ * One flight at a time: a page that fires six queries on mount would otherwise
+ * rotate the refresh token six times in parallel, and rotation means five of
+ * those are replays -- which the server is right to treat as a stolen chain.
+ */
+let refreshing: Promise<boolean> | null = null
+
+async function refreshSession(): Promise<boolean> {
+  if (!refreshing) {
+    refreshing = (async () => {
+      try {
+        const res = await fetch("/api/auth/refresh", { method: "POST" })
+        if (!res.ok) return false
+        const body = (await res.json()) as { token?: string }
+        if (!body.token) return false
+        setToken(body.token)
+        return true
+      } catch {
+        return false
+      }
+      // Cleared as it settles, not later: everyone awaiting already holds this
+      // promise, and the next failure deserves a fresh attempt rather than a
+      // cached answer from minutes ago.
+    })().finally(() => {
+      refreshing = null
+    })
+  }
+  return refreshing
+}
+
+/** Called when a session cannot be recovered, so the app can show the door. */
+let onSessionLost: () => void = () => {}
+
+export function setSessionLostHandler(fn: () => void) {
+  onSessionLost = fn
+}
+
+/** Signs in again from the cookie alone, for a tab opened after the access
+ * token expired. Returns the token when it worked. */
+export async function restoreSession(): Promise<string | null> {
+  return (await refreshSession()) ? getToken() : null
+}
+
+/** Ends the session on the server as well, so the cookie stops working. */
+export async function endSession(): Promise<void> {
+  try {
+    await fetch("/api/auth/logout", { method: "POST" })
+  } catch {
+    // Offline: the local token is dropped either way, and the session will
+    // expire on its own.
+  }
+  setToken(null)
+}
+
+async function request<T>(method: string, path: string, body?: unknown, retry = true): Promise<T> {
   // The server answers in whatever this asks for, so a refusal comes back in
   // the same language as the button that caused it.
   const headers: Record<string, string> = { "Accept-Language": getLang() }
@@ -92,6 +148,14 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   })
+
+  // An expired access token is the normal state of affairs now, not a
+  // sign-out: refresh once, replay the request, and only then give up.
+  if (res.status === 401 && retry && !path.startsWith("/auth/")) {
+    if (await refreshSession()) return request<T>(method, path, body, false)
+    setToken(null)
+    onSessionLost()
+  }
 
   if (res.status === 204) return undefined as T
 

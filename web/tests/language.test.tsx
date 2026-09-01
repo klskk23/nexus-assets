@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter } from "react-router"
@@ -37,15 +37,18 @@ function renderShell(client = makeTestQueryClient()) {
 }
 
 /**
- * Picks a language from the settings menu.
+ * Picks a language in the settings dialog.
  *
- * Language, theme and signing out live behind one trigger now: three controls
- * competing with the nav for the same bar was three things to read before
- * finding the one you wanted.
+ * The menu behind the account name carries the settings entry, the one-click
+ * theme flip and signing out; language moved into the dialog with everything
+ * else a person chooses about their own account.
  */
 async function pickLanguage(user: ReturnType<typeof userEvent.setup>, name: string) {
   await user.click(screen.getByRole("button", { name: /管理员|Settings|设置/ }))
-  await user.click(await screen.findByRole("menuitemradio", { name }))
+  await user.click(await screen.findByRole("menuitem", { name: /设置|Settings/ }))
+  const dialog = await screen.findByRole("dialog")
+  await user.click(within(dialog).getByRole("combobox", { name: /语言|Language/ }))
+  await user.click(await screen.findByRole("option", { name }))
 }
 
 beforeEach(() => {
@@ -118,7 +121,7 @@ describe("detectLang", () => {
 })
 
 describe("settings menu", () => {
-  it("gathers language, theme and sign-out behind one trigger", async () => {
+  it("gathers settings, the theme flip and sign-out behind one trigger", async () => {
     const u = userEvent.setup()
     renderShell()
     await screen.findByRole("link", { name: "概览" })
@@ -127,8 +130,9 @@ describe("settings menu", () => {
     expect(screen.queryByRole("menuitem")).not.toBeInTheDocument()
 
     await u.click(screen.getByRole("button", { name: /管理员/ }))
-    expect(await screen.findByRole("menuitemradio", { name: "中文" })).toBeChecked()
-    expect(screen.getByRole("menuitemradio", { name: "English" })).not.toBeChecked()
+    expect(await screen.findByRole("menuitem", { name: "设置" })).toBeInTheDocument()
+    // The theme flip stays in the menu: it is a daily one-click action, while
+    // everything in the dialog is chosen twice a year.
     expect(screen.getByRole("menuitem", { name: /切换到浅色|切换到深色/ })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "退出登录" })).toBeInTheDocument()
   })

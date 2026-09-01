@@ -77,6 +77,19 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/User" }
+    patch:
+      tags: [auth]
+      summary: 修改自己的界面偏好（语言、主题）
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lang: { type: string, enum: ["", zh, en], description: 空字符串表示跟随系统 }
+                theme: { type: string, enum: ["", light, dark] }
+      responses:
+        "200": { description: OK，返回更新后的账号 }
 
   # ---------------- overview ----------------
   /overview:
@@ -718,6 +731,51 @@ paths:
         - { name: dry_run, in: query, schema: { type: boolean, default: true } }
       responses:
         "200": { description: OK，返回与类别重算相同的报告 }
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: 用 HttpOnly Cookie 换一张新的访问令牌（每次调用都轮换刷新令牌）
+      responses:
+        "200": { description: OK，返回 token 与 user }
+        "401": { description: 刷新令牌无效、过期、已吊销，或是一次重放 }
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: 结束本设备的会话（其他设备不受影响）
+      responses:
+        "204": { description: No Content }
+
+  /api-keys:
+    get:
+      tags: [auth]
+      summary: 当前账号的 API 密钥（不含明文）
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [auth]
+      summary: 新建密钥，明文只在这一次响应里出现
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                days: { type: integer, description: 有效期天数，0 表示长期有效 }
+      responses:
+        "201": { description: Created，返回 key 与 secret }
+
+  /api-keys/{id}:
+    delete:
+      tags: [auth]
+      summary: 撤销密钥
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: No Content }
 
   /import/preview:
     post:

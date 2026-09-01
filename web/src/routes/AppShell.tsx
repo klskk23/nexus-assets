@@ -1,10 +1,11 @@
-import { LogOutIcon, MoonIcon, SunIcon, UserIcon } from "lucide-react"
+import { LogOutIcon, MoonIcon, SettingsIcon, SunIcon, UserIcon } from "lucide-react"
+import { useState } from "react"
 import { NavLink, Navigate, Outlet } from "react-router"
 
 import { useAuth } from "@/features/auth/useAuth"
 import { useTheme } from "@/features/theme/useTheme"
-import { useLanguage } from "@/i18n/useLanguage"
-import { LANGS, LANG_NAMES } from "@/i18n"
+import { SettingsDialog } from "@/features/settings/SettingsDialog"
+import { usePreferences } from "@/features/settings/usePreferences"
 import { t } from "@/i18n"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -12,9 +13,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -44,8 +42,9 @@ function navLinks() {
 /** Chrome around every signed-in page, and the gate that keeps them signed in. */
 export function AppShell() {
   const { user, isLoading, signOut } = useAuth()
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  usePreferences(user)
   const { theme, toggle } = useTheme()
-  const { lang, setLang } = useLanguage()
 
   if (isLoading) {
     return (
@@ -94,17 +93,13 @@ export function AppShell() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>{t.nav.language}</DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  value={lang}
-                  onValueChange={(v) => setLang(v as (typeof LANGS)[number])}
-                >
-                  {LANGS.map((l) => (
-                    <DropdownMenuRadioItem key={l} value={l}>
-                      {LANG_NAMES[l]}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
+                {/* The one-click theme flip stays here because it is used
+                    daily; language and everything else moved into settings,
+                    where a choice that is made twice a year belongs. */}
+                <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
+                  <SettingsIcon />
+                  {t.settings.open}
+                </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={toggle}>
@@ -122,6 +117,8 @@ export function AppShell() {
           </div>
         </div>
       </header>
+
+      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
       <main className="mx-auto max-w-7xl p-6">
         <Outlet />
       </main>

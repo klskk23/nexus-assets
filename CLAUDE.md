@@ -1,11 +1,12 @@
 <!-- SPECKIT START -->
-当前计划：`specs/011-expression-engine/spec.md`
+当前计划：`specs/012-sessions-keys-settings/spec.md`
 
 开工前必读，按优先级：
 
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
-2. `specs/011-expression-engine/` —— 本轮特性的规格与检查清单；
-   调研与备选方案在 `docs/research-expr-engine.md`
+2. `specs/012-sessions-keys-settings/`（决策 73–76）—— 本轮：会话续期、API 密钥、
+   账号偏好、内嵌接口文档。上一轮是 `specs/011-expression-engine/`，
+   其调研在 `docs/research-expr-engine.md`
 3. `docs/design-baseline-v6.md`（决策 64–72）—— 撤回单选与引用；改表达式即重算；唯一性按类别
 4. `docs/design-baseline-v5.md`（决策 61–63）—— 状态不再约束持有方。
    **冲突时以最新一版为准：v6 > 011 > 010 > 009 > 008 > 007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
@@ -106,6 +107,16 @@
   **单元格里不放可点击控件** —— 它会连同所在行的点击一起触发，一次点击出两个结果。
   改这一行的任何东西都在编辑对话框里，包括「设为默认库存点」这类一次性动作。
   **对话框里发生的拒绝要显示在对话框里** —— 它背后的页面是 `aria-hidden` 且被遮住的。
+- **会话是可续期的，凭证有两张**（012 决策 73）。访问令牌 15 分钟、存 localStorage；
+  刷新令牌只进 **HttpOnly Cookie**，服务端 `sessions` 表存哈希。
+  **每次续期都轮换**，重放已轮换的令牌 = 吊销整条 family。
+  前端 `lib/api.ts` 的 `refreshSession` **必须单飞**（一个 in-flight promise）——
+  否则页面挂载时的并发查询会把自己的会话当成盗用烧掉。
+  401 由 api 客户端自己续期后重放一次，页面不该看到它。
+- **API 密钥等同于它的主人**（012 决策 74）。`Bearer nxk_<前缀>.<密钥>`，只存哈希，
+  明文只在创建响应里出现一次。别再给它加第二套权限模型。
+- **语言与主题存在账号上**（012 决策 75）。`users.lang` / `users.theme`，
+  空字符串=跟随系统，字段缺席=不动。浏览器那份只是首屏缓存。
 - **重的库要 `lazy` 到自己的 chunk 里。** `recharts` 走 `features/overview/CategoryChart.tsx`
   + `Suspense`：入口 chunk 与概览页 chunk 都不含它（否则概览页 chunk 是 358KB 而非 4.4KB）。
   测试环境的 `ResizeObserver` 桩会回报固定尺寸，否则图表在 jsdom 里根本不渲染，

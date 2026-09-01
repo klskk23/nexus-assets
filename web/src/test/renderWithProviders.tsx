@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter } from "react-router"
 
 import { AuthProvider } from "@/features/auth/useAuth"
+import { LanguageProvider } from "@/i18n/useLanguage"
 import { ThemeProvider } from "@/features/theme/useTheme"
 
 /**
@@ -38,7 +39,12 @@ export function renderWithProviders(ui: ReactElement, { route = "/", ...options 
           {/* With no token stored -- which is every test unless one puts one
               there -- this fetches nothing and reports a signed-out user. */}
           <AuthProvider>
-            <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+            {/* Present because the settings dialog reads it; switching
+                language remounts the subtree, which is the provider's own
+                doing and nothing a test has to arrange. */}
+            <LanguageProvider>
+              <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+            </LanguageProvider>
           </AuthProvider>
         </QueryClientProvider>
       </ThemeProvider>

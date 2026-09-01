@@ -1,4 +1,4 @@
-.PHONY: dev build test lint verify gates web-build clean
+.PHONY: dev build test lint verify gates web-build docs-sync clean
 
 GO ?= go
 BIN ?= nexus
@@ -16,6 +16,11 @@ web-build:
 
 build: web-build
 	CGO_ENABLED=0 $(GO) build -o $(BIN) ./cmd/nexus
+
+# The docs page serves an embedded copy of the contract; go:embed cannot reach
+# into specs/, so the copy is kept in step by hand and by a test.
+docs-sync:
+	cp specs/001-asset-ledger-demo/contracts/openapi.yaml internal/httpapi/docs/openapi.yaml
 
 test:
 	$(GO) test ./cmd/... ./internal/...
