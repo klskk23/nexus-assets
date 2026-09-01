@@ -68,9 +68,10 @@ func (s *Server) Router() *gin.Engine {
 	api.GET("/docs/*file", s.docsAsset)
 
 	authed := api.Group("")
-	authed.Use(auth.Middleware(s.issuer, s.users, s.keys, func(c *gin.Context) {
-		FailMsg(c, http.StatusUnauthorized, CodeUnauthenticated, i18n.KeyUnauthenticated)
-	}))
+	authed.Use(auth.Middleware(s.issuer, s.users, s.keys,
+		auth.ConfigKey{Secret: s.cfg.AdminAPIKey, Email: s.cfg.AdminEmail}, func(c *gin.Context) {
+			FailMsg(c, http.StatusUnauthorized, CodeUnauthenticated, i18n.KeyUnauthenticated)
+		}))
 
 	authed.GET("/me", s.me)
 	authed.PATCH("/me", s.patchMe)

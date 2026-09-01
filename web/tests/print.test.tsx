@@ -43,7 +43,14 @@ beforeEach(() => {
   get.mockReset().mockImplementation(route(true))
   post.mockReset()
   plans(
-    { batches: [{ category_id: "net", category_name: "网络设备", count: 2, preset_name: "路由器标签" }] },
+    {
+      batches: [
+        {
+          category_id: "net", category_name: "网络设备", count: 2,
+          preset_name: "路由器标签", numbers: ["112394521950", "112394521951"],
+        },
+      ],
+    },
     { batches: [{ category_id: "net", category_name: "网络设备", count: 2, job_id: "job-1", status: "queued" }] },
   )
 })
@@ -69,8 +76,11 @@ describe("printing the ticked devices", () => {
     )
 
     const dialog = await screen.findByRole("dialog")
-    // What is about to be spent: how many, under which label design.
+    // What is about to be spent: how many, under which label design, and --
+    // the part that can actually be checked against the devices on the bench --
+    // which numbers.
     expect(within(dialog).getByText("路由器标签")).toBeInTheDocument()
+    expect(within(dialog).getByText(/112394521950\s+112394521951/)).toBeInTheDocument()
     expect(await within(dialog).findByRole("button", { name: "确认打印 2 张" })).toBeInTheDocument()
     expect(post).toHaveBeenCalledTimes(1)
     // Nothing has been asked about a job, because there is no job.

@@ -97,13 +97,14 @@ func newFakePrintService(t *testing.T) *fakePrintService {
 
 type printResponse struct {
 	Batches []struct {
-		CategoryID   string `json:"category_id"`
-		CategoryName string `json:"category_name"`
-		Count        int    `json:"count"`
-		PresetName   string `json:"preset_name"`
-		JobID        string `json:"job_id"`
-		Status       string `json:"status"`
-		Error        string `json:"error"`
+		CategoryID   string   `json:"category_id"`
+		CategoryName string   `json:"category_name"`
+		Count        int      `json:"count"`
+		PresetName   string   `json:"preset_name"`
+		Numbers      []string `json:"numbers"`
+		JobID        string   `json:"job_id"`
+		Status       string   `json:"status"`
+		Error        string   `json:"error"`
 		Claims       []struct {
 			Start int `json:"start"`
 			End   int `json:"end"`
@@ -338,6 +339,20 @@ func TestPrintDryRunSendsNothing(t *testing.T) {
 	// uses for it.
 	if out.Batches[0].PresetName != "路由器标签" {
 		t.Errorf("preset name = %q, want 路由器标签", out.Batches[0].PresetName)
+	}
+	// And which labels: a count alone cannot be checked against anything.
+	if len(out.Batches[0].Numbers) != 3 {
+		t.Fatalf("numbers = %v, want three", out.Batches[0].Numbers)
+	}
+	listed := decode[assetListResponse](t, h.get(t, "/api/assets"))
+	shown := map[string]bool{}
+	for _, n := range out.Batches[0].Numbers {
+		shown[n] = true
+	}
+	for _, a := range listed.Items {
+		if !shown[a.DisplayName] {
+			t.Errorf("%s is being printed but was not named", a.DisplayName)
+		}
 	}
 }
 

@@ -38,10 +38,23 @@ type harness struct {
 	ctx       context.Context
 }
 
-func newHarness(t *testing.T) *harness { return newHarnessWithPrinting(t, "") }
+func newHarness(t *testing.T) *harness { return newHarnessWith(t, config.Config{}) }
+
+// newHarnessWithConfigKey arms the key that lives in the configuration file.
+func newHarnessWithConfigKey(t *testing.T, secret, email string) *harness {
+	t.Helper()
+	return newHarnessWith(t, config.Config{AdminAPIKey: secret, AdminEmail: email})
+}
 
 // newHarnessWithPrinting points the server at a stand-in print service.
 func newHarnessWithPrinting(t *testing.T, printURL string) *harness {
+	t.Helper()
+	return newHarnessWith(t, config.Config{PrinterURL: printURL})
+}
+
+// newHarnessWith builds the server with the parts of the configuration a test
+// cares about; the rest is filled in here.
+func newHarnessWith(t *testing.T, over config.Config) *harness {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	ctx := context.Background()
@@ -105,7 +118,8 @@ func newHarnessWithPrinting(t *testing.T, printURL string) *harness {
 		t.Fatalf("set display key: %v", err)
 	}
 
-	cfg := &config.Config{JWTSecret: []byte("test"), JWTTTL: time.Hour, PrinterURL: printURL}
+	cfg := &over
+	cfg.JWTSecret, cfg.JWTTTL = []byte("test"), time.Hour
 	issuer := auth.NewIssuer(cfg.JWTSecret, cfg.JWTTTL)
 	tok, err := issuer.Issue(u.ID, u.Email, u.Name, 0)
 	if err != nil {

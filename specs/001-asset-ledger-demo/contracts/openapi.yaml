@@ -840,7 +840,8 @@ paths:
       responses:
         "200":
           description: >
-            每个类别一个批次。批次里没有 job_id 而有 error，表示这一批没有送出去
+            每个类别一个批次，含 numbers（这一批要打的设备编号，供出纸前核对）与
+            preset_name。批次里没有 job_id 而有 error，表示这一批没有送出去
             （没配预设、或打印服务拒绝），其余批次照常提交。
         "404": { description: 本部署没有配置打印服务 }
 

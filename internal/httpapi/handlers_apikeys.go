@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,16 @@ func (s *Server) listAPIKeys(c *gin.Context) {
 	if err != nil {
 		FailErr(c, err)
 		return
+	}
+	// The configuration file's key is listed for the account it acts as, so
+	// nobody has to wonder what is authenticating those requests. It carries no
+	// prefix and no dates: there is no row behind it.
+	if s.cfg.AdminAPIKey != "" && strings.EqualFold(u.Email, s.cfg.AdminEmail) {
+		keys = append([]auth.APIKey{{
+			ID:         auth.ConfigKeyID,
+			Name:       i18n.M(i18n.KeyConfigAPIKey).In(LangOf(c)),
+			FromConfig: true,
+		}}, keys...)
 	}
 	c.JSON(http.StatusOK, keys)
 }
@@ -65,6 +76,12 @@ func (s *Server) createAPIKey(c *gin.Context) {
 
 func (s *Server) revokeAPIKey(c *gin.Context) {
 	u, _ := auth.CurrentUser(c)
+	if c.Param("id") == auth.ConfigKeyID {
+		// It comes back on the next start, so "revoked" would be a lie. Saying
+		// where it lives is the only useful answer.
+		FailMsg(c, http.StatusConflict, CodeReferenceBlocked, i18n.KeyConfigAPIKeyFixed)
+		return
+	}
 	if err := s.keys.Revoke(c.Request.Context(), u.ID, c.Param("id")); err != nil {
 		if errors.Is(err, auth.ErrNotFound) {
 			FailMsg(c, http.StatusNotFound, CodeNotFound, i18n.KeyNotFound)

@@ -24,6 +24,10 @@ type printBatch struct {
 	// service names it. Empty when that service cannot be asked -- the batch
 	// still goes, and the confirmation just says less.
 	PresetName string `json:"preset_name,omitempty"`
+	// Numbers are the devices about to be printed, as they read on screen.
+	// The confirmation is only worth pressing if it says which labels are
+	// coming out, not just how many.
+	Numbers []string `json:"numbers,omitempty"`
 	// JobID is empty when the batch was refused before it reached a printer.
 	JobID  string `json:"job_id,omitempty"`
 	Status string `json:"status,omitempty"`
@@ -73,11 +77,13 @@ func (s *Server) printAssets(c *gin.Context) {
 	// the way the list did.
 	var order []string
 	byCategory := map[string][]string{}
+	numbers := map[string][]string{}
 	for _, a := range assets.Items {
 		if _, seen := byCategory[a.CategoryID]; !seen {
 			order = append(order, a.CategoryID)
 		}
 		byCategory[a.CategoryID] = append(byCategory[a.CategoryID], a.ID)
+		numbers[a.CategoryID] = append(numbers[a.CategoryID], a.DisplayName)
 	}
 
 	lang := string(LangOf(c))
@@ -102,7 +108,11 @@ func (s *Server) printAssets(c *gin.Context) {
 
 	out := make([]printBatch, 0, len(order))
 	for _, categoryID := range order {
-		batch := printBatch{CategoryID: categoryID, Count: len(byCategory[categoryID])}
+		batch := printBatch{
+			CategoryID: categoryID,
+			Count:      len(byCategory[categoryID]),
+			Numbers:    numbers[categoryID],
+		}
 
 		cat, err := s.schema.GetCategory(c.Request.Context(), categoryID)
 		if err != nil {

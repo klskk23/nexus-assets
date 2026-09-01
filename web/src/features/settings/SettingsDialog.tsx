@@ -49,7 +49,10 @@ import {
 export interface APIKey {
   id: string
   name: string
-  prefix: string
+  prefix?: string
+  /** Lives in the configuration file: listed so it is not a mystery, but it
+   * goes away by being edited out and restarted, not from here. */
+  from_config?: boolean
   expires_at?: string
   last_used_at?: string
   created_at: string
@@ -292,11 +295,15 @@ export function SettingsDialog({ onClose }: Props) {
                         <TableRow aria-label={k.name}>
                           <TableCell>{k.name}</TableCell>
                           <TableCell className="text-muted-foreground font-mono text-xs">
-                            {k.prefix}
+                            {k.prefix ?? ""}
                           </TableCell>
                           <TableCell>
-                            {when(k.expires_at) ?? (
-                              <Badge variant="outline">{t.settings.keyNoExpiry}</Badge>
+                            {k.from_config ? (
+                              <Badge variant="secondary">{t.settings.keyFromConfig}</Badge>
+                            ) : (
+                              (when(k.expires_at) ?? (
+                                <Badge variant="outline">{t.settings.keyNoExpiry}</Badge>
+                              ))
                             )}
                           </TableCell>
                           <TableCell className="text-muted-foreground">
@@ -307,19 +314,25 @@ export function SettingsDialog({ onClose }: Props) {
                               nobody can find how to revoke is a key that stays
                               alive after the person who made it has left. */}
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label={`${t.settings.keyRevoke} ${k.name}`}
-                              onClick={() => setRevoking(k)}
-                            >
-                              <Trash2Icon />
-                            </Button>
+                            {!k.from_config && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`${t.settings.keyRevoke} ${k.name}`}
+                                onClick={() => setRevoking(k)}
+                              >
+                                <Trash2Icon />
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       </ContextMenuTrigger>
                       <ContextMenuContent>
-                        <ContextMenuItem variant="destructive" onSelect={() => setRevoking(k)}>
+                        <ContextMenuItem
+                          variant="destructive"
+                          disabled={k.from_config}
+                          onSelect={() => setRevoking(k)}
+                        >
                           {t.settings.keyRevoke}
                         </ContextMenuItem>
                       </ContextMenuContent>

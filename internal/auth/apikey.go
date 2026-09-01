@@ -22,13 +22,23 @@ var ErrKeyRejected = errors.New("api key rejected")
 // APIKey is one key as the owner sees it. The secret is not here: it exists
 // once, in the response that created it.
 type APIKey struct {
-	ID         string     `json:"id"`
-	Name       string     `json:"name"`
-	Prefix     string     `json:"prefix"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Prefix is absent on the configuration file's key: nothing in the
+	// database corresponds to it, so there is no half of it to show.
+	Prefix     string     `json:"prefix,omitempty"`
 	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
+	// FromConfig marks the key that lives in the configuration file. It is
+	// listed so nobody wonders what is authenticating those requests, and it
+	// cannot be revoked here: it goes away by being edited out and restarted.
+	FromConfig bool `json:"from_config,omitempty"`
 }
+
+// ConfigKeyID names the entry that stands for the configuration file's key.
+// Not a row: nothing in the database corresponds to it.
+const ConfigKeyID = "config"
 
 // Keys stores API keys.
 //

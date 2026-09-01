@@ -240,3 +240,52 @@ func TestDocsAreServedFromTheBinary(t *testing.T) {
 		t.Error("directory traversal should not be served")
 	}
 }
+
+// A key that lives in the configuration file, for the caller that has to keep
+// working with nobody to renew it. It acts as a named account rather than as an
+// anonymous superuser, so what it does is attributable like anything else.
+func TestConfigAdminKeyAuthenticates(t *testing.T) {
+	const secret = "an-admin-key-long-enough-to-be-worth-something"
+	h := newHarnessWithConfigKey(t, secret, "admin@example.com")
+
+	me := h.getWithKey(t, "/api/me", secret)
+	if me.Code != http.StatusOK {
+		t.Fatalf("config key = %d %s", me.Code, me.Body.String())
+	}
+	if decode[map[string]any](t, me)["email"] != "admin@example.com" {
+		t.Error("the key should act as the account it names")
+	}
+
+	// One character off is no key at all.
+	if bad := h.getWithKey(t, "/api/me", secret+"x"); bad.Code != http.StatusUnauthorized {
+		t.Errorf("a near miss = %d, want 401", bad.Code)
+	}
+}
+
+// Listed so nobody has to wonder what is authenticating those requests, and
+// refused when someone tries to revoke it: it would be back on the next start,
+// so "revoked" would be a lie.
+func TestConfigAdminKeyIsListedButNotRevocable(t *testing.T) {
+	const secret = "an-admin-key-long-enough-to-be-worth-something"
+	h := newHarnessWithConfigKey(t, secret, "admin@example.com")
+
+	keys := decode[[]map[string]any](t, h.get(t, "/api/api-keys"))
+	if len(keys) != 1 || keys[0]["id"] != "config" || keys[0]["from_config"] != true {
+		t.Fatalf("keys = %+v", keys)
+	}
+	if _, leaked := keys[0]["prefix"]; leaked {
+		t.Error("there is no prefix to show: nothing in the database corresponds to it")
+	}
+
+	rec := h.do(t, http.MethodDelete, "/api/api-keys/config", "")
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("revoking it = %d, want 409", rec.Code)
+	}
+	if !contains(rec.Body.String(), "NEXUS_ADMIN_API_KEY") {
+		t.Errorf("the refusal should say where the key lives, got %s", rec.Body.String())
+	}
+	// And it still works.
+	if me := h.getWithKey(t, "/api/me", secret); me.Code != http.StatusOK {
+		t.Error("a refused revocation must not have taken effect")
+	}
+}

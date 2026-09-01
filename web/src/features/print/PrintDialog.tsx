@@ -36,6 +36,7 @@ interface Batch {
   category_name: string
   count: number
   preset_name?: string
+  numbers?: string[]
   job_id?: string
   status?: string
   error?: string
@@ -201,7 +202,11 @@ export function PrintDialog({ ids, onClose }: Props) {
                         ) : poll?.isError ? (
                           <span className="text-destructive">{t.print.lost}</span>
                         ) : !confirmed ? (
-                          <span className="text-muted-foreground">{t.print.willPrint}</span>
+                          // The numbers, not just how many: a count cannot be
+                          // checked against the devices in front of you.
+                          <span className="text-muted-foreground max-h-24 overflow-y-auto font-mono text-xs leading-5 break-all">
+                            {(b.numbers ?? []).join("  ")}
+                          </span>
                         ) : (
                           <span className="flex items-center gap-2">
                             {job && !FINISHED.includes(job.status) && <Spinner aria-hidden />}

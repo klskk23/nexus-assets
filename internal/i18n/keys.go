@@ -29,6 +29,8 @@ const (
 	KeyPrintNotConfigured = "print.not_configured"
 	KeyPrintNoPreset      = "print.no_preset"
 	KeyPrintUnreachable   = "print.unreachable"
+	KeyConfigAPIKey       = "key.from_config"
+	KeyConfigAPIKeyFixed  = "key.from_config_fixed"
 	KeyKeyDaysRange       = "err.key_days_range"
 	// Why a Google sign-in was refused. Each one is something the person or
 	// their administrator can act on, so none of them may arrive as the

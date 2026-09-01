@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"crypto/subtle"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -23,7 +24,21 @@ const (
 //
 // No permission checks happen here. The demo deliberately has no roles; the
 // admission boundary is the email-domain whitelist at sign-in.
-func Middleware(issuer *Issuer, users *Store, keys *Keys, onFail func(*gin.Context)) gin.HandlerFunc {
+// ConfigKey is a credential that lives in the configuration file rather than
+// in the database.
+//
+// It exists for the caller that must keep working without anyone to renew it --
+// a backup script, a monitoring probe. That also makes it the one credential
+// nobody can take away from the interface, which is why it is a single value
+// set once by whoever runs the server, and why it acts as a named account
+// rather than as some anonymous superuser.
+type ConfigKey struct {
+	Secret string
+	Email  string
+}
+
+func Middleware(issuer *Issuer, users *Store, keys *Keys, configKey ConfigKey,
+	onFail func(*gin.Context)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		raw := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
 		if raw == "" || raw == c.GetHeader("Authorization") {
@@ -32,7 +47,17 @@ func Middleware(issuer *Issuer, users *Store, keys *Keys, onFail func(*gin.Conte
 		}
 
 		var userID string
-		if strings.HasPrefix(raw, KeyPrefix) {
+		if configKey.Secret != "" && subtle.ConstantTimeCompare([]byte(raw), []byte(configKey.Secret)) == 1 {
+			// Compared in constant time: a bearer token is a secret, and the
+			// time taken to reject one should not say how much of it was right.
+			u, err := users.ByEmail(c.Request.Context(), configKey.Email)
+			if err != nil {
+				onFail(c)
+				return
+			}
+			userID = u.ID
+			c.Set(byKeyContextKey, true)
+		} else if strings.HasPrefix(raw, KeyPrefix) {
 			if keys == nil {
 				onFail(c)
 				return

@@ -32,6 +32,11 @@ type Config struct {
 
 	AdminEmail    string
 	AdminPassword string
+	// AdminAPIKey is a key that lives in the configuration rather than in the
+	// database: it never expires and cannot be revoked from the interface,
+	// which is what makes it useful for the thing that has to keep working --
+	// a backup script, a monitoring probe -- and what makes it dangerous.
+	AdminAPIKey string
 }
 
 // OIDCEnabled reports whether enough OIDC settings are present to offer the
@@ -50,6 +55,10 @@ func (c *Config) AllowsDomain(domain string) bool {
 	}
 	return false
 }
+
+// minAdminKeyLength is what a never-expiring key has to be worth. 32 random
+// characters is roughly what `openssl rand -base64 24` gives.
+const minAdminKeyLength = 32
 
 // Load reads configuration from the environment, after folding in a .env file
 // when one is present.
@@ -100,6 +109,22 @@ func Load() (*Config, error) {
 	c.RefreshTTL = rd
 
 	c.PrinterURL = strings.TrimSuffix(os.Getenv("ZENITH_PRINTER_SERVICE_URL"), "/")
+
+	if key := strings.TrimSpace(os.Getenv("NEXUS_ADMIN_API_KEY")); key != "" {
+		// It acts as an account, so it needs one to act as. Starting without
+		// this would leave a key that authenticates as nobody.
+		if c.AdminEmail == "" {
+			return nil, fmt.Errorf("NEXUS_ADMIN_API_KEY needs NEXUS_ADMIN_EMAIL: " +
+				"the key acts as that account, and there is no other way to say whose it is")
+		}
+		// Short enough to guess is worse than absent: this one cannot be
+		// revoked without an edit and a restart.
+		if len(key) < minAdminKeyLength {
+			return nil, fmt.Errorf("NEXUS_ADMIN_API_KEY must be at least %d characters; "+
+				"it never expires, so a guessable one is a permanent way in", minAdminKeyLength)
+		}
+		c.AdminAPIKey = key
+	}
 
 	domains := os.Getenv("NEXUS_ALLOWED_EMAIL_DOMAINS")
 	if domains == "" {
