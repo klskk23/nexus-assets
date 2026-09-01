@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -336,7 +337,7 @@ func TestExportHonoursTheFilter(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	all, err := f.svc.Export(f.ctx, i18n.ZH, asset.ListFilter{CategoryID: f.catID, IncludeDescendants: true})
+	all, err := f.svc.Export(f.ctx, i18n.ZH, asset.ListFilter{CategoryID: f.catID, IncludeDescendants: true}, nil)
 	if err != nil {
 		t.Fatalf("export: %v", err)
 	}
@@ -351,7 +352,7 @@ func TestExportHonoursTheFilter(t *testing.T) {
 	filtered, err := f.svc.Export(f.ctx, i18n.ZH, asset.ListFilter{
 		CategoryID: f.catID, IncludeDescendants: true,
 		AttrFilters: map[string]string{"firmware": "2.2.0"},
-	})
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -362,4 +363,48 @@ func TestExportHonoursTheFilter(t *testing.T) {
 	if !strings.Contains(lines[1], "2.2.0") {
 		t.Errorf("wrong row exported: %q", lines[1])
 	}
+}
+
+// TestExportNeedsACategoryAndChoosesColumns pins the two rules that make the
+// file worth opening: which devices, and which of their fields.
+func TestExportNeedsACategoryAndChoosesColumns(t *testing.T) {
+	f := newFixture(t)
+	if _, err := f.svc.Commit(f.ctx, i18n.ZH, f.catID, f.userID, csvOf(
+		"SDWAN-X100,上海仓库,,001A2B3C4D01,2.1.3",
+	)); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// Without one the columns would be six fixed ones and nothing that tells
+	// two devices apart, so it is refused rather than half-answered.
+	if _, err := f.svc.Export(f.ctx, i18n.ZH, asset.ListFilter{}, nil); !errors.Is(err, ErrExportNeedsCategory) {
+		t.Fatalf("an export with no category should be refused, got %v", err)
+	}
+
+	filter := asset.ListFilter{CategoryID: f.catID, IncludeDescendants: true}
+	// An empty list is not the same as no list: it asks for the fixed columns
+	// alone, and a nil list would have handed back every field.
+	bare, err := f.svc.Export(f.ctx, i18n.ZH, filter, []string{})
+	if err != nil {
+		t.Fatalf("export: %v", err)
+	}
+	if strings.Contains(firstLineOf(bare), "固件版本") {
+		t.Errorf("no field was asked for, yet one was exported: %q", firstLineOf(bare))
+	}
+
+	picked, err := f.svc.Export(f.ctx, i18n.ZH, filter, []string{"firmware"})
+	if err != nil {
+		t.Fatalf("export: %v", err)
+	}
+	head := firstLineOf(picked)
+	if !strings.Contains(head, "固件版本") {
+		t.Errorf("the chosen field is missing: %q", head)
+	}
+	if strings.Contains(head, "基准 MAC") {
+		t.Errorf("a field nobody asked for was exported: %q", head)
+	}
+}
+
+func firstLineOf(body []byte) string {
+	return strings.SplitN(strings.TrimPrefix(string(body), bom), "\n", 2)[0]
 }

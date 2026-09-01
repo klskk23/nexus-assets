@@ -7,6 +7,7 @@ import { renderWithProviders } from "@/test/renderWithProviders"
 import { chooseFromMenu, openMenu } from "@/test/menu"
 import { statusRoute } from "./fixtures/statuses"
 import { chooseByLabel } from "@/test/choose"
+import { stubDownloads, type Downloads } from "@/test/downloads"
 
 const navigate = vi.fn()
 vi.mock("react-router", async () => {
@@ -29,6 +30,25 @@ vi.mock("@/lib/api", async () => {
     },
   }
 })
+
+/**
+ * Runs an export and returns what was asked for.
+ *
+ * The export is a dialog now: a category is what decides the columns, so it is
+ * chosen there rather than taken from whatever the list happened to show.
+ */
+async function exportQuery(
+  user: ReturnType<typeof userEvent.setup>,
+  dl: Downloads,
+): Promise<URLSearchParams> {
+  await user.click(screen.getByRole("button", { name: "导出 CSV" }))
+  const dialog = await screen.findByRole("dialog")
+  await chooseByLabel(user, "资产类别", "网络设备")
+  await user.click(within(dialog).getByRole("button", { name: "导出" }))
+  await waitFor(() => expect(dl.urls.some((u) => u.includes("/export.csv"))).toBe(true))
+  const url = dl.urls.find((u) => u.includes("/export.csv"))!
+  return new URLSearchParams(url.split("?")[1])
+}
 
 const categories = [
   { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", display_key: "" },
@@ -326,16 +346,20 @@ describe("Assets paging", () => {
   })
 
   // A CSV of whichever page you happened to be looking at would be a trap.
-  it("keeps paging out of the export link", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Assets />)
-    await screen.findByText(/共 137 条/)
-    await user.click(screen.getByRole("link", { name: "2" }))
+  it("keeps paging out of the export", async () => {
+    const dl = stubDownloads()
+    try {
+      const user = userEvent.setup()
+      renderWithProviders(<Assets />)
+      await screen.findByText(/共 137 条/)
+      await user.click(screen.getByRole("link", { name: "2" }))
 
-    const href = screen.getByRole("link", { name: "导出 CSV" }).getAttribute("href")!
-    const params = new URLSearchParams(href.split("?")[1])
-    expect(params.get("limit")).toBeNull()
-    expect(params.get("offset")).toBeNull()
+      const params = await exportQuery(user, dl)
+      expect(params.get("limit")).toBeNull()
+      expect(params.get("offset")).toBeNull()
+    } finally {
+      dl.restore()
+    }
   })
 
   it("draws no pager when everything fits on one page", async () => {
@@ -382,14 +406,18 @@ describe("Assets owner filter", () => {
   })
 
   // Export follows the filters, and this is one of them.
-  it("carries the owner into the export link", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+  it("carries the owner into the export", async () => {
+    const dl = stubDownloads()
+    try {
+      const user = userEvent.setup()
+      renderWithProviders(<Assets />)
+      await screen.findByText(/共 1 条/)
 
-    await chooseByLabel(user, "负责人", "张三")
-    const href = screen.getByRole("link", { name: "导出 CSV" }).getAttribute("href")!
-    expect(new URLSearchParams(href.split("?")[1]).get("owner_id")).toBe("u2")
+      await chooseByLabel(user, "负责人", "张三")
+      expect((await exportQuery(user, dl)).get("owner_id")).toBe("u2")
+    } finally {
+      dl.restore()
+    }
   })
 })
 
@@ -415,14 +443,18 @@ describe("Assets holder filter", () => {
     })
   })
 
-  it("carries the holder into the export link", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+  it("carries the holder into the export", async () => {
+    const dl = stubDownloads()
+    try {
+      const user = userEvent.setup()
+      renderWithProviders(<Assets />)
+      await screen.findByText(/共 1 条/)
 
-    await chooseByLabel(user, "持有方", "上海仓库")
-    const href = screen.getByRole("link", { name: "导出 CSV" }).getAttribute("href")!
-    expect(new URLSearchParams(href.split("?")[1]).get("holder_id")).toBe("loc")
+      await chooseByLabel(user, "持有方", "上海仓库")
+      expect((await exportQuery(user, dl)).get("holder_id")).toBe("loc")
+    } finally {
+      dl.restore()
+    }
   })
 })
 

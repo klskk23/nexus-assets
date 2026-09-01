@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
@@ -118,8 +119,24 @@ func (s *Server) exportCSV(c *gin.Context) {
 		}
 	}
 
-	body, err := s.importer.Export(c.Request.Context(), LangOf(c), f)
+	// Absent means every field the category has; present -- even empty --
+	// means exactly these, so "only the fixed columns" can be asked for.
+	var keys []string
+	if raw, ok := c.GetQuery("fields"); ok {
+		keys = []string{}
+		for _, k := range strings.Split(raw, ",") {
+			if k = strings.TrimSpace(k); k != "" {
+				keys = append(keys, k)
+			}
+		}
+	}
+
+	body, err := s.importer.Export(c.Request.Context(), LangOf(c), f, keys)
 	if err != nil {
+		if errors.Is(err, importer.ErrExportNeedsCategory) {
+			FailField(c, http.StatusUnprocessableEntity, "category_id", i18n.KeyExportNeedCat)
+			return
+		}
 		FailErr(c, err)
 		return
 	}

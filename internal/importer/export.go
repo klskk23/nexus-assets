@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
 
 	"github.com/klskk23/nexus-assets/internal/asset"
@@ -16,12 +17,28 @@ import (
 // a mistaken filter cannot try to stream the entire database.
 const exportLimit = 10000
 
+// ErrExportNeedsCategory is returned when an export is asked for without one.
+//
+// A category is what decides the columns: field keys are that category's own
+// vocabulary, so a mixed export can only ever be the six fixed columns, and a
+// spreadsheet of devices with none of what makes them different is not the
+// file anybody meant to ask for.
+var ErrExportNeedsCategory = errors.New("a category is required")
+
 // Export renders the assets matching a filter as CSV.
 //
 // It takes the same filter the list page uses, so what is exported is exactly
 // what the person is looking at -- an export that quietly ignored the filters
 // would be worse than no export at all.
-func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter) ([]byte, error) {
+//
+// keys chooses the custom columns: nil takes every field bound to the
+// category, and a non-nil list narrows to those keys. Empty and nil are
+// deliberately different -- "just the fixed columns" is a thing to be able to
+// ask for, and it is not the same request as not having said anything.
+func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter, keys []string) ([]byte, error) {
+	if f.CategoryID == "" {
+		return nil, i18n.Wrap(ErrExportNeedsCategory, i18n.KeyExportNeedCat)
+	}
 	f.Offset = 0
 	f.Limit = exportLimit
 
@@ -30,15 +47,27 @@ func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter
 		return nil, err
 	}
 
-	// Custom columns come from the filtered category when there is one;
-	// otherwise only the fixed columns are meaningful across mixed categories.
-	var fields []model.BoundField
-	if f.CategoryID != "" {
-		fields, err = s.schema.EffectiveFields(ctx, f.CategoryID)
-		if err != nil {
-			return nil, err
+	fields, err := s.schema.EffectiveFields(ctx, f.CategoryID)
+	if err != nil {
+		return nil, err
+	}
+	fields = schema.ActiveFields(fields)
+	if keys != nil {
+		want := map[string]bool{}
+		for _, k := range keys {
+			want[k] = true
 		}
-		fields = schema.ActiveFields(fields)
+		// Filtered rather than reordered: the schema's order is the one the
+		// category page and the import template already use, and a CSV whose
+		// columns move about depending on the order boxes were ticked in is
+		// one nobody can write a formula against.
+		kept := fields[:0]
+		for _, fd := range fields {
+			if want[fd.Key] {
+				kept = append(kept, fd)
+			}
+		}
+		fields = kept
 	}
 
 	users, err := s.users.List(ctx)

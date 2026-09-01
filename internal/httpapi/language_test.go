@@ -115,11 +115,13 @@ func TestFieldErrorsAreTranslatedButTheirKeysAreNot(t *testing.T) {
 func TestCSVHeadersFollowTheLanguage(t *testing.T) {
 	h := newHarness(t)
 
-	en := h.doLang(t, "en", http.MethodGet, "/api/export.csv", "").Body.String()
+	// A category, because the columns are that category's own vocabulary and
+	// an export without one is refused.
+	en := h.doLang(t, "en", http.MethodGet, "/api/export.csv?category_id="+h.catID, "").Body.String()
 	if !strings.Contains(en, "Asset number") || !strings.Contains(en, "Holder") {
 		t.Errorf("english export header: %q", firstLine(en))
 	}
-	zh := h.doLang(t, "zh", http.MethodGet, "/api/export.csv", "").Body.String()
+	zh := h.doLang(t, "zh", http.MethodGet, "/api/export.csv?category_id="+h.catID, "").Body.String()
 	if !strings.Contains(zh, "资产编号") {
 		t.Errorf("chinese export header: %q", firstLine(zh))
 	}

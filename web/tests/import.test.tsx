@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event"
 import { Import } from "@/routes/Import"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { chooseByLabel } from "@/test/choose"
+import { stubDownloads } from "@/test/downloads"
 
 const get = vi.fn()
 vi.mock("@/lib/api", async () => {
@@ -45,18 +46,27 @@ async function uploadAndPreview(user: ReturnType<typeof userEvent.setup>) {
 
 describe("Import page", () => {
   it("offers the template only once a category is chosen", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Import />)
+    const dl = stubDownloads()
+    try {
+      const user = userEvent.setup()
+      renderWithProviders(<Import />)
 
-    // Before a category is chosen the template is not a live link at all.
-    expect(await screen.findByRole("button", { name: "下载模板" })).toBeDisabled()
-    expect(screen.queryByRole("link", { name: "下载模板" })).not.toBeInTheDocument()
+      expect(await screen.findByRole("button", { name: "下载模板" })).toBeDisabled()
 
-    await chooseCategory(user)
-    expect(screen.getByRole("link", { name: "下载模板" })).toHaveAttribute(
-      "href",
-      "/api/categories/rt/import-template.csv",
-    )
+      await chooseCategory(user)
+      const button = screen.getByRole("button", { name: "下载模板" })
+      expect(button).toBeEnabled()
+
+      // Fetched, not linked: a download navigation carries no Authorization
+      // header, which the browser reports as a download that simply failed.
+      await user.click(button)
+      await waitFor(() =>
+        expect(dl.urls).toContain("/api/categories/rt/import-template.csv"),
+      )
+      expect(dl.saved).toHaveLength(1)
+    } finally {
+      dl.restore()
+    }
   })
 
   it("lists every failing line with its reason and blocks the commit", async () => {

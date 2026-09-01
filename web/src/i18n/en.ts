@@ -449,6 +449,17 @@ export const enImport: typeof zhImport = {
 
   export: "Export CSV",
   exportHint: "Exports what the current filters show",
+  exportTitle: "Export assets",
+  exportIntro: "Exports the assets in this category that the current filters show.",
+  exportCategory: "Category",
+  exportPickCategory: "Choose a category",
+  exportFields: "Fields to export",
+  exportFieldsHint: "The fixed columns (number, category, status, holder, owner, created) are always exported.",
+  exportNoFields: "This category has no fields to choose from",
+  exportAll: "All",
+  exportNone: "None",
+  exportGo: "Export",
+  exportFailed: "The export failed",
 }
 
 export const enAudit: typeof zhAudit = {

@@ -933,13 +933,26 @@ paths:
   /export.csv:
     get:
       tags: [import]
-      summary: 按当前筛选条件导出。查询参数与 GET /assets 一致
+      summary: >
+        按当前筛选条件导出。其余查询参数与 GET /assets 一致。
+        **必须指定类别**：固定六列之外的列是那个类别自己的字段，
+        混着导出的表格里没有任何一列能把两台设备区分开。
+      parameters:
+        - { name: category_id, in: query, required: true, schema: { type: string } }
+        - name: fields
+          in: query
+          schema: { type: string }
+          description: >
+            逗号分隔的字段键，决定导出哪几列自定义字段。
+            **不给**＝该类别的全部字段；**给空串**＝一列都不要，只留固定六列。
+            两者是不同的请求，不要合并。
       responses:
         "200":
           description: OK
           content:
             text/csv:
               schema: { type: string }
+        "422": { description: 没有指定类别 }
 
 components:
   parameters:

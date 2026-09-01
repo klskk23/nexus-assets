@@ -21,6 +21,7 @@ import {
   transferActions,
   type TransferAction,
 } from "@/features/transfers/TransferDialog"
+import { ExportDialog } from "@/features/assets/ExportDialog"
 import { NewAssetDialog } from "@/features/assets/NewAssetDialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -32,11 +33,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -107,10 +104,13 @@ export function Assets() {
   const [page, setPage] = useState(0)
   // The overview's quick-entry card links here with a category already picked.
   const [creating, setCreating] = useState(searchParams.get("new") === "1")
+  const [exporting, setExporting] = useState(false)
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
   // A context menu closes as it fires, so what it starts is parked here and
   // rendered outside the table.
-  const [rowTransfer, setRowTransfer] = useState<{ id: string; action: TransferAction } | null>(null)
+  const [rowTransfer, setRowTransfer] = useState<{ id: string; action: TransferAction } | null>(
+    null,
+  )
   const [deleting, setDeleting] = useState<Asset | null>(null)
 
   const removeOne = useMutation({
@@ -209,10 +209,10 @@ export function Assets() {
     <div className="grid gap-5">
       <div className="flex flex-wrap items-end gap-3">
         <h1 className="mr-auto text-xl font-semibold">{t.assets.title}</h1>
-        <Button variant="outline" asChild>
-          <a href={`/api/export.csv?${params.toString()}`} download title={tImport.exportHint}>
-            {tImport.export}
-          </a>
+        {/* Not a link: every credential this app has travels in a header, and
+            a plain download navigation carries none of them. */}
+        <Button variant="outline" onClick={() => setExporting(true)} title={tImport.exportHint}>
+          {tImport.export}
         </Button>
         <Button onClick={() => setCreating(true)}>{t.assets.newAsset}</Button>
       </div>
@@ -478,21 +478,23 @@ export function Assets() {
         </Alert>
       )}
 
+      <ExportDialog
+        open={exporting}
+        onOpenChange={setExporting}
+        params={params}
+        categoryId={categoryId}
+        includeDescendants={includeDescendants}
+      />
+
       <NewAssetDialog
         open={creating}
         onOpenChange={setCreating}
         initialCategoryID={searchParams.get("category_id") ?? undefined}
       />
 
-      <ActionBar
-        selected={selected}
-        onClear={() => setSelected([])}
-        onDone={setDone}
-      />
+      <ActionBar selected={selected} onClear={() => setSelected([])} onDone={setDone} />
 
-      {printingOne && (
-        <PrintDialog ids={[printingOne]} onClose={() => setPrintingOne(null)} />
-      )}
+      {printingOne && <PrintDialog ids={[printingOne]} onClose={() => setPrintingOne(null)} />}
 
       {/* Driven by the context menu, which has already closed by the time
           either of these should appear. */}

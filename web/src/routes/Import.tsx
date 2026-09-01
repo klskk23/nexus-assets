@@ -2,7 +2,7 @@ import { AlertCircleIcon } from "lucide-react"
 import { useRef, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 
-import { api, ApiError, getToken } from "@/lib/api"
+import { api, ApiError, download, getToken } from "@/lib/api"
 import type { Category } from "@/lib/types"
 import { t, tImport } from "@/i18n"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -71,6 +71,8 @@ export function Import() {
   const [file, setFile] = useState<File | null>(null)
   const [report, setReport] = useState<Report | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
+  const [templateError, setTemplateError] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const categories = useQuery({
@@ -143,20 +145,33 @@ export function Import() {
                 </SelectContent>
               </Select>
             </Field>
-            {/* An anchor ignores `disabled`, so without a category selected we
-                render a real button instead of a live link to a broken URL. */}
-            {categoryID === "" ? (
-              <Button variant="outline" className="mb-0.5" disabled>
-                {tImport.download}
-              </Button>
-            ) : (
-              <Button variant="outline" className="mb-0.5" asChild>
-                <a href={`/api/categories/${categoryID}/import-template.csv`} download>
-                  {tImport.download}
-                </a>
-              </Button>
-            )}
+            {/* Fetched rather than linked: the token lives in a header, and a
+                download navigation carries none, which the browser reports as
+                a failed download with nothing to read. */}
+            <Button
+              variant="outline"
+              className="mb-0.5"
+              disabled={categoryID === "" || downloading}
+              onClick={() => {
+                setDownloading(true)
+                setTemplateError(null)
+                download(`/categories/${categoryID}/import-template.csv`, "import-template.csv")
+                  .catch((e) =>
+                    setTemplateError(e instanceof ApiError ? e.message : t.common.error),
+                  )
+                  .finally(() => setDownloading(false))
+              }}
+            >
+              {downloading && <Spinner data-icon="inline-start" />}
+              {tImport.download}
+            </Button>
           </div>
+          {templateError && (
+            <Alert variant="destructive">
+              <AlertCircleIcon />
+              <AlertDescription>{templateError}</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
@@ -250,7 +265,7 @@ export function Import() {
             <div>
               <Button disabled={!canCommit || commit.isPending} onClick={() => commit.mutate()}>
                 {commit.isPending && <Spinner data-icon="inline-start" aria-hidden />}
-              {commit.isPending ? tImport.committing : tImport.commit}
+                {commit.isPending ? tImport.committing : tImport.commit}
               </Button>
             </div>
           </CardContent>

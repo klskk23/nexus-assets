@@ -54,6 +54,7 @@ const (
 	KeyTimeShapeRFC3339  = "req.time_rfc3339"
 	KeyTimeShape         = "req.time_invalid"
 	KeyImportNeedCat     = "req.import_needs_category"
+	KeyExportNeedCat     = "req.export_needs_category"
 	KeyImportNeedFile    = "req.import_needs_file"
 	KeyStatusUnknown     = "req.status_unknown"
 	KeyConfirmSN         = "req.confirm_sn"

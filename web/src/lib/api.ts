@@ -177,6 +177,79 @@ async function request<T>(method: string, path: string, body?: unknown, retry = 
   return payload as T
 }
 
+/**
+ * Reads the filename the server asked for, falling back to the caller's.
+ *
+ * Both spellings appear in one header: `filename*=UTF-8''...` is the one that
+ * survives non-ASCII, and it wins when present, which is why it is read first.
+ */
+function filenameFrom(disposition: string | null, fallback: string): string {
+  if (!disposition) return fallback
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)
+  if (encoded?.[1]) {
+    try {
+      return decodeURIComponent(encoded[1])
+    } catch {
+      /* a malformed header is not a reason to refuse the file */
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(disposition)
+  return plain?.[1] ?? fallback
+}
+
+/**
+ * Fetches a file and hands it to the browser as a download.
+ *
+ * It goes through fetch rather than being a link because every credential this
+ * app has lives in a header: a plain `<a href download>` is a navigation, it
+ * carries no Authorization, and the server answered 401 -- which the browser
+ * reports as a download that failed, with no way to read why. Refreshing an
+ * expired token on the way is the same reason: an export is exactly the kind
+ * of thing somebody clicks after leaving a tab open all morning.
+ */
+export async function download(path: string, fallback: string, retry = true): Promise<void> {
+  const headers: Record<string, string> = { "Accept-Language": getLang() }
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const res = await fetch(`/api${path}`, { headers })
+
+  if (res.status === 401 && retry) {
+    if (await refreshSession()) return download(path, fallback, false)
+    setToken(null)
+    onSessionLost()
+  }
+
+  if (!res.ok) {
+    const text = await res.text()
+    let payload: { error?: { code?: string; message?: string } } | null = null
+    try {
+      payload = text ? JSON.parse(text) : null
+    } catch {
+      /* not the error envelope -- a proxy's own page, say */
+    }
+    const e = payload?.error ?? {}
+    throw new ApiError(res.status, e.code ?? "internal_error", e.message ?? t.common.requestFailed)
+  }
+
+  const blob = await res.blob()
+  const name = filenameFrom(res.headers.get("Content-Disposition"), fallback)
+  const url = URL.createObjectURL(blob)
+  try {
+    const a = document.createElement("a")
+    a.href = url
+    a.download = name
+    // In the document because Firefox ignores a click on a detached node.
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  } finally {
+    // Not straight away: the browser has to read the blob first, and revoking
+    // it in the same tick cancels the download it was just given.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  }
+}
+
 export const api = {
   get: <T>(path: string) => request<T>("GET", path),
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),

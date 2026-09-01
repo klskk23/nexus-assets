@@ -422,6 +422,17 @@ export const zhImport = {
 
   export: "导出 CSV",
   exportHint: "按当前筛选条件导出",
+  exportTitle: "导出资产",
+  exportIntro: "导出的是当前筛选条件下、该类别里的资产。",
+  exportCategory: "资产类别",
+  exportPickCategory: "请选择类别",
+  exportFields: "导出字段",
+  exportFieldsHint: "固定列（编号、类别、状态、持有方、负责人、建档时间）始终导出。",
+  exportNoFields: "这个类别没有可选字段",
+  exportAll: "全选",
+  exportNone: "全不选",
+  exportGo: "导出",
+  exportFailed: "导出失败",
 }
 
 export const zhAudit = {
