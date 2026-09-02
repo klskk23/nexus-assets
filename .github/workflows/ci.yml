@@ -21,6 +21,18 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
+      # ---- The frontend, before anything Go ----
+      #
+      # `web/embed.go` embeds `web/dist`, so every Go step -- vet, lint, test --
+      # needs the bundle to exist. It is gitignored, so a developer's machine
+      # always has one and a clean checkout never does: the first run of this
+      # workflow died in `go vet` with "pattern all:dist: no matching files".
+      - name: install web deps
+        run: cd web && npm ci
+
+      - name: build the frontend
+        run: cd web && npm run build && test -f dist/index.html
+
       # ---- Gate 1: Go formatting, vet and lint ----
       - name: gofmt
         run: test -z "$(gofmt -l ./cmd ./internal ./migrations)" || (gofmt -l ./cmd ./internal ./migrations && exit 1)
@@ -33,9 +45,6 @@ jobs:
           version: latest
 
       # ---- Gate 2: TypeScript and ESLint ----
-      - name: install web deps
-        run: cd web && npm ci
-
       - name: tsc
         run: cd web && npx tsc --noEmit
 
@@ -75,7 +84,6 @@ jobs:
           NEXUS_ALLOWED_EMAIL_DOMAINS: example.com
           NEXUS_DB_PATH: ${{ runner.temp }}/verify.db
         run: |
-          cd web && npm run build && cd ..
           CGO_ENABLED=0 go build -o nexus ./cmd/nexus
           ./nexus verify
 
