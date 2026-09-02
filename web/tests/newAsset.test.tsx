@@ -206,7 +206,12 @@ describe("NewAssetDialog", () => {
     await waitFor(() =>
       expect(screen.getByRole("combobox", { name: "状态" })).toHaveTextContent("在库"),
     )
-    expect(screen.getByRole("combobox", { name: "持有方" })).toHaveTextContent("管理员")
+    // Awaited, not asserted straight away: who is signed in arrives from /me
+    // on its own schedule, and the fallback lands when it does. Reading it in
+    // the same tick passed on a fast machine and failed on CI.
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "持有方" })).toHaveTextContent("管理员"),
+    )
   })
 
   it("goes to the new device after recording it", async () => {
