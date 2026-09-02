@@ -172,7 +172,7 @@ var catalogs = map[Lang]map[string]string{
 		KeyColCreatedAt: "创建时间",
 		KeyColModel:     "型号",
 		KeyColHolderLoc: "持有方（名称）",
-		KeyColNote:      "备注",
+		KeyColNote:      "设备备注",
 		KeyColRequired:  "（必填）",
 	},
 
@@ -343,7 +343,7 @@ var catalogs = map[Lang]map[string]string{
 		KeyColCreatedAt: "Created",
 		KeyColModel:     "Model",
 		KeyColHolderLoc: "Holder (name)",
-		KeyColNote:      "Note",
+		KeyColNote:      "Device note",
 		KeyColRequired:  " (required)",
 	},
 }

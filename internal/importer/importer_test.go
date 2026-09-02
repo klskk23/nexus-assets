@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,10 +18,11 @@ import (
 )
 
 type fixture struct {
-	svc    *Service
-	assets *asset.Service
-	schema *schema.Store
-	ctx    context.Context
+	svc     *Service
+	assets  *asset.Service
+	schema  *schema.Store
+	holders *holder.Store
+	ctx     context.Context
 
 	userID, locID, catID, modelName string
 }
@@ -49,7 +51,10 @@ func newFixture(t *testing.T) *fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	loc, err := hs.Create(ctx, holder.CreateInput{Type: model.EntityLocation, Name: "上海仓库"})
+	// With a note of its own, so a test can tell the two notes apart.
+	loc, err := hs.Create(ctx, holder.CreateInput{
+		Type: model.EntityLocation, Name: "上海仓库", Note: "货架 A1-A9",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +98,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 
 	return &fixture{
-		svc: New(db, sch, hs, us, as), assets: as, schema: sch, ctx: ctx,
+		svc: New(db, sch, hs, us, as), assets: as, schema: sch, holders: hs, ctx: ctx,
 		userID: u.ID, locID: loc.ID, catID: cat.ID, modelName: "SDWAN-X100",
 	}
 }
@@ -407,4 +412,44 @@ func TestExportNeedsACategoryAndChoosesColumns(t *testing.T) {
 
 func firstLineOf(body []byte) string {
 	return strings.SplitN(strings.TrimPrefix(string(body), bom), "\n", 2)[0]
+}
+
+// TestImportedNoteLandsOnTheDevice pins whose note the template's note column
+// is. It sits directly under "持有方（名称）" on the sheet and was read as the
+// holder's; before that it went on the create event, where it could be seen
+// once in the timeline and never found again. It is the device's own note.
+func TestImportedNoteLandsOnTheDevice(t *testing.T) {
+	f := newFixture(t)
+
+	if _, err := f.svc.Commit(f.ctx, i18n.ZH, f.catID, f.userID, csvOf(
+		"SDWAN-X100,上海仓库,到货时外壳有凹痕,001A2B3C9001,2.2.1",
+		"SDWAN-X100,上海仓库,,001A2B3C9002,2.2.0",
+	)); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	res, err := f.assets.List(f.ctx, asset.ListFilter{Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	byMAC := map[string]string{}
+	for _, a := range res.Items {
+		byMAC[fmt.Sprintf("%v", a.Attrs["mac"])] = a.Note
+	}
+	if got := byMAC["001A2B3C9001"]; got != "到货时外壳有凹痕" {
+		t.Errorf("the note should be on the device it was written beside, got %q", got)
+	}
+	// Per row, not per file: an empty cell leaves that device without one.
+	if got := byMAC["001A2B3C9002"]; got != "" {
+		t.Errorf("a blank note cell should leave the note empty, got %q", got)
+	}
+
+	// And the holder keeps its own note, which is a different thing entirely.
+	loc, err := f.holders.Get(f.ctx, f.locID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loc.Note != "货架 A1-A9" {
+		t.Errorf("the import wrote to the holder's note: %q", loc.Note)
+	}
 }

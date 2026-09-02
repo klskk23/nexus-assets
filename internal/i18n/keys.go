@@ -191,6 +191,10 @@ const (
 	KeyColCreatedAt = "csv.created_at"
 	KeyColModel     = "csv.model"
 	KeyColHolderLoc = "csv.holder_location"
-	KeyColNote      = "csv.note"
-	KeyColRequired  = "csv.required_suffix"
+	// The device's own note. Named for what it belongs to, because in the
+	// import template it sits directly under "持有方（名称）" and read as
+	// "the holder's note" to more than one person -- and a holder does have
+	// a note of its own, which this is not.
+	KeyColNote     = "csv.note"
+	KeyColRequired = "csv.required_suffix"
 )
