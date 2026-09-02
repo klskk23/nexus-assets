@@ -12,7 +12,15 @@ vi.mock("@/lib/api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api")
   return {
     ...actual,
-    api: { get: (p: string) => get(p), post: vi.fn(), patch: vi.fn(), del: vi.fn() },
+    api: {
+      get: (p: string) => get(p),
+      post: vi.fn(),
+      patch: vi.fn(),
+      del: vi.fn(),
+      // The real one: the upload goes through the client now, and what these
+      // tests assert is the request it makes.
+      upload: actual.api.upload,
+    },
     getToken: () => "t0k",
   }
 })
@@ -31,7 +39,15 @@ beforeEach(() => {
 })
 
 function ok(body: unknown, status = 200) {
-  return Promise.resolve({ ok: status < 400, status, json: () => Promise.resolve(body) })
+  return Promise.resolve({
+    ok: status < 400,
+    status,
+    // The client reads the body as text and parses it, so that a response
+    // which is not JSON at all -- a proxy's own error page -- is still an
+    // error it can describe.
+    text: () => Promise.resolve(JSON.stringify(body)),
+    json: () => Promise.resolve(body),
+  })
 }
 
 async function chooseCategory(user: ReturnType<typeof userEvent.setup>) {
@@ -60,13 +76,37 @@ describe("Import page", () => {
       // Fetched, not linked: a download navigation carries no Authorization
       // header, which the browser reports as a download that simply failed.
       await user.click(button)
-      await waitFor(() =>
-        expect(dl.urls).toContain("/api/categories/rt/import-template.csv"),
-      )
+      await waitFor(() => expect(dl.urls).toContain("/api/categories/rt/import-template.csv"))
       expect(dl.saved).toHaveLength(1)
     } finally {
       dl.restore()
     }
+  })
+
+  // An import is a long session with a file picker in the middle of it, which
+  // is precisely where a fifteen-minute token runs out. It used to be the one
+  // request that did not renew: the upload had its own fetch beside the client.
+  it("renews an expired session and sends the file again", async () => {
+    let expired = true
+    fetchMock.mockImplementation((url: string) => {
+      if (String(url).includes("/auth/refresh")) return ok({ token: "fresh" })
+      if (expired) {
+        expired = false
+        return ok({ error: { code: "unauthenticated", message: "登录状态已失效" } }, 401)
+      }
+      return ok({ total: 3, ok: 3, rows: [] })
+    })
+
+    const user = userEvent.setup()
+    renderWithProviders(<Import />)
+    await uploadAndPreview(user)
+
+    expect(await screen.findByText("全部 3 行校验通过")).toBeInTheDocument()
+    const previews = fetchMock.mock.calls.filter(([u]) => String(u) === "/api/import/preview")
+    expect(previews).toHaveLength(2)
+    // The same file, not an empty body: a replayed upload that dropped its
+    // attachment would import nothing and say it succeeded.
+    expect((previews[1][1] as RequestInit).body).toBeInstanceOf(FormData)
   })
 
   it("lists every failing line with its reason and blocks the commit", async () => {
@@ -122,7 +162,9 @@ describe("Import page", () => {
     renderWithProviders(<Import />)
     await uploadAndPreview(user)
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/import/preview", expect.any(Object)))
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith("/api/import/preview", expect.any(Object)),
+    )
     const [, init] = fetchMock.mock.calls[0]
     const body = (init as { body: FormData }).body
     expect(body.get("category_id")).toBe("rt")
@@ -140,8 +182,15 @@ describe("Import page", () => {
     fetchMock.mockReturnValueOnce(
       ok(
         {
-          error: { code: "validation_failed", message: "有 1 行未通过校验，本次导入未写入任何数据" },
-          report: { total: 2, ok: 1, rows: [{ line: 4, status: "error", fields: { mac: "已被占用" } }] },
+          error: {
+            code: "validation_failed",
+            message: "有 1 行未通过校验，本次导入未写入任何数据",
+          },
+          report: {
+            total: 2,
+            ok: 1,
+            rows: [{ line: 4, status: "error", fields: { mac: "已被占用" } }],
+          },
         },
         422,
       ),

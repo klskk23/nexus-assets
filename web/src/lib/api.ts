@@ -54,6 +54,15 @@ export class ApiError extends Error {
     this.name = "ApiError"
   }
 
+  /**
+   * The whole envelope, for the caller that needs more than the message.
+   *
+   * A refused import carries its report: which lines are in the way is the
+   * entire content of that refusal, and it would be lost if the error only
+   * kept the sentence at the top of it.
+   */
+  payload?: unknown
+
   /** True when another writer got there first and the client must reload. */
   get isVersionConflict() {
     return this.code === "version_conflict"
@@ -141,12 +150,15 @@ async function request<T>(method: string, path: string, body?: unknown, retry = 
   const headers: Record<string, string> = { "Accept-Language": getLang() }
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
-  if (body !== undefined) headers["Content-Type"] = "application/json"
+  // A multipart body sets its own Content-Type, boundary and all; naming it
+  // here would produce a header the server cannot parse the body against.
+  const form = body instanceof FormData
+  if (body !== undefined && !form) headers["Content-Type"] = "application/json"
 
   const res = await fetch(`/api${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : form ? body : JSON.stringify(body),
   })
 
   // An expired access token is the normal state of affairs now, not a
@@ -164,7 +176,7 @@ async function request<T>(method: string, path: string, body?: unknown, retry = 
 
   if (!res.ok) {
     const e = payload?.error ?? {}
-    throw new ApiError(
+    const err = new ApiError(
       res.status,
       e.code ?? "internal_error",
       e.message ?? t.common.requestFailed,
@@ -173,6 +185,8 @@ async function request<T>(method: string, path: string, body?: unknown, retry = 
       e.blockers,
       e.total,
     )
+    err.payload = payload
+    throw err
   }
   return payload as T
 }
@@ -253,6 +267,14 @@ export async function download(path: string, fallback: string, retry = true): Pr
 export const api = {
   get: <T>(path: string) => request<T>("GET", path),
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
+  /**
+   * A multipart POST, on the same terms as everything else.
+   *
+   * It used to be its own fetch beside the client, which meant it alone did
+   * not renew an expired token -- an import is a long session with a file
+   * picker in the middle of it, so that is precisely where the token runs out.
+   */
+  upload: <T>(path: string, form: FormData) => request<T>("POST", path, form),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
   del: <T>(path: string) => request<T>("DELETE", path),
 }

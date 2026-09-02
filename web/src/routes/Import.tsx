@@ -2,7 +2,7 @@ import { AlertCircleIcon } from "lucide-react"
 import { useRef, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 
-import { api, ApiError, download, getToken } from "@/lib/api"
+import { api, ApiError, download } from "@/lib/api"
 import type { Category } from "@/lib/types"
 import { t, tImport } from "@/i18n"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -42,28 +42,23 @@ interface Report {
   rows: RowResult[]
 }
 
-/** Sends a multipart upload; the API client only speaks JSON. */
-async function upload(path: string, categoryID: string, file: File): Promise<Report> {
+/** The two steps send the same thing: a category and a file. */
+function upload(path: string, categoryID: string, file: File): Promise<Report> {
   const body = new FormData()
   body.append("category_id", categoryID)
   body.append("file", file)
+  return api.upload<Report>(path, body)
+}
 
-  const token = getToken()
-  const res = await fetch(`/api${path}`, {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body,
-  })
-  const payload = await res.json()
-  if (!res.ok) {
-    const e = payload?.error ?? {}
-    // A refused commit still carries the report, so the page can keep showing
-    // exactly which lines are in the way.
-    const err = new ApiError(res.status, e.code ?? "internal_error", e.message ?? t.common.error)
-    ;(err as ApiError & { report?: Report }).report = payload?.report
-    throw err
-  }
-  return payload as Report
+/**
+ * The report a refusal carries.
+ *
+ * A refused commit is not an empty answer: which lines are in the way is the
+ * whole content of it, and the page keeps showing them.
+ */
+function reportOf(e: unknown): Report | undefined {
+  if (!(e instanceof ApiError)) return undefined
+  return (e.payload as { report?: Report } | undefined)?.report
 }
 
 export function Import() {
@@ -101,8 +96,8 @@ export function Import() {
       setBanner(tImport.done(r.ok ?? 0))
     },
     onError: (e) => {
-      const withReport = e as ApiError & { report?: Report }
-      if (withReport.report) setReport(withReport.report)
+      const refused = reportOf(e)
+      if (refused) setReport(refused)
       setBanner(e instanceof ApiError ? e.message : t.common.error)
     },
   })
