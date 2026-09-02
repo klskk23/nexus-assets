@@ -101,6 +101,10 @@ jobs:
       - name: build and verify
         env:
           NEXUS_JWT_SECRET: release-gate-secret-not-for-any-deployment
+          # Required too: the admission whitelist has no default, on purpose --
+          # a deployment that let every domain in by omission is the one
+          # mistake this setting exists to make impossible.
+          NEXUS_ALLOWED_EMAIL_DOMAINS: example.com
           NEXUS_DB_PATH: ${{ runner.temp }}/verify.db
         run: |
           cd web && npm run build && cd ..

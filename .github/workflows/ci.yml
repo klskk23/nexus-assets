@@ -61,7 +61,19 @@ jobs:
         run: cd web && npx vitest run
 
       # ---- Gate 5: reconciliation ----
+      #
+      # On a database this step creates, with a throwaway secret. The process
+      # refuses to start without one rather than generating a key that would
+      # change on every restart -- so a runner with no .env has to supply it,
+      # and locally this gate only passed by reading the developer's own.
       - name: build and verify
+        env:
+          NEXUS_JWT_SECRET: ci-gate-secret-not-for-any-deployment
+          # Required too: the admission whitelist has no default, on purpose --
+          # a deployment that let every domain in by omission is the one
+          # mistake this setting exists to make impossible.
+          NEXUS_ALLOWED_EMAIL_DOMAINS: example.com
+          NEXUS_DB_PATH: ${{ runner.temp }}/verify.db
         run: |
           cd web && npm run build && cd ..
           CGO_ENABLED=0 go build -o nexus ./cmd/nexus
