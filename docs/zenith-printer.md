@@ -1,5 +1,7 @@
 # 对接 zenith-printer
 
+*English: [`zenith-printer.en.md`](./zenith-printer.en.md)*
+
 打标签这件事不在本系统里做。nexus-assets 记录设备，zenith-printer 设计标签、
 连打印机、管作业；两个产品各自能独立跑，配上对方之后才出现「勾几台设备、一键打印」。
 
