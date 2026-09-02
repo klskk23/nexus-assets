@@ -15,7 +15,7 @@ import (
 )
 
 const assetCols = `id, category_id, model_id, status, owner_id, holder_type, holder_id,
-	home_holder_type, home_holder_id, home_owner_id, attrs, version, created_at, updated_at`
+	home_holder_type, home_holder_id, home_owner_id, attrs, note, version, created_at, updated_at`
 
 func scanAsset(row interface{ Scan(...any) error }) (model.Asset, error) {
 	var a model.Asset
@@ -24,7 +24,7 @@ func scanAsset(row interface{ Scan(...any) error }) (model.Asset, error) {
 	var holderType, holderID string
 	if err := row.Scan(&a.ID, &a.CategoryID, &modelID, &a.Status, &a.OwnerID,
 		&holderType, &holderID, &homeType, &homeID, &homeOwner,
-		&attrs, &a.Version, &created, &updated); err != nil {
+		&attrs, &a.Note, &a.Version, &created, &updated); err != nil {
 		return a, err
 	}
 	a.ModelID = store.StrPtr(modelID)

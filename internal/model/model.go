@@ -296,6 +296,10 @@ type Asset struct {
 	HomeOwnerID *string        `json:"-"`
 	HomeOwner   *User          `json:"home_owner,omitempty"`
 	Attrs       map[string]any `json:"attrs"`
+	// Note is a free sentence about this device, belonging to no category and
+	// no scheme. Not the note on a transfer: that one explains a movement and
+	// never changes, this one describes the device as it stands.
+	Note string `json:"note"`
 	// ArchivedAttrs holds keys that are no longer part of the category's
 	// effective field set. They are kept, shown read-only, and never validated.
 	ArchivedAttrs map[string]any `json:"archived_attrs,omitempty"`

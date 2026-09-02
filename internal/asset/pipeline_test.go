@@ -679,3 +679,57 @@ func TestDeleteManyIsAllOrNothing(t *testing.T) {
 		t.Errorf("the whole batch should have rolled back, total = %d", res.Total)
 	}
 }
+
+// TestAssetNoteIsKeptUnlessMentioned covers the built-in note: it belongs to
+// the device rather than to any category, and an edit that says nothing about
+// it must leave it alone -- otherwise a transfer or an attribute change would
+// quietly wipe what somebody wrote.
+func TestAssetNoteIsKeptUnlessMentioned(t *testing.T) {
+	f := newFixture(t)
+
+	note := "屏幕左下角有划痕"
+	a, err := f.save(t, SaveInput{
+		Attrs: map[string]any{"mac": "001A2B3C4D5E"}, AssetNote: &note,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Note != note {
+		t.Fatalf("note = %q, want %q", a.Note, note)
+	}
+
+	// An ordinary edit that never mentions the note.
+	updated, err := f.save(t, SaveInput{
+		ID: a.ID, Version: a.Version,
+		Attrs: map[string]any{"mac": "001A2B3C4D5F"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Note != note {
+		t.Errorf("an edit that did not mention the note blanked it: %q", updated.Note)
+	}
+
+	// Explicitly empty is a change, and clears it.
+	empty := ""
+	cleared, err := f.save(t, SaveInput{
+		ID: updated.ID, Version: updated.Version,
+		Attrs: map[string]any{"mac": "001A2B3C4D5F"}, AssetNote: &empty,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cleared.Note != "" {
+		t.Errorf("an explicit empty note should clear it, got %q", cleared.Note)
+	}
+
+	// And it survives a reload, which is the only thing that proves it was
+	// written rather than echoed back.
+	got, err := f.svc.Get(f.ctx, a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Note != "" {
+		t.Errorf("stored note = %q, want empty", got.Note)
+	}
+}

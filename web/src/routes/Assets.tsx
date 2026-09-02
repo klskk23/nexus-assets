@@ -393,6 +393,7 @@ export function Assets() {
                   <TableHead>{t.assets.statusLabel}</TableHead>
                   <TableHead>{t.assets.holder}</TableHead>
                   <TableHead>{t.assets.owner}</TableHead>
+                  <TableHead>{t.assets.note}</TableHead>
                   {extraColumns.map((k) => (
                     <TableHead key={k}>{available.find((f) => f.key === k)?.label ?? k}</TableHead>
                   ))}
@@ -426,6 +427,15 @@ export function Assets() {
                         </TableCell>
                         <TableCell>{a.holder.name ?? t.common.none}</TableCell>
                         <TableCell>{a.owner?.name ?? t.common.none}</TableCell>
+                        {/* Truncated with the whole of it on hover: a note is
+                            a sentence, and one long one would set the width of
+                            every column beside it. */}
+                        <TableCell
+                          className="text-muted-foreground max-w-48 truncate"
+                          title={a.note}
+                        >
+                          {a.note}
+                        </TableCell>
                         {extraColumns.map((k) => (
                           <TableCell key={k}>{cellText(a.attrs[k])}</TableCell>
                         ))}

@@ -24,6 +24,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
+import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Field,
@@ -62,6 +63,7 @@ export function AssetDetail() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [banner, setBanner] = useState<string | null>(null)
   const [editing, setEditing] = useState<Transfer | null>(null)
+  const [note, setNote] = useState("")
   const [modelId, setModelId] = useState<string | null>(null)
   const [transferOpen, setTransferOpen] = useState(false)
   const [homeID, setHomeID] = useState(NONE)
@@ -103,6 +105,7 @@ export function AssetDetail() {
       setModelId(asset.model_id)
       setHomeID(asset.home_holder?.id ?? NONE)
       setHomeOwnerID(asset.home_owner?.id ?? NONE)
+      setNote(asset.note ?? "")
     }
   }, [asset])
 
@@ -121,6 +124,7 @@ export function AssetDetail() {
         home_holder_id: homeID === NONE ? null : homeID,
         home_owner_id: homeOwnerID === NONE ? null : homeOwnerID,
         attrs: values,
+        note,
         version: asset!.version,
       }),
     onSuccess: (updated) => {
@@ -214,6 +218,20 @@ export function AssetDetail() {
                   <dd>{asset.owner?.name ?? t.common.none}</dd>
                 </div>
               </dl>
+
+              {/* A sentence that belongs to the device and to no category's
+                  schema: the scratch on the lid, the trial it is out on. It
+                  sits with the built-ins because that is what it is. */}
+              <Field>
+                <FieldLabel htmlFor="asset-note">{t.assets.note}</FieldLabel>
+                <Textarea
+                  id="asset-note"
+                  rows={2}
+                  value={note}
+                  placeholder={t.assets.notePlaceholder}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+              </Field>
 
               {/* Where it belongs when it is not out. Editable here rather
                   than on the entry form: a device's home changes when it is

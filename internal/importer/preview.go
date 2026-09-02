@@ -162,12 +162,17 @@ func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, lang i18n.Lang, cate
 
 	res := RowResult{Line: row.line, Status: "error", Fields: map[string]string{}}
 
+	// The note column describes the device, so it lands on the device. It used
+	// to go on the create event instead, where it could be read once in the
+	// timeline and never again -- and a stocktake sheet's "备注" column is
+	// about the thing, not about the act of recording it.
+	note := row.byKey[ColNote]
 	in := asset.SaveInput{
 		CategoryID: categoryID,
 		Status:     model.StatusInStock,
 		OwnerID:    actorID,
 		ActorID:    actorID,
-		Note:       row.byKey[ColNote],
+		AssetNote:  &note,
 		BatchID:    batchID,
 		Attrs:      map[string]any{},
 	}

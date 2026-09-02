@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
+import { Textarea } from "@/components/ui/textarea"
 
 /** Holder ids are prefixed by kind, since an account and an entity could
  *  otherwise collide in one dropdown. Radix reserves the empty string. */
@@ -75,6 +76,7 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
   const [modelId, setModelId] = useState<string | null>(null)
   const [values, setValues] = useState<Record<string, unknown>>({})
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [note, setNote] = useState("")
   const [banner, setBanner] = useState<string | null>(null)
 
   const categories = useQuery({
@@ -123,6 +125,7 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
     setCategoryId(initialCategoryID ?? "")
     setModelId(null)
     setValues({})
+    setNote("")
     setFieldErrors({})
     setBanner(null)
     // Always in stock: a device being recorded has just arrived. It used to
@@ -144,6 +147,7 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
         holder_type: heldByAccount ? "user" : "entity",
         holder_id: holder.slice(holder.indexOf(":") + 1),
         attrs: values,
+        note,
       }),
     onSuccess: (a) => {
       queryClient.invalidateQueries({ queryKey: ["assets"] })
@@ -260,6 +264,19 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
               </Select>
             </Field>
           )}
+
+          {/* A built-in like the four above it, and a sentence rather than a
+              field: it belongs to the device, not to its category's schema. */}
+          <Field className="sm:col-span-2">
+            <FieldLabel htmlFor="new-note">{t.assets.note}</FieldLabel>
+            <Textarea
+              id="new-note"
+              rows={2}
+              value={note}
+              placeholder={t.assets.notePlaceholder}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </Field>
         </div>
 
         {categoryId && (

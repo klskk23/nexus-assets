@@ -157,6 +157,8 @@ export interface Asset {
   home_holder?: Holder
   home_owner?: User
   attrs: Record<string, unknown>
+  /** A free sentence about this device, belonging to no category's schema. */
+  note: string
   archived_attrs?: Record<string, unknown>
   version: number
   created_at: string

@@ -105,6 +105,27 @@ describe("NewAssetDialog", () => {
 
   // Handing a device to a person answers "who is responsible" by itself, so
   // the question is not asked -- and the answer sent is that person.
+  // A note is worth most at the moment a device is recorded -- "arrived with a
+  // dented case" is written then or never.
+  it("takes a note while the device is being recorded", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<NewAssetDialog open onOpenChange={vi.fn()} initialCategoryID="rt" />)
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "状态" })).toHaveTextContent("在库"),
+    )
+
+    await user.type(await screen.findByLabelText(/基准 MAC/), "001A2B3C4D5E")
+    await user.type(screen.getByLabelText("备注"), "到货时外壳有凹痕")
+    await user.click(screen.getByRole("button", { name: "保存" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith(
+        "/assets",
+        expect.objectContaining({ note: "到货时外壳有凹痕" }),
+      ),
+    )
+  })
+
   it("asks for no owner when a person is holding it", async () => {
     const user = userEvent.setup()
     renderWithProviders(<NewAssetDialog open onOpenChange={vi.fn()} initialCategoryID="rt" />)

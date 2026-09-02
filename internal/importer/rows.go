@@ -82,7 +82,8 @@ func (s *Service) Rows(ctx context.Context, lang i18n.Lang, f asset.ListFilter) 
 
 	page.Columns = append(page.Columns,
 		SysPrefix+"id", SysPrefix+"sn", SysPrefix+"category", SysPrefix+"status",
-		SysPrefix+"holder", SysPrefix+"owner", SysPrefix+"model", SysPrefix+"created_at")
+		SysPrefix+"holder", SysPrefix+"owner", SysPrefix+"model", SysPrefix+"note",
+		SysPrefix+"created_at")
 	for _, fd := range fields {
 		page.Columns = append(page.Columns, fd.Key)
 	}
@@ -96,6 +97,7 @@ func (s *Service) Rows(ctx context.Context, lang i18n.Lang, f asset.ListFilter) 
 			SysPrefix + "holder":     names.holder(a.Holder),
 			SysPrefix + "owner":      names.user[a.OwnerID],
 			SysPrefix + "model":      names.modelName(a.ModelID),
+			SysPrefix + "note":       a.Note,
 			SysPrefix + "created_at": a.CreatedAt.Format("2006-01-02"),
 		}
 		for _, fd := range fields {

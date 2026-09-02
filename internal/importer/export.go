@@ -57,10 +57,10 @@ func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter
 		return nil, err
 	}
 
-	header := make([]string, 0, 6+len(fields))
+	header := make([]string, 0, 7+len(fields))
 	for _, k := range []string{
 		i18n.KeyColSN, i18n.KeyColCategory, i18n.KeyColStatus,
-		i18n.KeyColHolder, i18n.KeyColOwner, i18n.KeyColCreatedAt,
+		i18n.KeyColHolder, i18n.KeyColOwner, i18n.KeyColNote, i18n.KeyColCreatedAt,
 	} {
 		header = append(header, i18n.M(k).In(lang))
 	}
@@ -82,6 +82,7 @@ func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter
 			names.statuses.Label(a.Status),
 			names.holder(a.Holder),
 			names.user[a.OwnerID],
+			a.Note,
 			a.CreatedAt.Format("2006-01-02 15:04"),
 		}
 		for _, fd := range fields {

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -104,5 +105,53 @@ func TestCreateFieldBindsInOneStep(t *testing.T) {
 	list := h.get(t, "/api/fields?limit=100").Body.String()
 	if strings.Contains(list, "另一个机柜位") {
 		t.Error("the refused field was still created; create and bind must be one transaction")
+	}
+}
+
+// TestAssetNoteTravelsEverywhereTheBuiltInsDo pins the note as a built-in
+// alongside category, status, holder and owner: it is written over HTTP, comes
+// back on read, and appears in both tabular views.
+func TestAssetNoteTravelsEverywhereTheBuiltInsDo(t *testing.T) {
+	h := newHarness(t)
+	h.seed(t, 0, 1)
+	id := h.firstAssetID(t)
+
+	var before struct {
+		Asset struct {
+			Version int            `json:"version"`
+			Attrs   map[string]any `json:"attrs"`
+		} `json:"asset"`
+	}
+	if err := json.Unmarshal(h.get(t, "/api/assets/"+id).Body.Bytes(), &before); err != nil {
+		t.Fatal(err)
+	}
+
+	// The whole record is sent, as the form does: this is a full save with a
+	// note added, not a patch of one column.
+	attrs, err := json.Marshal(before.Asset.Attrs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := h.patch(t, "/api/assets/"+id,
+		`{"category_id":"`+h.catID+`","owner_id":"`+h.userID+`","holder_type":"entity","holder_id":"`+
+			h.locID+`","version":`+itoa(before.Asset.Version)+`,"attrs":`+string(attrs)+
+			`,"note":"借给上海试点，移动前先问"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "借给上海试点") {
+		t.Errorf("the note should come back on the response: %s", rec.Body.String())
+	}
+	if !strings.Contains(h.get(t, "/api/assets/"+id).Body.String(), "借给上海试点") {
+		t.Error("the note did not survive a reload")
+	}
+
+	csv := h.get(t, "/api/export.csv?category_id="+h.catID).Body.String()
+	if !strings.Contains(header(csv), "备注") || !strings.Contains(csv, "借给上海试点") {
+		t.Errorf("the export should carry the note: %q", csv)
+	}
+	rows := h.get(t, "/api/rows?category_id="+h.catID).Body.String()
+	if !strings.Contains(rows, `"sys_note"`) || !strings.Contains(rows, "借给上海试点") {
+		t.Errorf("the row view should carry the note: %s", rows)
 	}
 }

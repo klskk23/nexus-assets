@@ -1119,6 +1119,11 @@ components:
         attrs:
           type: object
           additionalProperties: true
+        note:
+          type: string
+          description: >
+            这台设备自己的备注 —— 与任何类别的字段集无关。
+            **不是流转上的备注**：那一条解释某次移动且不可修改，这一条描述设备当下的情况，随设备一起编辑
         archived_attrs:
           type: object
           description: 不属于当前有效信息项集的孤儿键，只读展示
@@ -1141,6 +1146,15 @@ components:
           type: object
           description: 不含 computed 项，由服务端求值
           additionalProperties: true
+        note:
+          type: string
+          nullable: false
+          description: >
+            设备自己的备注。**字段缺席 = 不动**（一次流转或改属性不该把它抹掉），
+            给空串则清空
+        transfer_note:
+          type: string
+          description: 这次保存若产生了流转事件，写在那条事件上的说明。不可事后修改
 
     Category:
       type: object

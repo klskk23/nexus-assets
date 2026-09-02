@@ -40,6 +40,7 @@ const asset = {
   owner: { id: "u1", name: "管理员" },
   holder: { type: "entity", id: "loc", name: "上海仓库" },
   attrs: { mac: "001A2B3C4D5E", firmware: "2.1.3" },
+  note: "屏幕左下角有划痕",
   archived_attrs: { legacy_note: "旧备注" },
   version: 3,
   created_at: "2026-08-28T00:00:00Z",
@@ -117,6 +118,27 @@ describe("AssetDetail", () => {
     await user.click(screen.getByRole("button", { name: "保存" }))
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/assets/a1", expect.objectContaining({ version: 3 })),
+    )
+  })
+
+  // A built-in beside category, status, holder and owner: it belongs to the
+  // device rather than to any category's schema, so it is on every device
+  // whatever fields its category has.
+  it("shows the note and saves an edited one", async () => {
+    patch.mockResolvedValue({ ...asset, note: "已送修", version: 4 })
+    const user = userEvent.setup()
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+
+    const note = screen.getByLabelText("备注")
+    expect(note).toHaveValue("屏幕左下角有划痕")
+
+    await user.clear(note)
+    await user.type(note, "已送修")
+    await user.click(screen.getByRole("button", { name: "保存" }))
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/assets/a1", expect.objectContaining({ note: "已送修" })),
     )
   })
 

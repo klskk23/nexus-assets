@@ -135,6 +135,8 @@ export const en: typeof zh = {
     statusLabel: "Status",
     holder: "Holder",
     owner: "Owner",
+    note: "Note",
+    notePlaceholder: "About this device itself: condition, use, anything to watch for",
     empty: "No assets yet",
     emptyHint: "Set up a category and its fields first, then record the first device.",
     snChanged: (from: string, to: string) => `Number ${from} became ${to}`,

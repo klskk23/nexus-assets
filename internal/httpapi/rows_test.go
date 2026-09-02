@@ -27,7 +27,7 @@ func TestRowsUsesFieldKeysAsColumns(t *testing.T) {
 
 	want := []string{
 		"sys_id", "sys_sn", "sys_category", "sys_status",
-		"sys_holder", "sys_owner", "sys_model", "sys_created_at",
+		"sys_holder", "sys_owner", "sys_model", "sys_note", "sys_created_at",
 		"mac", "sn",
 	}
 	if len(page.Columns) != len(want) {

@@ -124,6 +124,8 @@ export const zh = {
     statusLabel: "状态",
     holder: "持有方",
     owner: "负责人",
+    note: "备注",
+    notePlaceholder: "关于这台设备本身的说明：外观、用途、注意事项",
     empty: "还没有任何资产",
     emptyHint: "先在类别页配置一个类别与字段，然后录入第一台设备。",
     snChanged: (from: string, to: string) => `编号 ${from} 已变更为 ${to}`,

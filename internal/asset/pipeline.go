@@ -40,7 +40,14 @@ type SaveInput struct {
 	Attrs     map[string]any
 	Version   int // required for an update
 	ActorID   string
-	Note      string
+	// Note explains the movement this save records, and goes on the transfer
+	// row. It is not the device's own note -- that is AssetNote, which
+	// describes the thing rather than the event.
+	Note string
+	// AssetNote is the device's own note. Absent means "leave it alone", which
+	// is what lets a transfer or an attribute edit go through without carrying
+	// a copy of it.
+	AssetNote *string
 	// BatchID groups the create events of one import so the file can be
 	// identified afterwards.
 	BatchID *string
@@ -220,6 +227,16 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 			return out, err
 		}
 
+		// Absent means "leave it alone", so an edit that never mentions the
+		// note -- a transfer, an attribute change -- cannot blank it.
+		note := ""
+		if prev != nil {
+			note = prev.Note
+		}
+		if in.AssetNote != nil {
+			note = *in.AssetNote
+		}
+
 		h := resolveHome(prev, in)
 		home, homeOwner := h.created, h.createdOwner
 		homeHolder, homeOwnerPtr := h.holder, h.ownerID
@@ -230,11 +247,11 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 			_, err = tx.ExecContext(ctx,
 				`INSERT INTO assets (id, category_id, model_id, status, owner_id, holder_type, holder_id,
 				                     home_holder_type, home_holder_id, home_owner_id,
-				                     attrs, version, created_at, updated_at)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+				                     attrs, note, version, created_at, updated_at)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
 				id, in.CategoryID, store.NullString(in.ModelID), string(in.Status), in.OwnerID,
 				string(in.Holder.Type), in.Holder.ID,
-				string(home.Type), home.ID, homeOwner, attrsJSON,
+				string(home.Type), home.ID, homeOwner, attrsJSON, note,
 				store.FormatTime(now), store.FormatTime(now))
 			if err != nil {
 				return out, err
@@ -243,19 +260,19 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 				ID: id, CategoryID: in.CategoryID, ModelID: in.ModelID,
 				Status: in.Status, OwnerID: in.OwnerID, Holder: in.Holder,
 				HomeHolder: &home, HomeOwnerID: &homeOwner,
-				Attrs: clean, Version: 1, CreatedAt: now, UpdatedAt: now,
+				Attrs: clean, Note: note, Version: 1, CreatedAt: now, UpdatedAt: now,
 			}
 		} else {
 			res, err := tx.ExecContext(ctx,
 				`UPDATE assets SET category_id = ?, model_id = ?, status = ?, owner_id = ?,
 				                   holder_type = ?, holder_id = ?,
 				                   home_holder_type = ?, home_holder_id = ?, home_owner_id = ?,
-				                   attrs = ?, version = version + 1, updated_at = ?
+				                   attrs = ?, note = ?, version = version + 1, updated_at = ?
 				 WHERE id = ? AND version = ?`,
 				in.CategoryID, store.NullString(in.ModelID), string(in.Status), in.OwnerID,
 				string(in.Holder.Type), in.Holder.ID,
 				store.NullString(homeType), store.NullString(homeID), store.NullString(homeOwnerPtr),
-				attrsJSON, store.FormatTime(now), id, in.Version)
+				attrsJSON, note, store.FormatTime(now), id, in.Version)
 			if err != nil {
 				return out, err
 			}
@@ -266,7 +283,8 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 				ID: id, CategoryID: in.CategoryID, ModelID: in.ModelID,
 				Status: in.Status, OwnerID: in.OwnerID, Holder: in.Holder,
 				HomeHolder: homeHolder, HomeOwnerID: homeOwnerPtr,
-				Attrs: clean, Version: in.Version + 1, CreatedAt: prev.CreatedAt, UpdatedAt: now,
+				Attrs: clean, Note: note, Version: in.Version + 1,
+				CreatedAt: prev.CreatedAt, UpdatedAt: now,
 			}
 		}
 

@@ -132,7 +132,13 @@ type assetWriteRequest struct {
 	HolderID   string         `json:"holder_id" binding:"required"`
 	Attrs      map[string]any `json:"attrs"`
 	Version    int            `json:"version"`
-	Note       string         `json:"note"`
+	// Note is the device's own note, and absent means "leave it alone" -- an
+	// edit that does not mention it must not blank it.
+	Note *string `json:"note"`
+	// TransferNote explains the movement this save records, when it records
+	// one. It goes on the transfer row and is never edited afterwards, which
+	// is the whole difference between the two.
+	TransferNote string `json:"transfer_note"`
 	// Where the device belongs when it is not out. Absent means "leave it
 	// alone" on an update, and "wherever it is being recorded" on a create.
 	// Explicit null clears it, restoring the global default stock point.
@@ -169,7 +175,8 @@ func (r assetWriteRequest) toInput(id, actorID string) asset.SaveInput {
 		ID: id, CategoryID: r.CategoryID, ModelID: r.ModelID, Status: status,
 		OwnerID: r.OwnerID,
 		Holder:  model.Holder{Type: model.HolderType(r.HolderType), ID: r.HolderID},
-		Attrs:   r.Attrs, Version: r.Version, ActorID: actorID, Note: r.Note,
+		Attrs:   r.Attrs, Version: r.Version, ActorID: actorID,
+		Note: r.TransferNote, AssetNote: r.Note,
 		HomeHolder: homeHolder, HomeOwnerID: homeOwner, ClearHome: clearHome,
 	}
 }
