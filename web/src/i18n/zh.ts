@@ -195,6 +195,8 @@ export const zhMeta = {
     unboundHint: "还没有绑定到任何类别。字段只有绑定后才会出现在录入表单里。",
     empty: "还没有任何字段",
     emptyHint: "字段是全局共用的：同名字段在全系统含义一致。建好后到类别页绑定。",
+    bindOnCreate: "绑定到类别",
+    bindOnCreateHint: "字段只有绑定后才会出现在录入表单里。也可以先不绑，之后在字段编辑里再绑。",
   },
   models: {
     title: "型号",

@@ -147,13 +147,22 @@ func (s *Store) GetField(ctx context.Context, id string) (model.FieldDefinition,
 	return f, err
 }
 
-// CreateFieldInput describes a new information item.
+// CreateFieldInput describes a new field.
 type CreateFieldInput struct {
 	Key      string
 	Label    string
 	Type     model.FieldType
 	Options  model.FieldOptions
 	IsUnique bool
+	// CategoryIDs binds the new field as it is created. A field bound nowhere
+	// is on no form and holds no value, so making that the only thing a create
+	// can produce meant every new field needed a second trip through the edit
+	// dialog.
+	CategoryIDs []string
+	// Required applies to each of those bindings. It is a write-time rule, not
+	// a data invariant: existing assets keep whatever they have, and the next
+	// edit of one is where it is asked for.
+	Required bool
 }
 
 // CreateField registers a field in the global library.
@@ -179,14 +188,31 @@ func (s *Store) CreateField(ctx context.Context, in CreateFieldInput) (model.Fie
 		Options: in.Options, IsUnique: in.IsUnique, CreatedAt: now, UpdatedAt: now,
 	}
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx,
+		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO field_definitions (id, key, label, type, options, is_unique, created_at, updated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 			f.ID, f.Key, f.Label, string(f.Type), string(opts), boolInt(f.IsUnique),
-			store.FormatTime(now), store.FormatTime(now))
-		return err
+			store.FormatTime(now), store.FormatTime(now)); err != nil {
+			return err
+		}
+		// Bound in the same transaction, so a refused binding -- a key already
+		// on that chain, an expression whose inputs are not there -- leaves no
+		// field behind either. The refusal is about the pair, and half of it is
+		// not worth keeping.
+		for i, categoryID := range in.CategoryIDs {
+			if err := bindTx(ctx, tx, categoryID, f.ID, in.Required, (i+1)*10); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err != nil {
+		// The domain errors binding raises are written for a person and carry
+		// their own catalogue key; wrapping them would hide that behind
+		// "create field:".
+		if i18n.HasText(err) || errors.Is(err, ErrNotFound) {
+			return f, err
+		}
 		return f, fmt.Errorf("create field: %w", err)
 	}
 	return f, nil

@@ -47,6 +47,11 @@ export function Fields() {
   const [template, setTemplate] = useState("")
   const [regex, setRegex] = useState("")
   const [regexHint, setRegexHint] = useState("")
+  // Which categories the new field is bound to as it is created. A field bound
+  // nowhere is on no entry form, so creating one used to be the first half of a
+  // job that had to be finished in another dialog.
+  const [bindTo, setBindTo] = useState<string[]>([])
+  const [bindRequired, setBindRequired] = useState(false)
   // Which category's fields are being looked at. A key is only unique inside
   // one category chain now, so an unfiltered library can hold two "rack"s and
   // the filter is what tells them apart.
@@ -63,6 +68,24 @@ export function Fields() {
   })
   const categoryName = (id: string) =>
     (categories.data ?? []).find((c) => c.id === id)?.name ?? id
+
+  // How many devices a required binding would land on. Asked only when it
+  // matters, and only for the categories actually ticked -- the answer is a
+  // promise about somebody's next edit, not a reason to refuse anything.
+  const bound = useQuery({
+    queryKey: ["category-asset-count", bindTo],
+    queryFn: async () => {
+      const counts = await Promise.all(
+        bindTo.map((id) =>
+          api
+            .get<{ total: number }>(`/assets?category_id=${id}&include_descendants=true&limit=1`)
+            .then((r) => r.total),
+        ),
+      )
+      return counts.reduce((a, b) => a + b, 0)
+    },
+    enabled: bindTo.length > 0 && bindRequired,
+  })
 
   // The same delete the editor offers, reachable without opening it first --
   // which is the point of the context menu.
@@ -135,6 +158,8 @@ export function Fields() {
         setTemplate("")
         setRegex("")
         setRegexHint("")
+        setBindTo([])
+        setBindRequired(false)
       }}
       create={() =>
         api.post("/fields", {
@@ -142,6 +167,10 @@ export function Fields() {
           label,
           type,
           is_unique: isUnique,
+          // Bound in the same request, so a refused binding leaves no field
+          // behind: the pair is what was asked for.
+          category_ids: bindTo,
+          required: bindRequired,
           // Per type, and only what that type means: a regex on a computed
           // field would be configuration nothing reads.
           options:
@@ -267,6 +296,45 @@ export function Fields() {
               </Field>
             </>
           )}
+
+          <Field className="sm:col-span-2">
+            <FieldLabel>{tMeta.fields.bindOnCreate}</FieldLabel>
+            <FieldDescription>{tMeta.fields.bindOnCreateHint}</FieldDescription>
+            <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto">
+              {(categories.data ?? []).map((c) => (
+                <Field key={c.id} orientation="horizontal">
+                  <Checkbox
+                    id={`f-bind-${c.id}`}
+                    checked={bindTo.includes(c.id)}
+                    onCheckedChange={(v) =>
+                      setBindTo((cur) =>
+                        v === true ? [...cur, c.id] : cur.filter((id) => id !== c.id),
+                      )
+                    }
+                  />
+                  <FieldLabel htmlFor={`f-bind-${c.id}`} className="font-normal">
+                    {c.name}
+                  </FieldLabel>
+                </Field>
+              ))}
+            </div>
+            {bindTo.length > 0 && (
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="f-bind-required"
+                  checked={bindRequired}
+                  onCheckedChange={(v) => setBindRequired(v === true)}
+                />
+                <FieldLabel htmlFor="f-bind-required">{tMeta.categories.required}</FieldLabel>
+              </Field>
+            )}
+            {/* Required is a write-time rule, not a data invariant: existing
+                devices keep what they have, and the next edit of one is where
+                it is asked for. Whoever ticks this should know that. */}
+            {bindTo.length > 0 && bindRequired && bound.data !== undefined && bound.data > 0 && (
+              <FieldDescription>{tMeta.categories.requiredWarning(bound.data)}</FieldDescription>
+            )}
+          </Field>
 
           {type === "computed" && (
             <Field className="sm:col-span-2">

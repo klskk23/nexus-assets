@@ -62,6 +62,8 @@ function route(p: string) {
   if (p.startsWith("/fields")) {
     return Promise.resolve({ items: fields, total: fields.length, offset: 0, limit: 20 })
   }
+  // How many devices a required binding would land on.
+  if (p.startsWith("/assets?")) return Promise.resolve({ items: [], total: 3, offset: 0, limit: 1 })
   if (p === "/holders") return Promise.resolve(holders)
   if (p === "/users") return Promise.resolve(users)
   if (p.endsWith("/schema")) return Promise.resolve(schema)
@@ -131,6 +133,42 @@ describe("Fields page", () => {
         type: "text",
         is_unique: true,
         options: { regex: "", regex_hint: "" },
+        category_ids: [],
+        required: false,
+      }),
+    )
+  })
+
+  // Binding took a second trip through a second dialog, and a field bound
+  // nowhere is on no entry form -- so every new field was half-finished until
+  // somebody remembered to go back for it.
+  it("binds the new field to the categories ticked on the form", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Fields />)
+    await screen.findByRole("row", { name: /基准 MAC/ })
+
+    await openCreate(user, "新建字段")
+    await user.type(screen.getByLabelText(/键名/), "rack")
+    await user.type(screen.getByLabelText(/显示名/), "机柜位")
+
+    const dialog = await screen.findByRole("dialog")
+    await user.click(within(dialog).getByRole("checkbox", { name: "网络设备" }))
+    // Required only appears once there is a binding for it to apply to.
+    await user.click(within(dialog).getByRole("checkbox", { name: "必填" }))
+    // And it says what that promises: those devices are not checked now, but
+    // the next edit of one of them has to fill it in.
+    expect(await within(dialog).findByText(/已有 3 台设备/)).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole("button", { name: "新建字段" }))
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/fields", {
+        key: "rack",
+        label: "机柜位",
+        type: "text",
+        is_unique: false,
+        options: { regex: "", regex_hint: "" },
+        category_ids: ["net"],
+        required: true,
       }),
     )
   })
@@ -161,6 +199,8 @@ describe("Fields page", () => {
         type: "text",
         is_unique: false,
         options: { regex: "^R-\\d+$", regex_hint: "R- 加数字" },
+        category_ids: [],
+        required: false,
       }),
     )
   })

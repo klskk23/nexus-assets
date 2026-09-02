@@ -301,6 +301,24 @@ describe("FieldEditor bindings", () => {
     expect(await screen.findByText(/已有 4 台设备/)).toBeInTheDocument()
   })
 
+  // The action has to be on screen. It was reachable only by right-clicking a
+  // two-row table inside a dialog, which is nowhere anybody thinks to try: the
+  // bug report was "a bound field cannot be unbound", and the mechanism worked
+  // the whole time.
+  it("offers unbind as a visible button", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <FieldEditor field={field("text", { category_ids: ["net"] })} onClose={vi.fn()} />,
+    )
+
+    const row = await screen.findByRole("row", { name: "网络设备" })
+    await user.click(within(row).getByRole("button", { name: "解绑" }))
+
+    const dialog = await screen.findByRole("alertdialog")
+    await user.click(within(dialog).getByRole("button", { name: "解绑" }))
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/categories/net/bindings/f1"))
+  })
+
   it("unbinds from the row menu, after confirming", async () => {
     const user = userEvent.setup()
     renderWithProviders(

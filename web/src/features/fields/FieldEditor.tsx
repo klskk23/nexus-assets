@@ -340,6 +340,7 @@ export function FieldEditor({ field, onClose }: Props) {
               <TableHeader>
                 <TableRow>
                   <TableHead>{tMeta.categories.title}</TableHead>
+                  <TableHead className="w-24" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -349,6 +350,21 @@ export function FieldEditor({ field, onClose }: Props) {
                       <TableRow aria-label={(categories.data ?? []).find((c) => c.id === id)?.name}>
                         <TableCell>
                           {(categories.data ?? []).find((c) => c.id === id)?.name ?? id}
+                        </TableCell>
+                        {/* Visible, not only on right-click. These rows do
+                            nothing when clicked, so there is no gesture for a
+                            hidden menu to belong to -- and a two-row table
+                            inside a dialog is the last place anybody thinks to
+                            try one. The menu stays for anyone who does. */}
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => setUnbinding(id)}
+                          >
+                            {tMeta.categories.unbind}
+                          </Button>
                         </TableCell>
                       </TableRow>
                     </ContextMenuTrigger>

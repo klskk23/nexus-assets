@@ -2,6 +2,7 @@ package schema
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/klskk23/nexus-assets/internal/model"
@@ -130,4 +131,73 @@ func keysOf(fields []model.FieldDefinition) []string {
 		out = append(out, f.Key)
 	}
 	return out
+}
+
+// TestBindRefusesASecondFieldWithTheSameKeyOnOneCategory pins the gap the
+// create-and-bind path found: the clash check exempted the whole category, so
+// a second field carrying the same key could be bound right beside the first
+// and the effective field set had two answers for one key.
+func TestBindRefusesASecondFieldWithTheSameKeyOnOneCategory(t *testing.T) {
+	s, ctx := newStore(t)
+	root, _ := tree(t, s, ctx)
+
+	first := mustField(t, s, ctx, "rack", "机柜位", model.FieldText)
+	second := mustField(t, s, ctx, "rack", "另一个机柜位", model.FieldText)
+
+	if err := s.Bind(ctx, root.ID, first.ID, false, 10); err != nil {
+		t.Fatalf("bind: %v", err)
+	}
+	if err := s.Bind(ctx, root.ID, second.ID, false, 20); !errors.Is(err, ErrKeyConflict) {
+		t.Fatalf("a second field with the same key on one category should conflict, got %v", err)
+	}
+
+	// What must stay allowed: re-binding the same field, which is how required
+	// and sort are changed.
+	if err := s.Bind(ctx, root.ID, first.ID, true, 30); err != nil {
+		t.Fatalf("re-binding the same field should be allowed: %v", err)
+	}
+	fields, err := s.EffectiveFields(ctx, root.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 1 || !fields[0].Required {
+		t.Errorf("expected one field, now required; got %+v", fields)
+	}
+}
+
+// TestCreateFieldBindsAtomically covers the create-with-categories path: the
+// pair is the request, so a refused binding leaves no field behind.
+func TestCreateFieldBindsAtomically(t *testing.T) {
+	s, ctx := newStore(t)
+	root, child := tree(t, s, ctx)
+
+	f, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "rack", Label: "机柜位", Type: model.FieldText,
+		CategoryIDs: []string{root.ID}, Required: true,
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	bound, err := s.EffectiveFields(ctx, child.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bound) != 1 || bound[0].ID != f.ID || !bound[0].Required {
+		t.Errorf("the field should be bound to the parent as required; got %+v", bound)
+	}
+
+	// The same key again on the same chain: refused, and nothing created.
+	if _, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "rack", Label: "另一个机柜位", Type: model.FieldText,
+		CategoryIDs: []string{child.ID},
+	}); !errors.Is(err, ErrKeyConflict) {
+		t.Fatalf("expected ErrKeyConflict, got %v", err)
+	}
+	page, err := s.ListFieldPage(ctx, FieldFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 1 {
+		t.Errorf("a refused create must leave no field behind, library holds %d", page.Total)
+	}
 }

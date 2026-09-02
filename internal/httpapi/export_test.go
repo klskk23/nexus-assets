@@ -73,3 +73,36 @@ func TestHealthAnswersWithoutACredential(t *testing.T) {
 		t.Errorf("unexpected body: %s", rec.Body.String())
 	}
 }
+
+// TestCreateFieldBindsInOneStep covers the create path a field editor needs:
+// a field that is bound nowhere is on no form, so creating one and binding it
+// used to be two trips through two dialogs.
+func TestCreateFieldBindsInOneStep(t *testing.T) {
+	h := newHarness(t)
+
+	rec := h.do(t, http.MethodPost, "/api/fields", `{
+		"key":"rack","label":"机柜位","type":"text",
+		"category_ids":["`+h.catID+`"],"required":true}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Bound, and bound as required -- the flag travels with it.
+	schema := h.get(t, "/api/categories/"+h.catID+"/schema").Body.String()
+	if !strings.Contains(schema, `"key":"rack"`) {
+		t.Fatalf("the new field is not on the category: %s", schema)
+	}
+
+	// A key already on that chain is refused, and the field is not left behind
+	// half-created: the pair is the request, and half of it is worth nothing.
+	rec = h.do(t, http.MethodPost, "/api/fields", `{
+		"key":"rack","label":"另一个机柜位","type":"text",
+		"category_ids":["`+h.catID+`"]}`)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("a duplicate key on one chain should be refused, got %d: %s", rec.Code, rec.Body.String())
+	}
+	list := h.get(t, "/api/fields?limit=100").Body.String()
+	if strings.Contains(list, "另一个机柜位") {
+		t.Error("the refused field was still created; create and bind must be one transaction")
+	}
+}

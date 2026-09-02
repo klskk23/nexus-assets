@@ -209,6 +209,9 @@ export const enMeta: typeof zhMeta = {
     empty: "No fields yet",
     emptyHint:
       "Fields are shared system-wide: one key means one thing everywhere. Create it here, then bind it on a category.",
+    bindOnCreate: "Bind to categories",
+    bindOnCreateHint:
+      "A field only appears on the entry form once it is bound. Leaving this empty is fine; it can be bound later from the field editor.",
   },
   models: {
     title: "Models",

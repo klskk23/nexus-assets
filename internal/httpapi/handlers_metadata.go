@@ -166,15 +166,30 @@ func (s *Server) createField(c *gin.Context) {
 		Type     model.FieldType    `json:"type" binding:"required"`
 		Options  model.FieldOptions `json:"options"`
 		IsUnique bool               `json:"is_unique"`
+		// The categories to bind it to as it is created, and whether those
+		// bindings are required. A field bound nowhere is on no form, so
+		// creating one without this was always the first half of a two-step
+		// job.
+		CategoryIDs []string `json:"category_ids"`
+		Required    bool     `json:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
 	out, err := s.schema.CreateField(c.Request.Context(), schema.CreateFieldInput{
-		Key: req.Key, Label: req.Label, Type: req.Type, Options: req.Options, IsUnique: req.IsUnique,
+		Key: req.Key, Label: req.Label, Type: req.Type, Options: req.Options,
+		IsUnique: req.IsUnique, CategoryIDs: req.CategoryIDs, Required: req.Required,
 	})
 	if err != nil {
+		// A refused binding is a conflict about a pair, not a bad expression,
+		// and it carries its own sentence; flattening every failure to
+		// "template invalid" told the reader the wrong thing.
+		if errors.Is(err, schema.ErrKeyConflict) || errors.Is(err, schema.ErrDependenciesUnmet) ||
+			errors.Is(err, schema.ErrNotFound) {
+			FailErr(c, err)
+			return
+		}
 		Fail(c, http.StatusUnprocessableEntity, CodeTemplateInvalid, userText(c, err), nil)
 		return
 	}

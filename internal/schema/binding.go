@@ -79,50 +79,68 @@ func (s *Store) EffectiveFields(ctx context.Context, categoryID string) ([]model
 // no override rule to fall back on.
 func (s *Store) Bind(ctx context.Context, categoryID, fieldID string, required bool, sort int) error {
 	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		var path, key, ftype string
-		if err := tx.QueryRowContext(ctx, `SELECT path FROM categories WHERE id = ?`, categoryID).Scan(&path); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return ErrNotFound
-			}
-			return err
-		}
-		if err := tx.QueryRowContext(ctx,
-			`SELECT key, type FROM field_definitions WHERE id = ?`, fieldID).Scan(&key, &ftype); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return ErrNotFound
-			}
-			return err
-		}
-
-		// Anything on the ancestor chain, or anywhere in the subtree below.
-		var clash string
-		q := `SELECT c.name FROM category_fields cf
-		      JOIN categories c ON c.id = cf.category_id
-		      JOIN field_definitions f ON f.id = cf.field_id
-		      WHERE f.key = ? AND cf.category_id != ?
-		        AND (? LIKE c.path || '%' OR c.path LIKE ? || '%')
-		      LIMIT 1`
-		err := tx.QueryRowContext(ctx, q, key, categoryID, path, path).Scan(&clash)
-		if err == nil {
-			return i18n.Wrap(ErrKeyConflict, i18n.KeyBindDuplicate, key, clash)
-		}
-		if !errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
-
-		if model.FieldType(ftype) == model.FieldComputed {
-			if err := checkBindDeps(ctx, tx, path, key); err != nil {
-				return err
-			}
-		}
-
-		_, err = tx.ExecContext(ctx,
-			`INSERT INTO category_fields (category_id, field_id, required, sort)
-			 VALUES (?, ?, ?, ?)
-			 ON CONFLICT(category_id, field_id) DO UPDATE SET required = excluded.required, sort = excluded.sort`,
-			categoryID, fieldID, boolInt(required), sort)
-		return err
+		return bindTx(ctx, tx, categoryID, fieldID, required, sort)
 	})
+}
+
+// bindTx is Bind inside a transaction the caller owns.
+//
+// Creating a field with categories already chosen has to be one transaction:
+// a field that exists but is bound nowhere, because the second half failed, is
+// exactly the half-finished state the form was meant to save someone from.
+func bindTx(ctx context.Context, tx *sql.Tx, categoryID, fieldID string, required bool, sort int) error {
+	var path, key, ftype string
+	if err := tx.QueryRowContext(ctx, `SELECT path FROM categories WHERE id = ?`, categoryID).Scan(&path); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	if err := tx.QueryRowContext(ctx,
+		`SELECT key, type FROM field_definitions WHERE id = ?`, fieldID).Scan(&key, &ftype); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+
+	// Anything on the ancestor chain, or anywhere in the subtree below.
+	//
+	// Only this exact pair is exempt, and that is the whole of it: re-binding
+	// the same field to the same category is how required and sort are
+	// changed. The check used to exempt the whole category, which let a second
+	// field carrying the same key be bound right beside the first -- the
+	// effective field set then had two answers for one key, which is the
+	// ambiguity this rule exists to prevent. Binding the same field on a
+	// parent as well as a child stays refused: a child may append, not
+	// re-declare.
+	var clash string
+	q := `SELECT c.name FROM category_fields cf
+	      JOIN categories c ON c.id = cf.category_id
+	      JOIN field_definitions f ON f.id = cf.field_id
+	      WHERE f.key = ? AND NOT (cf.category_id = ? AND cf.field_id = ?)
+	        AND (? LIKE c.path || '%' OR c.path LIKE ? || '%')
+	      LIMIT 1`
+	err := tx.QueryRowContext(ctx, q, key, categoryID, fieldID, path, path).Scan(&clash)
+	if err == nil {
+		return i18n.Wrap(ErrKeyConflict, i18n.KeyBindDuplicate, key, clash)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	if model.FieldType(ftype) == model.FieldComputed {
+		if err := checkBindDeps(ctx, tx, path, key); err != nil {
+			return err
+		}
+	}
+
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO category_fields (category_id, field_id, required, sort)
+		 VALUES (?, ?, ?, ?)
+		 ON CONFLICT(category_id, field_id) DO UPDATE SET required = excluded.required, sort = excluded.sort`,
+		categoryID, fieldID, boolInt(required), sort)
+	return err
 }
 
 // Unbind detaches a field from a category. Stored values become orphan keys:
