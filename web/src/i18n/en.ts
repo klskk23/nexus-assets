@@ -459,7 +459,8 @@ export const enImport: typeof zhImport = {
   exportCategory: "Category",
   exportPickCategory: "Choose a category",
   exportFields: "Fields to export",
-  exportFieldsHint: "The fixed columns (number, category, status, holder, owner, created) are always exported.",
+  exportFieldsHint:
+    "The fixed columns (number, category, status, holder, owner, note, created) are always exported.",
   exportNoFields: "This category has no fields to choose from",
   exportAll: "All",
   exportNone: "None",

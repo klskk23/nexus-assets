@@ -20,7 +20,7 @@ const exportLimit = 10000
 // ErrExportNeedsCategory is returned when an export is asked for without one.
 //
 // A category is what decides the columns: field keys are that category's own
-// vocabulary, so a mixed export can only ever be the six fixed columns, and a
+// vocabulary, so a mixed export can only ever be the seven fixed columns, and a
 // spreadsheet of devices with none of what makes them different is not the
 // file anybody meant to ask for.
 var ErrExportNeedsCategory = errors.New("a category is required")

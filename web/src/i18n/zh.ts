@@ -431,7 +431,7 @@ export const zhImport = {
   exportCategory: "资产类别",
   exportPickCategory: "请选择类别",
   exportFields: "导出字段",
-  exportFieldsHint: "固定列（编号、类别、状态、持有方、负责人、建档时间）始终导出。",
+  exportFieldsHint: "固定列（编号、类别、状态、持有方、负责人、备注、建档时间）始终导出。",
   exportNoFields: "这个类别没有可选字段",
   exportAll: "全选",
   exportNone: "全不选",
