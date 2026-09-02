@@ -108,6 +108,12 @@ about what it does.
 `.env` is not committed (`.gitignore` covers it) and never enters an image
 layer.
 
+**The file is optional.** The process reads the environment; a `.env` is folded
+in underneath it and **anything already set wins**. So `docker run -e …`,
+systemd's `Environment=`, or secrets injected by an orchestrator replace it
+entirely — the compose file marks its `env_file` `required: false`, so it
+starts with no such file at all.
+
 ## Behind a reverse proxy
 
 ```nginx

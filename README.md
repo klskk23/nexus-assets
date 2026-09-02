@@ -99,6 +99,11 @@ cd web && npm run dev    # 另开一个终端，前端热更新
 
 `.env` **不进版本库**（`.gitignore` 已经挡住），也不进镜像层。
 
+**不想要这个文件也行**：进程读的是环境变量，`.env` 只是在它下面垫一层默认值，
+**已经设了的环境变量优先**。所以 `docker run -e …`、systemd 的 `Environment=`、
+或者 K8s 的 Secret 注入都能完全替代它 —— compose 里那份 `env_file` 标了
+`required: false`，文件不存在也能起。
+
 ## 放到反向代理后面
 
 ```nginx

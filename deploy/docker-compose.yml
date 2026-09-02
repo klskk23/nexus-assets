@@ -38,8 +38,15 @@ services:
     # a secret baked into a layer is in every copy of that image forever.
     #
     #   cp ../.env.example .env && chmod 600 .env
+    #
+    # Optional, because the file is one way to supply settings and not the only
+    # one: an orchestrator that injects the environment itself, or a plain
+    # `NEXUS_JWT_SECRET=... docker compose up`, works with no file at all. The
+    # process reads the environment; a .env is folded in underneath it, and
+    # anything already set wins.
     env_file:
-      - .env
+      - path: .env
+        required: false
 
     environment:
       # These belong to the container's own layout, not to the person deploying
