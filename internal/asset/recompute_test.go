@@ -222,3 +222,117 @@ func TestRecomputeRequiresAKnownCategory(t *testing.T) {
 }
 
 var _ = model.StatusInStock
+
+// TestRecomputeFieldCoversEveryCategoryItIsBoundTo pins the entry point behind
+// "改表达式即重算" (v6 decision 68): the field editor saves an expression and
+// asks for a recompute by field, not by category -- one field can be bound in
+// several places, and each is its own subtree.
+func TestRecomputeFieldCoversEveryCategoryItIsBoundTo(t *testing.T) {
+	f := newFixture(t)
+
+	// A second chain that binds the same two fields, so the field is bound
+	// twice over and the run has two subtrees to visit.
+	office, err := f.schema.CreateCategory(f.ctx, schema.CreateCategoryInput{Code: "OF", Name: "办公设备"})
+	if err != nil {
+		t.Fatalf("create category: %v", err)
+	}
+	if err := f.schema.Bind(f.ctx, office.ID, f.macField, true, 10); err != nil {
+		t.Fatalf("bind mac: %v", err)
+	}
+	if err := f.schema.Bind(f.ctx, office.ID, f.snField, false, 20); err != nil {
+		t.Fatalf("bind sn: %v", err)
+	}
+	displayKey := "sn"
+	if _, err := f.schema.UpdateCategory(f.ctx, office.ID, schema.UpdateCategoryInput{
+		DisplayKey: &displayKey,
+	}); err != nil {
+		t.Fatalf("set display key: %v", err)
+	}
+
+	here, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D01"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	there, err := f.save(t, SaveInput{CategoryID: office.ID, Attrs: map[string]any{"mac": "001A2B3C4D02"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.setTemplate(t, `"AB-" + hex2dec(attrs.mac)`)
+
+	// The dry run sees both subtrees, and writes to neither.
+	dry, err := f.svc.RecomputeField(f.ctx, f.snField, true)
+	if err != nil {
+		t.Fatalf("dry run: %v", err)
+	}
+	if dry.Total != 2 || dry.Affected != 2 {
+		t.Errorf("both subtrees should be counted, got total %d affected %d", dry.Total, dry.Affected)
+	}
+	if dry.Applied {
+		t.Error("a dry run must not report itself as applied")
+	}
+	if got := f.numberOf(t, here.ID); got != here.DisplayName {
+		t.Errorf("a dry run wrote to the asset: %q", got)
+	}
+
+	applied, err := f.svc.RecomputeField(f.ctx, f.snField, false)
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if !applied.Applied {
+		t.Fatal("the run should report itself applied")
+	}
+	// Counted once, not twice: the second pass replaces the dry run's numbers
+	// rather than adding to them.
+	if applied.Total != 2 || applied.Affected != 2 {
+		t.Errorf("total/affected = %d/%d, want 2/2", applied.Total, applied.Affected)
+	}
+	if got := f.numberOf(t, here.ID); got != "AB-112394521857" {
+		t.Errorf("the first chain was not renumbered: %q", got)
+	}
+	if got := f.numberOf(t, there.ID); got != "AB-112394521858" {
+		t.Errorf("the second chain was not renumbered: %q", got)
+	}
+}
+
+// A field bound to a category and to one of its ancestors is recomputed once,
+// over the ancestor's subtree: the descendant's run would only repeat it, and
+// every asset would be counted twice in the report somebody is reading before
+// they approve it.
+//
+// Reachable despite the rule that a key may not be bound twice on one chain:
+// the two bindings start on separate chains and one of them is moved under the
+// other afterwards.
+func TestRecomputeFieldDoesNotRepeatNestedSubtrees(t *testing.T) {
+	f := newFixture(t)
+
+	office, err := f.schema.CreateCategory(f.ctx, schema.CreateCategoryInput{Code: "OF", Name: "办公设备"})
+	if err != nil {
+		t.Fatalf("create category: %v", err)
+	}
+	if err := f.schema.Bind(f.ctx, office.ID, f.macField, true, 10); err != nil {
+		t.Fatalf("bind mac: %v", err)
+	}
+	if err := f.schema.Bind(f.ctx, office.ID, f.snField, false, 20); err != nil {
+		t.Fatalf("bind sn: %v", err)
+	}
+	parent := &f.rootID
+	if _, err := f.schema.UpdateCategory(f.ctx, office.ID, schema.UpdateCategoryInput{
+		ParentID: &parent,
+	}); err != nil {
+		t.Fatalf("move the category under the root: %v", err)
+	}
+
+	if _, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D03"}}); err != nil {
+		t.Fatal(err)
+	}
+	f.setTemplate(t, `"CD-" + hex2dec(attrs.mac)`)
+
+	report, err := f.svc.RecomputeField(f.ctx, f.snField, true)
+	if err != nil {
+		t.Fatalf("dry run: %v", err)
+	}
+	if report.Total != 1 {
+		t.Errorf("the asset should be visited once, not once per binding: total %d", report.Total)
+	}
+}
