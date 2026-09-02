@@ -17,7 +17,10 @@ type labels struct {
 	user     map[string]string
 	entity   map[string]string
 	category map[string]string
-	model    map[string]string
+	// The whole model, because a device is identified by its vendor as well as
+	// its name: two "X100"s from two suppliers are not the same thing, and a
+	// sheet that says only "X100" cannot be acted on.
+	model    map[string]model.ProductModel
 	statuses model.StatusSet
 }
 
@@ -29,12 +32,20 @@ func (l labels) holder(h model.Holder) string {
 	return l.entity[h.ID]
 }
 
-// modelName is empty for an asset with no model, which is allowed.
+// modelName and modelVendor are empty for an asset with no model, which is
+// allowed, and for one whose model has since been deleted.
 func (l labels) modelName(id *string) string {
 	if id == nil {
 		return ""
 	}
-	return l.model[*id]
+	return l.model[*id].Name
+}
+
+func (l labels) modelVendor(id *string) string {
+	if id == nil {
+		return ""
+	}
+	return l.model[*id].Vendor
 }
 
 func (s *Service) labels(ctx context.Context) (labels, error) {
@@ -71,9 +82,9 @@ func (s *Service) labels(ctx context.Context) (labels, error) {
 	if err != nil {
 		return l, err
 	}
-	l.model = make(map[string]string, len(models))
+	l.model = make(map[string]model.ProductModel, len(models))
 	for _, m := range models {
-		l.model[m.ID] = m.Name
+		l.model[m.ID] = m
 	}
 
 	// From the rows the interface reads, not a second copy of the labels in the

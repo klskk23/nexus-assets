@@ -190,6 +190,7 @@ const (
 	KeyColOwner     = "csv.owner"
 	KeyColCreatedAt = "csv.created_at"
 	KeyColModel     = "csv.model"
+	KeyColVendor    = "csv.vendor"
 	KeyColHolderLoc = "csv.holder_location"
 	// The device's own note. Named for what it belongs to, because in the
 	// import template it sits directly under "持有方（名称）" and read as

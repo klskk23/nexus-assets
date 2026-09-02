@@ -810,6 +810,8 @@ paths:
       description: >
         export.csv 的 JSON 兄弟。列名用字段键而不是显示名，所以消费方绑定的东西不会因为
         有人改了显示名而失效。必须指定类别：字段键只在一个类别的链内唯一。
+        内建列：sys_id、sys_sn、sys_category、sys_status、sys_holder、sys_owner、
+        sys_model、sys_vendor、sys_note、sys_created_at。
       parameters:
         - { name: category_id, in: query, required: true, schema: { type: string } }
         - { name: include_descendants, in: query, schema: { type: boolean, default: true } }
@@ -980,7 +982,7 @@ paths:
       tags: [import]
       summary: >
         按当前筛选条件导出。其余查询参数与 GET /assets 一致。
-        **必须指定类别**：固定七列（编号、类别、状态、持有方、负责人、备注、建档时间）之外的列是那个类别自己的字段，
+        **必须指定类别**：固定九列（编号、类别、状态、持有方、负责人、型号、厂商、备注、建档时间）之外的列是那个类别自己的字段，
         混着导出的表格里没有任何一列能把两台设备区分开。
       parameters:
         - { name: category_id, in: query, required: true, schema: { type: string } }
@@ -989,7 +991,7 @@ paths:
           schema: { type: string }
           description: >
             逗号分隔的字段键，决定导出哪几列自定义字段。
-            **不给**＝该类别的全部字段；**给空串**＝一列都不要，只留固定七列。
+            **不给**＝该类别的全部字段；**给空串**＝一列都不要，只留固定九列。
             两者是不同的请求，不要合并。
       responses:
         "200":

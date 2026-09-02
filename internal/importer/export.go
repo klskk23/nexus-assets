@@ -20,7 +20,7 @@ const exportLimit = 10000
 // ErrExportNeedsCategory is returned when an export is asked for without one.
 //
 // A category is what decides the columns: field keys are that category's own
-// vocabulary, so a mixed export can only ever be the seven fixed columns, and a
+// vocabulary, so a mixed export can only ever be the fixed columns, and a
 // spreadsheet of devices with none of what makes them different is not the
 // file anybody meant to ask for.
 var ErrExportNeedsCategory = errors.New("a category is required")
@@ -57,10 +57,16 @@ func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter
 		return nil, err
 	}
 
-	header := make([]string, 0, 7+len(fields))
+	header := make([]string, 0, 9+len(fields))
 	for _, k := range []string{
 		i18n.KeyColSN, i18n.KeyColCategory, i18n.KeyColStatus,
-		i18n.KeyColHolder, i18n.KeyColOwner, i18n.KeyColNote, i18n.KeyColCreatedAt,
+		i18n.KeyColHolder, i18n.KeyColOwner,
+		// The model and who makes it. The model was missing altogether, so the
+		// import template could name a device's model and the export could
+		// not give it back -- and "X100" without a vendor is not an answer
+		// when two suppliers both sell one.
+		i18n.KeyColModel, i18n.KeyColVendor,
+		i18n.KeyColNote, i18n.KeyColCreatedAt,
 	} {
 		header = append(header, i18n.M(k).In(lang))
 	}
@@ -82,6 +88,8 @@ func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter
 			names.statuses.Label(a.Status),
 			names.holder(a.Holder),
 			names.user[a.OwnerID],
+			names.modelName(a.ModelID),
+			names.modelVendor(a.ModelID),
 			a.Note,
 			a.CreatedAt.Format("2006-01-02 15:04"),
 		}

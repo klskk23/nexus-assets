@@ -453,3 +453,43 @@ func TestImportedNoteLandsOnTheDevice(t *testing.T) {
 		t.Errorf("the import wrote to the holder's note: %q", loc.Note)
 	}
 }
+
+// TestExportAndRowsCarryTheModelAndItsVendor pins what identifies a device in
+// both tabular views. The model was missing from the export altogether -- the
+// import template could name one and the export could not give it back -- and
+// the row view named the model without saying who makes it, which is not an
+// answer when two suppliers both sell an "X100".
+func TestExportAndRowsCarryTheModelAndItsVendor(t *testing.T) {
+	f := newFixture(t)
+	if _, err := f.svc.Commit(f.ctx, i18n.ZH, f.catID, f.userID, csvOf(
+		"SDWAN-X100,上海仓库,,001A2B3C9101,2.2.1",
+	)); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	filter := asset.ListFilter{CategoryID: f.catID, IncludeDescendants: true}
+	body, err := f.svc.Export(f.ctx, i18n.ZH, filter, nil)
+	if err != nil {
+		t.Fatalf("export: %v", err)
+	}
+	head, first := firstLineOf(body), strings.Split(strings.TrimPrefix(string(body), bom), "\n")[1]
+	for _, want := range []string{"型号", "厂商"} {
+		if !strings.Contains(head, want) {
+			t.Errorf("the export header is missing %q: %q", want, head)
+		}
+	}
+	if !strings.Contains(first, "SDWAN-X100") || !strings.Contains(first, "Acme") {
+		t.Errorf("the row should name the model and its vendor: %q", first)
+	}
+
+	page, err := f.svc.Rows(f.ctx, i18n.ZH, filter)
+	if err != nil {
+		t.Fatalf("rows: %v", err)
+	}
+	if got := page.Rows[0][SysPrefix+"model"]; got != "SDWAN-X100" {
+		t.Errorf("sys_model = %q", got)
+	}
+	if got := page.Rows[0][SysPrefix+"vendor"]; got != "Acme" {
+		t.Errorf("sys_vendor = %q, want Acme -- this is what a label prints beside the model", got)
+	}
+}

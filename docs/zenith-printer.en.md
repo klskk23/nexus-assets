@@ -67,6 +67,9 @@ same data as `export.csv` in a different shape:
   category's own vocabulary, and there is already a field called `sn` today;
 - a row's identity is `sys_id`; zenith merges refreshes on it, so a selection
   made before a refresh still means the same devices afterwards;
+- there are ten built-in columns: `sys_id`, `sys_sn`, `sys_category`,
+  `sys_status`, `sys_holder`, `sys_owner`, `sys_model`, `sys_vendor`,
+  `sys_note`, `sys_created_at`;
 - **a category is required**, for the same reason: field keys are unique only
   within one category's subtree.
 

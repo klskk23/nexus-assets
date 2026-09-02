@@ -54,6 +54,8 @@ nexus   ──  GET  /api/print-presets            有哪些标签
 - **列名用字段键**，不用显示名 —— 显示名改了不该让对面的模板失效；
 - 内建列加 `sys_` 前缀让路，因为字段键是类别自己的词汇，今天就有一个字段叫 `sn`；
 - 行的身份是 `sys_id`，zenith 按它合并刷新，所以刷新前勾的行刷新后还是同一批设备；
+- 内建列一共十个：`sys_id`、`sys_sn`、`sys_category`、`sys_status`、`sys_holder`、
+  `sys_owner`、`sys_model`、`sys_vendor`、`sys_note`、`sys_created_at`；
 - **必须指定类别**，理由同上：字段键只在一个类别的子树内唯一。
 
 ## 三、在 zenith 里接一个数据源
