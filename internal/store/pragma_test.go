@@ -57,7 +57,7 @@ func TestPragmaReadBackCatchesSilentDefaults(t *testing.T) {
 				t.Logf("driver rejected the DSN at open time: %v", err)
 				return
 			}
-			defer db.Close()
+			defer func() { _ = db.Close() }()
 
 			err = assertPragmas(db, busyTimeoutMS)
 			if err == nil {
@@ -77,7 +77,7 @@ func TestOpenAppliesPragmas(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 
 	for name, db := range map[string]*sql.DB{"read": s.read, "write": s.write} {
 		var mode string

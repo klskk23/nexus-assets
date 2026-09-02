@@ -89,8 +89,8 @@ func TestExistingEnvironmentWinsOverTheFile(t *testing.T) {
 	}
 
 	t.Setenv("NEXUS_ADDR", ":9999")
-	os.Unsetenv("NEXUS_DB_PATH")
-	t.Cleanup(func() { os.Unsetenv("NEXUS_DB_PATH") })
+	_ = os.Unsetenv("NEXUS_DB_PATH")
+	t.Cleanup(func() { _ = os.Unsetenv("NEXUS_DB_PATH") })
 
 	if err := LoadEnvFile(path); err != nil {
 		t.Fatalf("load: %v", err)
@@ -109,8 +109,8 @@ func TestLoadEnvFileWarnsAboutWidePermissions(t *testing.T) {
 	if err := os.WriteFile(path, []byte("NEXUS_JWT_SECRET=s3cret\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	os.Unsetenv("NEXUS_JWT_SECRET")
-	t.Cleanup(func() { os.Unsetenv("NEXUS_JWT_SECRET") })
+	_ = os.Unsetenv("NEXUS_JWT_SECRET")
+	t.Cleanup(func() { _ = os.Unsetenv("NEXUS_JWT_SECRET") })
 
 	// The warning goes to stderr rather than failing: a wide mode is worth
 	// saying out loud but should not stop a developer working locally.
@@ -135,8 +135,8 @@ func TestLoadReadsConfigurationFromTheFile(t *testing.T) {
 	}
 
 	for _, k := range []string{"NEXUS_JWT_SECRET", "NEXUS_ALLOWED_EMAIL_DOMAINS", "NEXUS_ADDR"} {
-		os.Unsetenv(k)
-		t.Cleanup(func() { os.Unsetenv(k) })
+		_ = os.Unsetenv(k)
+		t.Cleanup(func() { _ = os.Unsetenv(k) })
 	}
 	t.Setenv(EnvFileVar, path)
 

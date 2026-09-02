@@ -80,95 +80,93 @@ func FailField(c *gin.Context, status int, field, key string, args ...any) {
 		map[string]string{field: i18n.M(key, args...).In(lang)})
 }
 
-// FailErr maps a domain error onto the right status and code.
+// refusal is how one domain sentinel is answered.
+type refusal struct {
+	status int
+	code   string
+	// key replaces the error's own words. Only a few refusals need it: most
+	// carry a sentence written for the person who caused them, and flattening
+	// that to "not found" throws away the only useful part.
+	key string
+	// field names the input to highlight, when the refusal is about one.
+	field string
+}
+
+// refusals maps sentinels onto answers, in order.
+//
+// A table rather than a switch, because the switch was the same three lines
+// twenty times over and the differences between the cases were hard to see
+// among them. Order is preserved and still matters: a wrapped sentinel matches
+// the first entry it satisfies.
 //
 // Keeping the mapping in one place is what makes the codes in
 // contracts/README.md true rather than aspirational.
-func FailErr(c *gin.Context, err error) {
-	lang := LangOf(c)
-	var fieldErrs asset.FieldErrors
-	switch {
-	case errors.As(err, &fieldErrs):
-		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
-			i18n.M(i18n.KeyValidationFailed).In(lang), fieldErrs.In(lang))
+var refusals = []struct {
+	sentinel error
+	answer   refusal
+}{
+	{asset.ErrVersionConflict, refusal{http.StatusConflict, CodeVersionConflict, i18n.KeyVersionConflict, ""}},
 
-	case errors.Is(err, asset.ErrVersionConflict):
-		Fail(c, http.StatusConflict, CodeVersionConflict, i18n.M(i18n.KeyVersionConflict).In(lang), nil)
+	{asset.ErrNotFound, refusal{http.StatusNotFound, CodeNotFound, i18n.KeyNotFound, ""}},
+	{schema.ErrNotFound, refusal{http.StatusNotFound, CodeNotFound, i18n.KeyNotFound, ""}},
+	{holder.ErrNotFound, refusal{http.StatusNotFound, CodeNotFound, i18n.KeyNotFound, ""}},
+	{auth.ErrNotFound, refusal{http.StatusNotFound, CodeNotFound, i18n.KeyNotFound, ""}},
 
-	case errors.Is(err, asset.ErrNotFound),
-		errors.Is(err, schema.ErrNotFound),
-		errors.Is(err, holder.ErrNotFound),
-		errors.Is(err, auth.ErrNotFound):
-		Fail(c, http.StatusNotFound, CodeNotFound, i18n.M(i18n.KeyNotFound).In(lang), nil)
-
-	case errors.Is(err, schema.ErrCategoryHasChildren):
-		Fail(c, http.StatusConflict, CodeReferenceBlocked,
-			i18n.Text(err, lang), nil)
-
-	case errors.Is(err, schema.ErrCategoryHasAssets):
-		Fail(c, http.StatusConflict, CodeCategoryHasAssets,
-			i18n.Text(err, lang), nil)
-
-	case errors.Is(err, schema.ErrKeyConflict):
-		Fail(c, http.StatusConflict, CodeUniqueConflict, i18n.Text(err, lang), nil)
-
-	case errors.Is(err, schema.ErrModelDuplicate):
-		Fail(c, http.StatusConflict, CodeUniqueConflict, i18n.Text(err, lang), nil)
-
-	case errors.Is(err, schema.ErrModelInvalid):
-		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, i18n.Text(err, lang), nil)
-
-	case errors.Is(err, schema.ErrModelInUse):
-		Fail(c, http.StatusConflict, CodeReferenceBlocked, i18n.Text(err, lang), nil)
-
-	case errors.Is(err, schema.ErrModelAmbiguous):
-		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
-			i18n.Text(err, lang), nil)
+	{schema.ErrCategoryHasChildren, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
+	{schema.ErrCategoryHasAssets, refusal{http.StatusConflict, CodeCategoryHasAssets, "", ""}},
+	{schema.ErrKeyConflict, refusal{http.StatusConflict, CodeUniqueConflict, "", ""}},
+	{schema.ErrModelDuplicate, refusal{http.StatusConflict, CodeUniqueConflict, "", ""}},
+	{schema.ErrModelInvalid, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", ""}},
+	{schema.ErrModelInUse, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
+	{schema.ErrModelAmbiguous, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", ""}},
 
 	// Configuration mistakes carry their own explanation of what to fix first,
 	// so the message is passed through rather than flattened to a generic one.
-	case errors.Is(err, schema.ErrDependenciesUnmet):
+	{schema.ErrDependenciesUnmet, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", ""}},
+	{schema.ErrStatusInvalid, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", ""}},
+	{schema.ErrDisplayKeyInvalid, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", ""}},
+	{schema.ErrFieldDependedOn, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
+
+	{holder.ErrDefaultStockRequired, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
+	{holder.ErrParentRequired, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", "parent_id"}},
+	{holder.ErrParentInvalid, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", "parent_id"}},
+	{holder.ErrReferenced, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
+	{holder.ErrNotALocation, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", "is_default_stock"}},
+	{holder.ErrHasChildren, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
+
+	{auth.ErrStillOwnsAssets, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
+}
+
+// FailErr maps a domain error onto the right status and code.
+func FailErr(c *gin.Context, err error) {
+	lang := LangOf(c)
+
+	// Field errors first: they are a set of messages rather than one, and no
+	// sentinel below can describe them.
+	var fieldErrs asset.FieldErrors
+	if errors.As(err, &fieldErrs) {
 		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
-			i18n.Text(err, lang), nil)
-
-	case errors.Is(err, schema.ErrStatusInvalid):
-		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
-			i18n.Text(err, lang), nil)
-
-	case errors.Is(err, schema.ErrDisplayKeyInvalid):
-		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
-			i18n.Text(err, lang), nil)
-
-	case errors.Is(err, schema.ErrFieldDependedOn):
-		Fail(c, http.StatusConflict, CodeReferenceBlocked,
-			i18n.Text(err, lang), nil)
-
-	case errors.Is(err, holder.ErrDefaultStockRequired):
-		Fail(c, http.StatusConflict, CodeReferenceBlocked,
-			i18n.Text(err, lang), nil)
-
-	case errors.Is(err, holder.ErrParentRequired),
-		errors.Is(err, holder.ErrParentInvalid):
-		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed,
-			i18n.Text(err, lang), map[string]string{"parent_id": i18n.Text(err, lang)})
-
-	case errors.Is(err, holder.ErrReferenced):
-		Fail(c, http.StatusConflict, CodeReferenceBlocked, i18n.Text(err, lang), nil)
-
-	case errors.Is(err, holder.ErrNotALocation):
-		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, i18n.Text(err, lang),
-			map[string]string{"is_default_stock": i18n.Text(err, lang)})
-
-	case errors.Is(err, holder.ErrHasChildren):
-		Fail(c, http.StatusConflict, CodeReferenceBlocked, i18n.Text(err, lang), nil)
-
-	case errors.Is(err, auth.ErrStillOwnsAssets):
-		Fail(c, http.StatusConflict, CodeReferenceBlocked,
-			i18n.Text(err, lang), nil)
-
-	default:
-		Fail(c, http.StatusInternalServerError, CodeInternal, i18n.M(i18n.KeyInternal).In(lang), nil)
+			i18n.M(i18n.KeyValidationFailed).In(lang), fieldErrs.In(lang))
+		return
 	}
+
+	for _, r := range refusals {
+		if !errors.Is(err, r.sentinel) {
+			continue
+		}
+		msg := i18n.Text(err, lang)
+		if r.answer.key != "" {
+			msg = i18n.M(r.answer.key).In(lang)
+		}
+		var fields map[string]string
+		if r.answer.field != "" {
+			fields = map[string]string{r.answer.field: msg}
+		}
+		Fail(c, r.answer.status, r.answer.code, msg, fields)
+		return
+	}
+
+	Fail(c, http.StatusInternalServerError, CodeInternal, i18n.M(i18n.KeyInternal).In(lang), nil)
 }
 
 // userText renders a domain error for the screen.

@@ -81,75 +81,10 @@ func (s *Service) List(ctx context.Context, f ListFilter) (ListResult, error) {
 		f.Limit = maxLimit
 	}
 
-	where := []string{"1 = 1"}
-	args := []any{}
-
-	if f.CategoryID != "" {
-		if f.IncludeDescendants {
-			var path string
-			if err := s.db.ReadDB().QueryRowContext(ctx,
-				`SELECT path FROM categories WHERE id = ?`, f.CategoryID).Scan(&path); err != nil {
-				if errors.Is(err, sql.ErrNoRows) {
-					return res, schema.ErrNotFound
-				}
-				return res, err
-			}
-			where = append(where,
-				`category_id IN (SELECT id FROM categories WHERE path LIKE ? || '%')`)
-			args = append(args, path)
-		} else {
-			where = append(where, `category_id = ?`)
-			args = append(args, f.CategoryID)
-		}
+	where, args, err := s.filterClause(ctx, f, &res)
+	if err != nil {
+		return res, err
 	}
-	if len(f.IDs) > 0 {
-		holes := make([]string, len(f.IDs))
-		for i, id := range f.IDs {
-			holes[i] = "?"
-			args = append(args, id)
-		}
-		where = append(where, `id IN (`+strings.Join(holes, ",")+`)`)
-	}
-	if f.Status != "" {
-		where = append(where, `status = ?`)
-		args = append(args, f.Status)
-	}
-	if f.OwnerID != "" {
-		where = append(where, `owner_id = ?`)
-		args = append(args, f.OwnerID)
-	}
-	if f.HolderType != "" && f.HolderID != "" {
-		where = append(where, `holder_type = ? AND holder_id = ?`)
-		args = append(args, f.HolderType, f.HolderID)
-	}
-	for k, v := range f.AttrFilters {
-		where = append(where, `json_extract(attrs, '$.' || ?) = ?`)
-		args = append(args, k, v)
-	}
-
-	if q := strings.TrimSpace(f.Q); q != "" {
-		// Exact first: a scanner types the whole code, and a single hit should
-		// land on the device rather than on a one-row list.
-		id, found, err := s.exactMatch(ctx, q)
-		if err != nil {
-			return res, err
-		}
-		if found {
-			res.ExactMatchID = id
-		}
-		like := "%" + q + "%"
-		upper := "%" + normaliseScan(q) + "%"
-		// Every unique value, live or retired, is reachable through one table,
-		// so a scanner finds a device by its asset tag, its MAC or its vendor
-		// serial without any of those keys being named here.
-		where = append(where, `(
-			id IN (SELECT asset_id FROM asset_unique_values WHERE value LIKE ? OR value LIKE ?)
-			OR model_id IN (SELECT id FROM product_models WHERE name LIKE ?)
-			OR id LIKE ?
-		)`)
-		args = append(args, like, upper, like, q+"%")
-	}
-
 	clause := strings.Join(where, " AND ")
 
 	if err := s.db.ReadDB().QueryRowContext(ctx,
@@ -369,4 +304,85 @@ func (s *Service) DeleteMany(ctx context.Context, ids []string, confirm string) 
 		return 0, err
 	}
 	return len(ids), nil
+}
+
+// filterClause turns the filter into WHERE fragments and their arguments.
+//
+// It also fills in ExactMatchID, which is why it takes the result: an exact hit
+// on a scanned code is decided by the same search that narrows the list, and
+// running that query twice to keep the signature tidy would be a lie about the
+// cost.
+func (s *Service) filterClause(ctx context.Context, f ListFilter, res *ListResult) ([]string, []any, error) {
+	where := []string{"1 = 1"}
+	args := []any{}
+
+	if f.CategoryID != "" {
+		if f.IncludeDescendants {
+			var path string
+			if err := s.db.ReadDB().QueryRowContext(ctx,
+				`SELECT path FROM categories WHERE id = ?`, f.CategoryID).Scan(&path); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					return nil, nil, schema.ErrNotFound
+				}
+				return nil, nil, err
+			}
+			where = append(where,
+				`category_id IN (SELECT id FROM categories WHERE path LIKE ? || '%')`)
+			args = append(args, path)
+		} else {
+			where = append(where, `category_id = ?`)
+			args = append(args, f.CategoryID)
+		}
+	}
+	if len(f.IDs) > 0 {
+		holes := make([]string, len(f.IDs))
+		for i, id := range f.IDs {
+			holes[i] = "?"
+			args = append(args, id)
+		}
+		where = append(where, `id IN (`+strings.Join(holes, ",")+`)`)
+	}
+	if f.Status != "" {
+		where = append(where, `status = ?`)
+		args = append(args, f.Status)
+	}
+	if f.OwnerID != "" {
+		where = append(where, `owner_id = ?`)
+		args = append(args, f.OwnerID)
+	}
+	if f.HolderType != "" && f.HolderID != "" {
+		where = append(where, `holder_type = ? AND holder_id = ?`)
+		args = append(args, f.HolderType, f.HolderID)
+	}
+	for k, v := range f.AttrFilters {
+		where = append(where, `json_extract(attrs, '$.' || ?) = ?`)
+		args = append(args, k, v)
+	}
+
+	q := strings.TrimSpace(f.Q)
+	if q == "" {
+		return where, args, nil
+	}
+
+	// Exact first: a scanner types the whole code, and a single hit should land
+	// on the device rather than on a one-row list.
+	id, found, err := s.exactMatch(ctx, q)
+	if err != nil {
+		return nil, nil, err
+	}
+	if found {
+		res.ExactMatchID = id
+	}
+	like := "%" + q + "%"
+	upper := "%" + normaliseScan(q) + "%"
+	// Every unique value, live or retired, is reachable through one table, so a
+	// scanner finds a device by its asset tag, its MAC or its vendor serial
+	// without any of those keys being named here.
+	where = append(where, `(
+		id IN (SELECT asset_id FROM asset_unique_values WHERE value LIKE ? OR value LIKE ?)
+		OR model_id IN (SELECT id FROM product_models WHERE name LIKE ?)
+		OR id LIKE ?
+	)`)
+	args = append(args, like, upper, like, q+"%")
+	return where, args, nil
 }

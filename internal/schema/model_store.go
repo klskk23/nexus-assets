@@ -304,26 +304,8 @@ func (s *Store) UpdateModel(ctx context.Context, id string, in UpdateModelInput)
 	if err != nil {
 		return cur, err
 	}
-	if in.Name != nil {
-		if strings.TrimSpace(*in.Name) == "" {
-			return cur, i18n.Wrap(ErrModelInvalid, i18n.KeyModelNeedsName)
-		}
-		cur.Name = strings.TrimSpace(*in.Name)
-	}
-	if in.Vendor != nil {
-		cur.Vendor = strings.TrimSpace(*in.Vendor)
-	}
-	if in.ImageURL != nil {
-		cur.ImageURL = *in.ImageURL
-	}
-	if in.CategoryIDs != nil {
-		cur.CategoryIDs = dedupe(*in.CategoryIDs)
-	}
-	if in.AttrDefaults != nil {
-		cur.AttrDefaults = *in.AttrDefaults
-	}
-	if cur.AttrDefaults == nil {
-		cur.AttrDefaults = map[string]any{}
+	if err := applyModelPatch(&cur, in); err != nil {
+		return cur, err
 	}
 
 	defaults, err := store.MarshalJSONMap(cur.AttrDefaults)
@@ -410,4 +392,33 @@ func (s *Store) DeleteModel(ctx context.Context, id string) (int, error) {
 		return err
 	})
 	return 0, err
+}
+
+// applyModelPatch folds the given fields into the model as it stands.
+//
+// An absent field means "leave this alone", which is what makes every one of
+// these a pointer: a rename must not also clear the vendor.
+func applyModelPatch(cur *model.ProductModel, in UpdateModelInput) error {
+	if in.Name != nil {
+		if strings.TrimSpace(*in.Name) == "" {
+			return i18n.Wrap(ErrModelInvalid, i18n.KeyModelNeedsName)
+		}
+		cur.Name = strings.TrimSpace(*in.Name)
+	}
+	if in.Vendor != nil {
+		cur.Vendor = strings.TrimSpace(*in.Vendor)
+	}
+	if in.ImageURL != nil {
+		cur.ImageURL = *in.ImageURL
+	}
+	if in.CategoryIDs != nil {
+		cur.CategoryIDs = dedupe(*in.CategoryIDs)
+	}
+	if in.AttrDefaults != nil {
+		cur.AttrDefaults = *in.AttrDefaults
+	}
+	if cur.AttrDefaults == nil {
+		cur.AttrDefaults = map[string]any{}
+	}
+	return nil
 }

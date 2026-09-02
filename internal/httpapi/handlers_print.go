@@ -53,19 +53,7 @@ func (s *Server) printAssets(c *gin.Context) {
 		return
 	}
 
-	var req struct {
-		IDs []string `json:"ids" binding:"required"`
-		// Copies applies to every label in the request; the service caps it.
-		Copies int `json:"copies"`
-		// Presets chooses which label each category prints, by category id.
-		// A category with one label needs no entry; one with several does,
-		// because nothing here can guess which of them was meant.
-		Presets map[string]string `json:"presets"`
-		// DryRun works out what would be printed without printing it. Paper
-		// comes out of a real machine in another room, so the person pressing
-		// the button is shown what they are about to spend first.
-		DryRun bool `json:"dry_run"`
-	}
+	var req printAssetsRequest
 	if err := c.ShouldBindJSON(&req); err != nil || len(req.IDs) == 0 {
 		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyNoAssetsSelected)
 		return
@@ -118,101 +106,14 @@ func (s *Server) printAssets(c *gin.Context) {
 
 	out := make([]printBatch, 0, len(order))
 	for _, categoryID := range order {
-		batch := printBatch{
-			CategoryID: categoryID,
-			Count:      len(byCategory[categoryID]),
-			Numbers:    numbers[categoryID],
-		}
-
-		cat, err := s.schema.GetCategory(c.Request.Context(), categoryID)
+		batch, err := s.printOne(c, categoryID, byCategory[categoryID],
+			numbers[categoryID], req, known, batchKey, lang)
 		if err != nil {
+			// The ledger itself failed, which is not something one batch can
+			// carry: nothing further would be trustworthy.
 			FailErr(c, err)
 			return
 		}
-		batch.CategoryName = cat.Name
-
-		for _, id := range cat.PrintPresetIDs {
-			p, ok := known[id]
-			if !ok {
-				// Configured here but not there any more, or the service could
-				// not be asked. Either way it is still what this category
-				// points at, so it is listed under the only name available.
-				p = printing.Preset{ID: id, Name: id}
-			}
-			batch.Presets = append(batch.Presets, p)
-		}
-
-		if len(cat.PrintPresetIDs) == 0 {
-			// Not a failure of the printer: nobody has said what this category's
-			// label looks like, and only a person can answer that.
-			batch.Error = i18n.M(i18n.KeyPrintNoPreset, cat.Name).In(LangOf(c))
-			out = append(out, batch)
-			continue
-		}
-
-		chosen := req.Presets[categoryID]
-		if chosen == "" && len(cat.PrintPresetIDs) == 1 {
-			// One label is not a choice.
-			chosen = cat.PrintPresetIDs[0]
-		}
-		if !slices.Contains(cat.PrintPresetIDs, chosen) {
-			// Either nothing was chosen where a choice was needed, or something
-			// outside this category's labels was. Both are the same refusal:
-			// this category prints these, pick one of them.
-			if req.DryRun {
-				// The confirmation is where the choice gets made, so it says
-				// what there is to choose from rather than refusing.
-				batch.PresetID = cat.PrintPresetIDs[0]
-				batch.PresetName = batch.Presets[0].Name
-				out = append(out, batch)
-				continue
-			}
-			batch.Error = i18n.M(i18n.KeyPrintPresetNotChosen, cat.Name).In(LangOf(c))
-			out = append(out, batch)
-			continue
-		}
-		batch.PresetID = chosen
-		batch.PresetName = nameOr(known, chosen)
-
-		if req.DryRun {
-			// Everything above is what the confirmation needs: how many labels,
-			// under which category, and whether anything stands in the way.
-			out = append(out, batch)
-			continue
-		}
-
-		rows, err := s.importer.Rows(c.Request.Context(), LangOf(c), asset.ListFilter{
-			CategoryID:         categoryID,
-			IncludeDescendants: false,
-			IDs:                byCategory[categoryID],
-			Limit:              len(byCategory[categoryID]),
-		})
-		if err != nil {
-			FailErr(c, err)
-			return
-		}
-
-		body := map[string]any{"columns": rows.Columns, "rows": rows.Rows}
-		if req.Copies > 0 {
-			body["copies"] = req.Copies
-		}
-		job, err := s.printer.Print(c.Request.Context(), chosen, body,
-			batchKey+":"+categoryID, lang)
-		if err != nil {
-			var refused *printing.Rejection
-			if errors.As(err, &refused) {
-				batch.Error = refused.Error()
-			} else {
-				// The service is unreachable, or answered with something that
-				// is not a job. The reader gets one sentence; the cause goes to
-				// the log, where the administrator is.
-				log.Printf("print: %s: %v", cat.Name, err)
-				batch.Error = i18n.M(i18n.KeyPrintUnreachable).In(LangOf(c))
-			}
-			out = append(out, batch)
-			continue
-		}
-		batch.JobID, batch.Status, batch.Claims = job.ID, job.Status, job.Claims
 		out = append(out, batch)
 	}
 
@@ -297,4 +198,121 @@ func (s *Server) printingAvailable(c *gin.Context) {
 		"printing":     s.printer.Configured(),
 		"printing_url": s.cfg.PrinterURL,
 	})
+}
+
+// printAssetsRequest is what the page asks for.
+type printAssetsRequest struct {
+	IDs []string `json:"ids" binding:"required"`
+	// Copies applies to every label in the request; the service caps it.
+	Copies int `json:"copies"`
+	// Presets chooses which label each category prints, by category id. A
+	// category with one label needs no entry; one with several does, because
+	// nothing here can guess which of them was meant.
+	Presets map[string]string `json:"presets"`
+	// DryRun works out what would be printed without printing it. Paper comes
+	// out of a real machine in another room, so the person pressing the button
+	// is shown what they are about to spend first.
+	DryRun bool `json:"dry_run"`
+}
+
+// printOne assembles one category's batch, and submits it unless this is a dry
+// run.
+//
+// A returned error is fatal to the whole request. Anything the batch alone is
+// refused for goes in batch.Error instead: the other categories still print,
+// and the response says which ones did not.
+func (s *Server) printOne(c *gin.Context, categoryID string, ids, numbers []string,
+	req printAssetsRequest, known map[string]printing.Preset, batchKey, lang string) (printBatch, error) {
+
+	batch := printBatch{CategoryID: categoryID, Count: len(ids), Numbers: numbers}
+
+	cat, err := s.schema.GetCategory(c.Request.Context(), categoryID)
+	if err != nil {
+		return batch, err
+	}
+	batch.CategoryName = cat.Name
+
+	for _, id := range cat.PrintPresetIDs {
+		p, ok := known[id]
+		if !ok {
+			// Configured here but not there any more, or the service could not
+			// be asked. Either way it is still what this category points at, so
+			// it is listed under the only name available.
+			p = printing.Preset{ID: id, Name: id}
+		}
+		batch.Presets = append(batch.Presets, p)
+	}
+
+	chosen, ok := choosePreset(cat.PrintPresetIDs, req, categoryID)
+	switch {
+	case len(cat.PrintPresetIDs) == 0:
+		// Not a failure of the printer: nobody has said what this category's
+		// label looks like, and only a person can answer that.
+		batch.Error = i18n.M(i18n.KeyPrintNoPreset, cat.Name).In(LangOf(c))
+		return batch, nil
+	case !ok && req.DryRun:
+		// The confirmation is where the choice gets made, so it says what there
+		// is to choose from rather than refusing.
+		batch.PresetID = cat.PrintPresetIDs[0]
+		batch.PresetName = batch.Presets[0].Name
+		return batch, nil
+	case !ok:
+		// Either nothing was chosen where a choice was needed, or something
+		// outside this category's labels was. Both are the same refusal: this
+		// category prints these, pick one of them.
+		batch.Error = i18n.M(i18n.KeyPrintPresetNotChosen, cat.Name).In(LangOf(c))
+		return batch, nil
+	}
+
+	batch.PresetID = chosen
+	batch.PresetName = nameOr(known, chosen)
+	if req.DryRun {
+		// Everything above is what the confirmation needs: how many labels,
+		// under which category, and whether anything stands in the way.
+		return batch, nil
+	}
+
+	rows, err := s.importer.Rows(c.Request.Context(), LangOf(c), asset.ListFilter{
+		CategoryID:         categoryID,
+		IncludeDescendants: false,
+		IDs:                ids,
+		Limit:              len(ids),
+	})
+	if err != nil {
+		return batch, err
+	}
+
+	body := map[string]any{"columns": rows.Columns, "rows": rows.Rows}
+	if req.Copies > 0 {
+		body["copies"] = req.Copies
+	}
+	job, err := s.printer.Print(c.Request.Context(), chosen, body, batchKey+":"+categoryID, lang)
+	if err != nil {
+		var refused *printing.Rejection
+		if errors.As(err, &refused) {
+			batch.Error = refused.Error()
+			return batch, nil
+		}
+		// The service is unreachable, or answered with something that is not a
+		// job. The reader gets one sentence; the cause goes to the log, where
+		// the administrator is.
+		log.Printf("print: %s: %v", cat.Name, err)
+		batch.Error = i18n.M(i18n.KeyPrintUnreachable).In(LangOf(c))
+		return batch, nil
+	}
+	batch.JobID, batch.Status, batch.Claims = job.ID, job.Status, job.Claims
+	return batch, nil
+}
+
+// choosePreset decides which of a category's labels this batch prints.
+//
+// Not ok means the caller has to say: either nothing was chosen where a choice
+// was needed, or something that is not one of this category's labels was.
+func choosePreset(available []string, req printAssetsRequest, categoryID string) (string, bool) {
+	chosen := req.Presets[categoryID]
+	if chosen == "" && len(available) == 1 {
+		// One label is not a choice.
+		chosen = available[0]
+	}
+	return chosen, slices.Contains(available, chosen)
 }

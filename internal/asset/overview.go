@@ -43,26 +43,11 @@ type Overview struct {
 func (s *Service) Overview(ctx context.Context) (Overview, error) {
 	var out Overview
 
-	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT status, count(*) FROM assets GROUP BY status`)
+	byStatus, total, err := s.countByStatus(ctx)
 	if err != nil {
-		return out, fmt.Errorf("count by status: %w", err)
-	}
-	byStatus := map[model.AssetStatus]int{}
-	for rows.Next() {
-		var st model.AssetStatus
-		var n int
-		if err := rows.Scan(&st, &n); err != nil {
-			rows.Close()
-			return out, err
-		}
-		byStatus[st] = n
-		out.Total += n
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
 		return out, err
 	}
+	out.Total = total
 
 	statuses, err := s.schema.StatusSet(ctx)
 	if err != nil {
@@ -86,28 +71,8 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 		return out, err
 	}
 
-	// Which statuses count towards usable stock is a column now, so the filter
-	// is applied in Go rather than as a hardcoded `status != 'retired'`.
-	rows, err = s.db.ReadDB().QueryContext(ctx,
-		`SELECT category_id, status, count(*) FROM assets GROUP BY category_id, status`)
+	perCategory, err := s.availableByCategory(ctx, statuses)
 	if err != nil {
-		return out, fmt.Errorf("count by category: %w", err)
-	}
-	perCategory := map[string]int{}
-	for rows.Next() {
-		var id string
-		var st model.AssetStatus
-		var n int
-		if err := rows.Scan(&id, &st, &n); err != nil {
-			rows.Close()
-			return out, err
-		}
-		if statuses.CountsAsAvailable(st) {
-			perCategory[id] += n
-		}
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
 		return out, err
 	}
 
@@ -139,4 +104,53 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 		out.CategoryDistribution = append(out.CategoryDistribution, *roots[id])
 	}
 	return out, nil
+}
+
+// countByStatus is how many devices carry each status, and how many there are.
+func (s *Service) countByStatus(ctx context.Context) (map[model.AssetStatus]int, int, error) {
+	rows, err := s.db.ReadDB().QueryContext(ctx,
+		`SELECT status, count(*) FROM assets GROUP BY status`)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count by status: %w", err)
+	}
+	defer rows.Close()
+
+	byStatus, total := map[model.AssetStatus]int{}, 0
+	for rows.Next() {
+		var st model.AssetStatus
+		var n int
+		if err := rows.Scan(&st, &n); err != nil {
+			return nil, 0, err
+		}
+		byStatus[st] = n
+		total += n
+	}
+	return byStatus, total, rows.Err()
+}
+
+// availableByCategory counts only what is on the shelf, per category.
+//
+// Which statuses count towards usable stock is a column now, so the filter is
+// applied here rather than as a hardcoded `status != 'retired'`.
+func (s *Service) availableByCategory(ctx context.Context, statuses model.StatusSet) (map[string]int, error) {
+	rows, err := s.db.ReadDB().QueryContext(ctx,
+		`SELECT category_id, status, count(*) FROM assets GROUP BY category_id, status`)
+	if err != nil {
+		return nil, fmt.Errorf("count by category: %w", err)
+	}
+	defer rows.Close()
+
+	perCategory := map[string]int{}
+	for rows.Next() {
+		var id string
+		var st model.AssetStatus
+		var n int
+		if err := rows.Scan(&id, &st, &n); err != nil {
+			return nil, err
+		}
+		if statuses.CountsAsAvailable(st) {
+			perCategory[id] += n
+		}
+	}
+	return perCategory, rows.Err()
 }

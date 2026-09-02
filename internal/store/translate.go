@@ -37,57 +37,30 @@ func (s *Store) TranslateExpressions(ctx context.Context) error {
 		return nil
 	}
 
-	rows, err := s.read.QueryContext(ctx,
-		`SELECT id, key, options FROM field_definitions WHERE type = 'computed'`)
+	rules, err := s.computedRules(ctx)
 	if err != nil {
-		return fmt.Errorf("list computed fields: %w", err)
-	}
-	type rule struct{ id, key, options string }
-	var rules []rule
-	for rows.Next() {
-		var r rule
-		if err := rows.Scan(&r.id, &r.key, &r.options); err != nil {
-			rows.Close()
-			return err
-		}
-		rules = append(rules, r)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
 		return err
 	}
 
 	translated, failed := 0, 0
 	err = s.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		for _, r := range rules {
-			var opts map[string]any
-			if err := json.Unmarshal([]byte(r.options), &opts); err != nil {
-				return fmt.Errorf("read options of %q: %w", r.key, err)
-			}
-			old, _ := opts["template"].(string)
-			if old == "" {
-				continue
-			}
-
-			next, err := compute.Translate(old)
-			if err == nil {
-				_, err = compute.Parse(r.key, next)
-			}
-			if err != nil {
-				// Left as it was, and named. Someone has to look at it, and a
-				// silent half-migration is how that stops happening.
-				log.Printf("expression migration: %q needs rewriting by hand (%v): %s", r.key, err, old)
-				failed++
-				continue
-			}
-
-			opts["template"] = next
-			encoded, err := json.Marshal(opts)
-			if err != nil {
+			options, old, next, err := translateRule(r)
+			switch {
+			case err != nil:
 				return err
+			case next == "":
+				// Nothing to carry over, or nothing that could be: a rule that
+				// cannot be translated is left as it was and named in the log.
+				// Someone has to look at it, and a silent half-migration is how
+				// that stops happening.
+				if old != "" {
+					failed++
+				}
+				continue
 			}
 			if _, err := tx.ExecContext(ctx,
-				`UPDATE field_definitions SET options = ? WHERE id = ?`, string(encoded), r.id); err != nil {
+				`UPDATE field_definitions SET options = ? WHERE id = ?`, options, r.id); err != nil {
 				return err
 			}
 			log.Printf("expression migration: %q  %s  ->  %s", r.key, old, next)
@@ -107,4 +80,64 @@ func (s *Store) TranslateExpressions(ctx context.Context) error {
 		log.Printf("expression migration: %d rule(s) translated, %d need a hand", translated, failed)
 	}
 	return nil
+}
+
+// rule is one stored computed field, as it is on disk.
+type rule struct{ id, key, options string }
+
+// computedRules reads every computed field's stored expression.
+func (s *Store) computedRules(ctx context.Context) ([]rule, error) {
+	rows, err := s.read.QueryContext(ctx,
+		`SELECT id, key, options FROM field_definitions WHERE type = 'computed'`)
+	if err != nil {
+		return nil, fmt.Errorf("list computed fields: %w", err)
+	}
+	defer rows.Close()
+
+	var rules []rule
+	for rows.Next() {
+		var r rule
+		if err := rows.Scan(&r.id, &r.key, &r.options); err != nil {
+			return nil, err
+		}
+		rules = append(rules, r)
+	}
+	return rules, rows.Err()
+}
+
+// translateRule rewrites one rule into the new syntax.
+//
+// It returns the encoded options to store, the expression as it was, and the
+// expression it became. An empty `next` means nothing was written: either the
+// field carries no expression at all, or the translation could not be trusted
+// -- which is reported here, because the caller only counts.
+//
+// Not trusting a doubtful translation is the point. A serial number is a unique
+// index, and a guess that produced a different number for the same device would
+// surface as a collision on the next save rather than here.
+func translateRule(r rule) (options, old, next string, err error) {
+	var opts map[string]any
+	if err := json.Unmarshal([]byte(r.options), &opts); err != nil {
+		return "", "", "", fmt.Errorf("read options of %q: %w", r.key, err)
+	}
+	old, _ = opts["template"].(string)
+	if old == "" {
+		return "", "", "", nil
+	}
+
+	next, err = compute.Translate(old)
+	if err == nil {
+		_, err = compute.Parse(r.key, next)
+	}
+	if err != nil {
+		log.Printf("expression migration: %q needs rewriting by hand (%v): %s", r.key, err, old)
+		return "", old, "", nil
+	}
+
+	opts["template"] = next
+	encoded, err := json.Marshal(opts)
+	if err != nil {
+		return "", old, "", err
+	}
+	return string(encoded), old, next, nil
 }

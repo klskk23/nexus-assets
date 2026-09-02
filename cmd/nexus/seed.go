@@ -22,74 +22,9 @@ func runSeed(ctx context.Context, a *app, count int) error {
 		count = 10000
 	}
 
-	loc, err := a.holders.Create(ctx, holder.CreateInput{
-		Type: model.EntityLocation, Name: "种子仓库",
-	})
-	if err != nil {
-		return fmt.Errorf("create location: %w", err)
-	}
-	if err := a.holders.SetDefaultStock(ctx, loc.ID); err != nil {
-		return err
-	}
-
-	root, err := a.schema.CreateCategory(ctx, schema.CreateCategoryInput{
-		Code: "SEED", Name: "种子设备",
-	})
-	if err != nil {
-		return fmt.Errorf("create category: %w", err)
-	}
-	child, err := a.schema.CreateCategory(ctx, schema.CreateCategoryInput{
-		Code: "SEEDRT", Name: "种子路由器", ParentID: &root.ID,
-	})
+	shape, err := seedSchema(ctx, a)
 	if err != nil {
 		return err
-	}
-
-	mac, err := a.schema.CreateField(ctx, schema.CreateFieldInput{
-		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
-	})
-	if err != nil {
-		return err
-	}
-	fw, err := a.schema.CreateField(ctx, schema.CreateFieldInput{
-		Key: "firmware", Label: "固件版本", Type: model.FieldText,
-	})
-	if err != nil {
-		return err
-	}
-	// The numbering rule is an ordinary expression key now: unique so it can
-	// serve as the display key, and bound only after its input exists.
-	sn, err := a.schema.CreateField(ctx, schema.CreateFieldInput{
-		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
-		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
-	})
-	if err != nil {
-		return err
-	}
-	if err := a.schema.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
-		return err
-	}
-	if err := a.schema.Bind(ctx, root.ID, fw.ID, false, 20); err != nil {
-		return err
-	}
-	if err := a.schema.Bind(ctx, root.ID, sn.ID, false, 30); err != nil {
-		return err
-	}
-	displayKey := "sn"
-	if _, err := a.schema.UpdateCategory(ctx, root.ID, schema.UpdateCategoryInput{
-		DisplayKey: &displayKey,
-	}); err != nil {
-		return err
-	}
-
-	// A model that actually carries defaults and serves both categories: the
-	// picker was empty on a fresh database, so the whole feature looked broken.
-	if _, err := a.schema.CreateModel(ctx, schema.CreateModelInput{
-		Name: "SDWAN-X100", Vendor: "Acme",
-		CategoryIDs:  []string{root.ID, child.ID},
-		AttrDefaults: map[string]any{"firmware": "2.2.1"},
-	}); err != nil {
-		return fmt.Errorf("create model: %w", err)
 	}
 
 	owner, err := ownerID(ctx, a)
@@ -104,12 +39,12 @@ func runSeed(ctx context.Context, a *app, count int) error {
 	firmwares := []string{"2.1.3", "2.2.0", "2.2.1"}
 
 	for i := 0; i < count; i++ {
-		category := root.ID
+		category := shape.root
 		if i%3 == 0 {
-			category = child.ID
+			category = shape.child
 		}
 		status := statuses[i%len(statuses)]
-		h := model.Holder{Type: model.HolderTypeEntity, ID: loc.ID}
+		h := model.Holder{Type: model.HolderTypeEntity, ID: shape.location}
 		if status == model.StatusInUse {
 			h = model.Holder{Type: model.HolderTypeUser, ID: owner}
 		}
@@ -151,4 +86,91 @@ func ownerID(ctx context.Context, a *app) (string, error) {
 		return u.ID, nil
 	}
 	return users[0].ID, nil
+}
+
+// seeded is what the seed built for the assets to hang off.
+type seeded struct {
+	location, root, child string
+}
+
+// seedSchema builds a small but complete configuration: two categories, three
+// fields including a computed number, a stock location and a model that
+// actually carries defaults.
+//
+// The model matters more than it looks: the picker was empty on a fresh
+// database, so the whole feature looked broken to anyone trying it out.
+func seedSchema(ctx context.Context, a *app) (seeded, error) {
+	var out seeded
+
+	loc, err := a.holders.Create(ctx, holder.CreateInput{
+		Type: model.EntityLocation, Name: "种子仓库",
+	})
+	if err != nil {
+		return out, fmt.Errorf("create location: %w", err)
+	}
+	if err := a.holders.SetDefaultStock(ctx, loc.ID); err != nil {
+		return out, err
+	}
+
+	root, err := a.schema.CreateCategory(ctx, schema.CreateCategoryInput{
+		Code: "SEED", Name: "种子设备",
+	})
+	if err != nil {
+		return out, fmt.Errorf("create category: %w", err)
+	}
+	child, err := a.schema.CreateCategory(ctx, schema.CreateCategoryInput{
+		Code: "SEEDRT", Name: "种子路由器", ParentID: &root.ID,
+	})
+	if err != nil {
+		return out, err
+	}
+	out = seeded{location: loc.ID, root: root.ID, child: child.ID}
+
+	mac, err := a.schema.CreateField(ctx, schema.CreateFieldInput{
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
+	})
+	if err != nil {
+		return out, err
+	}
+	fw, err := a.schema.CreateField(ctx, schema.CreateFieldInput{
+		Key: "firmware", Label: "固件版本", Type: model.FieldText,
+	})
+	if err != nil {
+		return out, err
+	}
+	// The numbering rule is an ordinary expression key now: unique so it can
+	// serve as the display key, and bound only after its input exists.
+	sn, err := a.schema.CreateField(ctx, schema.CreateFieldInput{
+		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
+		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
+	})
+	if err != nil {
+		return out, err
+	}
+
+	for _, b := range []struct {
+		field    string
+		required bool
+		sort     int
+	}{{mac.ID, true, 10}, {fw.ID, false, 20}, {sn.ID, false, 30}} {
+		if err := a.schema.Bind(ctx, root.ID, b.field, b.required, b.sort); err != nil {
+			return out, err
+		}
+	}
+
+	displayKey := "sn"
+	if _, err := a.schema.UpdateCategory(ctx, root.ID, schema.UpdateCategoryInput{
+		DisplayKey: &displayKey,
+	}); err != nil {
+		return out, err
+	}
+
+	if _, err := a.schema.CreateModel(ctx, schema.CreateModelInput{
+		Name: "SDWAN-X100", Vendor: "Acme",
+		CategoryIDs:  []string{root.ID, child.ID},
+		AttrDefaults: map[string]any{"firmware": "2.2.1"},
+	}); err != nil {
+		return out, fmt.Errorf("create model: %w", err)
+	}
+	return out, nil
 }

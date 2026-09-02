@@ -24,13 +24,13 @@ func TestBeginImmediateTakesWriteLock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open a: %v", err)
 	}
-	defer a.Close()
+	defer func() { _ = a.Close() }()
 
 	b, err := open(path, 100)
 	if err != nil {
 		t.Fatalf("open b: %v", err)
 	}
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ctx := context.Background()
 	if _, err := a.write.ExecContext(ctx, `CREATE TABLE t (id INTEGER PRIMARY KEY)`); err != nil {
@@ -41,7 +41,9 @@ func TestBeginImmediateTakesWriteLock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("begin A: %v", err)
 	}
-	defer txA.Rollback()
+	// Rolled back whatever the test does with it; after a commit this is a
+	// no-op, which is the point of deferring it.
+	defer func() { _ = txA.Rollback() }()
 
 	_, err = b.write.BeginTx(ctx, nil)
 	if err == nil {

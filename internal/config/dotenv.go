@@ -48,7 +48,8 @@ func LoadEnvFile(path string) error {
 	if err != nil {
 		return fmt.Errorf("open %s: %w", path, err)
 	}
-	defer f.Close()
+	// Read-only: a close error here cannot mean lost data.
+	defer func() { _ = f.Close() }()
 
 	vars, err := ParseEnvFile(f)
 	if err != nil {

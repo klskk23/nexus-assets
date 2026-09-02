@@ -244,18 +244,6 @@ func (s *Store) DisplayKeys(ctx context.Context) (map[string]string, error) {
 	return out, rows.Err()
 }
 
-// jsonOrEmpty is a small helper for optional JSON columns.
-func jsonOrEmpty(v any) (string, error) {
-	if v == nil {
-		return "{}", nil
-	}
-	b, err := json.Marshal(v)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
 // ErrDisplayKeyInvalid rejects a display key that cannot serve as an identifier.
 var ErrDisplayKeyInvalid = errors.New("display key is not usable")
 

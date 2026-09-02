@@ -142,33 +142,9 @@ func applyOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, assetID
 		return nil, err
 	}
 
-	to := from
-	if req.ToStatus != nil {
-		to.Status = *req.ToStatus
-	}
-	if req.ToHolder != nil {
-		to.Holder = *req.ToHolder
-	}
-	if req.ToOwnerID != nil {
-		to.OwnerID = *req.ToOwnerID
-	}
-
-	// Check-in with no destination named: this device's own home first, then
-	// the global default. A batch of twenty from four warehouses therefore
-	// goes back to four warehouses, which is the whole point of a home.
-	if req.CheckIn && req.ToHolder == nil {
-		switch {
-		case homeType.Valid && homeID.Valid:
-			to.Holder = model.Holder{Type: model.HolderType(homeType.String), ID: homeID.String}
-		case fallback != nil:
-			to.Holder = *fallback
-		default:
-			return nil, ErrNoDefaultStock
-		}
-		// The home owner comes with it, unless the caller named one.
-		if req.ToOwnerID == nil && homeOwner.Valid && homeOwner.String != "" {
-			to.OwnerID = homeOwner.String
-		}
+	to, err := destination(from, req, home{homeType, homeID, homeOwner}, fallback)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := statuses.ValidateTransition(from.Status, to.Status); err != nil {
@@ -216,4 +192,47 @@ func applyOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, assetID
 		ToStatus: to.Status, ToHolder: to.Holder, ToOwner: to.OwnerID,
 		Note: req.Note, DueAt: req.DueAt, ActorID: req.ActorID, CreatedAt: now,
 	}, nil
+}
+
+// home is where one device belongs when it is not out: the columns as stored,
+// any of which may be absent.
+type home struct {
+	holderType, holderID, ownerID sql.NullString
+}
+
+// destination works out the state this asset is moving to.
+//
+// The check-in resolution happens here, per asset, and must stay that way: a
+// batch of twenty from four warehouses goes back to four warehouses, which is
+// the whole point of a device having a home. Lifting it to the batch would
+// send them all to one place and look like it worked.
+func destination(from model.AssetState, req Request, h home, fallback *model.Holder) (model.AssetState, error) {
+	to := from
+	if req.ToStatus != nil {
+		to.Status = *req.ToStatus
+	}
+	if req.ToHolder != nil {
+		to.Holder = *req.ToHolder
+	}
+	if req.ToOwnerID != nil {
+		to.OwnerID = *req.ToOwnerID
+	}
+	if !req.CheckIn || req.ToHolder != nil {
+		return to, nil
+	}
+
+	// Nowhere named: this device's own home first, then the global default.
+	switch {
+	case h.holderType.Valid && h.holderID.Valid:
+		to.Holder = model.Holder{Type: model.HolderType(h.holderType.String), ID: h.holderID.String}
+	case fallback != nil:
+		to.Holder = *fallback
+	default:
+		return to, ErrNoDefaultStock
+	}
+	// The home owner comes with it, unless the caller named one.
+	if req.ToOwnerID == nil && h.ownerID.Valid && h.ownerID.String != "" {
+		to.OwnerID = h.ownerID.String
+	}
+	return to, nil
 }

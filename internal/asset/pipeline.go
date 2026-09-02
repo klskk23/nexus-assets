@@ -220,35 +220,10 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 			return out, err
 		}
 
-		// The home a create lands on: whatever was named, else where the
-		// device is being recorded. It has just arrived somewhere, and that
-		// somewhere is the obvious answer -- asking again on the form would be
-		// one more question with a foregone conclusion.
-		home := in.Holder
-		if in.HomeHolder != nil {
-			home = *in.HomeHolder
-		}
-		homeOwner := in.OwnerID
-		if in.HomeOwnerID != nil {
-			homeOwner = *in.HomeOwnerID
-		}
-
-		// On an update the three are tri-state: named, cleared, or left alone.
-		var homeHolder *model.Holder
-		var homeType, homeID, homeOwnerPtr *string
-		if prev != nil && !in.ClearHome {
-			homeHolder, homeOwnerPtr = prev.HomeHolder, prev.HomeOwnerID
-			if in.HomeHolder != nil {
-				homeHolder = in.HomeHolder
-			}
-			if in.HomeOwnerID != nil {
-				homeOwnerPtr = in.HomeOwnerID
-			}
-			if homeHolder != nil {
-				t, i := string(homeHolder.Type), homeHolder.ID
-				homeType, homeID = &t, &i
-			}
-		}
+		h := resolveHome(prev, in)
+		home, homeOwner := h.created, h.createdOwner
+		homeHolder, homeOwnerPtr := h.holder, h.ownerID
+		homeType, homeID := h.holderType, h.holderID
 
 		// 7. write, under an optimistic-lock guard on update
 		if prev == nil {
@@ -304,25 +279,8 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 		out.DisplayName = model.AssetDisplayName(id, clean, prep.DisplayKey)
 
 		// 9. transfer event, only when the state triple actually moved
-		var from *model.AssetState
-		if prev != nil {
-			from = &model.AssetState{Status: prev.Status, Holder: prev.Holder, OwnerID: prev.OwnerID}
-		}
-		to := model.AssetState{Status: in.Status, Holder: in.Holder, OwnerID: in.OwnerID}
-		if from != nil {
-			statuses, err := store.LoadStatusSet(ctx, tx)
-			if err != nil {
-				return out, err
-			}
-			if err := statuses.ValidateTransition(from.Status, to.Status); err != nil {
-				return out, err
-			}
-		}
-		kind, emit := model.DeriveTransferKind(from, to)
-		if emit {
-			if err := insertTransfer(ctx, tx, id, prep.Input.BatchID, kind, from, to, in.Note, in.ActorID, now); err != nil {
-				return out, err
-			}
+		if err := recordMove(ctx, tx, id, prep, prev, now); err != nil {
+			return out, err
 		}
 	}
 	return out, nil
@@ -385,4 +343,85 @@ func carryOrphans(fields []model.BoundField, prev, next map[string]any) map[stri
 		}
 	}
 	return next
+}
+
+// homeColumns is where a device belongs when it is not out, in the three
+// shapes the write needs: the values a create stores, and the nullable columns
+// an update stores.
+type homeColumns struct {
+	created      model.Holder
+	createdOwner string
+
+	holder               *model.Holder
+	ownerID              *string
+	holderType, holderID *string
+}
+
+// resolveHome works out those three columns for this save.
+//
+// On a create: whatever was named, else where the device is being recorded. It
+// has just arrived somewhere, and that somewhere is the obvious answer --
+// asking again on the form would be one more question with a foregone
+// conclusion.
+//
+// On an update they are tri-state: named, cleared, or left alone. Absent means
+// "do not touch", which is why an unmentioned home survives an ordinary edit.
+func resolveHome(prev *model.Asset, in SaveInput) homeColumns {
+	var h homeColumns
+
+	h.created = in.Holder
+	if in.HomeHolder != nil {
+		h.created = *in.HomeHolder
+	}
+	h.createdOwner = in.OwnerID
+	if in.HomeOwnerID != nil {
+		h.createdOwner = *in.HomeOwnerID
+	}
+
+	if prev == nil || in.ClearHome {
+		return h
+	}
+	h.holder, h.ownerID = prev.HomeHolder, prev.HomeOwnerID
+	if in.HomeHolder != nil {
+		h.holder = in.HomeHolder
+	}
+	if in.HomeOwnerID != nil {
+		h.ownerID = in.HomeOwnerID
+	}
+	if h.holder != nil {
+		t, i := string(h.holder.Type), h.holder.ID
+		h.holderType, h.holderID = &t, &i
+	}
+	return h
+}
+
+// recordMove writes a transfer row when the state triple actually moved.
+//
+// The transition is checked against the statuses as this transaction sees them,
+// not as the pool saw them a moment ago: a status deleted between the two reads
+// would otherwise let a move through that the rules forbid.
+func recordMove(ctx context.Context, tx *sql.Tx, id string, prep Prepared,
+	prev *model.Asset, now time.Time) error {
+	in := prep.Input
+
+	var from *model.AssetState
+	if prev != nil {
+		from = &model.AssetState{Status: prev.Status, Holder: prev.Holder, OwnerID: prev.OwnerID}
+	}
+	to := model.AssetState{Status: in.Status, Holder: in.Holder, OwnerID: in.OwnerID}
+
+	if from != nil {
+		statuses, err := store.LoadStatusSet(ctx, tx)
+		if err != nil {
+			return err
+		}
+		if err := statuses.ValidateTransition(from.Status, to.Status); err != nil {
+			return err
+		}
+	}
+	kind, emit := model.DeriveTransferKind(from, to)
+	if !emit {
+		return nil
+	}
+	return insertTransfer(ctx, tx, id, in.BatchID, kind, from, to, in.Note, in.ActorID, now)
 }

@@ -75,39 +75,7 @@ func (s *Service) Rows(ctx context.Context, lang i18n.Lang, f asset.ListFilter) 
 		return page, err
 	}
 
-	users, err := s.users.List(ctx)
-	if err != nil {
-		return page, err
-	}
-	userName := map[string]string{}
-	for _, u := range users {
-		userName[u.ID] = u.Name
-	}
-	entities, err := s.holders.List(ctx)
-	if err != nil {
-		return page, err
-	}
-	entityName := map[string]string{}
-	for _, e := range entities {
-		entityName[e.ID] = e.Name
-	}
-	categories, err := s.schema.ListCategories(ctx)
-	if err != nil {
-		return page, err
-	}
-	catName := map[string]string{}
-	for _, c := range categories {
-		catName[c.ID] = c.Name
-	}
-	models, err := s.schema.ListModels(ctx)
-	if err != nil {
-		return page, err
-	}
-	modelName := map[string]string{}
-	for _, m := range models {
-		modelName[m.ID] = m.Name
-	}
-	statuses, err := s.schema.StatusSet(ctx)
+	names, err := s.labels(ctx)
 	if err != nil {
 		return page, err
 	}
@@ -120,22 +88,15 @@ func (s *Service) Rows(ctx context.Context, lang i18n.Lang, f asset.ListFilter) 
 	}
 
 	for _, a := range res.Items {
-		holderLabel := entityName[a.Holder.ID]
-		if a.Holder.Type == model.HolderTypeUser {
-			holderLabel = userName[a.Holder.ID]
-		}
 		row := map[string]string{
 			SysPrefix + "id":         a.ID,
 			SysPrefix + "sn":         a.DisplayName,
-			SysPrefix + "category":   catName[a.CategoryID],
-			SysPrefix + "status":     statuses.Label(a.Status),
-			SysPrefix + "holder":     holderLabel,
-			SysPrefix + "owner":      userName[a.OwnerID],
+			SysPrefix + "category":   names.category[a.CategoryID],
+			SysPrefix + "status":     names.statuses.Label(a.Status),
+			SysPrefix + "holder":     names.holder(a.Holder),
+			SysPrefix + "owner":      names.user[a.OwnerID],
+			SysPrefix + "model":      names.modelName(a.ModelID),
 			SysPrefix + "created_at": a.CreatedAt.Format("2006-01-02"),
-		}
-		row[SysPrefix+"model"] = ""
-		if a.ModelID != nil {
-			row[SysPrefix+"model"] = modelName[*a.ModelID]
 		}
 		for _, fd := range fields {
 			row[fd.Key] = renderValue(a.Attrs[fd.Key], fd.Type, lang)

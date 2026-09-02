@@ -47,52 +47,14 @@ func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter
 		return nil, err
 	}
 
-	fields, err := s.schema.EffectiveFields(ctx, f.CategoryID)
+	fields, err := s.exportFields(ctx, f.CategoryID, keys)
 	if err != nil {
 		return nil, err
-	}
-	fields = schema.ActiveFields(fields)
-	if keys != nil {
-		want := map[string]bool{}
-		for _, k := range keys {
-			want[k] = true
-		}
-		// Filtered rather than reordered: the schema's order is the one the
-		// category page and the import template already use, and a CSV whose
-		// columns move about depending on the order boxes were ticked in is
-		// one nobody can write a formula against.
-		kept := fields[:0]
-		for _, fd := range fields {
-			if want[fd.Key] {
-				kept = append(kept, fd)
-			}
-		}
-		fields = kept
 	}
 
-	users, err := s.users.List(ctx)
+	names, err := s.labels(ctx)
 	if err != nil {
 		return nil, err
-	}
-	userName := map[string]string{}
-	for _, u := range users {
-		userName[u.ID] = u.Name
-	}
-	entities, err := s.holders.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	entityName := map[string]string{}
-	for _, e := range entities {
-		entityName[e.ID] = e.Name
-	}
-	categories, err := s.schema.ListCategories(ctx)
-	if err != nil {
-		return nil, err
-	}
-	catName := map[string]string{}
-	for _, c := range categories {
-		catName[c.ID] = c.Name
 	}
 
 	header := make([]string, 0, 6+len(fields))
@@ -113,25 +75,13 @@ func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter
 		return nil, fmt.Errorf("write header: %w", err)
 	}
 
-	// The labels used to be a second copy of the ones in the web bundle, which
-	// is exactly the arrangement that drifts. They come from the same rows the
-	// UI reads now.
-	statuses, err := s.schema.StatusSet(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	for _, a := range res.Items {
-		holderLabel := entityName[a.Holder.ID]
-		if a.Holder.Type == model.HolderTypeUser {
-			holderLabel = userName[a.Holder.ID]
-		}
 		rec := []string{
 			a.DisplayName,
-			catName[a.CategoryID],
-			statuses.Label(a.Status),
-			holderLabel,
-			userName[a.OwnerID],
+			names.category[a.CategoryID],
+			names.statuses.Label(a.Status),
+			names.holder(a.Holder),
+			names.user[a.OwnerID],
 			a.CreatedAt.Format("2006-01-02 15:04"),
 		}
 		for _, fd := range fields {
@@ -151,4 +101,33 @@ func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// exportFields is the category's fields, narrowed to the chosen keys.
+//
+// nil takes every field; a non-nil list selects. Filtered rather than
+// reordered: the schema's order is the one the category page and the import
+// template already use, and a CSV whose columns move about depending on the
+// order boxes were ticked in is one nobody can write a formula against.
+func (s *Service) exportFields(ctx context.Context, categoryID string, keys []string) ([]model.BoundField, error) {
+	fields, err := s.schema.EffectiveFields(ctx, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	fields = schema.ActiveFields(fields)
+	if keys == nil {
+		return fields, nil
+	}
+
+	want := make(map[string]bool, len(keys))
+	for _, k := range keys {
+		want[k] = true
+	}
+	kept := fields[:0]
+	for _, fd := range fields {
+		if want[fd.Key] {
+			kept = append(kept, fd)
+		}
+	}
+	return kept, nil
 }

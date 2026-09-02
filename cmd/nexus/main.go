@@ -64,7 +64,8 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer a.db.Close()
+	// Closing on the way out: whatever it reports, the process is leaving.
+	defer func() { _ = a.db.Close() }()
 
 	if len(args) > 0 {
 		switch args[0] {
@@ -96,13 +97,13 @@ func setup(ctx context.Context) (*app, error) {
 		return nil, err
 	}
 	if err := db.Migrate(ctx); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, err
 	}
 	// Runs once, after the schema is in place: the stored rules need a syntax
 	// tree to be rewritten, which SQL has none of.
 	if err := db.TranslateExpressions(ctx); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, err
 	}
 	sch := schema.New(db)
@@ -119,7 +120,7 @@ func setup(ctx context.Context) (*app, error) {
 
 	created, err := auth.Bootstrap(ctx, a.users, cfg.AdminEmail, cfg.AdminPassword)
 	if err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("bootstrap admin: %w", err)
 	}
 	if created {

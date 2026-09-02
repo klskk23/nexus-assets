@@ -82,32 +82,10 @@ func validateOne(f model.BoundField, raw any) (any, error) {
 		return Normalize(f.Type, s)
 
 	case model.FieldText:
-		if f.Options.Regex != "" {
-			re, err := regexp.Compile(f.Options.Regex)
-			if err != nil {
-				return nil, i18n.M(i18n.KeyFieldRuleInvalid)
-			}
-			if !re.MatchString(s) {
-				if f.Options.RegexHint != "" {
-					return nil, i18n.M(i18n.KeyFieldPatternHint, f.Options.RegexHint)
-				}
-				return nil, i18n.M(i18n.KeyFieldPattern)
-			}
-		}
-		return s, nil
+		return validateText(f, s)
 
 	case model.FieldNumber:
-		n, err := strconv.ParseFloat(s, 64)
-		if err != nil {
-			return nil, i18n.M(i18n.KeyFieldNotNumber)
-		}
-		if f.Options.Min != nil && n < *f.Options.Min {
-			return nil, i18n.M(i18n.KeyFieldMin, *f.Options.Min)
-		}
-		if f.Options.Max != nil && n > *f.Options.Max {
-			return nil, i18n.M(i18n.KeyFieldMax, *f.Options.Max)
-		}
-		return n, nil
+		return validateNumber(f, s)
 
 	case model.FieldBoolean:
 		b, err := strconv.ParseBool(s)
@@ -125,6 +103,45 @@ func validateOne(f model.BoundField, raw any) (any, error) {
 	default:
 		return nil, i18n.M(i18n.KeyFieldTypeUnknown, string(f.Type))
 	}
+}
+
+// validateText applies the field's own pattern, when it has one.
+//
+// A rule that does not compile is the configuration's fault, not the typist's,
+// and says so -- otherwise every save of a perfectly good value would be
+// refused with "wrong format".
+func validateText(f model.BoundField, s string) (any, error) {
+	if f.Options.Regex == "" {
+		return s, nil
+	}
+	re, err := regexp.Compile(f.Options.Regex)
+	if err != nil {
+		return nil, i18n.M(i18n.KeyFieldRuleInvalid)
+	}
+	if !re.MatchString(s) {
+		// The hint, when there is one: "must match ^[A-Z]{2}\\d{6}$" is a
+		// sentence for whoever wrote the rule, not for whoever is typing.
+		if f.Options.RegexHint != "" {
+			return nil, i18n.M(i18n.KeyFieldPatternHint, f.Options.RegexHint)
+		}
+		return nil, i18n.M(i18n.KeyFieldPattern)
+	}
+	return s, nil
+}
+
+// validateNumber parses the value and holds it to the field's bounds.
+func validateNumber(f model.BoundField, s string) (any, error) {
+	n, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return nil, i18n.M(i18n.KeyFieldNotNumber)
+	}
+	if f.Options.Min != nil && n < *f.Options.Min {
+		return nil, i18n.M(i18n.KeyFieldMin, *f.Options.Min)
+	}
+	if f.Options.Max != nil && n > *f.Options.Max {
+		return nil, i18n.M(i18n.KeyFieldMax, *f.Options.Max)
+	}
+	return n, nil
 }
 
 // SplitAttrs separates values that still belong to the effective field set from

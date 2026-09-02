@@ -90,7 +90,8 @@ func (s *Server) readUpload(c *gin.Context) (string, *strings.Reader, bool) {
 		FailErr(c, err)
 		return "", nil, false
 	}
-	defer f.Close()
+	// The upload is read, never written to.
+	defer func() { _ = f.Close() }()
 
 	buf := make([]byte, header.Size)
 	if _, err := f.Read(buf); err != nil && header.Size > 0 {

@@ -663,19 +663,3 @@ func (s *Server) deleteCategory(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
-
-// unwrapSentinel picks the sentinel a refusal was built from, so its English
-// identifier can be stripped without the caller having to guess which one.
-func unwrapSentinel(err error) error {
-	for _, s := range []error{
-		schema.ErrCategoryHasChildren,
-		schema.ErrCategoryHasAssets,
-		schema.ErrStatusBuiltin,
-		schema.ErrStatusInUse,
-	} {
-		if errors.Is(err, s) {
-			return s
-		}
-	}
-	return err
-}

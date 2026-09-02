@@ -16,7 +16,7 @@ func TestReadNotBlockedByOpenWrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 
 	ctx := context.Background()
 	if _, err := s.write.ExecContext(ctx, `CREATE TABLE t (id INTEGER PRIMARY KEY, v TEXT)`); err != nil {

@@ -45,11 +45,11 @@ func Translate(src string) (string, error) {
 	}
 
 	var parts []string
-	for _, n := range tmpl.Tree.Root.Nodes {
+	for _, n := range tmpl.Root.Nodes {
 		switch t := n.(type) {
 		case *parse.TextNode:
 			text := string(t.Text)
-			if strings.TrimSpace(text) == "" && len(tmpl.Tree.Root.Nodes) == 1 {
+			if strings.TrimSpace(text) == "" && len(tmpl.Root.Nodes) == 1 {
 				continue
 			}
 			parts = append(parts, strconv.Quote(text))

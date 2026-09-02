@@ -91,9 +91,16 @@ jobs:
         run: test -z "$(gofmt -l ./cmd ./internal ./migrations)" || (gofmt -l ./cmd ./internal ./migrations && exit 1)
       - name: go vet
         run: go vet ./cmd/... ./internal/...
-      - uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
+      # Installed with the runner's own toolchain rather than downloaded.
+      # golangci-lint refuses to run when the Go it was built with is older
+      # than the version go.mod targets, and the action's pinned binary was
+      # built with 1.24 against a tree that says 1.26 -- so `version: latest`
+      # meant "latest the action knows", not "latest there is". Building it
+      # here cannot drift from the toolchain that way.
+      - name: golangci-lint
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+          golangci-lint run
 
       - name: tsc
         run: cd web && npx tsc --noEmit

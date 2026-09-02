@@ -68,115 +68,13 @@ func (s *Service) Recompute(ctx context.Context, categoryID string, dryRun bool)
 	if err != nil {
 		return report, err
 	}
-	bindings, err := s.schema.BindingsByCategory(ctx)
+	lk, err := s.recomputeLookups(ctx)
 	if err != nil {
 		return report, err
 	}
-	categories, err := s.schema.ListCategories(ctx)
+
+	changes, claimed, err := s.planRecompute(ctx, root.Path, lk, &report)
 	if err != nil {
-		return report, err
-	}
-	catByID := make(map[string]model.Category, len(categories))
-	for _, c := range categories {
-		catByID[c.ID] = c
-	}
-	// Models are loaded in one go rather than per asset: a subtree recompute
-	// touches thousands of rows and a lookup per row is the classic N+1.
-	models, err := s.schema.ListModels(ctx)
-	if err != nil {
-		return report, err
-	}
-	modelByID := make(map[string]model.ProductModel, len(models))
-	for _, m := range models {
-		modelByID[m.ID] = m
-	}
-
-	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT a.id, a.category_id, a.model_id, a.attrs
-		 FROM assets a JOIN categories c ON c.id = a.category_id
-		 WHERE c.path LIKE ? || '%'
-		 ORDER BY a.created_at, a.id`, root.Path)
-	if err != nil {
-		return report, fmt.Errorf("load subtree assets: %w", err)
-	}
-	defer rows.Close()
-
-	type change struct {
-		id     string
-		attrs  map[string]any
-		unique map[string]UniqueValue
-	}
-	var changes []change
-	// Values that will exist once the run completes, so a collision between two
-	// recomputed assets is caught as well as one against an untouched row.
-	// Keyed by scope as well: the same value under two categories is no longer
-	// a collision.
-	claimed := map[[3]string][]string{}
-
-	for rows.Next() {
-		var id, catID, attrsJSON string
-		var modelID sql.NullString
-		if err := rows.Scan(&id, &catID, &modelID, &attrsJSON); err != nil {
-			return report, err
-		}
-		report.Total++
-
-		attrs, err := store.UnmarshalJSONMap(attrsJSON)
-		if err != nil {
-			return report, err
-		}
-		cat := catByID[catID]
-		fields, err := schema.Resolve(cat.Path, bindings)
-		if err != nil {
-			return report, err
-		}
-		fields = schema.ActiveFields(fields)
-
-		var modelName, modelVendor string
-		if modelID.Valid {
-			if pm, ok := modelByID[modelID.String]; ok {
-				modelName, modelVendor = pm.Name, pm.Vendor
-			}
-		}
-
-		before := make(map[string]any, len(attrs))
-		for k, v := range attrs {
-			before[k] = v
-		}
-		values, err := evalComputed(fields, compute.NewContext(id, attrs, cat.Code, cat.Name, modelName, modelVendor))
-		if err != nil {
-			return report, err
-		}
-
-		display := model.AssetDisplayName(id, before, cat.DisplayKey)
-		dirty := false
-		keys := make([]string, 0, len(values))
-		for k := range values {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			from, to := fmt.Sprintf("%v", before[k]), fmt.Sprintf("%v", values[k])
-			if from == to {
-				continue
-			}
-			dirty = true
-			attrs[k] = values[k]
-			if len(report.Samples) < maxSamples {
-				report.Samples = append(report.Samples, RecomputeSample{Asset: display, Key: k, From: from, To: to})
-			}
-		}
-
-		next := uniqueValues(fields, attrs, catID)
-		for k, uv := range next {
-			at := [3]string{uv.Scope, k, uv.Value}
-			claimed[at] = append(claimed[at], display)
-		}
-		if dirty {
-			changes = append(changes, change{id: id, attrs: attrs, unique: next})
-		}
-	}
-	if err := rows.Err(); err != nil {
 		return report, err
 	}
 	report.Affected = len(changes)
@@ -198,20 +96,8 @@ func (s *Service) Recompute(ctx context.Context, categoryID string, dryRun bool)
 	now := time.Now().UTC()
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		for _, c := range changes {
-			attrsJSON, err := store.MarshalJSONMap(c.attrs)
-			if err != nil {
+			if err := writeRecomputed(ctx, tx, c, now); err != nil {
 				return err
-			}
-			if _, err := tx.ExecContext(ctx,
-				`UPDATE assets SET attrs = ?, version = version + 1, updated_at = ? WHERE id = ?`,
-				attrsJSON, store.FormatTime(now), c.id); err != nil {
-				return err
-			}
-			// The partial unique index is the last line of defence; a violation
-			// here aborts the whole transaction, which is the intended
-			// behaviour.
-			if err := syncUniqueValues(ctx, tx, c.id, c.unique, now); err != nil {
-				return fmt.Errorf("%w: %v", ErrRecomputeConflict, err)
 			}
 		}
 		return nil
@@ -360,4 +246,187 @@ func merge(into *RecomputeReport, r RecomputeReport) {
 		}
 		into.Samples = append(into.Samples, s)
 	}
+}
+
+// change is one asset whose computed values moved.
+type change struct {
+	id     string
+	attrs  map[string]any
+	unique map[string]UniqueValue
+}
+
+// recomputeLookups is everything a subtree recompute needs that does not vary
+// per asset.
+//
+// Loaded once rather than per row: a subtree touches thousands of assets, and a
+// lookup per row is the classic N+1 the constitution forbids.
+type recomputeLookups struct {
+	bindings map[string][]schema.Binding
+	category map[string]model.Category
+	model    map[string]model.ProductModel
+}
+
+func (s *Service) recomputeLookups(ctx context.Context) (recomputeLookups, error) {
+	var lk recomputeLookups
+
+	bindings, err := s.schema.BindingsByCategory(ctx)
+	if err != nil {
+		return lk, err
+	}
+	lk.bindings = bindings
+
+	categories, err := s.schema.ListCategories(ctx)
+	if err != nil {
+		return lk, err
+	}
+	lk.category = make(map[string]model.Category, len(categories))
+	for _, c := range categories {
+		lk.category[c.ID] = c
+	}
+
+	models, err := s.schema.ListModels(ctx)
+	if err != nil {
+		return lk, err
+	}
+	lk.model = make(map[string]model.ProductModel, len(models))
+	for _, m := range models {
+		lk.model[m.ID] = m
+	}
+	return lk, nil
+}
+
+// resolve unpacks one stored row into what the expressions need.
+func (lk recomputeLookups) resolve(categoryID, attrsJSON string) (map[string]any, []model.BoundField, model.Category, error) {
+	cat := lk.category[categoryID]
+
+	attrs, err := store.UnmarshalJSONMap(attrsJSON)
+	if err != nil {
+		return nil, nil, cat, err
+	}
+	fields, err := schema.Resolve(cat.Path, lk.bindings)
+	if err != nil {
+		return nil, nil, cat, err
+	}
+	return attrs, schema.ActiveFields(fields), cat, nil
+}
+
+// modelOf is the model's name and vendor, both empty when the asset has no
+// model or it has since been deleted.
+func (lk recomputeLookups) modelOf(id sql.NullString) (name, vendor string) {
+	if !id.Valid {
+		return "", ""
+	}
+	pm, ok := lk.model[id.String]
+	if !ok {
+		return "", ""
+	}
+	return pm.Name, pm.Vendor
+}
+
+// applyRecomputed folds the new values into attrs and reports whether anything
+// actually moved.
+//
+// Sorted, because the samples are shown to somebody about to approve the run
+// and map order would reshuffle them on every look.
+func applyRecomputed(attrs, before, values map[string]any, display string, report *RecomputeReport) bool {
+	keys := make([]string, 0, len(values))
+	for k := range values {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	dirty := false
+	for _, k := range keys {
+		from, to := fmt.Sprintf("%v", before[k]), fmt.Sprintf("%v", values[k])
+		if from == to {
+			continue
+		}
+		dirty = true
+		attrs[k] = values[k]
+		if len(report.Samples) < maxSamples {
+			report.Samples = append(report.Samples, RecomputeSample{Asset: display, Key: k, From: from, To: to})
+		}
+	}
+	return dirty
+}
+
+// writeRecomputed stores one asset's new values.
+func writeRecomputed(ctx context.Context, tx *sql.Tx, c change, now time.Time) error {
+	attrsJSON, err := store.MarshalJSONMap(c.attrs)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE assets SET attrs = ?, version = version + 1, updated_at = ? WHERE id = ?`,
+		attrsJSON, store.FormatTime(now), c.id); err != nil {
+		return err
+	}
+	// The partial unique index is the last line of defence; a violation here
+	// aborts the whole transaction, which is the intended behaviour.
+	if err := syncUniqueValues(ctx, tx, c.id, c.unique, now); err != nil {
+		return fmt.Errorf("%w: %v", ErrRecomputeConflict, err)
+	}
+	return nil
+}
+
+// planRecompute works out what the run would change, without changing it.
+//
+// The second return is every value that will exist once the run completes,
+// keyed by scope, key and value -- so a collision between two recomputed
+// assets is caught as well as one against a row nobody touched. Scope is part
+// of the key because the same value under two categories is no longer a
+// collision.
+func (s *Service) planRecompute(ctx context.Context, rootPath string,
+	lk recomputeLookups, report *RecomputeReport) ([]change, map[[3]string][]string, error) {
+
+	rows, err := s.db.ReadDB().QueryContext(ctx,
+		`SELECT a.id, a.category_id, a.model_id, a.attrs
+		 FROM assets a JOIN categories c ON c.id = a.category_id
+		 WHERE c.path LIKE ? || '%'
+		 ORDER BY a.created_at, a.id`, rootPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("load subtree assets: %w", err)
+	}
+	defer rows.Close()
+
+	var changes []change
+	claimed := map[[3]string][]string{}
+
+	for rows.Next() {
+		var id, catID, attrsJSON string
+		var modelID sql.NullString
+		if err := rows.Scan(&id, &catID, &modelID, &attrsJSON); err != nil {
+			return nil, nil, err
+		}
+		report.Total++
+
+		attrs, fields, cat, err := lk.resolve(catID, attrsJSON)
+		if err != nil {
+			return nil, nil, err
+		}
+		modelName, modelVendor := lk.modelOf(modelID)
+
+		before := make(map[string]any, len(attrs))
+		for k, v := range attrs {
+			before[k] = v
+		}
+		values, err := evalComputed(fields,
+			compute.NewContext(id, attrs, cat.Code, cat.Name, modelName, modelVendor))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		display := model.AssetDisplayName(id, before, cat.DisplayKey)
+		dirty := applyRecomputed(attrs, before, values, display, report)
+
+		next := uniqueValues(fields, attrs, catID)
+		for k, uv := range next {
+			at := [3]string{uv.Scope, k, uv.Value}
+			claimed[at] = append(claimed[at], display)
+		}
+		if dirty {
+			changes = append(changes, change{id: id, attrs: attrs, unique: next})
+		}
+	}
+	return changes, claimed, rows.Err()
 }

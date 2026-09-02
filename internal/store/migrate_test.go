@@ -12,7 +12,7 @@ func TestMigrateUpAndDown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 
 	ctx := context.Background()
 	if err := s.Migrate(ctx); err != nil {
@@ -196,7 +196,7 @@ func TestModelNameIsUniquePerVendorIncludingTheEmptyOne(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	ctx := context.Background()
 	if err := s.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate: %v", err)
@@ -231,7 +231,7 @@ func TestUniqueValueIndexIgnoresArchived(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	ctx := context.Background()
 	if err := s.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate: %v", err)
@@ -284,7 +284,7 @@ func TestDefaultStockPointIsUnique(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	ctx := context.Background()
 	if err := s.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate: %v", err)
@@ -312,7 +312,7 @@ func TestMigrateConvertsEnumAndReferenceFieldsToText(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 
 	ctx := context.Background()
 	if err := s.Migrate(ctx); err != nil {

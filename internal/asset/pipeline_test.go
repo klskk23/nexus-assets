@@ -39,7 +39,7 @@ func newFixture(t *testing.T) *fixture {
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	if err := db.Migrate(ctx); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
@@ -281,8 +281,10 @@ func TestAttributeOnlyEditEmitsNoTransfer(t *testing.T) {
 		t.Fatalf("update: %v", err)
 	}
 	var n int
-	f.svc.db.ReadDB().QueryRowContext(f.ctx,
-		`SELECT count(*) FROM asset_transfers WHERE asset_id = ?`, a.ID).Scan(&n)
+	if err := f.svc.db.ReadDB().QueryRowContext(f.ctx,
+		`SELECT count(*) FROM asset_transfers WHERE asset_id = ?`, a.ID).Scan(&n); err != nil {
+		t.Fatalf("count transfers: %v", err)
+	}
 	if n != 1 {
 		t.Errorf("an attribute-only edit must not add a transfer row, got %d rows", n)
 	}

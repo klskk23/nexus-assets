@@ -26,7 +26,7 @@ func newApp(t *testing.T) (*app, string, string) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	if err := db.Migrate(ctx); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

@@ -12,7 +12,23 @@ linters:
     gocyclo:
       # Constitution principle I: cyclomatic complexity must be <= 15
       min-complexity: 16
+    errcheck:
+      # Two closers whose error is not information.
+      #
+      # `Rows.Close` returns the same error `Rows.Err` already reported, and
+      # every loop here checks that; a response body is read to completion or
+      # abandoned on purpose, and either way the connection is the http
+      # package's business. Every other unchecked error is handled at the call
+      # site -- including the ones on a write path, where a failed Close is
+      # lost data and not a formality.
+      exclude-functions:
+        - (*database/sql.Rows).Close
+        - (io.ReadCloser).Close
   exclusions:
+    # Third-party Go that happens to live under a node package. It is not this
+    # project's code and cannot be fixed here.
+    paths:
+      - web/node_modules
     rules:
       - path: _test\.go
         linters:
@@ -21,3 +37,6 @@ linters:
 formatters:
   enable:
     - gofmt
+  exclusions:
+    paths:
+      - web/node_modules
