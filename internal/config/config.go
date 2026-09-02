@@ -13,6 +13,9 @@ import (
 // nothing is read from disk so that a single binary plus a database file is
 // the whole deployment artifact.
 type Config struct {
+	// Version is stamped in at build time and reported by /api/health, so a
+	// rollout can be checked from outside rather than guessed at.
+	Version    string
 	DBPath     string
 	Addr       string
 	JWTSecret  []byte

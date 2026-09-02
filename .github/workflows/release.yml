@@ -1,0 +1,322 @@
+# Turn a vX.Y.Z tag into an image on GitHub Container Registry, and into two
+# binaries on the release page.
+#
+# Only a tag releases. Day-to-day checking is ci.yml's job; this exists so that
+# `docker pull ghcr.io/<owner>/nexus-assets:vX.Y.Z` — or a downloaded file —
+# gets exactly the tree that tag names.
+#
+# Built for amd64 and arm64, each on a runner of its own architecture. Not with
+# QEMU: the build runs `npm ci` and a vite build, and under emulation that turns
+# a few minutes into most of an hour. GitHub's arm64 runners are free for public
+# repositories, so there is no reason to emulate.
+#
+# Each architecture is built, smoke-tested on its own hardware, and pushed by
+# digest; a final job stitches the digests into one manifest list. That is what
+# makes `docker pull` fetch the right image on either machine without anybody
+# choosing.
+#
+# The binaries exist because this is one static file with the frontend inside
+# it: a machine that is not running Docker should not have to.
+name: Release
+
+on:
+  push:
+    tags:
+      # vX.Y.Z exactly. v1.2 and v1.2.3-rc1 do not release.
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  # Run it by hand, from any ref. The version has to be given, because unlike a
+  # tag run there is nothing else that says what this is.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish, e.g. v0.2.0'
+        required: true
+
+permissions:
+  contents: write # the release page and its files
+  packages: write # ghcr.io
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  # Fails in seconds, before anything spends minutes building. Also the one
+  # place the released version is decided, so every job below agrees on it.
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - id: resolve
+        name: Decide what is being released
+        run: |
+          set -eu
+          version="${{ github.event.inputs.version || github.ref_name }}"
+          case "$version" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::$version is not vX.Y.Z"; exit 1 ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "releasing $version from $GITHUB_REF_NAME ($GITHUB_EVENT_NAME)"
+
+  # A tag that does not pass the gate is not a release. The same checks ci.yml
+  # runs on every push, because a tag is where skipping them costs the most.
+  quality-gate:
+    runs-on: ubuntu-latest
+    needs: preflight
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: gofmt
+        run: test -z "$(gofmt -l ./cmd ./internal ./migrations)" || (gofmt -l ./cmd ./internal ./migrations && exit 1)
+      - name: go vet
+        run: go vet ./cmd/... ./internal/...
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      - name: install web deps
+        run: cd web && npm ci
+      - name: tsc
+        run: cd web && npx tsc --noEmit
+      - name: eslint
+        run: cd web && npx eslint .
+
+      - name: go test
+        run: go test ./cmd/... ./internal/...
+      - name: vitest
+        run: cd web && npx vitest run
+
+      # Reconciliation, on a database this step creates. The secret is required
+      # rather than generated -- a key that changed on every start would log
+      # everyone out -- so a throwaway one is supplied here.
+      - name: build and verify
+        env:
+          NEXUS_JWT_SECRET: release-gate-secret-not-for-any-deployment
+          NEXUS_DB_PATH: ${{ runner.temp }}/verify.db
+        run: |
+          cd web && npm run build && cd ..
+          CGO_ENABLED=0 go build -o nexus ./cmd/nexus
+          ./nexus verify
+
+  # The images people pull.
+  publish:
+    strategy:
+      # Both architectures, or neither: a manifest list assembled from one half
+      # would quietly hand every arm64 machine an amd64 image.
+      fail-fast: true
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            # GitHub's arm64 hosted runner. Native, so the build runs at full
+            # speed instead of through an emulator.
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    needs: [preflight, quality-gate]
+    env:
+      VERSION: ${{ needs.preflight.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          # Provided by Actions; `packages: write` above is what makes it able
+          # to push. No secret to rotate and nothing to store.
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Into the local daemon first, NOT pushed: an image that builds and does
+      # not serve is the failure worth catching before it has a public tag
+      # somebody can pull. Running here means arm64 is actually exercised on
+      # arm64 rather than assumed to work.
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          platforms: ${{ matrix.platform }}
+          build-args: VERSION=${{ env.VERSION }}
+          load: true
+          push: false
+          tags: nexus-assets:smoke
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+
+      # Starts it on a scratch directory, signs in, restarts it and signs in
+      # again. Half of what this covers cannot fail in a unit test: an embedded
+      # frontend that was never built, a binary that wants a libc `scratch`
+      # does not have, state that does not survive a restart.
+      - name: Smoke it
+        run: bash deploy/smoke.sh nexus-assets:smoke
+
+      # Now push it, by digest and with no tag of its own. Tagging each
+      # architecture would leave `:vX.Y.Z-arm64` lying around for people to pull
+      # by mistake; the manifest list below is the only thing meant to be named.
+      # The layers are already built, so this hits the cache.
+      - name: Push by digest
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          platforms: ${{ matrix.platform }}
+          build-args: VERSION=${{ env.VERSION }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.platform }}
+
+      - name: Record the digest
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          # One file per architecture, merged by name in the next job.
+          name: digest-${{ strategy.job-index }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # The tag people actually pull. Until this runs, the images are in the
+  # registry with no name at all.
+  manifest:
+    runs-on: ubuntu-latest
+    needs: [preflight, publish]
+    env:
+      VERSION: ${{ needs.preflight.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digest-*
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create the manifest list
+        working-directory: /tmp/digests
+        run: |
+          set -eu
+          # Both legs must be here. One digest would produce a single-platform
+          # manifest that looks like a success and serves the wrong image to
+          # half the machines.
+          count="$(ls -1 | wc -l)"
+          if [ "$count" -ne 2 ]; then
+            echo "::error::expected 2 digests, found $count"
+            exit 1
+          fi
+          docker buildx imagetools create \
+            --tag "$IMAGE:$VERSION" \
+            --tag "$IMAGE:latest" \
+            $(printf "$IMAGE@sha256:%s " *)
+
+      # Not a grep on the pretty-printed JSON, which would compare against text
+      # that has a space after every colon. jq, and the whole set at once, so a
+      # third platform turning up is a failure too. The `unknown` entries are
+      # buildx's provenance attestations -- not platforms.
+      - name: Check both architectures are in it
+        run: |
+          set -euo pipefail
+          archs="$(docker buildx imagetools inspect "$IMAGE:$VERSION" --format '{{json .Manifest}}' \
+            | jq -r '[.manifests[].platform | select(.os != "unknown") | .architecture] | unique | join(",")')"
+          if [ "$archs" != "amd64,arm64" ]; then
+            echo "::error::manifest list holds [$archs], expected amd64,arm64"
+            exit 1
+          fi
+          echo "$IMAGE:$VERSION -> $archs"
+
+  # One file per architecture, for the machine that is not running Docker.
+  #
+  # Cross-compiled from one runner rather than matrixed: a Go build with
+  # CGO_ENABLED=0 does not care what it runs on, and the frontend it embeds is
+  # architecture-independent, so building it twice would only mean building the
+  # bundle twice.
+  binaries:
+    runs-on: ubuntu-latest
+    needs: [preflight, quality-gate]
+    env:
+      VERSION: ${{ needs.preflight.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # Before the binaries, because they embed it.
+      - name: Build the frontend
+        run: cd web && npm ci && npm run build && test -f dist/index.html
+
+      - name: Build the binaries
+        run: |
+          set -eu
+          mkdir -p dist
+          # Named without the version: the release tag already says which one
+          # this is, and an unversioned name is what makes
+          # releases/latest/download/nexus_linux_amd64 a link that keeps working.
+          for arch in amd64 arm64; do
+            CGO_ENABLED=0 GOOS=linux GOARCH="$arch" \
+              go build -trimpath -ldflags "-s -w -X main.version=$VERSION" \
+              -o "dist/nexus_linux_${arch}" ./cmd/nexus
+          done
+          cd dist && sha256sum nexus_* > SHA256SUMS && cat SHA256SUMS
+
+      # It was built here, so it runs here: the amd64 one at least has to be
+      # able to say its own version.
+      - name: Check the binary
+        run: |
+          got="$(./dist/nexus_linux_amd64 version)"
+          test "$got" = "$VERSION" || { echo "::error::binary says $got, expected $VERSION"; exit 1; }
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          notes="$(printf '%s\n' \
+            "\`\`\`bash" \
+            "docker pull $IMAGE:$VERSION            # amd64 and arm64" \
+            "\`\`\`" \
+            "" \
+            "Or one static file — the interface is inside it, nothing else to install:" \
+            "" \
+            "\`\`\`bash" \
+            "curl -fLO https://github.com/$GITHUB_REPOSITORY/releases/download/$VERSION/nexus_linux_amd64" \
+            "chmod +x nexus_linux_amd64" \
+            "\`\`\`" \
+            "" \
+            "See README.md for the settings it needs.")"
+          gh release create "$VERSION" dist/* \
+            --title "$VERSION" \
+            --notes "$notes" \
+            || gh release upload "$VERSION" dist/* --clobber
+
+      - name: Summary
+        run: |
+          {
+            echo "### Released \`$VERSION\`"
+            echo
+            echo "- image: \`$IMAGE:$VERSION\` (amd64, arm64)"
+            echo "- binaries: linux amd64 and arm64, on the release page"
+          } >> "$GITHUB_STEP_SUMMARY"

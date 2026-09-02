@@ -39,6 +39,9 @@ func TestEmbeddedContractMatchesTheSpec(t *testing.T) {
 		"/api-keys":      "post",
 		"/api-keys/{id}": "delete",
 		"/me":            "patch",
+		// Read by a container runtime and a reverse proxy, which is exactly the
+		// sort of endpoint that gets added to the code and nowhere else.
+		"/health": "get",
 	} {
 		if _, ok := doc.Paths[path][method]; !ok {
 			t.Errorf("the contract is missing %s %s", method, path)

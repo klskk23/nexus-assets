@@ -40,8 +40,25 @@ func main() {
 	}
 }
 
+// version is stamped in at build time (-ldflags "-X main.version=vX.Y.Z").
+// "dev" is what a `go build` with no release behind it honestly is.
+var version = "dev"
+
 func run(args []string) error {
 	ctx := context.Background()
+
+	// Both of these answer without a database, and must: one is read every
+	// thirty seconds by the container runtime, and the other is what somebody
+	// runs when the server will not start.
+	if len(args) > 0 {
+		switch args[0] {
+		case "healthcheck":
+			return runHealthcheck(args[1:])
+		case "version":
+			fmt.Println(version)
+			return nil
+		}
+	}
 
 	a, err := setup(ctx)
 	if err != nil {
@@ -62,7 +79,7 @@ func run(args []string) error {
 			}
 			return runSeed(ctx, a, n)
 		default:
-			return fmt.Errorf("unknown subcommand %q (known: verify, seed)", args[0])
+			return fmt.Errorf("unknown subcommand %q (known: verify, seed, healthcheck, version)", args[0])
 		}
 	}
 	return a.serve()
@@ -73,6 +90,7 @@ func setup(ctx context.Context) (*app, error) {
 	if err != nil {
 		return nil, err
 	}
+	cfg.Version = version
 	db, err := store.Open(cfg.DBPath)
 	if err != nil {
 		return nil, err
@@ -130,9 +148,9 @@ func (a *app) serve() error {
 	sessions := auth.NewSessions(a.db, a.cfg.RefreshTTL)
 	keys := auth.NewKeys(a.db)
 
-	srv := httpapi.NewServer(a.cfg, issuer, a.users, a.schema, a.holders, a.assets,
+	srv := httpapi.NewServer(a.cfg, a.db, issuer, a.users, a.schema, a.holders, a.assets,
 		a.transfers, a.importer, a.audit, oidcFlow, sessions, keys, webFS)
 
-	log.Printf("listening on %s (database %s)", a.cfg.Addr, a.cfg.DBPath)
+	log.Printf("nexus %s listening on %s (database %s)", version, a.cfg.Addr, a.cfg.DBPath)
 	return srv.Router().Run(a.cfg.Addr)
 }

@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -53,4 +54,22 @@ func TestExportTakesTheChosenFields(t *testing.T) {
 // header is the first CSV line, past the byte-order mark Excel needs.
 func header(body string) string {
 	return strings.SplitN(strings.TrimPrefix(body, "\ufeff"), "\n", 2)[0]
+}
+
+// TestHealthAnswersWithoutACredential pins what a container runtime and a
+// reverse proxy rely on: an answer, without a token, that means the process can
+// still reach its database.
+func TestHealthAnswersWithoutACredential(t *testing.T) {
+	h := newHarness(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	rec := httptest.NewRecorder()
+	h.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"status":"ok"`) {
+		t.Errorf("unexpected body: %s", rec.Body.String())
+	}
 }

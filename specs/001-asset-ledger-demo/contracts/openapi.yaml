@@ -812,6 +812,25 @@ paths:
                   generated_at: { type: string, format: date-time }
         "422": { description: 未指定类别 }
 
+  /health:
+    get:
+      tags: [metadata]
+      summary: >
+        这个进程还能不能读到自己的数据库。**不需要凭证** ——
+        读它的是容器运行时与反向代理，两者都不持有凭证。
+        问的不是"端口通不通"，那是卡死的部署也能通过的检查。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  version: { type: string, description: 构建时打进二进制的版本，未发布的构建是 dev }
+        "503": { description: 进程活着但读不到数据库 }
+
   /capabilities:
     get:
       tags: [metadata]

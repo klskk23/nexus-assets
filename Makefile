@@ -1,4 +1,4 @@
-.PHONY: dev build test lint verify gates web-build docs-sync clean
+.PHONY: dev build test lint verify gates web-build docs-sync image smoke clean
 
 GO ?= go
 BIN ?= nexus
@@ -21,6 +21,17 @@ build: web-build
 # into specs/, so the copy is kept in step by hand and by a test.
 docs-sync:
 	cp specs/001-asset-ledger-demo/contracts/openapi.yaml internal/httpapi/docs/openapi.yaml
+
+# The deployment image, and the check that it actually serves. VERSION is
+# stamped into the binary and reported by /api/health.
+IMAGE_TAG ?= nexus-assets:dev
+VERSION ?= dev
+
+image:
+	docker build -f deploy/Dockerfile --build-arg VERSION=$(VERSION) -t $(IMAGE_TAG) .
+
+smoke: image
+	bash deploy/smoke.sh $(IMAGE_TAG)
 
 test:
 	$(GO) test ./cmd/... ./internal/...

@@ -1,0 +1,42 @@
+# Everything the image builds for itself, plus everything it must never carry.
+#
+# node_modules is the important one: it is the *host's* tree, with binaries
+# built for the host. The image runs `npm ci` itself, so what ships is what the
+# lockfile says, built for the platform being built for.
+node_modules
+web/node_modules
+
+# Built inside the image, from source, at a known point in the Dockerfile. A
+# dist swept in from the host would make the image depend on whose machine
+# built it — and the clean-checkout path would stay untested.
+web/dist
+
+# The compiled binary, if somebody ran `make build` here.
+/nexus
+c.out
+coverage
+
+.git
+.github
+
+# Runtime state. A database copied into an image would ship one company's
+# devices to every other deployment of it.
+*.db
+*.db-shm
+*.db-wal
+data
+
+# Credentials never belong in a layer: an image is pushed and copied, and a
+# file deleted in a later layer is still in the earlier one.
+.env
+.env.*
+!.env.example
+
+# Documentation and specs — megabytes of markdown the server never reads. The
+# contract it *does* serve is the copy under internal/httpapi/docs, which is
+# embedded and therefore not here.
+docs
+specs
+.specify
+.claude
+.agents

@@ -126,7 +126,7 @@ func newHarnessWith(t *testing.T, over config.Config) *harness {
 		t.Fatalf("issue token: %v", err)
 	}
 
-	srv := NewServer(cfg, issuer, us, sch, hs, svc, transfer.New(db, hs),
+	srv := NewServer(cfg, db, issuer, us, sch, hs, svc, transfer.New(db, hs),
 		importer.New(db, sch, hs, us, svc), audit.New(db), nil,
 		auth.NewSessions(db, 720*time.Hour), auth.NewKeys(db), nil)
 	return &harness{

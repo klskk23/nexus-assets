@@ -17,12 +17,17 @@ import (
 	"github.com/klskk23/nexus-assets/internal/importer"
 	"github.com/klskk23/nexus-assets/internal/printing"
 	"github.com/klskk23/nexus-assets/internal/schema"
+	"github.com/klskk23/nexus-assets/internal/store"
 	"github.com/klskk23/nexus-assets/internal/transfer"
 )
 
 // Server wires the HTTP surface to the domain services.
 type Server struct {
-	cfg       *config.Config
+	cfg *config.Config
+	// db is here for one reader: the health endpoint, which has to answer
+	// "can this process still reach its database" rather than "is the port
+	// open" -- the second question is the one a stuck deployment passes.
+	db        *store.Store
 	issuer    *auth.Issuer
 	users     *auth.Store
 	schema    *schema.Store
@@ -39,11 +44,11 @@ type Server struct {
 }
 
 // NewServer builds the API server.
-func NewServer(cfg *config.Config, issuer *auth.Issuer, users *auth.Store,
+func NewServer(cfg *config.Config, db *store.Store, issuer *auth.Issuer, users *auth.Store,
 	sch *schema.Store, holders *holder.Store, assets *asset.Service,
 	transfers *transfer.Service, imp *importer.Service, aud *audit.Store,
 	oidcFlow *auth.OIDC, sessions *auth.Sessions, keys *auth.Keys, webFS fs.FS) *Server {
-	return &Server{cfg: cfg, issuer: issuer, users: users, schema: sch,
+	return &Server{cfg: cfg, db: db, issuer: issuer, users: users, schema: sch,
 		holders: holders, assets: assets, transfers: transfers, importer: imp,
 		audit: aud, oidc: oidcFlow, sessions: sessions, keys: keys,
 		printer: printing.New(cfg.PrinterURL), webFS: webFS}
@@ -55,6 +60,9 @@ func (s *Server) Router() *gin.Engine {
 	r.Use(gin.Recovery())
 
 	api := r.Group("/api")
+	// Read by a container runtime and a reverse proxy, neither of which holds
+	// a credential, so it sits outside the authenticated group.
+	api.GET("/health", s.health)
 	api.POST("/auth/login", s.login)
 	api.GET("/auth/oidc/start", s.oidcStart)
 	api.GET("/auth/oidc/callback", s.oidcCallback)

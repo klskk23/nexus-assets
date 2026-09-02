@@ -17,6 +17,11 @@
 9. `specs/001-asset-ledger-demo/` ~ `specs/010-asset-row-gestures/` —— 前十轮特性。
    001 的 `contracts/openapi.yaml` 仍是**全量**端点清单
 
+部署与运行方式见 `README.md`（英文 `README.en.md`）与 `deploy/`：
+镜像是 `scratch` 上的一个静态二进制（前端 embed 在内），也可以单文件 + systemd。
+**改了端点就要改 `deploy/smoke.sh` 与合约**；`/api/health` 无需凭证，容器的健康检查
+就是 `nexus healthcheck` 这个子命令 —— 镜像里没有 shell 也没有 curl。
+
 **最容易违反的十条硬规则**
 
 - **组件必须来自 shadcn/ui。** 不存在时必须先与开发者确认才能自定义，**不接受事后补批**。

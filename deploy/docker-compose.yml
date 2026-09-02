@@ -1,0 +1,125 @@
+# nexus-assets — deployment.
+#
+#   cd deploy && cp ../.env.example .env && $EDITOR .env && docker compose up -d
+#
+# One container, one process, one directory of state. The service listens on
+# 8080 and serves both the API and the interface; there is no second process to
+# keep alive and no static file server to configure.
+#
+# Authentication is real here (accounts, sessions, API keys), but the admission
+# boundary is an email-domain whitelist and nothing else — there are no roles.
+# Anyone who can sign in can do anything. Put it behind a reverse proxy with TLS
+# if it is reachable from anywhere but a LAN.
+#
+# The label printer is a separate product with its own compose file. Uncomment
+# the second service below to run both from here; see docs/zenith-printer.md.
+
+# Fixed, so the project and its state are named the same wherever this file is
+# checked out. Compose otherwise names the project after the directory, which
+# here would be "deploy".
+name: nexus-assets
+
+services:
+  nexus-assets:
+    # Published by .github/workflows/release.yml on every vX.Y.Z tag, for amd64
+    # and arm64 alike, so a fresh machine needs `docker compose up -d` and
+    # nothing else. Override NEXUS_IMAGE to run something you built locally.
+    image: ${NEXUS_IMAGE:-ghcr.io/klskk23/nexus-assets}:${NEXUS_VERSION:-latest}
+    # So `docker compose up --build` works straight from a checkout. The context
+    # is the repository root because the image builds the frontend too.
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: nexus-assets
+    restart: unless-stopped
+
+    # Every setting, including the JWT signing key and the bootstrap admin
+    # password. Read from the file at start rather than written into the image:
+    # a secret baked into a layer is in every copy of that image forever.
+    #
+    #   cp ../.env.example .env && chmod 600 .env
+    env_file:
+      - .env
+
+    environment:
+      # These belong to the container's own layout, not to the person deploying
+      # it, so they are here rather than in .env — where a stale copy of an
+      # in-image path is a puzzle nobody enjoys.
+      NEXUS_DB_PATH: /data/nexus.db
+      NEXUS_ADDR: 0.0.0.0:8080
+      # Audit rows and CSV exports carry local times, and a container is UTC
+      # unless told otherwise.
+      TZ: ${TZ:-Asia/Shanghai}
+
+    volumes:
+      # The database, and only the database — a plain directory on the host,
+      # not a named volume. Moving this service to another machine is then
+      # `rsync -a data/` and nothing else; getting data out of a named volume
+      # needs a throwaway container and a tar pipe, which is the sort of step
+      # people postpone until the machine is already gone. It also survives
+      # more: `docker compose down -v` removes named volumes, and a directory
+      # is simply not something that command can touch.
+      #
+      # Relative to THIS file, so a checkout works with no setup. Point it
+      # somewhere real for a permanent install:
+      #   NEXUS_DATA=/srv/nexus-assets/data docker compose up -d
+      #
+      # Keep it on a local filesystem. SQLite needs working locks, and NFS or
+      # SMB will corrupt the database rather than refuse to try.
+      - ${NEXUS_DATA:-./data}:/data
+
+    ports:
+      # Host-side 0.0.0.0 on purpose: colleagues reach this from their own
+      # machines. Narrow it to one interface — "192.168.1.10:8080:8080" — if the
+      # host has a leg on a network this should not be on, or drop the mapping
+      # entirely when a reverse proxy on the same compose network fronts it.
+      - "8080:8080"
+
+    # The binary checks itself; there is no shell in the image to run anything
+    # else. What it asks is whether the process can still read its database,
+    # which is the failure a check on the port alone calls healthy.
+    healthcheck:
+      test: ["CMD", "/nexus", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+    # A write transaction holds an exclusive lock; killing the process in the
+    # middle of one leaves the WAL to be recovered on the way back up. It
+    # recovers, but there is no reason to make it.
+    stop_grace_period: 20s
+
+    # An appliance that runs for months should not fill the disk with its own
+    # logs. Ten files of 10MB is weeks of history.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
+
+  # ── The label printer, if it lives on this host ────────────────────────────
+  #
+  # It has to run on the machine the printer is plugged into: a NIIMBOT arrives
+  # as a USB device, which is why that service is privileged and bind-mounts
+  # /dev. This one has no such constraint, so the two often run apart — in that
+  # case leave this commented out and point them at each other by real address.
+  #
+  # Running both here, the two names below are the addresses they use:
+  #   nexus  .env:  ZENITH_PRINTER_SERVICE_URL=http://zenith-printer:3000
+  #   zenith .env:  NEXUS_ASSETS_SERVICE_URL=http://nexus-assets:8080
+  #                 NEXUS_ASSETS_SERVICE_API_KEY=nxk_...   (made in Settings)
+  #
+  # zenith-printer:
+  #   image: ghcr.io/klskk23/zenith-printer:latest
+  #   container_name: zenith-printer
+  #   restart: unless-stopped
+  #   privileged: true          # a printer that appears at /dev/ttyACM0
+  #   volumes:
+  #     - /dev:/dev             # the real devtmpfs, so hotplug shows up
+  #     - ${ZENITH_DATA:-./zenith-data}:/data
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     TZ: ${TZ:-Asia/Shanghai}
+  #   stop_grace_period: 30s
