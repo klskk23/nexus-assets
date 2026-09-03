@@ -160,3 +160,42 @@ func TestWildcardAppliesToTheHostedDomainToo(t *testing.T) {
 		t.Error("the parent domain is not included by *.mixlake.com")
 	}
 }
+
+// TestAnInvitationIsOneAddress covers the second door: a contractor on
+// gmail.com whose account an administrator created. The allow list decides who
+// may arrive uninvited; putting gmail.com on it would admit every Gmail
+// account in the world, which is the thing this avoids.
+func TestAnInvitationIsOneAddress(t *testing.T) {
+	d := DomainChecker{Allowed: []string{"mixlake.com"}, RequireHD: true}
+	outsider := IDTokenClaims{
+		Email: "contractor@gmail.com", EmailVerified: true, Subject: "sub-1",
+		// A personal Google account carries no hd claim at all, which is why
+		// that requirement has to be waived for this door rather than merely
+		// passing by luck.
+	}
+
+	if err := d.Admit(outsider); err == nil {
+		t.Error("without an account, an outsider is refused by the allow list")
+	}
+	if err := d.AdmitKnown(outsider); err != nil {
+		t.Errorf("with an account, the same person is admitted: %v", err)
+	}
+
+	// What the invitation does not waive: Google saying the person controls
+	// the address. That is the whole basis for matching them to the account.
+	unverified := outsider
+	unverified.EmailVerified = false
+	if err := d.AdmitKnown(unverified); err == nil {
+		t.Error("an unverified address must be refused at either door")
+	}
+
+	// And the allow list still means what it meant for everybody else.
+	insider := IDTokenClaims{Email: "a@mixlake.com", EmailVerified: true, HostedDomain: "mixlake.com"}
+	if err := d.Admit(insider); err != nil {
+		t.Errorf("the domain path is unchanged: %v", err)
+	}
+	noHD := IDTokenClaims{Email: "b@mixlake.com", EmailVerified: true}
+	if err := d.Admit(noHD); err == nil {
+		t.Error("the hosted-domain requirement still applies to the domain path")
+	}
+}

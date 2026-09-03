@@ -30,15 +30,8 @@ type DomainChecker struct {
 // rather than a hard-coded choice because a company that does not use Workspace
 // has no hd claim at all, and refusing everyone would lock the system.
 func (d DomainChecker) Admit(c IDTokenClaims) error {
-	// Every refusal here carries a catalogue key. They all end up on the login
-	// page through userText, which renders a keyless error as "server error" --
-	// and that tells the one person who could act on it, by signing in with
-	// the other account or by correcting the allow list, nothing at all.
-	if !c.EmailVerified {
-		return i18n.M(i18n.KeyOIDCEmailUnverified)
-	}
-	if c.Email == "" {
-		return i18n.M(i18n.KeyOIDCNoEmail)
+	if err := d.identity(c); err != nil {
+		return err
 	}
 
 	if d.RequireHD {
@@ -74,6 +67,37 @@ func (d DomainChecker) Admit(c IDTokenClaims) error {
 // Only a leading `*.` is special. A `*` anywhere else is an ordinary
 // character, so a typo cannot silently widen the list -- it matches nothing,
 // and the refusal names the domain that was turned away.
+// AdmitKnown is the rule for somebody who already has an account here.
+//
+// The allow list decides who may arrive **uninvited**; an account an
+// administrator created is the invitation, and it names one exact address
+// rather than a domain. That is what lets a contractor on gmail.com in without
+// admitting every Gmail account in the world -- which is what putting
+// gmail.com on the list would do.
+//
+// The hosted-domain requirement is waived here, and has to be: a personal
+// Google account carries no hd claim at all, so requiring one would refuse
+// exactly the people this exists for. What is not waived is the verified
+// address -- that is Google saying the person controls it, and it is the whole
+// basis for matching them to the account.
+func (d DomainChecker) AdmitKnown(c IDTokenClaims) error { return d.identity(c) }
+
+// identity is what every sign-in must satisfy, whichever door it came through.
+//
+// Every refusal here carries a catalogue key. They all end up on the login page
+// through userText, which renders a keyless error as "server error" -- and that
+// tells the one person who could act on it, by signing in with the other
+// account or by correcting the allow list, nothing at all.
+func (d DomainChecker) identity(c IDTokenClaims) error {
+	if !c.EmailVerified {
+		return i18n.M(i18n.KeyOIDCEmailUnverified)
+	}
+	if c.Email == "" {
+		return i18n.M(i18n.KeyOIDCNoEmail)
+	}
+	return nil
+}
+
 func (d DomainChecker) allows(domain string) bool {
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	if domain == "" {

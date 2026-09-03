@@ -336,3 +336,39 @@ func TestOIDCAdoptsAnExistingAccount(t *testing.T) {
 		t.Errorf("somebody signing in after the first is an ordinary user, got %q", next.RoleID)
 	}
 }
+
+// TestAnAccountIsAnInvitation covers the predicate behind the second
+// admission door: an address with an enabled account is admitted whatever its
+// domain, and a disabled one is not.
+func TestAnAccountIsAnInvitation(t *testing.T) {
+	h := newHarness(t)
+	srv := &Server{users: h.users}
+
+	if srv.invited(h.ctx, "nobody@gmail.com") {
+		t.Error("an address with no account here is not invited")
+	}
+
+	u, err := h.users.Create(h.ctx, auth.CreateInput{
+		Email: "contractor@gmail.com", Name: "外部同事", AuthType: model.AuthLocal,
+		Password: "correct-horse", RoleID: authz.UserRoleID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !srv.invited(h.ctx, "contractor@gmail.com") {
+		t.Error("an account an administrator created is the invitation")
+	}
+	// Case is not part of an address.
+	if !srv.invited(h.ctx, "Contractor@Gmail.com") {
+		t.Error("the lookup should not care about case")
+	}
+
+	// Switching the account off takes the way in away; an invitation that
+	// outlived it would hand it back.
+	if err := h.users.Disable(h.ctx, u.ID); err != nil {
+		t.Fatal(err)
+	}
+	if srv.invited(h.ctx, "contractor@gmail.com") {
+		t.Error("a disabled account is not an invitation")
+	}
+}

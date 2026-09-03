@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"net/url"
@@ -48,7 +49,8 @@ func (s *Server) oidcCallback(c *gin.Context) {
 	}
 	c.SetCookie(stateCookie, "", -1, "/", "", c.Request.TLS != nil, true)
 
-	claims, err := s.oidc.Exchange(c.Request.Context(), c.Query("code"))
+	ctx := c.Request.Context()
+	claims, err := s.oidc.Exchange(ctx, c.Query("code"))
 	if err != nil {
 		// Two audiences, one failure. The reader gets the sentence -- which
 		// domain was refused, or that the exchange itself did not complete --
@@ -59,7 +61,21 @@ func (s *Server) oidcCallback(c *gin.Context) {
 		return
 	}
 
-	u, err := auth.UpsertUser(c.Request.Context(), s.users, claims)
+	// Two doors. The allow list says who may arrive uninvited; an account an
+	// administrator already created is the invitation, and it names one exact
+	// address -- which is how a contractor on gmail.com gets in without
+	// admitting every Gmail account in the world.
+	//
+	// A disabled account is not an invitation: it falls through to the allow
+	// list, and if that refuses too the reader is told about the domain. The
+	// status check below covers the case where the domain does admit them.
+	if err := s.oidc.Admit(claims, s.invited(ctx, claims.Email)); err != nil {
+		log.Printf("oidc: sign-in refused for %s: %v", claims.Email, err)
+		c.Redirect(http.StatusFound, "/login?error="+url.QueryEscape(userText(c, err)))
+		return
+	}
+
+	u, err := auth.UpsertUser(ctx, s.users, claims)
 	if err != nil {
 		log.Printf("oidc: cannot record the account for %s: %v", claims.Email, err)
 		FailErr(c, err)
@@ -75,4 +91,16 @@ func (s *Server) oidcCallback(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusFound, "/login#token="+url.QueryEscape(tok))
+}
+
+// invited reports whether this address already has an enabled account, which
+// is what the second admission door asks.
+//
+// Disabled deliberately does not count. Somebody whose account was switched
+// off has had their way in taken away, and an invitation that outlived it
+// would hand it back -- so they fall through to the allow list, and if that
+// refuses too, the refusal names the domain.
+func (s *Server) invited(ctx context.Context, email string) bool {
+	u, err := s.users.ByEmail(ctx, email)
+	return err == nil && u.Status == model.UserActive
 }

@@ -96,10 +96,20 @@ func (o *OIDC) Exchange(ctx context.Context, code string) (IDTokenClaims, error)
 	}
 	claims.Subject = idToken.Subject
 
-	if err := o.checker.Admit(claims); err != nil {
-		return claims, err
-	}
 	return claims, nil
+}
+
+// Admit runs the admission rules for an identity that has just been verified.
+//
+// known says whether an enabled account with this address already exists. It
+// is the caller's to answer because only it can ask the store -- and the two
+// doors are genuinely different rules, not one rule with a flag: the allow
+// list is about who may arrive uninvited.
+func (o *OIDC) Admit(claims IDTokenClaims, known bool) error {
+	if known {
+		return o.checker.AdmitKnown(claims)
+	}
+	return o.checker.Admit(claims)
 }
 
 // UpsertUser finds the account for a verified identity, creating it on first
