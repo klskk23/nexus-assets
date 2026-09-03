@@ -279,8 +279,6 @@ export const enMeta: typeof zhMeta = {
     empty: "No roles yet",
     emptyHint: "A role is a set of permission switches; accounts are bound to one.",
     ofUser: "Role",
-    changeRole: "Change role",
-    changeRoleTitle: (name: string) => `Change ${name}'s role`,
   },
   models: {
     searchHint: "name, vendor",
@@ -372,6 +370,17 @@ export const enMeta: typeof zhMeta = {
     disableTitle: "Disable account",
     disableHint: (name: string) =>
       `${name} will no longer be able to sign in. Refused while they still own devices — reassign those first.`,
+    edit: "Edit account",
+    editTitle: (name: string) => `Edit ${name}`,
+    emailFixed: "The email cannot be changed: it is what SSO matches on and what the trail says.",
+    enable: "Enable",
+    saved: "Saved",
+    resetPassword: "Reset password",
+    resetPasswordHint: (name: string) =>
+      `Every session ${name} has open ends immediately; they will have to sign in with the new password.`,
+    resetPasswordSSO: "This account signs in through SSO and has no password to reset.",
+    newPassword: "New password",
+    passwordDone: "The password was reset and every session that account had is over",
     empty: "No accounts yet",
     emptyHint:
       "Accounts can be disabled but not deleted; reassign their devices before disabling one.",

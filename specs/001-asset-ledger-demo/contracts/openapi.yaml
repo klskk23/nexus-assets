@@ -865,10 +865,34 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     patch:
       tags: [metadata]
-      summary: 停用账号。名下仍有资产时拒绝
+      summary: 改名 / 停用 / 启用
+      description: >
+        三态，与其他 patch 同一条规则：字段缺席=不动，给了=照做。
+        `disable: true` 停用（名下仍有资产、或是最后一个管理员时拒绝），
+        `disable: false` 启用（014 决策 93 —— 此前它被读了但被忽略，
+        误停一个同事只能去改数据库）。`name` 可改，**邮箱不可改**：
+        它是 OIDC 登录的匹配依据，也是流水里的身份。
       responses:
         "200": { description: OK }
         "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /users/{id}/password:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [metadata]
+      summary: 重置密码，并当场吊销该账号的全部会话
+      description: >
+        仅本地账号；OIDC 账号 422（没有可重置的密码，给它设一个等于开第二道门）。
+        成功时 `users.token_version + 1` 且 `sessions` 里该账号的刷新令牌全部作废
+        （014 决策 94）。少了这一半，重置只是换了个哈希：那人手上的访问令牌
+        15 分钟内继续有效、刷新令牌一直有效 —— 而管理员按这个按钮，
+        多半正是因为这个账号出事了。
+      responses:
+        "200": { description: OK }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
 
   /audit:
     get:

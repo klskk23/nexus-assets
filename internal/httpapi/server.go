@@ -135,6 +135,7 @@ func (s *Server) Router() *gin.Engine {
 	authed.GET("/users", s.listUsers)
 	authed.POST("/users", need(authz.UserManage), s.createUser)
 	authed.PATCH("/users/:id", need(authz.UserManage), s.patchUser)
+	authed.POST("/users/:id/password", need(authz.UserManage), s.resetPassword)
 
 	authed.GET("/assets", s.listAssets)
 	authed.POST("/assets", need(authz.AssetCreate), s.createAsset)

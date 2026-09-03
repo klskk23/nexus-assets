@@ -17,6 +17,11 @@ import (
 // ErrNotFound is returned when an account does not exist.
 var ErrNotFound = errors.New("user not found")
 
+// ErrValidation is a request the account store will not carry out as asked --
+// an empty name, a password too short, a reset aimed at an account that has no
+// password to reset.
+var ErrValidation = errors.New("invalid account change")
+
 // ErrStillOwnsAssets blocks disabling an account that is still responsible for
 // devices. Every asset must have an owner at all times, so the transfer has to
 // happen first.
@@ -212,6 +217,85 @@ func (s *Store) Disable(ctx context.Context, id string) error {
 			return ErrNotFound
 		}
 		return nil
+	})
+}
+
+// Enable puts a disabled account back into service.
+//
+// The pair to Disable, and it was missing: PATCH took {"disable": true} and
+// ignored false, so an account stopped by a misclick -- or by a colleague
+// going on leave -- could only be revived by editing the database. Nothing to
+// guard here; letting somebody back in takes nothing away from anybody.
+func (s *Store) Enable(ctx context.Context, id string) error {
+	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx,
+			`UPDATE users SET status = 'active', updated_at = ? WHERE id = ?`,
+			store.FormatTime(time.Now().UTC()), id)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
+}
+
+// Rename changes the name an account is shown under.
+//
+// The email is not editable: it is what an OIDC sign-in matches on and what
+// the audit trail says, and "the same person under a different address" is an
+// account, not an edit.
+func (s *Store) Rename(ctx context.Context, id, name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return i18n.Wrap(ErrValidation, i18n.KeyUserNameRequired)
+	}
+	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx,
+			`UPDATE users SET name = ?, updated_at = ? WHERE id = ?`,
+			name, store.FormatTime(time.Now().UTC()), id)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
+}
+
+// ResetPassword sets a new password and invalidates everything issued before.
+//
+// The version bump is the point, not a detail: without it a reset only changes
+// a hash -- the access token in somebody's hands keeps working until it
+// expires, and the refresh token keeps working indefinitely. An administrator
+// reaches for this because an account is in the wrong hands, which is exactly
+// when a fifteen-minute window is the wrong thing to leave open. The refresh
+// tokens are revoked by the caller, which has the sessions store.
+func (s *Store) ResetPassword(ctx context.Context, id, password string) error {
+	hash, err := HashPassword(password)
+	if err != nil {
+		return i18n.Wrap(ErrValidation, i18n.KeyPasswordTooShort)
+	}
+	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		var authType string
+		row := tx.QueryRowContext(ctx, `SELECT auth_type FROM users WHERE id = ?`, id)
+		if err := row.Scan(&authType); errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		} else if err != nil {
+			return err
+		}
+		// An OIDC account has no password to reset; setting one would create a
+		// second way in that nobody asked for and the provider cannot revoke.
+		if authType != string(model.AuthLocal) {
+			return i18n.Wrap(ErrValidation, i18n.KeyPasswordNotLocal)
+		}
+		_, err := tx.ExecContext(ctx,
+			`UPDATE users SET password_hash = ?, token_version = token_version + 1,
+			                  updated_at = ? WHERE id = ?`,
+			hash, store.FormatTime(time.Now().UTC()), id)
+		return err
 	})
 }
 

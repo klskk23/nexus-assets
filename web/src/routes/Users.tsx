@@ -10,8 +10,7 @@ import { CrudPage, type ListPage } from "@/features/metadata/CrudPage"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Field, FieldLabel } from "@/components/ui/field"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import {
   Select,
@@ -21,12 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChangeRoleDialog } from "@/features/roles/ChangeRoleDialog"
+import { UserEditor } from "@/features/users/UserEditor"
 
 export function Users() {
   const [email, setEmail] = useState("")
   const [roleID, setRoleID] = useState("")
-  const [changing, setChanging] = useState<User | null>(null)
+  const [editing, setEditing] = useState<User | null>(null)
   const [name, setName] = useState("")
   const [password, setPassword] = useState("")
   const [banner, setBanner] = useState<string | null>(null)
@@ -53,11 +52,12 @@ export function Users() {
 
   return (
     <>
-      {changing && (
-        <ChangeRoleDialog
-          user={changing}
+      {editing && (
+        <UserEditor
+          key={editing.id}
+          user={editing}
           roles={roles.data?.items ?? []}
-          onClose={() => setChanging(null)}
+          onClose={() => setEditing(null)}
         />
       )}
       <CrudPage<User>
@@ -95,13 +95,12 @@ export function Users() {
           setRoleID("")
         }}
         create={() => api.post("/users", { email, name, password, role_id: roleID })}
+        // Clicking the row opens it, the way every other table here does.
         // Accounts cannot be deleted -- actor_id references them from every
-        // audit entry -- so disabling is the only lifecycle action there is.
+        // audit entry -- so disabling is the only end of the line there is.
+        onRowClick={(u) => setEditing(u)}
         rowActions={[
-          {
-            label: tMeta.roles.changeRole,
-            onSelect: (u) => setChanging(u),
-          },
+          { label: tMeta.users.edit, onSelect: (u) => setEditing(u) },
           {
             label: tMeta.users.disable,
             destructive: true,
@@ -132,25 +131,25 @@ export function Users() {
         ]}
         form={
           <>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="u-email">{tMeta.users.email}</Label>
+            <FieldGroup className="grid gap-4 sm:grid-cols-3">
+              <Field>
+                <FieldLabel htmlFor="u-email">{tMeta.users.email}</FieldLabel>
                 <Input
                   id="u-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="u-name">{tMeta.users.name}</Label>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="u-name">{tMeta.users.name}</FieldLabel>
                 <Input id="u-name" value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="u-role">{tMeta.roles.ofUser}</Label>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="u-role">{tMeta.roles.ofUser}</FieldLabel>
                 {/* Chosen when the account is made, with no default: an account
-                  whose permissions nobody decided is the kind that turns out
-                  to have been an administrator. */}
+                    whose permissions nobody decided is the kind that turns out
+                    to have been an administrator. */}
                 <Select value={roleID} onValueChange={setRoleID}>
                   <SelectTrigger id="u-role">
                     <SelectValue placeholder={t.common.select} />
@@ -165,17 +164,17 @@ export function Users() {
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="u-password">{tMeta.users.password}</Label>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="u-password">{tMeta.users.password}</FieldLabel>
                 <Input
                   id="u-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
-              </div>
-            </div>
+              </Field>
+            </FieldGroup>
           </>
         }
       />

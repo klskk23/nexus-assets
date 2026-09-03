@@ -110,7 +110,10 @@ var catalogs = map[Lang]map[string]string{
 		KeyBlockerEntry:            "%s（%s）",
 		KeyListSeparator:           "、",
 
-		KeyUserStillOwns: "该账号仍是 %d 台设备的负责人，请先改派再停用",
+		KeyUserStillOwns:    "该账号仍是 %d 台设备的负责人，请先改派再停用",
+		KeyUserNameRequired: "姓名不能为空",
+		KeyPasswordTooShort: "密码至少 8 位",
+		KeyPasswordNotLocal: "该账号用单点登录，没有可重置的密码",
 
 		KeyCategoryHasAssetsMove: "「%s」的子树下还有 %d 台资产，请先把它们移到别处再移动类别",
 		KeyCategoryHasChildren:   "「%s」下还有 %d 个子类别，请先删除或移走它们",
@@ -313,7 +316,10 @@ var catalogs = map[Lang]map[string]string{
 		KeyBlockerEntry:            "%s (%s)",
 		KeyListSeparator:           ", ",
 
-		KeyUserStillOwns: "This account is still responsible for %d device(s). Reassign them before disabling it.",
+		KeyUserStillOwns:    "This account is still responsible for %d device(s). Reassign them before disabling it.",
+		KeyUserNameRequired: "A name is required.",
+		KeyPasswordTooShort: "A password must be at least 8 characters.",
+		KeyPasswordNotLocal: "This account signs in through SSO and has no password to reset.",
 
 		KeyCategoryHasAssetsMove: "%q still has %d asset(s) beneath it. Move them elsewhere before moving the category.",
 		KeyCategoryHasChildren:   "%q still has %d subcategor(ies). Delete or move them first.",

@@ -122,7 +122,10 @@ const (
 	KeyListSeparator           = "common.list_separator"
 
 	// Accounts.
-	KeyUserStillOwns = "user.still_owns_assets"
+	KeyUserStillOwns    = "user.still_owns_assets"
+	KeyUserNameRequired = "user.name_required"
+	KeyPasswordTooShort = "user.password_too_short"
+	KeyPasswordNotLocal = "user.password_not_local"
 
 	// Categories, fields, bindings.
 	KeyCategoryHasAssetsMove = "category.has_assets_move"

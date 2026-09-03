@@ -17,15 +17,6 @@ const (
 	permsContextKey = "nexus.permissions"
 )
 
-// Middleware verifies the bearer credential and loads the account.
-//
-// Two kinds of credential arrive the same way. A session JWT is minutes long
-// and carries its own claims; an API key is a stored secret that acts as the
-// account which made it. Which one it is can be told from the token itself, so
-// neither has to be tried against the other.
-//
-// No permission checks happen here. The demo deliberately has no roles; the
-// admission boundary is the email-domain whitelist at sign-in.
 // ConfigKey is a credential that lives in the configuration file rather than
 // in the database.
 //
@@ -39,6 +30,66 @@ type ConfigKey struct {
 	Email  string
 }
 
+// credential is what the Authorization header turned out to be.
+type credential struct {
+	userID string
+	// tokenVersion is carried only by a session token. A key has no version of
+	// its own: it is revoked by deleting it, which resolving already answers.
+	tokenVersion int
+	versioned    bool
+	// configured marks the key from the configuration file, which acts as an
+	// administrator whatever role its account carries.
+	configured bool
+	byKey      bool
+}
+
+// resolve turns a bearer credential into the account it stands for.
+//
+// Three kinds arrive the same way and can be told apart from the token itself,
+// so none has to be tried against the others: the key from the configuration
+// file, an API key made in the interface, and a session token.
+func resolve(c *gin.Context, raw string, issuer *Issuer, users *Store, keys *Keys,
+	configKey ConfigKey) (credential, bool) {
+
+	// Compared in constant time: a bearer token is a secret, and the time
+	// taken to reject one should not say how much of it was right.
+	if configKey.Secret != "" && subtle.ConstantTimeCompare([]byte(raw), []byte(configKey.Secret)) == 1 {
+		u, err := users.ByEmail(c.Request.Context(), configKey.Email)
+		if err != nil {
+			return credential{}, false
+		}
+		return credential{userID: u.ID, configured: true, byKey: true}, true
+	}
+
+	if strings.HasPrefix(raw, KeyPrefix) {
+		if keys == nil {
+			return credential{}, false
+		}
+		id, err := keys.Resolve(c.Request.Context(), raw)
+		if err != nil {
+			return credential{}, false
+		}
+		return credential{userID: id, byKey: true}, true
+	}
+
+	claims, err := issuer.Verify(raw)
+	if err != nil {
+		return credential{}, false
+	}
+	return credential{userID: claims.Subject, tokenVersion: claims.TokenVersion, versioned: true}, true
+}
+
+// Middleware verifies the bearer credential, loads the account, and hangs what
+// it may do on the request.
+//
+// Three things are checked in order and each of them can end the request: the
+// credential resolves to an account, that account is still enabled, and the
+// token was minted at the version the account carries now. The last is what
+// makes a password reset immediate rather than eventual.
+//
+// The permissions are read per request rather than carried in the token, so
+// demoting somebody takes effect on their next click instead of on their next
+// sign-in.
 func Middleware(issuer *Issuer, users *Store, keys *Keys, roles *authz.Roles,
 	configKey ConfigKey, onFail func(*gin.Context)) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -48,48 +99,24 @@ func Middleware(issuer *Issuer, users *Store, keys *Keys, roles *authz.Roles,
 			return
 		}
 
-		// The key from the configuration file is an administrator whatever role
-		// its account carries. It exists for the thing that has to keep working
-		// -- a backup script, a monitoring probe -- and cannot be revoked from
-		// the interface; letting one click in there break it would take away
-		// the reason it exists.
-		configured := false
-
-		var userID string
-		if configKey.Secret != "" && subtle.ConstantTimeCompare([]byte(raw), []byte(configKey.Secret)) == 1 {
-			configured = true
-			// Compared in constant time: a bearer token is a secret, and the
-			// time taken to reject one should not say how much of it was right.
-			u, err := users.ByEmail(c.Request.Context(), configKey.Email)
-			if err != nil {
-				onFail(c)
-				return
-			}
-			userID = u.ID
+		cred, ok := resolve(c, raw, issuer, users, keys, configKey)
+		if !ok {
+			onFail(c)
+			return
+		}
+		if cred.byKey {
 			c.Set(byKeyContextKey, true)
-		} else if strings.HasPrefix(raw, KeyPrefix) {
-			if keys == nil {
-				onFail(c)
-				return
-			}
-			id, err := keys.Resolve(c.Request.Context(), raw)
-			if err != nil {
-				onFail(c)
-				return
-			}
-			userID = id
-			c.Set(byKeyContextKey, true)
-		} else {
-			claims, err := issuer.Verify(raw)
-			if err != nil {
-				onFail(c)
-				return
-			}
-			userID = claims.Subject
 		}
 
-		u, err := users.Get(c.Request.Context(), userID)
+		u, err := users.Get(c.Request.Context(), cred.userID)
 		if err != nil || u.Status != model.UserActive {
+			onFail(c)
+			return
+		}
+		// The version the token was minted at, checked here (decision 94).
+		// Resetting somebody's password bumps it, so every token issued before
+		// that stops being accepted now rather than fifteen minutes from now.
+		if cred.versioned && cred.tokenVersion != u.TokenVersion {
 			onFail(c)
 			return
 		}
@@ -100,9 +127,7 @@ func Middleware(issuer *Issuer, users *Store, keys *Keys, roles *authz.Roles,
 		// same request. There is deliberately no second permission model for
 		// keys (decision 74).
 		switch {
-		case configured:
-			c.Set(permsContextKey, authz.NewSet(true, nil))
-		case roles == nil:
+		case cred.configured, roles == nil:
 			c.Set(permsContextKey, authz.NewSet(true, nil))
 		default:
 			set, err := roles.SetOf(c.Request.Context(), u.RoleID)

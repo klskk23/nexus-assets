@@ -215,6 +215,17 @@
 - **类别页不翻页，一搜索就从树切成平铺**（014 决策 91）。树上放分页会让第 2 页
   开头的子类别失去它在第 1 页的父，缩进就成了没有出处的悬空；搜索同理，
   所以命中行改显示完整路径「网络设备 / SDWAN 路由器」。清空搜索恢复成树。
+- **账号能改的东西在行点击弹出的编辑对话框里**（014 决策 93/94）。
+  邮箱只读、姓名可改、角色可改（013 的两条守卫不变），
+  **停用与启用成对** —— `PATCH /users/:id` 的 `{"disable": false}` 以前被读了
+  但被忽略，误停一个同事只能去改数据库。**重置密码仅本地账号**，
+  OIDC 账号禁用并说明；破坏性操作走 `ConfirmDialog` 并要求输入该账号邮箱。
+- **重置密码当场吊销那个人的全部会话**（014 决策 94）。`token_version` 从 001 起
+  就带在 JWT 里、注释写着「carried but not yet checked」，现在中间件真的比对了：
+  `POST /users/:id/password` 让 `token_version + 1` 并 `Sessions.RevokeUser`。
+  少了这一半，重置只是换了个哈希 —— 而管理员按这个按钮，
+  多半正是因为这个账号出事了，15 分钟的窗口正好落在最不该有窗口的时候。
+  **改 `Middleware` 时别把这三步的顺序打乱**：认出凭证 → 账号仍启用 → 版本一致。
 - **重的库要 `lazy` 到自己的 chunk 里。** `recharts` 走 `features/overview/CategoryChart.tsx`
   + `Suspense`：入口 chunk 与概览页 chunk 都不含它（否则概览页 chunk 是 358KB 而非 4.4KB）。
   测试环境的 `ResizeObserver` 桩会回报固定尺寸，否则图表在 jsdom 里根本不渲染，

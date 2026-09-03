@@ -139,6 +139,7 @@ var refusals = []struct {
 	{holder.ErrHasChildren, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
 
 	{auth.ErrStillOwnsAssets, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
+	{auth.ErrValidation, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", ""}},
 
 	{authz.ErrNotFound, refusal{http.StatusNotFound, CodeNotFound, i18n.KeyNotFound, ""}},
 	{authz.ErrInvalid, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", ""}},

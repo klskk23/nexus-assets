@@ -262,8 +262,6 @@ export const zhMeta = {
     empty: "还没有任何角色",
     emptyHint: "角色是一组权限开关，账号绑定到角色上。",
     ofUser: "角色",
-    changeRole: "更改角色",
-    changeRoleTitle: (name: string) => `更改「${name}」的角色`,
   },
   models: {
     searchHint: "名称、厂商",
@@ -352,6 +350,17 @@ export const zhMeta = {
     disableTitle: "停用账号",
     disableHint: (name: string) =>
       `「${name}」将无法登录。名下仍有设备时会被拒绝，请先把设备改派给他人。`,
+    edit: "编辑账号",
+    editTitle: (name: string) => `编辑「${name}」`,
+    emailFixed: "邮箱不可修改：它是单点登录的匹配依据，也是流水里的身份。",
+    enable: "启用",
+    saved: "已保存",
+    resetPassword: "重置密码",
+    resetPasswordHint: (name: string) =>
+      `「${name}」当前的登录会立刻全部失效，需要用新密码重新登录。`,
+    resetPasswordSSO: "该账号用单点登录，没有可重置的密码。",
+    newPassword: "新密码",
+    passwordDone: "密码已重置，该账号的登录已全部失效",
     empty: "还没有任何账号",
     emptyHint: "账号只能停用不能删除；停用前必须先把其名下的设备转给他人。",
   },
