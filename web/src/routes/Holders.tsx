@@ -11,6 +11,7 @@ import {
   type HolderUsage,
 } from "@/lib/types"
 import { NONE, fromNone, toNone } from "@/lib/select"
+import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
 import { CrudPage } from "@/features/metadata/CrudPage"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -81,6 +82,7 @@ export function Holders() {
   const [parentID, setParentID] = useState("")
   const [note, setNote] = useState("")
   const queryClient = useQueryClient()
+  const { deniedReason } = usePermissions()
 
   const [editing, setEditing] = useState<HolderEntity | null>(null)
   // Two refusals, deliberately separate: a row action has no dialog and shows
@@ -201,6 +203,7 @@ export function Holders() {
           },
         },
       ]}
+      createDeniedReason={deniedReason("holder.create")}
       createDisabled={name === "" || (PARENT_REQUIRED[type] && parentID === "")}
         onCreated={() => {
           setName("")

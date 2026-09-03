@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, ApiError } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category } from "@/lib/types"
+import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
 import { StateBoundary } from "@/components/StateBoundary"
 import { CategoryTable } from "@/features/categories/CategoryTable"
@@ -34,6 +35,7 @@ import {
 
 export function Categories() {
   const queryClient = useQueryClient()
+  const { deniedReason } = usePermissions()
   const [code, setCode] = useState("")
   const [name, setName] = useState("")
   const [parentId, setParentId] = useState("")
@@ -77,7 +79,11 @@ export function Categories() {
           }}
         >
           <DialogTrigger asChild>
-            <Button className="ml-auto">
+            <Button
+              className="ml-auto"
+              disabled={deniedReason("schema.manage") !== undefined}
+              title={deniedReason("schema.manage")}
+            >
               <PlusIcon data-icon="inline-start" />
               {tMeta.categories.create}
             </Button>

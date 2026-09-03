@@ -18,6 +18,22 @@ tags:
   - name: import
   - name: overview
 
+# 权限（013）：十八个开关，一个账号绑一个角色。
+#
+# **读是开放的**，只有 GET /audit 需要权限 —— 台账的价值在于全员能查，
+# 而审计是关于人的。所以没有任何一条查询按调用者收窄：权限只决定按钮按不按得动。
+#
+# 写操作各自需要下列之一：
+#   asset.create / asset.update / asset.delete
+#   transfer.create / transfer.update
+#   print / import（同时需要 asset.create）/ export
+#   schema.manage（类别、字段、绑定、重算）/ model.manage / status.manage
+#   holder.create / holder.update / holder.delete / holder.default_stock
+#   user.manage / audit.read / role.manage
+#
+# 缺权限一律 403 + code "forbidden"，message 指明缺哪一个（按界面的叫法）。
+# 配置文件里的 NEXUS_ADMIN_API_KEY 永远是管理员；用户建的密钥等同其主人当下的权限。
+
 paths:
   # ---------------- auth ----------------
   /auth/login:
@@ -69,6 +85,10 @@ paths:
 
   /me:
     get:
+      description: >
+        除账号本身外，还返回 permissions（该账号有效的权限数组）与 is_admin。
+        界面据此禁用按钮；**把关的仍然是每个端点自己**，这一份只是为了不显示
+        按不动的希望。
       tags: [auth]
       summary: 当前登录账号
       responses:
@@ -716,6 +736,60 @@ paths:
       responses:
         "200": { description: OK }
         "404": { $ref: "#/components/responses/Error" }
+
+  /roles:
+    get:
+      tags: [metadata]
+      summary: >
+        角色清单，每项带 users（绑着多少账号）。**读是开放的** ——
+        账号页要显示同事在哪个角色上，藏起来会让「他为什么能做那个」无从回答。
+        响应里的 permissions 是这套系统认识的全部开关。
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [metadata]
+      summary: 新建角色。新角色永远不是管理员 —— 无限权限的角色只需要一个
+      responses:
+        "201": { description: Created }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /roles/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: >
+        改角色。**管理员的 permissions 不可编辑** ——
+        它不是十八个勾，而是「全部，含以后新增的」；改名可以。
+      responses:
+        "200": { description: OK }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [metadata]
+      summary: 删除角色。还绑着账号时拒绝，并说明有几个 —— 与删持有方、删状态同一条规则
+      responses:
+        "204": { description: Deleted }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /users/{id}/role:
+    patch:
+      tags: [metadata]
+      summary: >
+        把账号绑到角色上。两条守卫：**系统必须始终至少有一个启用的管理员**
+        （降级、停用、删角色三条路都撞它），以及**不能改自己的角色**。
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role_id]
+              properties:
+                role_id: { type: string }
+      responses:
+        "200": { description: OK }
+        "409": { $ref: "#/components/responses/Error" }
 
   /users:
     get: { tags: [metadata], summary: 账号列表, responses: { "200": { description: OK } } }

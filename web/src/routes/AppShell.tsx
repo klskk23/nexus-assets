@@ -3,6 +3,7 @@ import { useState } from "react"
 import { NavLink, Navigate, Outlet } from "react-router"
 
 import { useAuth } from "@/features/auth/useAuth"
+import { usePermissions, type Permission } from "@/features/auth/usePermissions"
 import { useTheme } from "@/features/theme/useTheme"
 import { SettingsDialog } from "@/features/settings/SettingsDialog"
 import { usePreferences } from "@/features/settings/usePreferences"
@@ -24,7 +25,7 @@ import { cn } from "@/lib/utils"
  * A module-level array would be evaluated once at import time and would still
  * be holding the labels of whatever language the page was first loaded in.
  */
-function navLinks() {
+function navLinks(can: (p: Permission) => boolean) {
   return [
     { to: "/", label: t.nav.overview },
     { to: "/assets", label: t.nav.assets },
@@ -34,14 +35,19 @@ function navLinks() {
     { to: "/statuses", label: t.nav.statuses },
     { to: "/holders", label: t.nav.holders },
     { to: "/users", label: t.nav.users },
+    { to: "/roles", label: t.nav.roles },
     { to: "/import", label: t.nav.importPage },
-    { to: "/audit", label: t.nav.audit },
+    // The one page that is hidden rather than shown with dead buttons: it has
+    // nothing on it a reader without the permission may see, and an entry that
+    // only ever answers 403 is worse than no entry.
+    ...(can("audit.read") ? [{ to: "/audit", label: t.nav.audit }] : []),
   ]
 }
 
 /** Chrome around every signed-in page, and the gate that keeps them signed in. */
 export function AppShell() {
   const { user, isLoading, signOut } = useAuth()
+  const { can } = usePermissions()
   const [settingsOpen, setSettingsOpen] = useState(false)
   usePreferences(user)
   const { theme, toggle } = useTheme()
@@ -61,7 +67,7 @@ export function AppShell() {
         <div className="mx-auto flex max-w-7xl items-center gap-6 px-6 py-3">
           <span className="font-semibold">{t.appName}</span>
           <nav className="flex gap-1" aria-label={t.nav.assets}>
-            {navLinks().map((l) => (
+            {navLinks(can).map((l) => (
               <NavLink
                 key={l.to}
                 to={l.to}

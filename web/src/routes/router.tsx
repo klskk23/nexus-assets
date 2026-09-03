@@ -24,6 +24,7 @@ export const router = createBrowserRouter([
       { path: "models", lazy: async () => ({ Component: (await import("./Models")).Models }) },
       { path: "statuses", lazy: async () => ({ Component: (await import("./Statuses")).Statuses }) },
       { path: "holders", lazy: async () => ({ Component: (await import("./Holders")).Holders }) },
+      { path: "roles", lazy: async () => ({ Component: (await import("./Roles")).Roles }) },
       { path: "audit", lazy: async () => ({ Component: (await import("./Audit")).Audit }) },
       { path: "import", lazy: async () => ({ Component: (await import("./Import")).Import }) },
       { path: "users", lazy: async () => ({ Component: (await import("./Users")).Users }) },

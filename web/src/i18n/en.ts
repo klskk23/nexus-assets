@@ -95,6 +95,7 @@ export const en: typeof zh = {
     statuses: "Statuses",
     holders: "Holders",
     users: "Accounts",
+    roles: "Roles",
     importPage: "Import",
     audit: "Audit",
     signOut: "Sign out",
@@ -112,6 +113,29 @@ export const en: typeof zh = {
     submitting: "Signing in…",
   },
 
+  perm: {
+    denied: (name: string) => `Needs the "${name}" permission; ask an administrator`,
+    names: {
+      "asset.create": "Record devices",
+      "asset.update": "Edit devices",
+      "asset.delete": "Delete devices",
+      "transfer.create": "Transfers",
+      "transfer.update": "Edit transfer records",
+      "print": "Print labels",
+      "import": "Import",
+      "export": "Export",
+      "schema.manage": "Manage categories and fields",
+      "model.manage": "Manage models",
+      "status.manage": "Manage statuses",
+      "holder.create": "Add holders",
+      "holder.update": "Edit holders",
+      "holder.delete": "Delete holders",
+      "holder.default_stock": "Set the default stock point",
+      "user.manage": "Manage accounts",
+      "audit.read": "View the audit log",
+      "role.manage": "Manage roles",
+    } as Record<string, string>,
+  },
   assets: {
     title: "Assets",
     search: "Search assets",
@@ -226,6 +250,30 @@ export const enMeta: typeof zhMeta = {
     bindOnCreate: "Bind to categories",
     bindOnCreateHint:
       "A field only appears on the entry form once it is bound. Leaving this empty is fine; it can be bound later from the field editor.",
+  },
+  roles: {
+    title: "Roles",
+    create: "New role",
+    edit: "Edit role",
+    delete: "Delete role",
+    editTitle: (name: string) => `Edit role: ${name}`,
+    name: "Name",
+    permissions: "Permissions",
+    permissionsHint:
+      "Ticked is what this role can do; anything else is a disabled button that says what it needs. Reading -- devices, categories, fields, models, statuses, holders, accounts -- is open to everyone and not controlled here.",
+    accounts: "Accounts",
+    everything: "Everything",
+    countOf: (n: number) => `${n} permission(s)`,
+    adminFixed:
+      "The administrator's permissions are not a set of ticks: it means everything, including permissions added later. Only the name can be changed here.",
+    deleteTitle: "Delete role",
+    deleteHint: (name: string) =>
+      `${name} will be deleted. It is refused while accounts are still bound to it; move them to another role first.`,
+    empty: "No roles yet",
+    emptyHint: "A role is a set of permission switches; accounts are bound to one.",
+    ofUser: "Role",
+    changeRole: "Change role",
+    changeRoleTitle: (name: string) => `Change ${name}'s role`,
   },
   models: {
     title: "Models",

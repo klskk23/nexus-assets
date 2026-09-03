@@ -94,6 +94,24 @@ export interface User {
   /** What this person chose for the interface; empty follows the system. */
   lang?: string
   theme?: string
+  /** Which role they are on. Read by the account page, not by the checks. */
+  role_id?: string
+  /**
+   * What they may do, from /me. Only that endpoint fills these in -- the
+   * account list does not, and nothing should read them from there.
+   */
+  permissions?: string[]
+  is_admin?: boolean
+}
+
+export interface Role {
+  id: string
+  name: string
+  /** Every permission, including ones added later. Not a list of ticks. */
+  is_admin: boolean
+  permissions: string[]
+  /** How many accounts are bound; a role with any will not delete. */
+  users: number
 }
 
 export type EntityType = "company" | "location" | "department"

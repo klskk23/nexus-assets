@@ -5,6 +5,7 @@ import { AlertCircleIcon } from "lucide-react"
 import { api, ApiError } from "@/lib/api"
 import type { Status, StatusUsage } from "@/lib/types"
 import { t, tMeta, tStatuses } from "@/i18n"
+import { usePermissions } from "@/features/auth/usePermissions"
 import { CrudPage } from "@/features/metadata/CrudPage"
 import {
   Dialog,
@@ -52,6 +53,7 @@ type StatusRow = Status & { id: string }
  */
 export function Statuses() {
   const queryClient = useQueryClient()
+  const { deniedReason } = usePermissions()
   const { colors } = useStatuses()
 
   // Only this page cares what a delete would cost, so the counts are fetched
@@ -106,6 +108,7 @@ export function Statuses() {
       // entry, so recolouring a row refreshes every badge in the app.
       list={async () => (await statusesQuery().queryFn()).map((s) => ({ ...s, id: s.key }))}
       createLabel={tStatuses.create}
+      createDeniedReason={deniedReason("status.manage")}
       createDisabled={key === "" || label === ""}
       onCreated={() => {
         setKey("")

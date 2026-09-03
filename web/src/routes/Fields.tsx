@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category } from "@/lib/types"
 import type { FieldDefinitionRow, FieldType } from "@/lib/metaTypes"
+import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tConfig, tMeta } from "@/i18n"
 import { CrudPage, type ListPage } from "@/features/metadata/CrudPage"
 import { PAGE_SIZES, Pager } from "@/features/common/Pager"
@@ -38,6 +39,7 @@ const expressionTypes: FieldType[] = ["computed"]
 
 export function Fields() {
   const queryClient = useQueryClient()
+  const { deniedReason } = usePermissions()
   const [editing, setEditing] = useState<FieldDefinitionRow | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [key, setKey] = useState("")
@@ -149,6 +151,7 @@ export function Fields() {
         />
       }
       createLabel={tMeta.fields.create}
+      createDeniedReason={deniedReason("schema.manage")}
       createDisabled={key === "" || label === ""}
       onCreated={() => {
         setKey("")

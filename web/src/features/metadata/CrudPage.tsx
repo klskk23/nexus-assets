@@ -83,6 +83,14 @@ interface Props<T> {
   emptyHint: string
   createLabel: string
   createDisabled?: boolean
+  /**
+   * Why the create button is dead, when it is dead for want of a permission.
+   *
+   * Disabled and explained rather than hidden: a colleague who cannot see the
+   * button has no way to learn the feature exists, let alone who can open it.
+   * The rest of the row actions follow the same rule through `disabled`.
+   */
+  createDeniedReason?: string
   form: ReactNode
   /**
    * Shown above the table. This is where a failure from a row action belongs
@@ -130,6 +138,7 @@ export function CrudPage<T extends { id: string }>({
   emptyHint,
   createLabel,
   createDisabled,
+  createDeniedReason,
   form,
   notice,
   onRowClick,
@@ -172,7 +181,11 @@ export function CrudPage<T extends { id: string }>({
           }}
         >
           <DialogTrigger asChild>
-            <Button className="ml-auto">
+            <Button
+              className="ml-auto"
+              disabled={createDeniedReason !== undefined}
+              title={createDeniedReason}
+            >
               <PlusIcon data-icon="inline-start" />
               {createLabel}
             </Button>

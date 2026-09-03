@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -107,12 +108,12 @@ func TestPermissionsTravelWithMe(t *testing.T) {
 		t.Error("the preset role is not an administrator")
 	}
 	for _, want := range []string{"asset.create", "transfer.create", "print", "export"} {
-		if !containsStr(ordinary.Permissions, want) {
+		if !slices.Contains(ordinary.Permissions, want) {
 			t.Errorf("the preset role should carry %s, got %v", want, ordinary.Permissions)
 		}
 	}
 	for _, unwanted := range []string{"asset.delete", "schema.manage", "role.manage"} {
-		if containsStr(ordinary.Permissions, unwanted) {
+		if slices.Contains(ordinary.Permissions, unwanted) {
 			t.Errorf("the preset role must not carry %s", unwanted)
 		}
 	}
@@ -121,51 +122,91 @@ func TestPermissionsTravelWithMe(t *testing.T) {
 // TestNobodyCanBeLeftInCharge covers the guards that make this safe to switch
 // on: there is no sequence of allowed clicks that ends with nobody able to
 // change permissions.
+//
+// Each case gets its own harness, because these guards are about how many
+// administrators exist and a case that quietly left a second one behind would
+// let the next case pass without ever reaching its guard.
 func TestNobodyCanBeLeftInCharge(t *testing.T) {
-	h := newHarness(t)
-
-	// The only administrator cannot be demoted...
-	rec := h.patch(t, "/api/users/"+h.userID+"/role", `{"role_id":"`+authz.UserRoleID+`"}`)
-	if rec.Code != http.StatusConflict {
-		t.Fatalf("demoting the last administrator should be refused, got %d: %s", rec.Code, rec.Body.String())
-	}
-	// ...nor disabled, which loses the same thing by another route.
-	if rec := h.patch(t, "/api/users/"+h.userID, `{"disable":true}`); rec.Code != http.StatusConflict {
-		t.Errorf("disabling the last administrator should be refused, got %d: %s", rec.Code, rec.Body.String())
-	}
-
-	// Even with a second administrator, nobody changes their own role: one
-	// wrong click would otherwise lock a person out of the page that undoes it.
-	other := h.asRole(t, authz.AdminRoleID)
-	_ = other
-	if rec := h.patch(t, "/api/users/"+h.userID+"/role", `{"role_id":"`+authz.UserRoleID+`"}`); rec.Code != http.StatusConflict {
-		t.Errorf("changing your own role should be refused, got %d: %s", rec.Code, rec.Body.String())
-	}
-
-	// The administrator's permissions are not a list of ticks, so there is
-	// nothing to clear.
-	if rec := h.patch(t, "/api/roles/"+authz.AdminRoleID, `{"permissions":[]}`); rec.Code != http.StatusUnprocessableEntity {
-		t.Errorf("the administrator's permissions are not editable, got %d: %s", rec.Code, rec.Body.String())
-	}
-	// Its name is.
-	if rec := h.patch(t, "/api/roles/"+authz.AdminRoleID, `{"name":"系统管理员"}`); rec.Code != http.StatusOK {
-		t.Errorf("renaming the administrator role should work, got %d: %s", rec.Code, rec.Body.String())
-	}
-
-	// A role with people on it is not deletable, the same rule holders and
-	// statuses follow.
-	if rec := h.do(t, http.MethodDelete, "/api/roles/"+authz.AdminRoleID, ""); rec.Code != http.StatusConflict {
-		t.Errorf("a role with accounts bound to it should not be deletable, got %d", rec.Code)
-	}
-}
-
-func containsStr(list []string, want string) bool {
-	for _, s := range list {
-		if s == want {
-			return true
+	t.Run("the last administrator cannot be disabled", func(t *testing.T) {
+		h := newHarness(t)
+		rec := h.patch(t, "/api/users/"+h.userID, `{"disable":true}`)
+		if rec.Code != http.StatusConflict {
+			t.Fatalf("expected a refusal, got %d: %s", rec.Code, rec.Body.String())
 		}
-	}
-	return false
+		// The message, not just the status: "still owns devices" is also a 409,
+		// and a test that accepted either would pass without reaching this
+		// guard at all.
+		if !strings.Contains(rec.Body.String(), "至少") {
+			t.Errorf("refused for the wrong reason: %s", rec.Body.String())
+		}
+	})
+
+	t.Run("the last administrator cannot be demoted", func(t *testing.T) {
+		h := newHarness(t)
+
+		// Somebody who can assign roles without being an administrator --
+		// otherwise the only account able to demote the last administrator is
+		// that administrator, and the self-demote guard answers first.
+		rec := h.post(t, "/api/roles", `{"name":"人事","permissions":["role.manage"]}`)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("create role: %s", rec.Body.String())
+		}
+		var role struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &role); err != nil {
+			t.Fatal(err)
+		}
+		hr := h.asRole(t, role.ID)
+
+		rec = h.doAs(t, hr, http.MethodPatch, "/api/users/"+h.userID+"/role",
+			`{"role_id":"`+authz.UserRoleID+`"}`)
+		if rec.Code != http.StatusConflict {
+			t.Fatalf("expected a refusal, got %d: %s", rec.Code, rec.Body.String())
+		}
+		if !strings.Contains(rec.Body.String(), "至少") {
+			t.Errorf("refused for the wrong reason: %s", rec.Body.String())
+		}
+	})
+
+	t.Run("nobody changes their own role", func(t *testing.T) {
+		h := newHarness(t)
+		// A second administrator, so this is refused for being one's own
+		// change rather than for being the last one.
+		h.asRole(t, authz.AdminRoleID)
+
+		rec := h.patch(t, "/api/users/"+h.userID+"/role", `{"role_id":"`+authz.UserRoleID+`"}`)
+		if rec.Code != http.StatusConflict {
+			t.Fatalf("expected a refusal, got %d: %s", rec.Code, rec.Body.String())
+		}
+		if !strings.Contains(rec.Body.String(), "自己") {
+			t.Errorf("refused for the wrong reason: %s", rec.Body.String())
+		}
+	})
+
+	t.Run("the administrator role has no switches to clear", func(t *testing.T) {
+		h := newHarness(t)
+		if rec := h.patch(t, "/api/roles/"+authz.AdminRoleID, `{"permissions":[]}`); rec.Code != http.StatusUnprocessableEntity {
+			t.Errorf("its permissions are not editable, got %d: %s", rec.Code, rec.Body.String())
+		}
+		// Its name is.
+		if rec := h.patch(t, "/api/roles/"+authz.AdminRoleID, `{"name":"系统管理员"}`); rec.Code != http.StatusOK {
+			t.Errorf("renaming it should work, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("a role with accounts on it will not delete", func(t *testing.T) {
+		h := newHarness(t)
+		rec := h.do(t, http.MethodDelete, "/api/roles/"+authz.AdminRoleID, "")
+		if rec.Code != http.StatusConflict {
+			t.Fatalf("expected a refusal, got %d: %s", rec.Code, rec.Body.String())
+		}
+		// An empty one deletes cleanly, which is what makes the guard a guard
+		// rather than a blanket refusal.
+		if rec := h.do(t, http.MethodDelete, "/api/roles/"+authz.UserRoleID, ""); rec.Code != http.StatusNoContent {
+			t.Errorf("a role nobody is on should delete, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
 }
 
 // TestOIDCFirstSignInIsAnAdministrator covers how the very first person gets

@@ -165,7 +165,6 @@ describe("export from the asset list", () => {
   // Authorization header, and the browser reported a download that failed with
   // nothing on screen to read.
   it("fetches the file with the session's credential and hands it to the browser", async () => {
-    localStorage.setItem("nexus.token", "tok")
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
     const dialog = await openExport(user)
@@ -175,7 +174,8 @@ describe("export from the asset list", () => {
 
     await waitFor(() => expect(exported().get("category_id")).toBe("net"))
     const [, init] = dl.fetchMock.mock.calls.at(-1) as [string, RequestInit]
-    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok")
+    // Whatever the session holds -- renderWithProviders signs a test admin in.
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer test-token")
     expect(dl.saved).toHaveLength(1)
   })
 

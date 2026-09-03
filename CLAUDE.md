@@ -1,11 +1,12 @@
 <!-- SPECKIT START -->
-当前计划：`specs/012-sessions-keys-settings/spec.md`
+当前计划：`specs/013-permissions/spec.md`
 
 开工前必读，按优先级：
 
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
-2. `specs/012-sessions-keys-settings/`（决策 73–76）—— 本轮：会话续期、API 密钥、
-   账号偏好、内嵌接口文档。上一轮是 `specs/011-expression-engine/`，
+2. `specs/013-permissions/`（决策 77–85）—— 本轮：角色与权限。
+   上一轮 `specs/012-sessions-keys-settings/`（决策 73–76）：会话续期、API 密钥、
+   账号偏好、内嵌接口文档；再上一轮 `specs/011-expression-engine/`，
    其调研在 `docs/research-expr-engine.md`
 3. `docs/design-baseline-v6.md`（决策 64–72）—— 撤回单选与引用；改表达式即重算；唯一性按类别
 4. `docs/design-baseline-v5.md`（决策 61–63）—— 状态不再约束持有方。
@@ -24,6 +25,21 @@
 
 **推送与发布要等确认。** 提交可以自己做，`git push`、打 tag、触发发布流水线**不要自作主张** ——
 先说清这一批改了什么、验证到什么程度，等开发者说推再推。发出去的 tag 与镜像收不回来。
+
+- **权限是十八个全局开关，一个账号绑一个角色**（013 决策 77–85）。开关只回答
+  「能不能」，**不回答「对哪些设备」** —— 所以系统里没有任何一条查询按调用者收窄，
+  加范围之前先想清楚每个列表、导出、打印、审计都要跟着改。
+  **读默认全开放**，只有 `GET /audit` 要权限；账号列表也开放（流转要在里面挑人）。
+  **管理员是 `roles.is_admin` 这个标记，不是十八个勾** —— 它含义是「全部，包括以后
+  新增的」；下轮加第十九个开关时不必记得给它打开，也**不要**把它改成勾选式。
+  **加新开关的四个地方**：`internal/authz/permissions.go` 的常量与 `All`、
+  `internal/httpapi/permissions.go` 的名称表、`web/src/features/auth/usePermissions.ts`
+  的 `PERMISSIONS`、两份 i18n 的 `perm.names`。漏掉第三个，界面会以为谁都没有它。
+  **护栏三条**：至少一个启用的管理员（降级/停用/删角色都撞它）、不能改自己的角色、
+  角色下还有账号时拒绝删除。
+  **前端只负责禁用**（`deniedReason(p)` 给 `disabled` 与 `title`），
+  **把关的永远是路由上的 `need(...)`** —— 与持有方树的 `allowedParents` 同一个道理。
+  审计页是唯一「没权限就从导航里去掉」的，其余一律禁用而不是隐藏。
 
 **最容易违反的十条硬规则**
 

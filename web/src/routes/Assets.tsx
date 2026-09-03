@@ -12,7 +12,11 @@ import { t, tImport, tTransfer } from "@/i18n"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { StateBoundary } from "@/components/StateBoundary"
-import { BUILTIN_COLUMNS, useBuiltinColumns, useColumnSelection } from "@/features/assets/useColumns"
+import {
+  BUILTIN_COLUMNS,
+  useBuiltinColumns,
+  useColumnSelection,
+} from "@/features/assets/useColumns"
 import { ActionBar } from "@/features/assets/ActionBar"
 import { PrintDialog } from "@/features/print/PrintDialog"
 import { usePrinting } from "@/features/print/usePrinting"
@@ -23,6 +27,7 @@ import {
   transferActions,
   type TransferAction,
 } from "@/features/transfers/TransferDialog"
+import { usePermissions } from "@/features/auth/usePermissions"
 import { ExportDialog } from "@/features/assets/ExportDialog"
 import { NewAssetDialog } from "@/features/assets/NewAssetDialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -96,6 +101,7 @@ export function Assets() {
   const [ownerId, setOwnerId] = useState(searchParams.get("owner_id") ?? "")
   const [holderId, setHolderId] = useState(searchParams.get("holder_id") ?? "")
   const { keys: chosenColumns, toggle } = useColumnSelection(categoryId)
+  const { can, deniedReason } = usePermissions()
   // The built-ins are the same everywhere, so their selection is not per
   // category the way the field columns are.
   const builtins = useBuiltinColumns()
@@ -247,10 +253,21 @@ export function Assets() {
         <h1 className="mr-auto text-xl font-semibold">{t.assets.title}</h1>
         {/* Not a link: every credential this app has travels in a header, and
             a plain download navigation carries none of them. */}
-        <Button variant="outline" onClick={() => setExporting(true)} title={tImport.exportHint}>
+        <Button
+          variant="outline"
+          onClick={() => setExporting(true)}
+          disabled={deniedReason("export") !== undefined}
+          title={deniedReason("export") ?? tImport.exportHint}
+        >
           {tImport.export}
         </Button>
-        <Button onClick={() => setCreating(true)}>{t.assets.newAsset}</Button>
+        <Button
+          onClick={() => setCreating(true)}
+          disabled={deniedReason("asset.create") !== undefined}
+          title={deniedReason("asset.create")}
+        >
+          {t.assets.newAsset}
+        </Button>
       </div>
 
       {/* One row. The labels are read out but not drawn: each control already
@@ -496,6 +513,9 @@ export function Assets() {
                       {transferActions().map(([action, label]) => (
                         <ContextMenuItem
                           key={action}
+                          // Disabled rather than hidden: a colleague who cannot
+                          // see the item has no way to learn it exists.
+                          disabled={!can("transfer.create")}
                           onSelect={() => setRowTransfer({ id: a.id, action })}
                         >
                           {label}
@@ -504,12 +524,19 @@ export function Assets() {
                       {/* One device, without ticking it first -- the same
                           reason every other action is on this menu. */}
                       {printing && (
-                        <ContextMenuItem onSelect={() => setPrintingOne(a.id)}>
+                        <ContextMenuItem
+                          disabled={!can("print")}
+                          onSelect={() => setPrintingOne(a.id)}
+                        >
                           {t.print.action}
                         </ContextMenuItem>
                       )}
                       <ContextMenuSeparator />
-                      <ContextMenuItem variant="destructive" onSelect={() => setDeleting(a)}>
+                      <ContextMenuItem
+                        variant="destructive"
+                        disabled={!can("asset.delete")}
+                        onSelect={() => setDeleting(a)}
+                      >
                         {t.assets.delete}
                       </ContextMenuItem>
                     </ContextMenuContent>

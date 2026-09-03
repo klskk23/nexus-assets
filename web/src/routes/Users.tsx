@@ -1,22 +1,42 @@
 import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
-import type { User } from "@/lib/types"
+import type { Role, User } from "@/lib/types"
+import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
-import { CrudPage } from "@/features/metadata/CrudPage"
+import { CrudPage, type ListPage } from "@/features/metadata/CrudPage"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { ChangeRoleDialog } from "@/features/roles/ChangeRoleDialog"
 
 export function Users() {
   const [email, setEmail] = useState("")
+  const [roleID, setRoleID] = useState("")
+  const [changing, setChanging] = useState<User | null>(null)
   const [name, setName] = useState("")
   const [password, setPassword] = useState("")
   const [banner, setBanner] = useState<string | null>(null)
   const queryClient = useQueryClient()
+  const { deniedReason } = usePermissions()
+
+  const roles = useQuery({
+    queryKey: ["roles"],
+    queryFn: () => api.get<ListPage<Role>>("/roles"),
+  })
+  const roleName = (id?: string) =>
+    (roles.data?.items ?? []).find((r) => r.id === id)?.name ?? t.common.none
 
   const disable = useMutation({
     mutationFn: (id: string) => api.patch(`/users/${id}`, { disable: true }),
@@ -30,81 +50,122 @@ export function Users() {
   })
 
   return (
-    <CrudPage<User>
-      title={tMeta.users.title}
-      queryKey="users"
-      list={() => api.get<User[]>("/users")}
-      createLabel={tMeta.users.create}
-      // Disabling an account is a row action; its refusal has to appear next
-      // to the rows rather than inside the create dialog.
-      notice={
-        banner && (
-          <Alert variant="destructive">
-            <AlertCircleIcon />
-            <AlertDescription>{banner}</AlertDescription>
-          </Alert>
-        )
-      }
-      createDisabled={email === "" || password === ""}
-      onCreated={() => {
-        setEmail("")
-        setName("")
-        setPassword("")
-      }}
-      create={() => api.post("/users", { email, name, password })}
-      // Accounts cannot be deleted -- actor_id references them from every
-      // audit entry -- so disabling is the only lifecycle action there is.
-      rowActions={[
-        {
-          label: tMeta.users.disable,
-          destructive: true,
-          disabled: (u) => u.status !== "active",
-          onSelect: (u) => disable.mutate(u.id),
-          confirm: (u) => ({
-            title: tMeta.users.disableTitle,
-            description: tMeta.users.disableHint(u.name),
-            phrase: u.email,
-          }),
-        },
-      ]}
-      emptyTitle={tMeta.users.empty}
-      emptyHint={tMeta.users.emptyHint}
-      columns={[
-        { header: tMeta.users.email, cell: (u) => u.email },
-        { header: tMeta.users.name, cell: (u) => u.name },
-        {
-          header: tMeta.users.status,
-          cell: (u) =>
-            u.status === "active" ? (
-              <Badge variant="secondary">{tMeta.users.active}</Badge>
-            ) : (
-              <Badge variant="outline">{tMeta.users.disabled}</Badge>
-            ),
-        },
-      ]}
-      form={
-        <>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="u-email">{tMeta.users.email}</Label>
-              <Input id="u-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+    <>
+      {changing && (
+        <ChangeRoleDialog
+          user={changing}
+          roles={roles.data?.items ?? []}
+          onClose={() => setChanging(null)}
+        />
+      )}
+      <CrudPage<User>
+        title={tMeta.users.title}
+        queryKey="users"
+        list={() => api.get<User[]>("/users")}
+        createLabel={tMeta.users.create}
+        // Disabling an account is a row action; its refusal has to appear next
+        // to the rows rather than inside the create dialog.
+        notice={
+          banner && (
+            <Alert variant="destructive">
+              <AlertCircleIcon />
+              <AlertDescription>{banner}</AlertDescription>
+            </Alert>
+          )
+        }
+        createDeniedReason={deniedReason("user.manage")}
+        createDisabled={email === "" || password === "" || roleID === ""}
+        onCreated={() => {
+          setEmail("")
+          setName("")
+          setPassword("")
+          setRoleID("")
+        }}
+        create={() => api.post("/users", { email, name, password, role_id: roleID })}
+        // Accounts cannot be deleted -- actor_id references them from every
+        // audit entry -- so disabling is the only lifecycle action there is.
+        rowActions={[
+          {
+            label: tMeta.roles.changeRole,
+            onSelect: (u) => setChanging(u),
+          },
+          {
+            label: tMeta.users.disable,
+            destructive: true,
+            disabled: (u) => u.status !== "active",
+            onSelect: (u) => disable.mutate(u.id),
+            confirm: (u) => ({
+              title: tMeta.users.disableTitle,
+              description: tMeta.users.disableHint(u.name),
+              phrase: u.email,
+            }),
+          },
+        ]}
+        emptyTitle={tMeta.users.empty}
+        emptyHint={tMeta.users.emptyHint}
+        columns={[
+          { header: tMeta.users.email, cell: (u) => u.email },
+          { header: tMeta.users.name, cell: (u) => u.name },
+          { header: tMeta.roles.ofUser, cell: (u) => roleName(u.role_id) },
+          {
+            header: tMeta.users.status,
+            cell: (u) =>
+              u.status === "active" ? (
+                <Badge variant="secondary">{tMeta.users.active}</Badge>
+              ) : (
+                <Badge variant="outline">{tMeta.users.disabled}</Badge>
+              ),
+          },
+        ]}
+        form={
+          <>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="u-email">{tMeta.users.email}</Label>
+                <Input
+                  id="u-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="u-name">{tMeta.users.name}</Label>
+                <Input id="u-name" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="u-role">{tMeta.roles.ofUser}</Label>
+                {/* Chosen when the account is made, with no default: an account
+                  whose permissions nobody decided is the kind that turns out
+                  to have been an administrator. */}
+                <Select value={roleID} onValueChange={setRoleID}>
+                  <SelectTrigger id="u-role">
+                    <SelectValue placeholder={t.common.select} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {(roles.data?.items ?? []).map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="u-password">{tMeta.users.password}</Label>
+                <Input
+                  id="u-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="u-name">{tMeta.users.name}</Label>
-              <Input id="u-name" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="u-password">{tMeta.users.password}</Label>
-              <Input
-                id="u-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          </div>
-        </>
-      }
-    />
+          </>
+        }
+      />
+    </>
   )
 }

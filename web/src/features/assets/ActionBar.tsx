@@ -4,6 +4,7 @@ import { Trash2Icon } from "lucide-react"
 
 import { api, ApiError } from "@/lib/api"
 import { t, tImport, tTransfer } from "@/i18n"
+import { usePermissions } from "@/features/auth/usePermissions"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import {
   TransferDialog,
@@ -38,6 +39,7 @@ interface Props {
  */
 export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
   const queryClient = useQueryClient()
+  const { deniedReason } = usePermissions()
   const [action, setAction] = useState<TransferAction | null>(null)
   const [open, setOpen] = useState(false)
   const [printOpen, setPrintOpen] = useState(false)
@@ -73,6 +75,8 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
               key={a}
               size="sm"
               variant="outline"
+              disabled={deniedReason("transfer.create") !== undefined}
+              title={deniedReason("transfer.create")}
               onClick={() => {
                 setAction(a)
                 setOpen(true)
@@ -85,7 +89,13 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
               service configured there is no button, rather than one that
               answers "not configured" after it is pressed. */}
           {printing && (
-            <Button size="sm" variant="outline" onClick={() => setPrintOpen(true)}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={deniedReason("print") !== undefined}
+              title={deniedReason("print")}
+              onClick={() => setPrintOpen(true)}
+            >
               <PrinterIcon data-icon="inline-start" />
               {t.print.action}
             </Button>
@@ -93,7 +103,13 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
           {/* Exporting what was ticked, here rather than only in the header:
               the selection is what the bar is about, and going back up to a
               button that then asks "the ticked ones?" is a detour. */}
-          <Button size="sm" variant="outline" onClick={onExport}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={deniedReason("export") !== undefined}
+            title={deniedReason("export")}
+            onClick={onExport}
+          >
             <DownloadIcon data-icon="inline-start" />
             {tImport.exportSelection}
           </Button>
@@ -102,7 +118,13 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
               of transfer actions -- the same click distance, a different act. */}
           <ConfirmDialog
             trigger={
-              <Button size="sm" variant="outline" className="text-destructive">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-destructive"
+                disabled={deniedReason("asset.delete") !== undefined}
+                title={deniedReason("asset.delete")}
+              >
                 <Trash2Icon data-icon="inline-start" />
                 {t.assets.delete}
               </Button>
@@ -132,12 +154,7 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
           onClear()
         }}
       />
-      {printOpen && (
-        <PrintDialog
-          ids={selected}
-          onClose={() => setPrintOpen(false)}
-        />
-      )}
+      {printOpen && <PrintDialog ids={selected} onClose={() => setPrintOpen(false)} />}
     </Card>
   )
 }

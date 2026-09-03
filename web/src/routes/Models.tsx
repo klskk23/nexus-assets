@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, ApiError } from "@/lib/api"
 import type { Category } from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
+import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
 import { CrudPage } from "@/features/metadata/CrudPage"
 import {
@@ -35,6 +36,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 
 export function Models() {
   const queryClient = useQueryClient()
+  const { deniedReason } = usePermissions()
   const [editing, setEditing] = useState<ProductModelRow | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [name, setName] = useState("")
@@ -82,6 +84,7 @@ export function Models() {
       queryKey="models"
       list={() => api.get<ProductModelRow[]>("/models")}
       createLabel={tMeta.models.create}
+      createDeniedReason={deniedReason("model.manage")}
       createDisabled={name === ""}
       onCreated={() => {
         setName("")
