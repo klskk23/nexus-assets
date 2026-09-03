@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -22,7 +23,25 @@ func (s *Server) listRoles(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": out, "permissions": authz.All})
+	if q := strings.TrimSpace(c.Query("q")); q != "" {
+		out = keep(out, func(r authz.Role) bool { return matches(q, r.Name) })
+	}
+	// The one list that always answers with an envelope: it carries the
+	// catalogue of switches beside the rows, and the page needs both whether
+	// or not it asked for a page.
+	offset, limit := Paging(c)
+	total := len(out)
+	if offset > total {
+		offset = total
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"items": out[offset:end], "total": total, "offset": offset, "limit": limit,
+		"permissions": authz.All,
+	})
 }
 
 func (s *Server) createRole(c *gin.Context) {

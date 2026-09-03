@@ -18,10 +18,18 @@ func (s *Server) listUsers(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
-	if items == nil {
-		items = []model.User{}
+	// The role and the status are filtered here rather than searched: they are
+	// dropdowns on the page, and a dropdown that matched "启用" as a substring
+	// of a name would be a different feature wearing the same clothes.
+	if role := c.Query("role_id"); role != "" {
+		items = keep(items, func(u model.User) bool { return u.RoleID == role })
 	}
-	c.JSON(http.StatusOK, items)
+	if status := c.Query("status"); status != "" {
+		items = keep(items, func(u model.User) bool { return string(u.Status) == status })
+	}
+	respondList(c, items, func(u model.User, q string) bool {
+		return matches(q, u.Email, u.Name)
+	})
 }
 
 func (s *Server) createUser(c *gin.Context) {

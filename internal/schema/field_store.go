@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/klskk23/nexus-assets/internal/i18n"
@@ -43,8 +44,15 @@ type FieldFilter struct {
 	// CategoryID limits the list to the fields that category has, inherited
 	// ones included -- the same set its assets are asked to fill in.
 	CategoryID string
-	Offset     int
-	Limit      int
+	// Q searches the key and the label. Both, because half the people here
+	// think of a field by what the form says and half by what the expression
+	// reads.
+	Q string
+	// Type narrows to one kind, which is how somebody finds every computed
+	// field to see what the numbering rules are.
+	Type   model.FieldType
+	Offset int
+	Limit  int
 }
 
 // FieldPage is one page of the field library.
@@ -69,6 +77,7 @@ func (s *Store) ListFieldPage(ctx context.Context, f FieldFilter) (FieldPage, er
 	if err != nil {
 		return page, err
 	}
+	all = search(all, f)
 	if f.CategoryID != "" {
 		effective, err := s.EffectiveFields(ctx, f.CategoryID)
 		if err != nil {
@@ -347,4 +356,27 @@ func (s *Store) deleteFieldTx(ctx context.Context, tx *sql.Tx, id, key string) e
 		}
 	}
 	return nil
+}
+
+// search narrows the library by what was typed and by kind.
+//
+// The key and the label are both searched: half the people here think of a
+// field by what the form says, and half by what the expression reads.
+func search(all []model.FieldDefinition, f FieldFilter) []model.FieldDefinition {
+	if f.Q == "" && f.Type == "" {
+		return all
+	}
+	q := strings.ToLower(strings.TrimSpace(f.Q))
+	kept := make([]model.FieldDefinition, 0, len(all))
+	for _, fd := range all {
+		if f.Type != "" && fd.Type != f.Type {
+			continue
+		}
+		if q != "" && !strings.Contains(strings.ToLower(fd.Key), q) &&
+			!strings.Contains(strings.ToLower(fd.Label), q) {
+			continue
+		}
+		kept = append(kept, fd)
+	}
+	return kept
 }

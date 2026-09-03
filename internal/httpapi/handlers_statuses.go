@@ -22,10 +22,9 @@ func (s *Server) listStatuses(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
-	if items == nil {
-		items = []model.Status{}
-	}
-	c.JSON(http.StatusOK, items)
+	respondList(c, items, func(st model.Status, q string) bool {
+		return matches(q, st.Label, string(st.Key))
+	})
 }
 
 func (s *Server) createStatus(c *gin.Context) {

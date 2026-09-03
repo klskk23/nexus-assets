@@ -23,10 +23,9 @@ func (s *Server) listCategories(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
-	if items == nil {
-		items = []model.Category{}
-	}
-	c.JSON(http.StatusOK, items)
+	respondList(c, items, func(cat model.Category, q string) bool {
+		return matches(q, cat.Name, cat.Code)
+	})
 }
 
 func (s *Server) createCategory(c *gin.Context) {
@@ -135,6 +134,8 @@ func (s *Server) listFields(c *gin.Context) {
 
 	page, err := s.schema.ListFieldPage(c.Request.Context(), schema.FieldFilter{
 		CategoryID: c.Query("category_id"),
+		Q:          c.Query("q"),
+		Type:       model.FieldType(c.Query("type")),
 		Offset:     offset,
 		Limit:      limit,
 	})
@@ -254,10 +255,9 @@ func (s *Server) listModels(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
-	if items == nil {
-		items = []model.ProductModel{}
-	}
-	c.JSON(http.StatusOK, items)
+	respondList(c, items, func(m model.ProductModel, q string) bool {
+		return matches(q, m.Name, m.Vendor)
+	})
 }
 
 func (s *Server) createModel(c *gin.Context) {
@@ -369,10 +369,9 @@ func (s *Server) listHolders(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
-	if items == nil {
-		items = []model.HolderEntity{}
-	}
-	c.JSON(http.StatusOK, items)
+	respondList(c, items, func(h model.HolderEntity, q string) bool {
+		return matches(q, h.Name, h.Note)
+	})
 }
 
 func (s *Server) createHolder(c *gin.Context) {
