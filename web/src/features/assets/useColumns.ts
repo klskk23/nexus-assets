@@ -54,9 +54,7 @@ export function useColumnSelection(categoryID: string) {
         const chosen = cur[categoryID] ?? []
         return {
           ...cur,
-          [categoryID]: chosen.includes(key)
-            ? chosen.filter((k) => k !== key)
-            : [...chosen, key],
+          [categoryID]: chosen.includes(key) ? chosen.filter((k) => k !== key) : [...chosen, key],
         }
       })
     },
@@ -64,4 +62,73 @@ export function useColumnSelection(categoryID: string) {
   )
 
   return { keys: all[categoryID] ?? [], toggle }
+}
+
+/** The built-in columns a person can turn off, in the order they appear. */
+export const BUILTIN_COLUMNS = [
+  "category",
+  "status",
+  "holder",
+  "model",
+  "vendor",
+  "owner",
+  "note",
+] as const
+
+export type BuiltinColumn = (typeof BUILTIN_COLUMNS)[number]
+
+/**
+ * What a fresh browser shows.
+ *
+ * Everything except the vendor: it matters when two suppliers sell the same
+ * model, which is a real case and not the common one, so it is a tick away
+ * rather than a column everybody carries.
+ */
+const BUILTIN_DEFAULT: BuiltinColumn[] = ["category", "status", "holder", "model", "owner", "note"]
+
+const BUILTIN_KEY = "nexus.assetBuiltins"
+
+/**
+ * Remembers which built-in columns the list shows.
+ *
+ * Not per category, unlike the field columns: these exist on every device
+ * whatever its category, so a choice made under one is meaningful under all of
+ * them. Stored per person and per browser for the same reason the field
+ * selection is -- one colleague's preference must not change everyone's view.
+ *
+ * The number is not here and cannot be turned off: it is what a row is read by
+ * and what the click opens.
+ */
+export function useBuiltinColumns() {
+  const [keys, setKeys] = useState<BuiltinColumn[]>(() => {
+    try {
+      const raw = localStorage.getItem(BUILTIN_KEY)
+      if (!raw) return BUILTIN_DEFAULT
+      const parsed: unknown = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return BUILTIN_DEFAULT
+      // Filtered against what exists, so a column removed in a later version
+      // cannot come back as a header with nothing under it.
+      return BUILTIN_COLUMNS.filter((k) => (parsed as string[]).includes(k))
+    } catch {
+      return BUILTIN_DEFAULT
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(BUILTIN_KEY, JSON.stringify(keys))
+    } catch {
+      /* private mode; the choice simply will not survive a reload */
+    }
+  }, [keys])
+
+  const toggle = useCallback((key: BuiltinColumn) => {
+    setKeys((cur) =>
+      cur.includes(key)
+        ? cur.filter((k) => k !== key)
+        : BUILTIN_COLUMNS.filter((k) => k === key || cur.includes(k)),
+    )
+  }, [])
+
+  return { keys, shows: (k: BuiltinColumn) => keys.includes(k), toggle }
 }

@@ -178,7 +178,7 @@ func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, lang i18n.Lang, cate
 	}
 
 	if name := row.byKey[ColModel]; name != "" {
-		id, err := look.resolveModel(name)
+		id, err := look.resolveModel(name, row.byKey[ColVendor])
 		if err != nil {
 			res.Fields[ColModel] = err.Error()
 		} else if id != "" {
@@ -198,7 +198,7 @@ func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, lang i18n.Lang, cate
 	}
 
 	for key, raw := range row.byKey {
-		if key == ColModel || key == ColHolder || key == ColNote || raw == "" {
+		if key == ColModel || key == ColVendor || key == ColHolder || key == ColNote || raw == "" {
 			continue
 		}
 		if _, known := look.fieldByKey[key]; !known {

@@ -985,7 +985,18 @@ paths:
         **必须指定类别**：固定九列（编号、类别、状态、持有方、负责人、型号、厂商、备注、建档时间）之外的列是那个类别自己的字段，
         混着导出的表格里没有任何一列能把两台设备区分开。
       parameters:
-        - { name: category_id, in: query, required: true, schema: { type: string } }
+        - name: ids
+          in: query
+          schema: { type: string }
+          description: >
+            逗号分隔的资产 id —— 勾选导出。给了它就**不看筛选也不看 category_id**：
+            勾的是设备本身。跨多个类别时**每个类别一份 CSV，打包成 zip**
+            （固定列之外的列是各自类别的字段，一张表放不下两种）；
+            只有一个类别时就是一份 CSV。每份都含该类别的全部字段，`fields` 对它无效。
+        - name: category_id
+          in: query
+          schema: { type: string }
+          description: 除非给了 ids，否则必填
         - name: fields
           in: query
           schema: { type: string }
@@ -999,7 +1010,9 @@ paths:
           content:
             text/csv:
               schema: { type: string }
-        "422": { description: 没有指定类别 }
+            application/zip:
+              schema: { type: string, format: binary, description: 勾选跨多个类别时，每类别一个 CSV }
+        "422": { description: 没有指定类别，或勾选为空 }
 
 components:
   parameters:

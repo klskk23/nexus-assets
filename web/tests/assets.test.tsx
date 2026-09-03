@@ -78,11 +78,12 @@ const page = {
       id: "a1",
       display_name: "112394521950",
       category_id: "net",
-      model_id: null,
+      model_id: "m1",
       status: "in_stock",
       owner: { id: "u1", name: "管理员" },
       holder: { type: "entity", id: "loc", name: "上海仓库" },
       attrs: { mac: "001A2B3C4D5E", firmware: "2.1.3" },
+      note: "屏幕左下角有划痕",
       version: 1,
       created_at: "2026-08-28T00:00:00Z",
       updated_at: "2026-08-28T00:00:00Z",
@@ -119,6 +120,11 @@ function route(path: string) {
   if (path === "/categories") return Promise.resolve(categories)
   if (path === "/holders") return Promise.resolve(holders)
   if (path === "/users") return Promise.resolve(users)
+  if (path === "/models") {
+    return Promise.resolve([
+      { id: "m1", name: "SDWAN-X100", vendor: "Acme", category_ids: ["net"], attr_defaults: {} },
+    ])
+  }
   if (path.endsWith("/schema")) {
     return Promise.resolve(path.includes("/srv/") ? serverSchema : schema)
   }
@@ -190,8 +196,14 @@ describe("Assets list", () => {
     await waitFor(() =>
       expect(screen.queryByRole("columnheader", { name: "固件版本" })).not.toBeInTheDocument(),
     )
-    // With no category there are no custom fields to offer either.
-    expect(screen.queryByRole("button", { name: "显示列" })).not.toBeInTheDocument()
+    // The picker stays: the built-in columns exist whatever the filter says,
+    // so there is still something to choose. What is gone is the field group,
+    // because with no category there are no fields to offer.
+    await user.click(screen.getByRole("button", { name: "显示列" }))
+    expect(
+      screen.queryByRole("menuitemcheckbox", { name: "固件版本" }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole("menuitemcheckbox", { name: "持有方" })).toBeInTheDocument()
   })
 
   it("shows the total and the fixed columns", async () => {
@@ -568,5 +580,70 @@ describe("printing one row", () => {
     const row = await screen.findByRole("row", { name: /112394521950/ })
     const menu = await openMenu(user, row)
     expect(within(menu).queryByRole("menuitem", { name: "打印标签" })).not.toBeInTheDocument()
+  })
+})
+
+describe("Assets column picker", () => {
+  beforeEach(() => {
+    navigate.mockReset()
+    get.mockReset().mockImplementation(route)
+    localStorage.clear()
+  })
+
+  // What a fresh browser shows. The vendor is off by default: it matters when
+  // two suppliers sell the same model, which is real but not the common case.
+  it("shows the built-in columns it should, and not the vendor", async () => {
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 1 条/)
+
+    for (const name of ["编号", "类别", "状态", "持有方", "型号", "负责人", "备注"]) {
+      expect(screen.getByRole("columnheader", { name })).toBeInTheDocument()
+    }
+    expect(screen.queryByRole("columnheader", { name: "厂商" })).not.toBeInTheDocument()
+  })
+
+  it("adds the vendor when it is ticked, and remembers it", async () => {
+    const user = userEvent.setup()
+    const { unmount } = renderWithProviders(<Assets />)
+    await screen.findByText(/共 1 条/)
+
+    await user.click(screen.getByRole("button", { name: "显示列" }))
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: "厂商" }))
+    await user.keyboard("{Escape}")
+    expect(await screen.findByRole("columnheader", { name: "厂商" })).toBeInTheDocument()
+
+    // The choice is per person and per browser, so it survives a reload.
+    unmount()
+    renderWithProviders(<Assets />)
+    expect(await screen.findByRole("columnheader", { name: "厂商" })).toBeInTheDocument()
+  })
+
+  it("takes a built-in column away again", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 1 条/)
+
+    await user.click(screen.getByRole("button", { name: "显示列" }))
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: "备注" }))
+    await user.keyboard("{Escape}")
+    await waitFor(() =>
+      expect(screen.queryByRole("columnheader", { name: "备注" })).not.toBeInTheDocument(),
+    )
+    // The number stays whatever is ticked: it is what the row is read by.
+    expect(screen.getByRole("columnheader", { name: "编号" })).toBeInTheDocument()
+  })
+
+  it("names the model and its vendor from the model list", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 1 条/)
+
+    await user.click(screen.getByRole("button", { name: "显示列" }))
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: "厂商" }))
+    await user.keyboard("{Escape}")
+
+    const row = screen.getByRole("row", { name: /112394521950/ })
+    expect(within(row).getByText("SDWAN-X100")).toBeInTheDocument()
+    expect(within(row).getByText("Acme")).toBeInTheDocument()
   })
 })

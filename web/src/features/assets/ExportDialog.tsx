@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 
@@ -36,6 +37,8 @@ interface Props {
   /** The category the page is filtered by, which is only a starting point. */
   categoryId: string
   includeDescendants: boolean
+  /** Ticked devices, which are a different request from the filters. */
+  selected: string[]
 }
 
 /**
@@ -55,9 +58,13 @@ export function ExportDialog({
   params,
   categoryId,
   includeDescendants,
+  selected,
 }: Props) {
   const [chosen, setChosen] = useState(categoryId)
   const [keys, setKeys] = useState<string[] | null>(null)
+  // Ticked rows or the current filters. Opening with something ticked proposes
+  // the ticked ones: that is what somebody just spent the clicks on.
+  const [ticked, setTicked] = useState(selected.length > 0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -66,9 +73,10 @@ export function ExportDialog({
   useEffect(() => {
     if (open) {
       setChosen(categoryId)
+      setTicked(selected.length > 0)
       setError(null)
     }
-  }, [open, categoryId])
+  }, [open, categoryId, selected.length])
 
   const categories = useQuery({
     queryKey: ["categories"],
@@ -85,22 +93,33 @@ export function ExportDialog({
   const fields = schema.data?.fields ?? []
   // Everything, until somebody says otherwise: a person who wants the lot -- the
   // common case -- should not have to tick forty boxes to get it.
-  const selected = keys ?? fields.map((f) => f.key)
+  const selectedFields = keys ?? fields.map((f) => f.key)
 
   const toggle = (key: string) =>
-    setKeys(selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key])
+    setKeys(
+      selectedFields.includes(key)
+        ? selectedFields.filter((k) => k !== key)
+        : [...selectedFields, key],
+    )
 
   const run = async () => {
-    const q = new URLSearchParams(params)
-    q.set("category_id", chosen)
-    q.set("include_descendants", String(includeDescendants))
-    // Sent whatever was ticked, empty included: "the fixed columns only" is a
-    // request the server can hear, and leaving it out would mean "all of them".
-    q.set("fields", selected.join(","))
+    const q = new URLSearchParams()
+    if (ticked) {
+      // The devices themselves, so the filters are beside the point -- and the
+      // server splits them by category, because one CSV cannot hold two.
+      q.set("ids", selected.join(","))
+    } else {
+      for (const [k, v] of params) q.set(k, v)
+      q.set("category_id", chosen)
+      q.set("include_descendants", String(includeDescendants))
+      // Sent whatever is ticked, empty included: "the fixed columns only" is a
+      // request the server can hear, and leaving it out would mean all of them.
+      q.set("fields", selectedFields.join(","))
+    }
     setBusy(true)
     setError(null)
     try {
-      await download(`/export.csv?${q.toString()}`, "assets.csv")
+      await download(`/export.csv?${q.toString()}`, ticked ? "assets.zip" : "assets.csv")
       onOpenChange(false)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : tImport.exportFailed)
@@ -118,58 +137,96 @@ export function ExportDialog({
         </DialogHeader>
 
         <div className="grid gap-4">
-          <Field>
-            <FieldLabel htmlFor="export-category">{tImport.exportCategory}</FieldLabel>
-            <Select value={chosen} onValueChange={(v) => (setChosen(v), setKeys(null))}>
-              <SelectTrigger id="export-category">
-                <SelectValue placeholder={tImport.exportPickCategory} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {(categories.data ?? []).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
+          {/* Only when something is ticked: an empty selection is not a choice
+              worth offering, and the radio would sit there disabled. */}
+          {selected.length > 0 && (
+            <FieldSet>
+              <FieldLegend variant="label">{tImport.exportScope}</FieldLegend>
+              <RadioGroup
+                value={ticked ? "ticked" : "filtered"}
+                onValueChange={(v) => setTicked(v === "ticked")}
+              >
+                <Field orientation="horizontal">
+                  <RadioGroupItem value="ticked" id="export-ticked" />
+                  <FieldLabel htmlFor="export-ticked" className="font-normal">
+                    {tImport.exportTicked(selected.length)}
+                  </FieldLabel>
+                </Field>
+                <Field orientation="horizontal">
+                  <RadioGroupItem value="filtered" id="export-filtered" />
+                  <FieldLabel htmlFor="export-filtered" className="font-normal">
+                    {tImport.exportFiltered}
+                  </FieldLabel>
+                </Field>
+              </RadioGroup>
+              {ticked && <FieldDescription>{tImport.exportTickedHint}</FieldDescription>}
+            </FieldSet>
+          )}
 
-          <FieldSet>
-            <FieldLegend variant="label">{tImport.exportFields}</FieldLegend>
-            <FieldDescription>{tImport.exportFieldsHint}</FieldDescription>
-            {chosen === "" ? null : schema.isPending ? (
-              <Skeleton className="h-16 w-full" />
-            ) : fields.length === 0 ? (
-              <FieldDescription>{tImport.exportNoFields}</FieldDescription>
-            ) : (
-              <>
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setKeys(null)}>
-                    {tImport.exportAll}
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setKeys([])}>
-                    {tImport.exportNone}
-                  </Button>
-                </div>
-                <div className="grid max-h-56 grid-cols-2 gap-2 overflow-y-auto">
-                  {fields.map((f) => (
-                    <Field key={f.key} orientation="horizontal">
-                      <Checkbox
-                        id={`export-${f.key}`}
-                        checked={selected.includes(f.key)}
-                        onCheckedChange={() => toggle(f.key)}
-                      />
-                      <FieldLabel htmlFor={`export-${f.key}`} className="font-normal">
-                        {f.label}
-                      </FieldLabel>
-                    </Field>
-                  ))}
-                </div>
-              </>
-            )}
-          </FieldSet>
+          {/* The category and the columns are the filtered export's questions.
+              A ticked export answers them per device: each category's file
+              carries that category's own fields. */}
+          {!ticked && (
+            <>
+              <Field>
+                <FieldLabel htmlFor="export-category">{tImport.exportCategory}</FieldLabel>
+                <Select value={chosen} onValueChange={(v) => (setChosen(v), setKeys(null))}>
+                  <SelectTrigger id="export-category">
+                    <SelectValue placeholder={tImport.exportPickCategory} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {(categories.data ?? []).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <FieldSet>
+                <FieldLegend variant="label">{tImport.exportFields}</FieldLegend>
+                <FieldDescription>{tImport.exportFieldsHint}</FieldDescription>
+                {chosen === "" ? null : schema.isPending ? (
+                  <Skeleton className="h-16 w-full" />
+                ) : fields.length === 0 ? (
+                  <FieldDescription>{tImport.exportNoFields}</FieldDescription>
+                ) : (
+                  <>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setKeys(null)}
+                      >
+                        {tImport.exportAll}
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setKeys([])}>
+                        {tImport.exportNone}
+                      </Button>
+                    </div>
+                    <div className="grid max-h-56 grid-cols-2 gap-2 overflow-y-auto">
+                      {fields.map((f) => (
+                        <Field key={f.key} orientation="horizontal">
+                          <Checkbox
+                            id={`export-${f.key}`}
+                            checked={selectedFields.includes(f.key)}
+                            onCheckedChange={() => toggle(f.key)}
+                          />
+                          <FieldLabel htmlFor={`export-${f.key}`} className="font-normal">
+                            {f.label}
+                          </FieldLabel>
+                        </Field>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </FieldSet>
+            </>
+          )}
 
           {/* In the dialog, because the page behind it is hidden from a reader
               and covered for everyone else. */}
@@ -184,7 +241,7 @@ export function ExportDialog({
           <DialogClose asChild>
             <Button variant="outline">{t.common.cancel}</Button>
           </DialogClose>
-          <Button onClick={run} disabled={chosen === "" || busy}>
+          <Button onClick={run} disabled={(!ticked && chosen === "") || busy}>
             {busy && <Spinner data-icon="inline-start" />}
             {tImport.exportGo}
           </Button>

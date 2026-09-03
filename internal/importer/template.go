@@ -18,7 +18,12 @@ import (
 
 // Fixed columns every template carries, ahead of the category's own fields.
 const (
-	ColModel  = "model"
+	ColModel = "model"
+	// ColVendor is optional, and blank in most sheets: a model name that only
+	// one supplier carries resolves without it. It exists for the case that
+	// was previously a dead end -- two vendors with a product called X100 and
+	// no way for a row to say which one it means.
+	ColVendor = "vendor"
 	ColHolder = "holder"
 	ColNote   = "note"
 )
@@ -28,6 +33,7 @@ const (
 // keys -- is what the importer reads back either way.
 var fixedColumns = []struct{ key, labelKey string }{
 	{ColModel, i18n.KeyColModel},
+	{ColVendor, i18n.KeyColVendor},
 	{ColHolder, i18n.KeyColHolderLoc},
 	{ColNote, i18n.KeyColNote},
 }

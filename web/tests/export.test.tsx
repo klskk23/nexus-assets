@@ -31,7 +31,29 @@ const holders = [
     parent_id: null, note: "", is_default_stock: true,
   },
 ]
-const page = { items: [], total: 0, offset: 0, limit: 50 }
+// One device, so a test can tick it: the ticked export is a different request
+// from the filtered one, and an empty list cannot show that.
+const page = {
+  items: [
+    {
+      id: "a1",
+      display_name: "112394521950",
+      category_id: "net",
+      model_id: null,
+      status: "in_stock",
+      owner: { id: "u1", name: "管理员" },
+      holder: { type: "entity", id: "loc", name: "上海仓库" },
+      attrs: { mac: "001A2B3C4D5E" },
+      note: "",
+      version: 1,
+      created_at: "2026-08-28T00:00:00Z",
+      updated_at: "2026-08-28T00:00:00Z",
+    },
+  ],
+  total: 1,
+  offset: 0,
+  limit: 50,
+}
 const schema = {
   category: categories[0],
   fields: [
@@ -72,6 +94,57 @@ function exported(): URLSearchParams {
 }
 
 describe("export from the asset list", () => {
+  // Ticking rows is a different request from filtering: what was ticked, and
+  // one file per category, because one CSV cannot hold two categories' fields.
+  describe("the ticked devices", () => {
+    it("offers them when there are any, and sends their ids", async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Assets />)
+
+      // Tick the one row the list has.
+      await user.click(await screen.findByRole("checkbox", { name: /112394521950/ }))
+      await user.click(screen.getByRole("button", { name: "导出 CSV" }))
+      const dialog = await screen.findByRole("dialog")
+
+      // Proposed, not merely available: those clicks were just spent.
+      expect(within(dialog).getByRole("radio", { name: /已勾选的 1 台/ })).toBeChecked()
+      // The category and the field picker belong to the filtered export; a
+      // ticked one answers both per device.
+      expect(within(dialog).queryByLabelText("资产类别")).not.toBeInTheDocument()
+
+      await user.click(within(dialog).getByRole("button", { name: "导出" }))
+      await waitFor(() => expect(exported().get("ids")).toBe("a1"))
+      // The filters are beside the point once rows are named one by one.
+      expect(exported().get("category_id")).toBeNull()
+    })
+
+    it("is not offered when nothing is ticked", async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Assets />)
+      await user.click(await screen.findByRole("button", { name: "导出 CSV" }))
+
+      const dialog = await screen.findByRole("dialog")
+      expect(within(dialog).queryByRole("radio")).not.toBeInTheDocument()
+      expect(within(dialog).getByLabelText("资产类别")).toBeInTheDocument()
+    })
+
+    it("can be switched back to the filters", async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Assets />)
+
+      await user.click(await screen.findByRole("checkbox", { name: /112394521950/ }))
+      await user.click(screen.getByRole("button", { name: "导出 CSV" }))
+      const dialog = await screen.findByRole("dialog")
+
+      await user.click(within(dialog).getByRole("radio", { name: "按当前筛选条件" }))
+      await chooseByLabel(user, "资产类别", "网络设备")
+      await user.click(within(dialog).getByRole("button", { name: "导出" }))
+
+      await waitFor(() => expect(exported().get("category_id")).toBe("net"))
+      expect(exported().get("ids")).toBeNull()
+    })
+  })
+
   // The bug this replaces: a plain <a download> is a navigation, it carries no
   // Authorization header, and the browser reported a download that failed with
   // nothing on screen to read.

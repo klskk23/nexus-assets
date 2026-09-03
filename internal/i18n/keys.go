@@ -173,14 +173,15 @@ const (
 	KeyModelInUse     = "model.in_use"
 
 	// Import and export.
-	KeyImportParseFailed  = "import.parse_failed"
-	KeyImportNeedsHeaders = "import.needs_headers"
-	KeyImportNoRows       = "import.no_rows"
-	KeyImportRowsFailed   = "import.rows_failed"
-	KeyImportModelAmbig   = "import.model_ambiguous"
-	KeyImportModelMissing = "import.model_missing"
-	KeyImportHolderEmpty  = "import.holder_empty"
-	KeyImportHolderMiss   = "import.holder_missing"
+	KeyImportParseFailed     = "import.parse_failed"
+	KeyImportNeedsHeaders    = "import.needs_headers"
+	KeyImportNoRows          = "import.no_rows"
+	KeyImportRowsFailed      = "import.rows_failed"
+	KeyImportModelVendorMiss = "import.model_vendor_missing"
+	KeyImportModelAmbig      = "import.model_ambiguous"
+	KeyImportModelMissing    = "import.model_missing"
+	KeyImportHolderEmpty     = "import.holder_empty"
+	KeyImportHolderMiss      = "import.holder_missing"
 
 	// CSV column headers, shared by the export and the import template.
 	KeyColSN        = "csv.sn"

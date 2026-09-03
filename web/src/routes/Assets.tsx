@@ -6,11 +6,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, ApiError } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Asset, AssetPage, Category, CategorySchema, HolderEntity, User } from "@/lib/types"
+import type { ProductModelRow } from "@/lib/metaTypes"
+import { cn } from "@/lib/utils"
 import { t, tImport, tTransfer } from "@/i18n"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { StateBoundary } from "@/components/StateBoundary"
-import { useColumnSelection } from "@/features/assets/useColumns"
+import { BUILTIN_COLUMNS, useBuiltinColumns, useColumnSelection } from "@/features/assets/useColumns"
 import { ActionBar } from "@/features/assets/ActionBar"
 import { PrintDialog } from "@/features/print/PrintDialog"
 import { usePrinting } from "@/features/print/usePrinting"
@@ -94,6 +96,9 @@ export function Assets() {
   const [ownerId, setOwnerId] = useState(searchParams.get("owner_id") ?? "")
   const [holderId, setHolderId] = useState(searchParams.get("holder_id") ?? "")
   const { keys: chosenColumns, toggle } = useColumnSelection(categoryId)
+  // The built-ins are the same everywhere, so their selection is not per
+  // category the way the field columns are.
+  const builtins = useBuiltinColumns()
   const [selected, setSelected] = useState<string[]>([])
   // The row menu prints one device; the bar prints the ticked ones. Two states
   // because they are two acts, and a menu that printed the selection would be
@@ -167,6 +172,37 @@ export function Assets() {
 
   const categoryName = (id: string) =>
     (categories.data ?? []).find((c) => c.id === id)?.name ?? t.common.none
+
+  // One query for the whole page rather than a lookup per row: the list shows
+  // a model by name and by who makes it, and both live on the model.
+  const models = useQuery({
+    queryKey: ["models"],
+    queryFn: () => api.get<ProductModelRow[]>("/models"),
+  })
+  const modelOf = (id: string | null) =>
+    id === null ? undefined : (models.data ?? []).find((m) => m.id === id)
+
+  /** What one built-in column reads for one device. */
+  const builtinCell = (key: (typeof BUILTIN_COLUMNS)[number], a: Asset) => {
+    switch (key) {
+      // Named, not the id: the list is read across categories whenever the
+      // filter is off.
+      case "category":
+        return categoryName(a.category_id)
+      case "status":
+        return <StatusBadge status={a.status} />
+      case "holder":
+        return a.holder.name ?? t.common.none
+      case "model":
+        return modelOf(a.model_id)?.name ?? ""
+      case "vendor":
+        return modelOf(a.model_id)?.vendor ?? ""
+      case "owner":
+        return a.owner?.name ?? t.common.none
+      case "note":
+        return a.note
+    }
+  }
 
   const users = useQuery({
     queryKey: ["users"],
@@ -340,36 +376,52 @@ export function Assets() {
             between the filters and the table, as tall as it had fields. It is
             a menu on the table's own bar now: a category with twelve fields no
             longer pushes the rows off the screen. */}
-        {available.length > 0 && (
-          // Not modal: the point of ticking a column is watching it appear,
-          // and a modal menu makes the table behind it inert and aria-hidden
-          // while you choose.
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="ml-auto" aria-label={t.assets.columns}>
-                <MoreVerticalIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{t.assets.columns}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                {available.map((f) => (
-                  <DropdownMenuCheckboxItem
-                    key={f.key}
-                    checked={extraColumns.includes(f.key)}
-                    // Kept open: choosing columns is a handful of decisions in
-                    // a row, and closing after each one makes it four trips.
-                    onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={() => toggle(f.key)}
-                  >
-                    {f.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        {/* Always here, not only once a category is chosen: the built-in
+            columns exist on every device, so there is something to choose even
+            under "all categories". */}
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="ml-auto" aria-label={t.assets.columns}>
+              <MoreVerticalIcon />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>{t.assets.columns}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              {BUILTIN_COLUMNS.map((k) => (
+                <DropdownMenuCheckboxItem
+                  key={k}
+                  checked={builtins.shows(k)}
+                  // Kept open: choosing columns is a handful of decisions in a
+                  // row, and closing after each one makes it four trips.
+                  onSelect={(e) => e.preventDefault()}
+                  onCheckedChange={() => builtins.toggle(k)}
+                >
+                  {t.assets.columnLabels[k]}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuGroup>
+            {available.length > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>{t.assets.fieldColumns}</DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  {available.map((f) => (
+                    <DropdownMenuCheckboxItem
+                      key={f.key}
+                      checked={extraColumns.includes(f.key)}
+                      onSelect={(e) => e.preventDefault()}
+                      onCheckedChange={() => toggle(f.key)}
+                    >
+                      {f.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuGroup>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <StateBoundary
@@ -388,12 +440,12 @@ export function Assets() {
                   <TableHead className="w-10">
                     <span className="sr-only">{t.common.select}</span>
                   </TableHead>
+                  {/* The number is not optional: it is what a row is read by
+                      and what the click opens. */}
                   <TableHead>{t.assets.sn}</TableHead>
-                  <TableHead>{t.assets.category}</TableHead>
-                  <TableHead>{t.assets.statusLabel}</TableHead>
-                  <TableHead>{t.assets.holder}</TableHead>
-                  <TableHead>{t.assets.owner}</TableHead>
-                  <TableHead>{t.assets.note}</TableHead>
+                  {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
+                    <TableHead key={k}>{t.assets.columnLabels[k]}</TableHead>
+                  ))}
                   {extraColumns.map((k) => (
                     <TableHead key={k}>{available.find((f) => f.key === k)?.label ?? k}</TableHead>
                   ))}
@@ -419,23 +471,20 @@ export function Assets() {
                           />
                         </TableCell>
                         <TableCell className="font-mono">{a.display_name}</TableCell>
-                        {/* Named, not the id: the list is read across
-                            categories whenever the filter is off. */}
-                        <TableCell>{categoryName(a.category_id)}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={a.status} />
-                        </TableCell>
-                        <TableCell>{a.holder.name ?? t.common.none}</TableCell>
-                        <TableCell>{a.owner?.name ?? t.common.none}</TableCell>
-                        {/* Truncated with the whole of it on hover: a note is
-                            a sentence, and one long one would set the width of
-                            every column beside it. */}
-                        <TableCell
-                          className="text-muted-foreground max-w-48 truncate"
-                          title={a.note}
-                        >
-                          {a.note}
-                        </TableCell>
+                        {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
+                          <TableCell
+                            key={k}
+                            // A note is a sentence: truncated, with the whole
+                            // of it on hover, or one long one sets the width of
+                            // every column beside it.
+                            className={cn(
+                              k === "note" && "text-muted-foreground max-w-48 truncate",
+                            )}
+                            title={k === "note" ? a.note : undefined}
+                          >
+                            {builtinCell(k, a)}
+                          </TableCell>
+                        ))}
                         {extraColumns.map((k) => (
                           <TableCell key={k}>{cellText(a.attrs[k])}</TableCell>
                         ))}
@@ -494,6 +543,7 @@ export function Assets() {
         params={params}
         categoryId={categoryId}
         includeDescendants={includeDescendants}
+        selected={selected}
       />
 
       <NewAssetDialog

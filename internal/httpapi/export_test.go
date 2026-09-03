@@ -1,11 +1,18 @@
 package httpapi
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/klskk23/nexus-assets/internal/asset"
+	"github.com/klskk23/nexus-assets/internal/model"
+	"github.com/klskk23/nexus-assets/internal/schema"
 )
 
 // TestExportRefusesWithoutACategory keeps the refusal at the boundary rather
@@ -153,5 +160,95 @@ func TestAssetNoteTravelsEverywhereTheBuiltInsDo(t *testing.T) {
 	rows := h.get(t, "/api/rows?category_id="+h.catID).Body.String()
 	if !strings.Contains(rows, `"sys_note"`) || !strings.Contains(rows, "借给上海试点") {
 		t.Errorf("the row view should carry the note: %s", rows)
+	}
+}
+
+// TestExportOfTickedDevicesSplitsByCategory covers the selection export: what
+// was ticked, not what is filtered, and one file per category because past the
+// fixed columns a category's columns are its own fields.
+func TestExportOfTickedDevicesSplitsByCategory(t *testing.T) {
+	h := newHarness(t)
+	h.seed(t, 0, 2)
+	// Captured before the third device exists, so this is one of the seeded
+	// category's own: the list is newest first.
+	one := h.assetIDs(t)[0]
+
+	// A second category with a field of its own, and one device in it.
+	other, err := h.schema.CreateCategory(h.ctx, schema.CreateCategoryInput{Code: "OF", Name: "办公设备"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tag, err := h.schema.CreateField(h.ctx, schema.CreateFieldInput{
+		Key: "asset_tag", Label: "资产标签", Type: model.FieldText,
+		CategoryIDs: []string{other.ID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = tag
+	third, err := h.assets.Save(h.ctx, asset.SaveInput{
+		CategoryID: other.ID, Status: model.StatusInStock, OwnerID: h.userID,
+		Holder:  model.Holder{Type: model.HolderTypeEntity, ID: h.locID},
+		Attrs:   map[string]any{"asset_tag": "OF-0001"},
+		ActorID: h.userID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// One category ticked: a plain CSV, named for it, holding only that device.
+	rec := h.get(t, "/api/export.csv?ids="+one)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/csv") {
+		t.Errorf("one category should come back as a CSV, got %s", ct)
+	}
+	if n := strings.Count(strings.TrimSpace(rec.Body.String()), "\n"); n != 1 {
+		t.Errorf("expected a header and one row, got %d line breaks: %s", n, rec.Body.String())
+	}
+
+	// Two categories ticked: a zip with one CSV each, each carrying its own
+	// category's fields.
+	rec = h.get(t, "/api/export.csv?ids="+one+","+third.ID)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/zip" {
+		t.Fatalf("two categories should come back zipped, got %s", ct)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatalf("the archive does not open: %v", err)
+	}
+	got := map[string]string{}
+	for _, f := range zr.File {
+		r, err := f.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := io.ReadAll(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got[f.Name] = string(b)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected one file per category, got %v", got)
+	}
+	if !strings.Contains(got["办公设备.csv"], "资产标签") {
+		t.Errorf("each file should carry its own category's fields: %q", got["办公设备.csv"])
+	}
+	if strings.Contains(got["办公设备.csv"], "基准 MAC") {
+		t.Error("a category's file must not carry another category's columns")
+	}
+	if !strings.Contains(got["SDWAN 路由器.csv"], "基准 MAC") {
+		t.Errorf("the other file lost its own columns: %q", got["SDWAN 路由器.csv"])
+	}
+
+	// Nothing ticked is refused the same way an export with no category is:
+	// there is no category to take columns from either way.
+	if rec := h.get(t, "/api/export.csv?ids="); rec.Code != http.StatusUnprocessableEntity {
+		t.Errorf("an empty selection should be refused, got %d", rec.Code)
 	}
 }

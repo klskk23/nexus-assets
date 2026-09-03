@@ -104,7 +104,10 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func csvOf(rows ...string) *strings.Reader {
-	head := "型号,持有方（位置名称）,备注,基准 MAC（必填）,固件版本\nmodel,holder,note,mac,firmware\n"
+	// Deliberately without the vendor column: this is the sheet an older
+	// template produced, and it has to keep importing. The column is optional,
+	// and most sheets never need it.
+	head := "型号,持有方（名称）,设备备注,基准 MAC（必填）,固件版本\nmodel,holder,note,mac,firmware\n"
 	return strings.NewReader(head + strings.Join(rows, "\n") + "\n")
 }
 
@@ -126,7 +129,7 @@ func TestTemplateKeyRowMatchesTheEffectiveFieldSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("columns: %v", err)
 	}
-	want := []string{ColModel, ColHolder, ColNote, "mac", "firmware"}
+	want := []string{ColModel, ColVendor, ColHolder, ColNote, "mac", "firmware"}
 	if strings.Join(keys, ",") != strings.Join(want, ",") {
 		t.Errorf("keys = %v, want %v", keys, want)
 	}
@@ -135,8 +138,9 @@ func TestTemplateKeyRowMatchesTheEffectiveFieldSet(t *testing.T) {
 			t.Error("a computed field must not get a column; filling it in would be silently ignored")
 		}
 	}
-	if !strings.Contains(labels[3], "必填") {
-		t.Errorf("a required field should say so in the label, got %q", labels[3])
+	// The first field column, past the four fixed ones.
+	if !strings.Contains(labels[4], "必填") {
+		t.Errorf("a required field should say so in the label, got %q", labels[4])
 	}
 
 	body, err := f.svc.Template(f.ctx, i18n.ZH, f.catID)
@@ -491,5 +495,71 @@ func TestExportAndRowsCarryTheModelAndItsVendor(t *testing.T) {
 	}
 	if got := page.Rows[0][SysPrefix+"vendor"]; got != "Acme" {
 		t.Errorf("sys_vendor = %q, want Acme -- this is what a label prints beside the model", got)
+	}
+}
+
+// csvWithVendor is the sheet the current template produces.
+func csvWithVendor(rows ...string) *strings.Reader {
+	head := "型号,厂商,持有方（名称）,设备备注,基准 MAC（必填）,固件版本\n" +
+		"model,vendor,holder,note,mac,firmware\n"
+	return strings.NewReader(head + strings.Join(rows, "\n") + "\n")
+}
+
+// TestVendorColumnSettlesModelsThatShareAName covers what the column is for.
+// Two suppliers with a product called X100 used to be a dead end: the row named
+// the model, the name matched twice, and the import refused it with no way to
+// say which one was meant.
+func TestVendorColumnSettlesModelsThatShareAName(t *testing.T) {
+	f := newFixture(t)
+
+	// A second X100, from someone else, reachable from the same category.
+	if _, err := f.schema.CreateModel(f.ctx, schema.CreateModelInput{
+		Name: "SDWAN-X100", Vendor: "Beta", CategoryIDs: []string{f.catID},
+	}); err != nil {
+		t.Fatalf("create model: %v", err)
+	}
+
+	// Without the column, the name alone is not an answer -- and the refusal
+	// says where to give one.
+	report, err := f.svc.Preview(f.ctx, i18n.ZH, f.catID, f.userID, csvOf(
+		"SDWAN-X100,上海仓库,,001A2B3C9201,2.1.3",
+	))
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	if report.Rows[0].Fields[ColModel] == "" || !strings.Contains(report.Rows[0].Fields[ColModel], "厂商") {
+		t.Errorf("the refusal should point at the vendor column, got %q", report.Rows[0].Fields[ColModel])
+	}
+
+	// With it, each row lands on the model it names.
+	if _, err := f.svc.Commit(f.ctx, i18n.ZH, f.catID, f.userID, csvWithVendor(
+		"SDWAN-X100,Acme,上海仓库,,001A2B3C9201,2.1.3",
+		"SDWAN-X100,Beta,上海仓库,,001A2B3C9202,2.1.3",
+	)); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	page, err := f.svc.Rows(f.ctx, i18n.ZH, asset.ListFilter{CategoryID: f.catID, IncludeDescendants: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	byMAC := map[string]string{}
+	for _, r := range page.Rows {
+		byMAC[r["mac"]] = r[SysPrefix+"vendor"]
+	}
+	if byMAC["001A2B3C9201"] != "Acme" || byMAC["001A2B3C9202"] != "Beta" {
+		t.Errorf("each row should land on its own vendor's model, got %v", byMAC)
+	}
+
+	// A vendor that has no such model is a miss, not a fallback to the other
+	// one: importing under the wrong supplier is worse than refusing.
+	report, err = f.svc.Preview(f.ctx, i18n.ZH, f.catID, f.userID, csvWithVendor(
+		"SDWAN-X100,Gamma,上海仓库,,001A2B3C9203,2.1.3",
+	))
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	if report.Rows[0].Fields[ColModel] == "" {
+		t.Error("an unknown vendor should be refused rather than resolved to somebody else's model")
 	}
 }

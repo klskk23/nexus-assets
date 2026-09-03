@@ -102,6 +102,15 @@ func (s *Server) readUpload(c *gin.Context) (string, *strings.Reader, bool) {
 }
 
 func (s *Server) exportCSV(c *gin.Context) {
+	// Ticked rows are a different request from a filter: the selection can span
+	// categories, and past the fixed columns a category's columns are its own
+	// fields -- so it comes back as one file per category, zipped when there is
+	// more than one.
+	if raw, ok := c.GetQuery("ids"); ok {
+		s.exportSelected(c, raw)
+		return
+	}
+
 	// The same filter the list page uses, so the export matches what the person
 	// is looking at.
 	f := asset.ListFilter{
@@ -150,3 +159,41 @@ func attachCSV(c *gin.Context, name string, body []byte) {
 }
 
 var _ = importer.Report{}
+
+// exportSelected renders the ticked devices, one CSV per category.
+func (s *Server) exportSelected(c *gin.Context, raw string) {
+	var ids []string
+	for _, id := range strings.Split(raw, ",") {
+		if id = strings.TrimSpace(id); id != "" {
+			ids = append(ids, id)
+		}
+	}
+
+	files, err := s.importer.ExportSelected(c.Request.Context(), LangOf(c), ids)
+	if err != nil {
+		if errors.Is(err, importer.ErrExportNeedsCategory) {
+			// Nothing ticked, or nothing that still exists: the same refusal as
+			// an export with no category, because it is the same hole -- there
+			// is no category to take columns from.
+			FailField(c, http.StatusUnprocessableEntity, "ids", i18n.KeyExportNeedCat)
+			return
+		}
+		FailErr(c, err)
+		return
+	}
+
+	// One category, one file: zipping a single CSV would make everybody open an
+	// archive to reach the thing they asked for.
+	if len(files) == 1 {
+		attachCSV(c, files[0].Name, files[0].Body)
+		return
+	}
+
+	body, err := importer.Zip(files)
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	c.Header("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape("assets.zip"))
+	c.Data(http.StatusOK, "application/zip", body)
+}
