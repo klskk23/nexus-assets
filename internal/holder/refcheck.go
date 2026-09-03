@@ -16,8 +16,9 @@ type Blocker struct {
 	// Name is how the asset is referred to: its category's display key, or the
 	// short UUID when the category has not nominated one.
 	Name string `json:"name"`
-	// Reason is "holder" when the asset is currently held by the entity, or
-	// "reference" when a reference field on the asset points at it.
+	// Reason is "holder" when the asset is currently held by the entity,
+	// "home" when the entity is where the asset belongs once it comes back, or
+	// "reference" when a field on the asset points at it.
 	Reason string `json:"reason"`
 }
 
@@ -27,21 +28,29 @@ const blockerLimit = 5
 
 // Blockers returns the assets that prevent an entity from being removed.
 //
-// Two distinct ways to be in the way, and both must be checked: an asset can
-// be sitting in a warehouse, or it can merely name that warehouse in a
-// reference field such as "install location". Checking only possession would
-// let the second kind become a dangling pointer.
+// Three distinct ways to be in the way, and all three must be checked:
+//
+//   - the asset is sitting in the warehouse;
+//   - the warehouse is the asset's home -- where a check-in sends it when
+//     nobody names a destination;
+//   - a field on the asset names it, an "install location" say.
+//
+// The home case was missed until 013 and is the worst of the three: a device
+// out on loan does not hold its home, so the warehouse deleted cleanly, and
+// the next check-in resolved a home id that no longer existed. Nothing on that
+// path checks the destination exists, so the device landed on a holder with no
+// name and nothing was raised.
 func (s *Store) Blockers(ctx context.Context, entityID string) ([]Blocker, int, error) {
 	var out []Blocker
 	var total int
 
 	err := s.db.Read(ctx, func(ctx context.Context, db *sql.DB) error {
-		if err := db.QueryRowContext(ctx, countBlockersSQL, entityID, entityID).Scan(&total); err != nil {
+		if err := db.QueryRowContext(ctx, countBlockersSQL, entityID, entityID, entityID).Scan(&total); err != nil {
 			return fmt.Errorf("count blockers: %w", err)
 		}
-		// Four placeholders: the CASE, the possession test, the reference
-		// test, and the limit.
-		rows, err := db.QueryContext(ctx, listBlockersSQL, entityID, entityID, entityID, blockerLimit)
+		// Six placeholders: two for the CASE, three for the WHERE, one limit.
+		rows, err := db.QueryContext(ctx, listBlockersSQL,
+			entityID, entityID, entityID, entityID, entityID, blockerLimit)
 		if err != nil {
 			return fmt.Errorf("list blockers: %w", err)
 		}
@@ -66,6 +75,7 @@ func (s *Store) Blockers(ctx context.Context, entityID string) ([]Blocker, int, 
 
 const blockerPredicate = `
 	(holder_type = 'entity' AND holder_id = ?)
+	OR (home_holder_type = 'entity' AND home_holder_id = ?)
 	OR EXISTS (SELECT 1 FROM json_each(assets.attrs) WHERE json_each.value = ?)`
 
 const countBlockersSQL = `SELECT count(*) FROM assets WHERE ` + blockerPredicate
@@ -74,9 +84,14 @@ const countBlockersSQL = `SELECT count(*) FROM assets WHERE ` + blockerPredicate
 // to creation order: stable, and the same order the list page shows.
 const listBlockersSQL = `
 	SELECT a.id, a.attrs, coalesce(c.display_key, ''),
-	       CASE WHEN a.holder_type = 'entity' AND a.holder_id = ? THEN 'holder' ELSE 'reference' END
+	       CASE
+	         WHEN a.holder_type = 'entity' AND a.holder_id = ? THEN 'holder'
+	         WHEN a.home_holder_type = 'entity' AND a.home_holder_id = ? THEN 'home'
+	         ELSE 'reference'
+	       END
 	FROM assets a JOIN categories c ON c.id = a.category_id
 	WHERE (a.holder_type = 'entity' AND a.holder_id = ?)
+	   OR (a.home_holder_type = 'entity' AND a.home_holder_id = ?)
 	   OR EXISTS (SELECT 1 FROM json_each(a.attrs) WHERE json_each.value = ?)
 	ORDER BY a.created_at, a.id LIMIT ?`
 
@@ -90,7 +105,10 @@ func describeBlockers(entityName string, blockers []Blocker, total int) error {
 	parts := make([]any, 0, len(blockers))
 	for _, b := range blockers {
 		reasonKey := i18n.KeyHolderBlockerHold
-		if b.Reason == "reference" {
+		switch b.Reason {
+		case "home":
+			reasonKey = i18n.KeyHolderBlockerHome
+		case "reference":
 			reasonKey = i18n.KeyHolderBlockerRef
 		}
 		parts = append(parts, i18n.M(i18n.KeyBlockerEntry, b.Name, i18n.M(reasonKey)))

@@ -110,6 +110,7 @@ const (
 	KeyHolderReferenced        = "holder.referenced"
 	KeyHolderReferencedMore    = "holder.referenced_more"
 	KeyHolderBlockerHold       = "holder.blocker_hold"
+	KeyHolderBlockerHome       = "holder.blocker_home"
 	KeyHolderBlockerRef        = "holder.blocker_ref"
 	KeyHolderBlockerList       = "holder.blocker_list"
 	KeyHolderBlockerPlain      = "holder.blocker_plain"

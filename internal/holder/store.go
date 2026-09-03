@@ -211,7 +211,7 @@ type Usage struct {
 func (s *Store) Usage(ctx context.Context, id string) (Usage, error) {
 	var u Usage
 	db := s.db.ReadDB()
-	if err := db.QueryRowContext(ctx, countBlockersSQL, id, id).Scan(&u.Assets); err != nil {
+	if err := db.QueryRowContext(ctx, countBlockersSQL, id, id, id).Scan(&u.Assets); err != nil {
 		return u, fmt.Errorf("count blocking assets: %w", err)
 	}
 	if err := db.QueryRowContext(ctx,
