@@ -1,6 +1,6 @@
 import { InfoIcon, MoreVerticalIcon, SearchIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
-import { useNavigate, useSearchParams } from "react-router"
+import { Outlet, useNavigate, useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
@@ -639,6 +639,9 @@ export function Assets() {
           onConfirm={() => removeOne.mutate(deleting)}
         />
       )}
+
+      {/* /assets/:id renders here: one device, in a dialog over this list. */}
+      <Outlet />
     </div>
   )
 }

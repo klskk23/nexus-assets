@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 
 	"github.com/gin-gonic/gin"
 
@@ -255,6 +256,11 @@ func (s *Server) listModels(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
+	if want := c.Query("category_id"); want != "" {
+		items = keep(items, func(m model.ProductModel) bool {
+			return slices.Contains(m.CategoryIDs, want)
+		})
+	}
 	respondList(c, items, func(m model.ProductModel, q string) bool {
 		return matches(q, m.Name, m.Vendor)
 	})
@@ -368,6 +374,14 @@ func (s *Server) listHolders(c *gin.Context) {
 	if err != nil {
 		FailErr(c, err)
 		return
+	}
+	if want := c.Query("type"); want != "" {
+		items = keep(items, func(h model.HolderEntity) bool { return string(h.Type) == want })
+	}
+	// Only "show me the stock points" is offered; "show me the ones that are
+	// not" is a question nobody asks of a list that is mostly them.
+	if c.Query("is_default_stock") == "true" {
+		items = keep(items, func(h model.HolderEntity) bool { return h.IsDefaultStock })
 	}
 	respondList(c, items, func(h model.HolderEntity, q string) bool {
 		return matches(q, h.Name, h.Note)

@@ -6,6 +6,9 @@ import { ApiError } from "@/lib/api"
 import { t } from "@/i18n"
 import { cn } from "@/lib/utils"
 import { StateBoundary } from "@/components/StateBoundary"
+import { ListToolbar } from "@/features/common/ListToolbar"
+import { Pager } from "@/features/common/Pager"
+import { useListQuery, type ListQuery } from "@/features/common/useListQuery"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import {
   ContextMenu,
@@ -65,18 +68,24 @@ interface Props<T> {
   title: string
   queryKey: string
   /**
-   * Either the whole list or one page of it. Both shapes because most of these
-   * lists are short enough to read in one go, and the field library -- which
-   * may now hold two fields of the same name under different categories -- is
-   * not.
+   * One page of rows, given the search, the filters and the paging the toolbar
+   * is holding. The plain-array shape is still accepted for a list that has no
+   * page to give -- both because the endpoints answer either way, and because
+   * a list of five statuses does not need a round trip to prove it is short.
    */
-  list: () => Promise<T[] | ListPage<T>>
-  /** Extra query-key parts, so a filter change refetches. */
-  deps?: unknown[]
-  /** Rendered above the table: filters, in one row, as everywhere else. */
-  filters?: ReactNode
-  /** Rendered below the table, where the pager goes. */
-  footer?: ReactNode
+  list: (params: URLSearchParams) => Promise<T[] | ListPage<T>>
+  /** What the search box searches, said plainly: "键名、显示名". */
+  searchHint: string
+  /**
+   * The filters this page narrows by, keyed the way the API names them. The
+   * value is the initial one, usually "" -- they are read back from the
+   * address on load.
+   */
+  filterKeys?: Record<string, string>
+  /** The filter controls themselves, rendered in the toolbar's one row. */
+  filters?: (q: ListQuery) => ReactNode
+  /** Anything belonging at the right end of the toolbar, such as a column picker. */
+  toolbarActions?: ReactNode
   create: () => Promise<unknown>
   columns: Column<T>[]
   emptyTitle: string
@@ -129,9 +138,10 @@ export function CrudPage<T extends { id: string }>({
   title,
   queryKey,
   list,
-  deps,
+  searchHint,
+  filterKeys,
   filters,
-  footer,
+  toolbarActions,
   create,
   columns,
   emptyTitle,
@@ -150,8 +160,18 @@ export function CrudPage<T extends { id: string }>({
   // A context menu closes as it fires, so a confirmation cannot hang off it.
   // The pending action is parked here and the dialog rendered outside.
   const [pending, setPending] = useState<{ action: RowAction<T>; row: T } | null>(null)
-  const query = useQuery({ queryKey: [queryKey, ...(deps ?? [])], queryFn: list })
+  const listQuery = useListQuery(filterKeys ?? {})
+  const params = listQuery.params
+  const query = useQuery({
+    queryKey: [queryKey, params.toString()],
+    queryFn: () => list(params),
+    // The previous page stays on screen while the next one loads. Without it
+    // every keystroke in the search box blanks the table, which reads as the
+    // list having lost everything.
+    placeholderData: (prev) => prev,
+  })
   const rows = Array.isArray(query.data) ? query.data : (query.data?.items ?? [])
+  const total = Array.isArray(query.data) ? query.data.length : (query.data?.total ?? 0)
 
   const mutation = useMutation({
     mutationFn: create,
@@ -225,7 +245,15 @@ export function CrudPage<T extends { id: string }>({
 
       {notice}
 
-      {filters}
+      {/* One row, the same on every page: search, this page's filters, and
+          whatever belongs at the right end. */}
+      <ListToolbar
+        q={listQuery.q}
+        onQ={listQuery.setQ}
+        searchHint={searchHint}
+        filters={filters?.(listQuery)}
+        actions={toolbarActions}
+      />
 
       <StateBoundary
         isLoading={query.isLoading}
@@ -284,7 +312,13 @@ export function CrudPage<T extends { id: string }>({
             </TableBody>
           </Table>
         </div>
-        {footer}
+        <Pager
+          page={listQuery.page}
+          pageSize={listQuery.pageSize}
+          total={total}
+          onPage={listQuery.setPage}
+          onPageSize={listQuery.setPageSize}
+        />
       </StateBoundary>
 
       {pending?.action.confirm && (

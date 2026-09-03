@@ -65,6 +65,15 @@ interface Props {
 export function Pager({ page, pageSize, total, onPage, onPageSize, children }: Props) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
 
+  // Nothing to page through, so no paging controls: no page links, and no
+  // per-page picker either -- offering "100 per page" above five rows is
+  // furniture explaining that there is no furniture.
+  //
+  // The count stays. "共 3 条" is the answer to "how many matched my search",
+  // which is a different question from "which page am I on", and the one
+  // people actually came to the filtered list to ask.
+  const paging = pageCount > 1 || total > PAGE_SIZES[0]
+
   return (
     // One row: the range on the left, the page links in the middle, the size
     // picker on the right. Stacked in two rows they read as two unrelated
@@ -134,25 +143,27 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
         </Pagination>
       )}
 
-      <Field orientation="horizontal" className="w-auto">
-        <FieldLabel htmlFor="page-size" className="text-muted-foreground text-sm">
-          {t.assets.perPage}
-        </FieldLabel>
-        <Select value={String(pageSize)} onValueChange={(v) => onPageSize(Number(v))}>
-          <SelectTrigger id="page-size" size="sm" className="w-24">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {PAGE_SIZES.map((n) => (
-                <SelectItem key={n} value={String(n)}>
-                  {t.assets.perPageUnit(n)}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </Field>
+      {paging && (
+        <Field orientation="horizontal" className="w-auto">
+          <FieldLabel htmlFor="page-size" className="text-muted-foreground text-sm">
+            {t.assets.perPage}
+          </FieldLabel>
+          <Select value={String(pageSize)} onValueChange={(v) => onPageSize(Number(v))}>
+            <SelectTrigger id="page-size" size="sm" className="w-24">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {PAGE_SIZES.map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    {t.assets.perPageUnit(n)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
+      )}
     </div>
   )
 }

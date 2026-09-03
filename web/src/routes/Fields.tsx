@@ -1,7 +1,5 @@
 import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
-import { useEffect, useState as useReactState } from "react"
-import { useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
@@ -10,8 +8,8 @@ import type { Category } from "@/lib/types"
 import type { FieldDefinitionRow, FieldType } from "@/lib/metaTypes"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tConfig, tMeta } from "@/i18n"
+import { CategoryFilter } from "@/features/common/CategoryFilter"
 import { CrudPage, type ListPage } from "@/features/metadata/CrudPage"
-import { PAGE_SIZES, Pager } from "@/features/common/Pager"
 import { FieldEditor } from "@/features/fields/FieldEditor"
 import { ExpressionHelp } from "@/features/fields/ExpressionHelp"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -55,39 +53,8 @@ export function Fields() {
   // job that had to be finished in another dialog.
   const [bindTo, setBindTo] = useState<string[]>([])
   const [bindRequired, setBindRequired] = useState(false)
-  // Which category's fields are being looked at. A key is only unique inside
-  // one category chain now, so an unfiltered library can hold two "rack"s and
-  // the filter is what tells them apart.
-  //
-  // In the address, like every other filter: leaving the page and coming back
-  // should find the same question.
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [categoryId, setCategoryId] = useState(searchParams.get("category_id") ?? "")
-  const [page, setPage] = useReactState(() => {
-    const n = Number(searchParams.get("page"))
-    return Number.isFinite(n) && n > 0 ? n : 0
-  })
-  const [pageSize, setPageSize] = useReactState(() => {
-    const n = Number(searchParams.get("limit"))
-    return PAGE_SIZES.includes(n) ? n : PAGE_SIZES[0]
-  })
-  const [total, setTotal] = useReactState(0)
 
-  useEffect(() => setPage(0), [categoryId, pageSize, setPage])
 
-  const address = (() => {
-    const next = new URLSearchParams()
-    if (categoryId) next.set("category_id", categoryId)
-    if (page > 0) next.set("page", String(page))
-    if (pageSize !== PAGE_SIZES[0]) next.set("limit", String(pageSize))
-    return next.toString()
-  })()
-  const current = searchParams.toString()
-  useEffect(() => {
-    if (address !== current) {
-      setSearchParams(new URLSearchParams(address), { replace: true })
-    }
-  }, [address, current, setSearchParams])
 
   const categories = useQuery({
     queryKey: ["categories"],
@@ -131,50 +98,40 @@ export function Fields() {
     <CrudPage<FieldDefinitionRow>
       title={tMeta.fields.title}
       queryKey="fields"
-      deps={[categoryId, page, pageSize]}
-      list={async () => {
-        const params = new URLSearchParams({
-          limit: String(pageSize),
-          offset: String(page * pageSize),
-        })
-        if (categoryId) params.set("category_id", categoryId)
-        const res = await api.get<ListPage<FieldDefinitionRow>>(`/fields?${params}`)
-        setTotal(res.total)
-        return res
-      }}
-      filters={
-        <div className="flex flex-wrap items-center gap-3">
+      list={(params) => api.get<ListPage<FieldDefinitionRow>>(`/fields?${params}`)}
+      searchHint={tMeta.fields.searchHint}
+      filterKeys={{ category_id: "", type: "" }}
+      filters={(qs) => (
+        <>
+          <CategoryFilter
+            value={qs.filters.category_id}
+            onChange={(v) => qs.setFilter("category_id", v)}
+          />
           <Field className="w-auto">
-            <FieldLabel htmlFor="f-category" className="sr-only">
-              {tMeta.fields.categoryFilter}
+            <FieldLabel htmlFor="f-type-filter" className="sr-only">
+              {tMeta.fields.type}
             </FieldLabel>
-            <Select value={toNone(categoryId)} onValueChange={(v) => setCategoryId(fromNone(v))}>
-              <SelectTrigger id="f-category" className="w-56">
+            <Select
+              value={toNone(qs.filters.type)}
+              onValueChange={(v) => qs.setFilter("type", fromNone(v))}
+            >
+              <SelectTrigger id="f-type-filter" className="w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value={NONE}>{tMeta.fields.allCategories}</SelectItem>
-                  {(categories.data ?? []).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
+                  <SelectItem value={NONE}>{tMeta.fields.allTypes}</SelectItem>
+                  {[...staticTypes, ...expressionTypes].map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {tMeta.fieldTypes[k]}
                     </SelectItem>
                   ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
           </Field>
-        </div>
-      }
-      footer={
-        <Pager
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          onPage={setPage}
-          onPageSize={setPageSize}
-        />
-      }
+        </>
+      )}
       createLabel={tMeta.fields.create}
       createDeniedReason={deniedReason("schema.manage")}
       createDisabled={key === "" || label === ""}

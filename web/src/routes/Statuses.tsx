@@ -6,7 +6,7 @@ import { api, ApiError } from "@/lib/api"
 import type { Status, StatusUsage } from "@/lib/types"
 import { t, tMeta, tStatuses } from "@/i18n"
 import { usePermissions } from "@/features/auth/usePermissions"
-import { CrudPage } from "@/features/metadata/CrudPage"
+import { CrudPage, type ListPage } from "@/features/metadata/CrudPage"
 import {
   Dialog,
   DialogClose,
@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { STATUSES_KEY, statusesQuery, useStatuses } from "@/features/statuses/useStatuses"
+import { STATUSES_KEY, useStatuses } from "@/features/statuses/useStatuses"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -106,7 +106,11 @@ export function Statuses() {
       queryKey={STATUSES_KEY}
       // The same query useStatuses runs, mapped for the table: one cache
       // entry, so recolouring a row refreshes every badge in the app.
-      list={async () => (await statusesQuery().queryFn()).map((s) => ({ ...s, id: s.key }))}
+      searchHint={tStatuses.searchHint}
+      list={async (params) => {
+        const page = await api.get<ListPage<Status>>(`/statuses?${params}`)
+        return { items: page.items.map((s: Status) => ({ ...s, id: s.key })), total: page.total }
+      }}
       createLabel={tStatuses.create}
       createDeniedReason={deniedReason("status.manage")}
       createDisabled={key === "" || label === ""}

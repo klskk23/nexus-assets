@@ -190,10 +190,14 @@ export const zh = {
     homeHint: "归还时，这台设备默认回到这里。留空则回到默认库存点。",
     homeNone: "无（回到默认库存点）",
     transfer: "流转",
-    backToList: "返回资产列表",
+    recentTransfers: "最近流转",
+    fullHistory: "查看全部流转",
+    historyTitle: "流转历史",
+    backToAsset: "返回该设备",
   },
 
   common: {
+    searchPlaceholder: (what: string) => `搜索${what}`,
     loading: "加载中…",
     error: "出错了",
     retry: "重试",
@@ -221,6 +225,8 @@ export const zh = {
 
 export const zhMeta = {
   fields: {
+    searchHint: "键名、显示名",
+    allTypes: "全部类型",
     title: "字段",
     create: "新建字段",
     key: "键名（英文）",
@@ -238,6 +244,7 @@ export const zhMeta = {
     bindOnCreateHint: "字段只有绑定后才会出现在录入表单里。也可以先不绑，之后在字段编辑里再绑。",
   },
   roles: {
+    searchHint: "名称",
     title: "角色",
     create: "新建角色",
     edit: "编辑角色",
@@ -259,6 +266,7 @@ export const zhMeta = {
     changeRoleTitle: (name: string) => `更改「${name}」的角色`,
   },
   models: {
+    searchHint: "名称、厂商",
     title: "型号",
     create: "新建型号",
     name: "型号名",
@@ -283,6 +291,9 @@ export const zhMeta = {
     emptyHint: "型号可同时归属多个类别，并为字段提供默认值，录入时预填。",
   },
   holders: {
+    searchHint: "名称、备注",
+    allTypes: "全部类型",
+    anyStock: "库存点不限",
     title: "持有方",
     create: "新建持有方",
     name: "名称",
@@ -326,6 +337,9 @@ export const zhMeta = {
     emptyHint: "位置、公司、部门都是持有方。归还操作默认指向标记为默认库存点的位置。",
   },
   users: {
+    searchHint: "邮箱、姓名",
+    allRoles: "全部角色",
+    allStatuses: "全部状态",
     title: "账号",
     create: "新建本地账号",
     email: "邮箱",
@@ -342,6 +356,7 @@ export const zhMeta = {
     emptyHint: "账号只能停用不能删除；停用前必须先把其名下的设备转给他人。",
   },
   categories: {
+    searchHint: "名称、编码",
     title: "类别",
     create: "新建类别",
     code: "代号（英文，模板中可用）",
@@ -527,6 +542,7 @@ export const zhAudit = {
   allActors: "全部操作人",
   dateRange: "日期范围",
   anyDate: "全部时间",
+  searchHint: "操作人、对象编号",
   clearDates: "清除日期",
   actor: "操作人",
   action: "操作",
@@ -578,6 +594,7 @@ export const zhOverview = {
 }
 
 export const zhStatuses = {
+  searchHint: "名称、键名",
   title: "状态",
   create: "新建状态",
   key: "键名",

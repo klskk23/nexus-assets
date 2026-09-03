@@ -1,13 +1,14 @@
 <!-- SPECKIT START -->
-当前计划：`specs/013-permissions/spec.md`
+当前计划：`specs/014-table-conventions/spec.md`
 
 开工前必读，按优先级：
 
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
-2. `specs/013-permissions/`（决策 77–85）—— 本轮：角色与权限。
-   上一轮 `specs/012-sessions-keys-settings/`（决策 73–76）：会话续期、API 密钥、
-   账号偏好、内嵌接口文档；再上一轮 `specs/011-expression-engine/`，
-   其调研在 `docs/research-expr-engine.md`
+2. `specs/014-table-conventions/`（决策 89–95）—— 本轮：九个表格页统一筛选、搜索、
+   翻页与 dialog。上一轮 `specs/013-permissions/`（决策 77–85）：角色与权限；
+   再上一轮 `specs/012-sessions-keys-settings/`（决策 73–76）：会话续期、API 密钥、
+   账号偏好、内嵌接口文档；`specs/011-expression-engine/` 的调研在
+   `docs/research-expr-engine.md`
 3. `docs/design-baseline-v6.md`（决策 64–72）—— 撤回单选与引用；改表达式即重算；唯一性按类别
 4. `docs/design-baseline-v5.md`（决策 61–63）—— 状态不再约束持有方。
    **冲突时以最新一版为准：v6 > 011 > 010 > 009 > 008 > 007 > v5 > 006 > 005 的 research.md > v4 > v3 > v2 > v1**
@@ -189,6 +190,31 @@
   哪个类别根本不能打），第二次按下才真的花纸；确认后按钮消失，同一个对话框打不出两遍。
   打印服务**不发 CORS 头**，所以作业状态与预设清单都由 nexus 转发，浏览器不能直接问它。
   对方序号池消耗掉的号段要显示出来 —— 号在它那边，不说就等于两套编号各走各的。
+- **表格页的零件只有一套**（014 决策 90/92/95）。搜索、筛选、翻页、地址栏同步
+  分别是 `features/common/` 的 `ListToolbar`、`useListQuery`、`Pager`；
+  六个元数据页由 `CrudPage` 自动获得，资产、审计、类别各有各的手写表格但用同样的零件。
+  **不要把手写的三个塞进 `CrudPage`** —— 它会长出「没有新建按钮」「勾选列」「树」
+  三个特例开关。筛选值以 API 的键命名（`category_id`、`type`、`status`），
+  一份对象同时喂给地址栏和请求；空串 = 不筛，两边都不出现。
+  **筛选控件的 id 不能和新建表单里的同名控件撞**（`f-type` vs `f-type-filter`）——
+  对话框一开，背后那个变成 `aria-hidden`，`getByLabelText` 就找不到表单里的那个了。
+- **列表有两种形状，按问题决定**（014 决策 92）。`/categories`、`/models`、
+  `/statuses`、`/holders`、`/users` 带了 `q`/`offset`/`limit` 返回
+  `{items,total,offset,limit}`，一个都不带返回**数组**。这是**加**行为不是改行为：
+  下拉框要的是全集，分页会把选项截断；而 zenith-printer 的数据源按数组解析
+  `/api/categories`，改形状会让对面刷新数据源当场报错。服务端一律走
+  `internal/httpapi/listing.go` 的 `respondList` / `matches` / `keep`。
+  `/roles` 例外，它从来就是信封（要带 `permissions`）。
+- **资产详情是盖在列表上的 dialog，但仍然是一个地址**（014 决策 89）。
+  `/assets/:id` 是 `assets` 的**子路由**，`Assets.tsx` 里有 `<Outlet />`。
+  保留地址是因为扫码枪精确命中时 `navigate('/assets/<id>')`、录入完成跳新设备、
+  审计「只看这个对象」都指着它。dialog 里只放**最近 5 条**流转，
+  **全量历史在 `/assets/:id/history`**（另一条顶层路由，整页）。
+  关闭时 `navigate({pathname:"/assets", search})` —— 带上 search，
+  否则关掉 dialog 就把列表的筛选一起关掉了。
+- **类别页不翻页，一搜索就从树切成平铺**（014 决策 91）。树上放分页会让第 2 页
+  开头的子类别失去它在第 1 页的父，缩进就成了没有出处的悬空；搜索同理，
+  所以命中行改显示完整路径「网络设备 / SDWAN 路由器」。清空搜索恢复成树。
 - **重的库要 `lazy` 到自己的 chunk 里。** `recharts` 走 `features/overview/CategoryChart.tsx`
   + `Suspense`：入口 chunk 与概览页 chunk 都不含它（否则概览页 chunk 是 358KB 而非 4.4KB）。
   测试环境的 `ResizeObserver` 桩会回报固定尺寸，否则图表在 jsdom 里根本不渲染，

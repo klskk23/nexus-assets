@@ -14,10 +14,22 @@ export const router = createBrowserRouter([
     Component: AppShell,
     children: [
       { index: true, lazy: async () => ({ Component: (await import("./Overview")).Overview }) },
-      { path: "assets", lazy: async () => ({ Component: (await import("./Assets")).Assets }) },
       {
-        path: "assets/:id",
-        lazy: async () => ({ Component: (await import("./AssetDetail")).AssetDetail }),
+        // The detail is a child so it renders as a dialog over the list rather
+        // than instead of it -- one address, two things on screen (decision 89).
+        path: "assets",
+        lazy: async () => ({ Component: (await import("./Assets")).Assets }),
+        children: [
+          {
+            path: ":id",
+            lazy: async () => ({ Component: (await import("./AssetDetail")).AssetDetail }),
+          },
+        ],
+      },
+      {
+        // The full timeline is its own page, so it is not nested here.
+        path: "assets/:id/history",
+        lazy: async () => ({ Component: (await import("./AssetHistory")).AssetHistory }),
       },
       { path: "categories", lazy: async () => ({ Component: (await import("./Categories")).Categories }) },
       { path: "fields", lazy: async () => ({ Component: (await import("./Fields")).Fields }) },

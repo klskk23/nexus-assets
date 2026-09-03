@@ -7,7 +7,8 @@ import type { Category } from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
-import { CrudPage } from "@/features/metadata/CrudPage"
+import { CategoryFilter } from "@/features/common/CategoryFilter"
+import { CrudPage, type ListPage } from "@/features/metadata/CrudPage"
 import {
   AttrDefaultsEditor,
   toAttrDefaults,
@@ -82,7 +83,15 @@ export function Models() {
     <CrudPage<ProductModelRow>
       title={tMeta.models.title}
       queryKey="models"
-      list={() => api.get<ProductModelRow[]>("/models")}
+      searchHint={tMeta.models.searchHint}
+      filterKeys={{ category_id: "" }}
+      filters={(q) => (
+        <CategoryFilter
+          value={q.filters.category_id}
+          onChange={(v) => q.setFilter("category_id", v)}
+        />
+      )}
+      list={(params) => api.get<ListPage<ProductModelRow>>(`/models?${params}`)}
       createLabel={tMeta.models.create}
       createDeniedReason={deniedReason("model.manage")}
       createDisabled={name === ""}

@@ -13,7 +13,7 @@ import {
 import { NONE, fromNone, toNone } from "@/lib/select"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
-import { CrudPage } from "@/features/metadata/CrudPage"
+import { CrudPage, type ListPage } from "@/features/metadata/CrudPage"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -178,7 +178,17 @@ export function Holders() {
       <CrudPage<HolderEntity>
         title={tMeta.holders.title}
         queryKey="holders"
-        list={() => api.get<HolderEntity[]>("/holders")}
+        searchHint={tMeta.holders.searchHint}
+        filterKeys={{ type: "", is_default_stock: "" }}
+        filters={(qs) => (
+          <HolderFilters
+            type={qs.filters.type}
+            stock={qs.filters.is_default_stock}
+            onType={(v) => qs.setFilter("type", v)}
+            onStock={(v) => qs.setFilter("is_default_stock", v)}
+          />
+        )}
+        list={(params) => api.get<ListPage<HolderEntity>>(`/holders?${params}`)}
         createLabel={tMeta.holders.create}
         // Setting the default stock marker is a row action, so its refusal
         // belongs beside the rows -- not inside the create dialog.
@@ -436,5 +446,59 @@ function EditDialog({ holder, holders, refusal, onOpenChange, onSave, saving }: 
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** Kind, and whether it is the one place returns go to when nobody says. */
+function HolderFilters({
+  type,
+  stock,
+  onType,
+  onStock,
+}: {
+  type: string
+  stock: string
+  onType: (v: string) => void
+  onStock: (v: string) => void
+}) {
+  return (
+    <>
+      <Field className="w-auto">
+        <FieldLabel htmlFor="h-type-filter" className="sr-only">
+          {tMeta.holders.type}
+        </FieldLabel>
+        <Select value={toNone(type)} onValueChange={(v) => onType(fromNone(v))}>
+          <SelectTrigger id="h-type-filter" className="w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value={NONE}>{tMeta.holders.allTypes}</SelectItem>
+              {(["company", "department", "location"] as const).map((k) => (
+                <SelectItem key={k} value={k}>
+                  {tMeta.entityTypes[k]}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field className="w-auto">
+        <FieldLabel htmlFor="h-stock-filter" className="sr-only">
+          {tMeta.holders.defaultStock}
+        </FieldLabel>
+        <Select value={toNone(stock)} onValueChange={(v) => onStock(fromNone(v))}>
+          <SelectTrigger id="h-stock-filter" className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value={NONE}>{tMeta.holders.anyStock}</SelectItem>
+              <SelectItem value="true">{tMeta.holders.defaultStock}</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </Field>
+    </>
   )
 }

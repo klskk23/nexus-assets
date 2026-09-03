@@ -6,6 +6,7 @@ import { Assets } from "@/routes/Assets"
 import { Models } from "@/routes/Models"
 import { Roles } from "@/routes/Roles"
 import { AppShell } from "@/routes/AppShell"
+import { listed } from "@/test/listing"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { statusRoute } from "./fixtures/statuses"
 import { openMenu } from "@/test/menu"
@@ -75,10 +76,10 @@ function route(p: string) {
   const st = statusRoute(p)
   if (st) return st
   if (p === "/categories") return Promise.resolve(categories)
-  if (p === "/roles") return Promise.resolve(roles)
+  if (p.startsWith("/roles")) return Promise.resolve(roles)
   if (p === "/capabilities") return Promise.resolve({ printing: true })
-  if (p === "/models") return Promise.resolve([])
-  if (p === "/users" || p === "/holders") return Promise.resolve([])
+  if (p.startsWith("/models")) return Promise.resolve(listed([], p))
+  if (p.startsWith("/users") || p.startsWith("/holders")) return Promise.resolve(listed([], p))
   if (p.startsWith("/assets")) return Promise.resolve(page)
   return Promise.resolve([])
 }

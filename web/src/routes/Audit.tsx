@@ -11,6 +11,7 @@ import { NONE, fromNone, toNone } from "@/lib/select"
 import { cn } from "@/lib/utils"
 import { getLang, locale, tAudit } from "@/i18n"
 import { StateBoundary } from "@/components/StateBoundary"
+import { ListToolbar } from "@/features/common/ListToolbar"
 import { PAGE_SIZES, Pager } from "@/features/common/Pager"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -90,6 +91,7 @@ export function Audit() {
   // the asset list: a narrowing somebody built by hand should survive a trip
   // somewhere else.
   const [searchParams, setSearchParams] = useSearchParams()
+  const [q, setQ] = useState(searchParams.get("q") ?? "")
   const [targetType, setTargetType] = useState(searchParams.get("target_type") ?? "")
   const [targetID, setTargetID] = useState(searchParams.get("target_id") ?? "")
   const [actorID, setActorID] = useState(searchParams.get("actor_id") ?? "")
@@ -118,6 +120,7 @@ export function Audit() {
   const [detail, setDetail] = useState<Entry | null>(null)
 
   const params = new URLSearchParams()
+  if (q.trim()) params.set("q", q.trim())
   if (targetType) params.set("target_type", targetType)
   if (targetID) params.set("target_id", targetID)
   if (actorID) params.set("actor_id", actorID)
@@ -190,118 +193,126 @@ export function Audit() {
         <p className="text-muted-foreground mt-1 text-sm">{tAudit.hint}</p>
       </div>
 
-      {/* One row. Every control carries its own "all of them" wording, so the
-          labels are for screen readers rather than a second tier of text. */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Field className="w-auto">
-          <FieldLabel htmlFor="au-type" className="sr-only">
-            {tAudit.targetType}
-          </FieldLabel>
-          <Select value={toNone(targetType)} onValueChange={(v) => setTargetType(fromNone(v))}>
-            <SelectTrigger id="au-type" className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value={NONE}>{tAudit.allTypes}</SelectItem>
-                {Object.entries(tAudit.targets).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>
-                    {v}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-
-        <Field className="w-auto">
-          <FieldLabel htmlFor="au-action" className="sr-only">
-            {tAudit.action}
-          </FieldLabel>
-          <Select value={toNone(action)} onValueChange={(v) => setAction(fromNone(v))}>
-            <SelectTrigger id="au-action" className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value={NONE}>{tAudit.allActions}</SelectItem>
-                {Object.entries(tAudit.actions).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>
-                    {v}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-
-        <Field className="w-auto">
-          <FieldLabel htmlFor="au-actor" className="sr-only">
-            {tAudit.actor}
-          </FieldLabel>
-          <Select value={toNone(actorID)} onValueChange={(v) => setActorID(fromNone(v))}>
-            <SelectTrigger id="au-actor" className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value={NONE}>{tAudit.allActors}</SelectItem>
-                {knownActors.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name}
-                  </SelectItem>
-                ))}
-                {actorMissing && (
-                  <SelectItem value={actorID}>{actorName || actorID}</SelectItem>
-                )}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              aria-label={tAudit.dateRange}
-              className="justify-start font-normal"
-            >
-              <CalendarIcon data-icon="inline-start" />
-              {rangeText}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="range"
-              autoFocus
-              numberOfMonths={2}
-              // Reopening the picker lands on the range you chose, not on
-              // today -- otherwise a filter set last March is one month button
-              // at a time away from being read back.
-              defaultMonth={range?.from}
-              selected={range}
-              onSelect={setRange}
-              locale={getLang() === "zh" ? zhCN : enUS}
-            />
-            {range?.from && (
-              <div className="border-t p-2">
-                <Button variant="ghost" size="sm" onClick={() => setRange(undefined)}>
-                  {tAudit.clearDates}
-                </Button>
-              </div>
-            )}
-          </PopoverContent>
-        </Popover>
-
-        {targetID && (
+      {/* One row, the same one every table page wears. Every control carries
+          its own "all of them" wording, so the labels are for screen readers
+          rather than a second tier of text. */}
+      <ListToolbar
+        q={q}
+        onQ={setQ}
+        searchHint={tAudit.searchHint}
+        filters={
           <>
-            <Badge variant="outline">{tAudit.onlyTarget(targetID)}</Badge>
-            <Button variant="ghost" size="sm" onClick={() => setTargetID("")}>
-              {tAudit.clearFilters}
-            </Button>
+            <Field className="w-auto">
+              <FieldLabel htmlFor="au-type" className="sr-only">
+                {tAudit.targetType}
+              </FieldLabel>
+              <Select value={toNone(targetType)} onValueChange={(v) => setTargetType(fromNone(v))}>
+                <SelectTrigger id="au-type" className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value={NONE}>{tAudit.allTypes}</SelectItem>
+                    {Object.entries(tAudit.targets).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field className="w-auto">
+              <FieldLabel htmlFor="au-action" className="sr-only">
+                {tAudit.action}
+              </FieldLabel>
+              <Select value={toNone(action)} onValueChange={(v) => setAction(fromNone(v))}>
+                <SelectTrigger id="au-action" className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value={NONE}>{tAudit.allActions}</SelectItem>
+                    {Object.entries(tAudit.actions).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field className="w-auto">
+              <FieldLabel htmlFor="au-actor" className="sr-only">
+                {tAudit.actor}
+              </FieldLabel>
+              <Select value={toNone(actorID)} onValueChange={(v) => setActorID(fromNone(v))}>
+                <SelectTrigger id="au-actor" className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value={NONE}>{tAudit.allActors}</SelectItem>
+                    {knownActors.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name}
+                      </SelectItem>
+                    ))}
+                    {actorMissing && (
+                      <SelectItem value={actorID}>{actorName || actorID}</SelectItem>
+                    )}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  aria-label={tAudit.dateRange}
+                  className="justify-start font-normal"
+                >
+                  <CalendarIcon data-icon="inline-start" />
+                  {rangeText}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  autoFocus
+                  numberOfMonths={2}
+                  // Reopening the picker lands on the range you chose, not on
+                  // today -- otherwise a filter set last March is one month button
+                  // at a time away from being read back.
+                  defaultMonth={range?.from}
+                  selected={range}
+                  onSelect={setRange}
+                  locale={getLang() === "zh" ? zhCN : enUS}
+                />
+                {range?.from && (
+                  <div className="border-t p-2">
+                    <Button variant="ghost" size="sm" onClick={() => setRange(undefined)}>
+                      {tAudit.clearDates}
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+
+            {targetID && (
+              <>
+                <Badge variant="outline">{tAudit.onlyTarget(targetID)}</Badge>
+                <Button variant="ghost" size="sm" onClick={() => setTargetID("")}>
+                  {tAudit.clearFilters}
+                </Button>
+              </>
+            )}
           </>
-        )}
-      </div>
+        }
+      />
 
       <StateBoundary
         isLoading={query.isLoading}

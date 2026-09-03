@@ -6,6 +6,7 @@ import { Fields } from "@/routes/Fields"
 import { Holders } from "@/routes/Holders"
 import { Users } from "@/routes/Users"
 import { Categories } from "@/routes/Categories"
+import { listed } from "@/test/listing"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { chooseByLabel } from "@/test/choose"
 import { chooseFromMenu, openMenu } from "@/test/menu"
@@ -64,8 +65,8 @@ function route(p: string) {
   }
   // How many devices a required binding would land on.
   if (p.startsWith("/assets?")) return Promise.resolve({ items: [], total: 3, offset: 0, limit: 1 })
-  if (p === "/holders") return Promise.resolve(holders)
-  if (p === "/users") return Promise.resolve(users)
+  if (p.startsWith("/holders")) return Promise.resolve(listed(holders, p))
+  if (p.startsWith("/users")) return Promise.resolve(listed(users, p))
   if (p.endsWith("/schema")) return Promise.resolve(schema)
   return Promise.resolve([])
 }
@@ -110,9 +111,9 @@ describe("Fields page", () => {
     renderWithProviders(<Fields />)
     await screen.findByRole("row", { name: /基准 MAC/ })
 
-    expect(screen.queryByLabelText(/键名/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("键名（英文）")).not.toBeInTheDocument()
     await openCreate(user, "新建字段")
-    expect(screen.getByLabelText(/键名/)).toBeInTheDocument()
+    expect(screen.getByLabelText("键名（英文）")).toBeInTheDocument()
   })
 
   it("creates a field with the values typed in", async () => {
@@ -121,8 +122,8 @@ describe("Fields page", () => {
     await screen.findByRole("row", { name: /基准 MAC/ })
 
     await openCreate(user, "新建字段")
-    await user.type(screen.getByLabelText(/键名/), "rack")
-    await user.type(screen.getByLabelText(/显示名/), "机柜位")
+    await user.type(screen.getByLabelText("键名（英文）"), "rack")
+    await user.type(screen.getByLabelText("显示名"), "机柜位")
     await user.click(screen.getByLabelText("类别内唯一"))
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "新建字段" }))
 
@@ -148,8 +149,8 @@ describe("Fields page", () => {
     await screen.findByRole("row", { name: /基准 MAC/ })
 
     await openCreate(user, "新建字段")
-    await user.type(screen.getByLabelText(/键名/), "rack")
-    await user.type(screen.getByLabelText(/显示名/), "机柜位")
+    await user.type(screen.getByLabelText("键名（英文）"), "rack")
+    await user.type(screen.getByLabelText("显示名"), "机柜位")
 
     const dialog = await screen.findByRole("dialog")
     await user.click(within(dialog).getByRole("checkbox", { name: "网络设备" }))
@@ -181,8 +182,8 @@ describe("Fields page", () => {
     await screen.findByRole("row", { name: /基准 MAC/ })
 
     await openCreate(user, "新建字段")
-    await user.type(screen.getByLabelText(/键名/), "rack")
-    await user.type(screen.getByLabelText(/显示名/), "机柜位")
+    await user.type(screen.getByLabelText("键名（英文）"), "rack")
+    await user.type(screen.getByLabelText("显示名"), "机柜位")
     await user.type(screen.getByLabelText("校验正则"), "^R-\\d+$")
     await user.type(screen.getByLabelText(/校验提示/), "R- 加数字")
 

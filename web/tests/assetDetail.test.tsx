@@ -277,12 +277,47 @@ describe("AssetDetail", () => {
   })
 })
 
-// You can arrive here from the overview, from a scan, or straight after
-// recording a device, and there was no way out but the browser's own back.
-it("offers a way back to the list", async () => {
+// A device opens over the list rather than instead of it, and closing puts it
+// away without losing where the list was (decision 89).
+it("opens as a dialog over the list and closes back to it", async () => {
+  const user = userEvent.setup()
   renderWithProviders(<AssetDetail />)
   await screen.findByText("112394521950")
 
-  const back = screen.getByRole("link", { name: /返回资产列表/ })
-  expect(back).toHaveAttribute("href", "/assets")
+  const dialog = screen.getByRole("dialog")
+  expect(within(dialog).getByText("112394521950")).toBeInTheDocument()
+
+  await user.click(within(dialog).getByRole("button", { name: /关闭|Close/ }))
+  await waitFor(() =>
+    expect(navigate).toHaveBeenCalledWith({ pathname: "/assets", search: "" }),
+  )
+})
+
+// The dialog shows the last few movements; the rest is a page, because forty
+// events in a box is a page inside a box.
+it("links to the full history when there is more than it shows", async () => {
+  const events = Array.from({ length: 6 }, (_, i) => ({
+    id: `t${i}`,
+    asset_id: "a1",
+    batch_id: null,
+    kind: "transfer",
+    from_status: "in_stock",
+    from_holder: { type: "entity", id: "loc", name: "上海仓库" },
+    from_owner_id: null,
+    to_status: "in_stock",
+    to_holder: { type: "entity", id: "loc", name: "上海仓库" },
+    to_owner_id: "u1",
+    due_at: null,
+    created_at: "2026-08-28T00:00:00Z",
+    edited_at: null,
+    edited_by: null,
+  }))
+  get.mockImplementation((p: string) =>
+    p === "/assets/a1/transfers" ? Promise.resolve(events) : route(p),
+  )
+  renderWithProviders(<AssetDetail />)
+  await screen.findByText("112394521950")
+
+  const link = await screen.findByRole("link", { name: /查看全部流转/ })
+  expect(link).toHaveAttribute("href", "/assets/a1/history")
 })

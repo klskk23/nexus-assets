@@ -22,6 +22,8 @@ export interface CategoryRow {
   category: Category
   depth: number
   hasChildren: boolean
+  /** Set only while searching: "网络设备 / SDWAN 路由器". */
+  path?: string
 }
 
 /**
@@ -57,8 +59,41 @@ export function flattenCategories(items: Category[], collapsed: string[]): Categ
   return out
 }
 
+/**
+ * The matches, flattened, each carrying the path that says where it sits.
+ *
+ * Searching a tree cannot keep the indent: showing only the hits removes the
+ * parents the indent was measured against, and "SDWAN 路由器" indented twice
+ * under nothing is a claim about a place that is not on screen. The full path
+ * on one line answers the same question -- where is it -- without needing the
+ * rows above it to still be there.
+ */
+export function searchCategories(items: Category[], q: string): CategoryRow[] {
+  const needle = q.trim().toLowerCase()
+  const byId = new Map(items.map((c) => [c.id, c]))
+  const pathOf = (c: Category) => {
+    const names: string[] = []
+    // A cycle is impossible by construction, but a bounded walk costs nothing
+    // and a hung table costs the page.
+    let cur: Category | undefined = c
+    for (let i = 0; cur && i < 64; i++) {
+      names.unshift(cur.name)
+      cur = cur.parent_id ? byId.get(cur.parent_id) : undefined
+    }
+    return names.join(" / ")
+  }
+  return items
+    .filter(
+      (c) =>
+        c.name.toLowerCase().includes(needle) || c.code.toLowerCase().includes(needle),
+    )
+    .map((c) => ({ category: c, depth: 0, hasChildren: false, path: pathOf(c) }))
+}
+
 interface Props {
   categories: Category[]
+  /** Non-empty switches the tree to a flat list of matches with their paths. */
+  search?: string
   /** Clicking a row opens it, the way every other table on the product does. */
   onOpen: (category: Category) => void
   onCreateChild: (parent: Category) => void
@@ -72,9 +107,11 @@ interface Props {
  * click producing two results. Deleting lives in the editor the row opens,
  * where the confirmation can name the models it would detach.
  */
-export function CategoryTable({ categories, onOpen, onCreateChild }: Props) {
+export function CategoryTable({ categories, search = "", onOpen, onCreateChild }: Props) {
   const [collapsed, setCollapsed] = useState<string[]>([])
-  const rows = flattenCategories(categories, collapsed)
+  const rows = search.trim()
+    ? searchCategories(categories, search)
+    : flattenCategories(categories, collapsed)
 
   const toggle = (id: string) =>
     setCollapsed((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
@@ -94,7 +131,7 @@ export function CategoryTable({ categories, onOpen, onCreateChild }: Props) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map(({ category: c, depth, hasChildren }) => (
+          {rows.map(({ category: c, depth, hasChildren, path }) => (
             <ContextMenu key={c.id}>
               <ContextMenuTrigger asChild>
                 <TableRow className="cursor-pointer" onClick={() => onOpen(c)}>
@@ -103,7 +140,7 @@ export function CategoryTable({ categories, onOpen, onCreateChild }: Props) {
                       className="inline-block"
                       style={{ paddingInlineStart: depth * 16 }}
                     >
-                      {collapsed.includes(c.id) ? `${c.name} …` : c.name}
+                      {path ?? (collapsed.includes(c.id) ? `${c.name} …` : c.name)}
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono">{c.code}</TableCell>

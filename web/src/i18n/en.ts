@@ -202,10 +202,14 @@ export const en: typeof zh = {
     homeHint: "Check-in returns this device here. Left empty, it goes to the default stock point.",
     homeNone: "None (the default stock point)",
     transfer: "Transfer",
-    backToList: "Back to assets",
+    recentTransfers: "Recent movements",
+    fullHistory: "See the full history",
+    historyTitle: "Movement history",
+    backToAsset: "Back to this device",
   },
 
   common: {
+    searchPlaceholder: (what: string) => `Search ${what}`,
     loading: "Loading…",
     error: "Something went wrong",
     retry: "Retry",
@@ -233,6 +237,8 @@ export const en: typeof zh = {
 
 export const enMeta: typeof zhMeta = {
   fields: {
+    searchHint: "key, label",
+    allTypes: "All types",
     title: "Fields",
     create: "New field",
     key: "Key",
@@ -252,6 +258,7 @@ export const enMeta: typeof zhMeta = {
       "A field only appears on the entry form once it is bound. Leaving this empty is fine; it can be bound later from the field editor.",
   },
   roles: {
+    searchHint: "name",
     title: "Roles",
     create: "New role",
     edit: "Edit role",
@@ -276,6 +283,7 @@ export const enMeta: typeof zhMeta = {
     changeRoleTitle: (name: string) => `Change ${name}'s role`,
   },
   models: {
+    searchHint: "name, vendor",
     title: "Models",
     create: "New model",
     name: "Model",
@@ -303,6 +311,9 @@ export const enMeta: typeof zhMeta = {
       "A model can belong to several categories and supply default values, prefilled during entry.",
   },
   holders: {
+    searchHint: "name, note",
+    allTypes: "All types",
+    anyStock: "Any stock point",
     title: "Holders",
     create: "New holder",
     name: "Name",
@@ -346,6 +357,9 @@ export const enMeta: typeof zhMeta = {
       "Locations, companies and departments are all holders. Check-in points at whichever location is marked the default stock point.",
   },
   users: {
+    searchHint: "email, name",
+    allRoles: "All roles",
+    allStatuses: "All states",
     title: "Accounts",
     create: "New local account",
     email: "Email",
@@ -363,6 +377,7 @@ export const enMeta: typeof zhMeta = {
       "Accounts can be disabled but not deleted; reassign their devices before disabling one.",
   },
   categories: {
+    searchHint: "name, code",
     title: "Categories",
     create: "New category",
     code: "Code (usable in templates)",
@@ -557,6 +572,7 @@ export const enAudit: typeof zhAudit = {
   allActors: "Everyone",
   dateRange: "Date range",
   anyDate: "Any date",
+  searchHint: "actor, object id",
   clearDates: "Clear dates",
   actor: "By",
   action: "Action",
@@ -610,6 +626,7 @@ export const enOverview: typeof zhOverview = {
 }
 
 export const enStatuses: typeof zhStatuses = {
+  searchHint: "name, key",
   title: "Statuses",
   create: "New status",
   key: "Key",

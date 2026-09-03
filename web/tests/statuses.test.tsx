@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { Statuses } from "@/routes/Statuses"
+import { listed } from "@/test/listing"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { choose } from "@/test/choose"
 import { chooseFromMenu, openMenu } from "@/test/menu"
@@ -40,7 +41,7 @@ const withCustom: Status[] = [...statusList, onLoan]
 
 function route(usage: Record<string, StatusUsage> = {}) {
   return (p: string) =>
-    Promise.resolve(p === "/status-usage" ? usage : withCustom)
+    Promise.resolve(p === "/status-usage" ? usage : listed(withCustom, p))
 }
 
 beforeEach(() => {

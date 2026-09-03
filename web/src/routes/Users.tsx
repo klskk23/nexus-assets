@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Field, FieldLabel } from "@/components/ui/field"
+import { NONE, fromNone, toNone } from "@/lib/select"
 import {
   Select,
   SelectContent,
@@ -61,7 +63,18 @@ export function Users() {
       <CrudPage<User>
         title={tMeta.users.title}
         queryKey="users"
-        list={() => api.get<User[]>("/users")}
+        searchHint={tMeta.users.searchHint}
+        filterKeys={{ role_id: "", status: "" }}
+        filters={(qs) => (
+          <UserFilters
+            roles={roles.data?.items ?? []}
+            roleID={qs.filters.role_id}
+            status={qs.filters.status}
+            onRole={(v) => qs.setFilter("role_id", v)}
+            onStatus={(v) => qs.setFilter("status", v)}
+          />
+        )}
+        list={(params) => api.get<ListPage<User>>(`/users?${params}`)}
         createLabel={tMeta.users.create}
         // Disabling an account is a row action; its refusal has to appear next
         // to the rows rather than inside the create dialog.
@@ -166,6 +179,63 @@ export function Users() {
           </>
         }
       />
+    </>
+  )
+}
+
+/** Which role somebody is on, and whether the account is still open. */
+function UserFilters({
+  roles,
+  roleID,
+  status,
+  onRole,
+  onStatus,
+}: {
+  roles: Role[]
+  roleID: string
+  status: string
+  onRole: (v: string) => void
+  onStatus: (v: string) => void
+}) {
+  return (
+    <>
+      <Field className="w-auto">
+        <FieldLabel htmlFor="u-filter-role" className="sr-only">
+          {tMeta.roles.ofUser}
+        </FieldLabel>
+        <Select value={toNone(roleID)} onValueChange={(v) => onRole(fromNone(v))}>
+          <SelectTrigger id="u-filter-role" className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value={NONE}>{tMeta.users.allRoles}</SelectItem>
+              {roles.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field className="w-auto">
+        <FieldLabel htmlFor="u-filter-status" className="sr-only">
+          {tMeta.users.status}
+        </FieldLabel>
+        <Select value={toNone(status)} onValueChange={(v) => onStatus(fromNone(v))}>
+          <SelectTrigger id="u-filter-status" className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value={NONE}>{tMeta.users.allStatuses}</SelectItem>
+              <SelectItem value="active">{tMeta.users.active}</SelectItem>
+              <SelectItem value="disabled">{tMeta.users.disabled}</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </Field>
     </>
   )
 }

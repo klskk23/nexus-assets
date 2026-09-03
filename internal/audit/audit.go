@@ -114,6 +114,11 @@ type Filter struct {
 	// Action narrows to one kind of change. Deletions are the ones people come
 	// looking for, and they are the rarest rows in the table.
 	Action string
+	// Q searches the actor's name and the object's id. Not the object's name:
+	// audit_log records what was changed, not what it was called, and the
+	// label a row shows is resolved elsewhere -- searching it would mean
+	// joining six tables to answer "find me the word I remember".
+	Q      string
 	From   *time.Time
 	To     *time.Time
 	Offset int
@@ -132,36 +137,11 @@ type Page struct {
 func (s *Store) List(ctx context.Context, f Filter) (Page, error) {
 	page := Page{Items: []Entry{}, Offset: f.Offset, Limit: f.Limit}
 
-	where := []string{"1 = 1"}
-	args := []any{}
-	if f.TargetType != "" {
-		where = append(where, "a.target_type = ?")
-		args = append(args, f.TargetType)
-	}
-	if f.TargetID != "" {
-		where = append(where, "a.target_id = ?")
-		args = append(args, f.TargetID)
-	}
-	if f.ActorID != "" {
-		where = append(where, "a.actor_id = ?")
-		args = append(args, f.ActorID)
-	}
-	if f.Action != "" {
-		where = append(where, "a.action = ?")
-		args = append(args, f.Action)
-	}
-	if f.From != nil {
-		where = append(where, "a.created_at >= ?")
-		args = append(args, store.FormatTime(*f.From))
-	}
-	if f.To != nil {
-		where = append(where, "a.created_at <= ?")
-		args = append(args, store.FormatTime(*f.To))
-	}
-	clause := strings.Join(where, " AND ")
+	clause, args := narrow(f)
 
 	if err := s.db.ReadDB().QueryRowContext(ctx,
-		`SELECT count(*) FROM audit_log a WHERE `+clause, args...).Scan(&page.Total); err != nil {
+		`SELECT count(*) FROM audit_log a LEFT JOIN users u ON u.id = a.actor_id
+		 WHERE `+clause, args...).Scan(&page.Total); err != nil {
 		return page, fmt.Errorf("count audit entries: %w", err)
 	}
 
@@ -198,4 +178,41 @@ func (s *Store) List(ctx context.Context, f Filter) (Page, error) {
 		page.Items = append(page.Items, e)
 	}
 	return page, rows.Err()
+}
+
+// narrow turns a filter into the WHERE clause and its arguments. Its own
+// function so List stays one thing: read a page, scan it, return it.
+func narrow(f Filter) (string, []any) {
+	where := []string{"1 = 1"}
+	args := []any{}
+	if f.TargetType != "" {
+		where = append(where, "a.target_type = ?")
+		args = append(args, f.TargetType)
+	}
+	if f.TargetID != "" {
+		where = append(where, "a.target_id = ?")
+		args = append(args, f.TargetID)
+	}
+	if f.ActorID != "" {
+		where = append(where, "a.actor_id = ?")
+		args = append(args, f.ActorID)
+	}
+	if f.Action != "" {
+		where = append(where, "a.action = ?")
+		args = append(args, f.Action)
+	}
+	if q := strings.TrimSpace(f.Q); q != "" {
+		where = append(where, "(lower(coalesce(u.name, '')) LIKE ? OR lower(a.target_id) LIKE ?)")
+		like := "%" + strings.ToLower(q) + "%"
+		args = append(args, like, like)
+	}
+	if f.From != nil {
+		where = append(where, "a.created_at >= ?")
+		args = append(args, store.FormatTime(*f.From))
+	}
+	if f.To != nil {
+		where = append(where, "a.created_at <= ?")
+		args = append(args, store.FormatTime(*f.To))
+	}
+	return strings.Join(where, " AND "), args
 }

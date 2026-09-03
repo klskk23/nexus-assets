@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { Holders } from "@/routes/Holders"
+import { listed } from "@/test/listing"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { choose } from "@/test/choose"
 import { chooseFromMenu, openMenu } from "@/test/menu"
@@ -42,9 +43,9 @@ const noUsage = { assets: 0, children: 0, history: 0 }
 
 function serve(list: HolderEntity[], usage: Record<string, typeof noUsage> = {}) {
   return (p: string) => {
-    if (p === "/holders") return Promise.resolve(list)
     const m = /^\/holders\/(.+)\/usage$/.exec(p)
     if (m) return Promise.resolve(usage[m[1]] ?? noUsage)
+    if (p.startsWith("/holders")) return Promise.resolve(listed(list, p))
     return Promise.resolve([])
   }
 }

@@ -358,7 +358,20 @@ paths:
 
   # ---------------- metadata ----------------
   /categories:
-    get: { tags: [metadata], summary: 类别树, responses: { "200": { description: OK } } }
+    get:
+      tags: [metadata]
+      summary: 类别树（可搜索、可分页）
+      description: >
+        **两种形状，按问题决定**（014 决策 92）：带了 q / offset / limit
+        就是要一页，返回 `{items,total,offset,limit}`；一个都不带就是要全部，
+        返回数组 —— 下拉框要的是全集，翻页会把选项截断，而 zenith-printer
+        的数据源按数组解析 `/api/categories`。
+      parameters:
+        - { $ref: "#/components/parameters/ListQ" }
+        - { $ref: "#/components/parameters/ListOffset" }
+        - { $ref: "#/components/parameters/ListLimit" }
+      responses:
+        "200": { description: OK }
     post: { tags: [metadata], summary: 新建类别, responses: { "201": { description: Created } } }
 
   /categories/{id}:
@@ -463,8 +476,10 @@ paths:
       summary: 字段库（可按类别筛选、分页）
       parameters:
         - { name: category_id, in: query, schema: { type: string, description: 该类别的有效字段（含继承） } }
-        - { name: offset, in: query, schema: { type: integer, default: 0 } }
-        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+        - { name: type, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/ListQ" }
+        - { $ref: "#/components/parameters/ListOffset" }
+        - { $ref: "#/components/parameters/ListLimit" }
       responses:
         "200":
           description: OK，items 的每一项额外带 category_ids（该字段绑定到的类别）
@@ -576,7 +591,21 @@ paths:
         "409": { $ref: "#/components/responses/Error" }
 
   /models:
-    get: { tags: [metadata], summary: 型号列表, responses: { "200": { description: OK } } }
+    get:
+      tags: [metadata]
+      summary: 型号列表（可按类别筛选、可搜索、可分页）
+      description: >
+        **两种形状，按问题决定**（014 决策 92）：带了 q / offset / limit
+        就是要一页，返回 `{items,total,offset,limit}`；一个都不带就是要全部，
+        返回数组 —— 下拉框要的是全集，翻页会把选项截断，而 zenith-printer
+        的数据源按数组解析 `/api/categories`。
+      parameters:
+        - { $ref: "#/components/parameters/ListQ" }
+        - { $ref: "#/components/parameters/ListOffset" }
+        - { $ref: "#/components/parameters/ListLimit" }
+        - { name: category_id, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK }
     post: { tags: [metadata], summary: 新建型号, responses: { "201": { description: Created } } }
 
   /models/{id}:
@@ -609,8 +638,15 @@ paths:
   /statuses:
     get:
       tags: [metadata]
-      summary: 状态列表
+      summary: 状态列表（可搜索、可分页）
+      parameters:
+        - { $ref: "#/components/parameters/ListQ" }
+        - { $ref: "#/components/parameters/ListOffset" }
+        - { $ref: "#/components/parameters/ListLimit" }
       description: >
+        形状按问题决定，与其他元数据列表同一条规则（014 决策 92）：
+        带了 q / offset / limit 就是一页信封，一个都不带就是今天的数组。
+
         每一个渲染状态的界面都读这里：徽章的颜色、下拉框的选项、筛选栏、
         概览卡片、流转时间线。标签不再由前端与导出各存一份。
       responses:
@@ -681,7 +717,18 @@ paths:
   /holders:
     get:
       tags: [metadata]
-      summary: 持有方实体树
+      summary: 持有方实体树（可筛选、可搜索、可分页）
+      description: >
+        **两种形状，按问题决定**（014 决策 92）：带了 q / offset / limit
+        就是要一页，返回 `{items,total,offset,limit}`；一个都不带就是要全部，
+        返回数组 —— 下拉框要的是全集，翻页会把选项截断，而 zenith-printer
+        的数据源按数组解析 `/api/categories`。
+      parameters:
+        - { $ref: "#/components/parameters/ListQ" }
+        - { $ref: "#/components/parameters/ListOffset" }
+        - { $ref: "#/components/parameters/ListLimit" }
+        - { name: type, in: query, schema: { type: string, enum: [company, department, location] } }
+        - { name: is_default_stock, in: query, schema: { type: string, enum: ["true"] } }
       responses:
         "200":
           description: OK
@@ -744,6 +791,11 @@ paths:
         角色清单，每项带 users（绑着多少账号）。**读是开放的** ——
         账号页要显示同事在哪个角色上，藏起来会让「他为什么能做那个」无从回答。
         响应里的 permissions 是这套系统认识的全部开关。
+        **这一个列表始终是信封** —— 它从来就带着 permissions，没有数组形状要保。
+      parameters:
+        - { $ref: "#/components/parameters/ListQ" }
+        - { $ref: "#/components/parameters/ListOffset" }
+        - { $ref: "#/components/parameters/ListLimit" }
       responses:
         "200": { description: OK }
     post:
@@ -792,7 +844,20 @@ paths:
         "409": { $ref: "#/components/responses/Error" }
 
   /users:
-    get: { tags: [metadata], summary: 账号列表, responses: { "200": { description: OK } } }
+    get:
+      tags: [metadata]
+      summary: 账号列表（可按角色与启用状态筛选、可搜索、可分页）
+      description: >
+        形状按问题决定（014 决策 92）：带了 q / offset / limit 是一页信封，
+        一个都不带是数组 —— 流转对话框的负责人下拉要的是全集。
+      parameters:
+        - { $ref: "#/components/parameters/ListQ" }
+        - { $ref: "#/components/parameters/ListOffset" }
+        - { $ref: "#/components/parameters/ListLimit" }
+        - { name: role_id, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string, enum: [active, disabled] } }
+      responses:
+        "200": { description: OK }
     post: { tags: [metadata], summary: 新建本地账号, responses: { "201": { description: Created } } }
 
   /users/{id}:
@@ -814,6 +879,7 @@ paths:
         - { name: target_id, in: query, schema: { type: string } }
         - { name: actor_id, in: query, schema: { type: string, description: 只看某个操作人的变更 } }
         - { name: action, in: query, schema: { type: string, enum: [create, update, archive, delete, recompute] } }
+        - { name: q, in: query, schema: { type: string, description: 搜索操作人姓名与对象编号；不搜对象名称，流水记的是改了什么，不是它当时叫什么 } }
         - { name: from, in: query, schema: { type: string, format: date-time } }
         - { name: to, in: query, schema: { type: string, format: date-time } }
         - { name: offset, in: query, schema: { type: integer, default: 0 } }
@@ -1090,6 +1156,24 @@ paths:
 
 components:
   parameters:
+    ListQ:
+      name: q
+      in: query
+      required: false
+      schema: { type: string }
+      description: >
+        搜索词，大小写不敏感、匹配该资源自己声明的几个字段（014 决策 90）。
+        **给了 q 就是要一页**，回应是信封。
+    ListOffset:
+      name: offset
+      in: query
+      required: false
+      schema: { type: integer, default: 0 }
+    ListLimit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, default: 50, maximum: 200 }
     AcceptLanguage:
       name: Accept-Language
       in: header

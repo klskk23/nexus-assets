@@ -94,6 +94,60 @@ func TestAccountFilters(t *testing.T) {
 	}
 }
 
+// The holder list has the two filters its page offers, and they are filters
+// rather than search terms: a location named "公司总部" must not answer "type
+// is company".
+func TestHolderFilters(t *testing.T) {
+	h := newHarness(t)
+	for _, body := range []string{
+		`{"type":"company","name":"公司总部"}`,
+		`{"type":"location","name":"公司总部仓库"}`,
+	} {
+		if rec := h.do(t, http.MethodPost, "/api/holders", body); rec.Code != http.StatusCreated {
+			t.Fatal(rec.Body.String())
+		}
+	}
+
+	byType := h.get(t, "/api/holders?type=company&limit=50").Body.String()
+	if !strings.Contains(byType, "公司总部\"") || strings.Contains(byType, "公司总部仓库") {
+		t.Errorf("filtering by type should leave only companies: %s", byType)
+	}
+
+	stock := h.get(t, "/api/holders?is_default_stock=true&limit=50").Body.String()
+	if strings.Contains(stock, "公司总部仓库") {
+		t.Errorf("neither holder is the default stock point: %s", stock)
+	}
+}
+
+// The audit log's search is over the actor and the object's id. Not the
+// object's name: the table records what changed, not what it was called.
+func TestAuditSearch(t *testing.T) {
+	h := newHarness(t)
+	rec := h.do(t, http.MethodPost, "/api/holders", `{"type":"location","name":"广州仓库"}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatal(rec.Body.String())
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+
+	byActor := h.get(t, "/api/audit?q=管理").Body.String()
+	if !strings.Contains(byActor, created.ID) {
+		t.Errorf("the log should be searchable by who made the change: %s", truncate([]byte(byActor)))
+	}
+	byTarget := h.get(t, "/api/audit?q="+created.ID).Body.String()
+	if !strings.Contains(byTarget, created.ID) {
+		t.Errorf("the log should be searchable by the object's id: %s", truncate([]byte(byTarget)))
+	}
+	miss := h.get(t, "/api/audit?q=没有这个东西").Body.String()
+	if strings.Contains(miss, created.ID) {
+		t.Errorf("a search that matches nothing should return nothing: %s", truncate([]byte(miss)))
+	}
+}
+
 func truncate(b []byte) string {
 	if len(b) > 80 {
 		return string(b[:80]) + "…"

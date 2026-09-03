@@ -8,6 +8,8 @@ import type { Category } from "@/lib/types"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
 import { StateBoundary } from "@/components/StateBoundary"
+import { ListToolbar } from "@/features/common/ListToolbar"
+import { useListQuery } from "@/features/common/useListQuery"
 import { CategoryTable } from "@/features/categories/CategoryTable"
 import { CategoryEditor } from "@/features/categories/CategoryEditor"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -35,6 +37,10 @@ import {
 
 export function Categories() {
   const queryClient = useQueryClient()
+  // No paging here: page two of a tree can begin with a child whose parent was
+  // on page one, and the indent would then be measured against nothing. See
+  // decision 91.
+  const listQuery = useListQuery()
   const { deniedReason } = usePermissions()
   const [code, setCode] = useState("")
   const [name, setName] = useState("")
@@ -149,6 +155,12 @@ export function Categories() {
 
       <p className="text-muted-foreground text-sm">{tMeta.categories.selectHint}</p>
 
+      <ListToolbar
+        q={listQuery.q}
+        onQ={listQuery.setQ}
+        searchHint={tMeta.categories.searchHint}
+      />
+
       <StateBoundary
         isLoading={categories.isLoading}
         error={categories.error as Error | null}
@@ -158,6 +170,7 @@ export function Categories() {
       >
         <CategoryTable
           categories={categories.data ?? []}
+          search={listQuery.q}
           onOpen={setEditing}
           onCreateChild={(c) => {
             setParentId(c.id)

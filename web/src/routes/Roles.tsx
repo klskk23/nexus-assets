@@ -49,10 +49,8 @@ export function Roles() {
       <CrudPage<Role>
         title={tMeta.roles.title}
         queryKey="roles"
-        list={async () => {
-          const res = await api.get<ListPage<Role>>("/roles")
-          return res
-        }}
+        searchHint={tMeta.roles.searchHint}
+        list={(params) => api.get<ListPage<Role>>(`/roles?${params}`)}
         createLabel={tMeta.roles.create}
         createDeniedReason={deniedReason("role.manage")}
         createDisabled={name === ""}
