@@ -182,7 +182,9 @@ export function AssetDetail() {
           {asset && (
             <div className="grid gap-6">
               <DialogHeader>
-                <DialogTitle className="flex flex-wrap items-center gap-3">
+                {/* pe-8 leaves room for the close button, which sits in the same
+                corner the transfer action wants. */}
+            <DialogTitle className="flex flex-wrap items-center gap-3 pe-8">
                   <span className="font-mono">{asset.display_name}</span>
                   <StatusBadge status={asset.status} />
                   <Button size="sm" className="ml-auto" onClick={() => setTransferOpen(true)}>

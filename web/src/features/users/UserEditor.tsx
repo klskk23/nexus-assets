@@ -114,7 +114,9 @@ export function UserEditor({ user, roles, onClose }: Props) {
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      {/* Taller than a short screen once the two action sections are on it,
+          so it scrolls inside itself rather than off the top of the window. */}
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{tMeta.users.editTitle(user.name)}</DialogTitle>
         </DialogHeader>
