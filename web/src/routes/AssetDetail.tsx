@@ -216,16 +216,24 @@ export function AssetDetail() {
                   <CardTitle>{t.assets.title}</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6">
-                  <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                    <div>
-                      <dt className="text-muted-foreground">{t.assets.holder}</dt>
-                      <dd>{asset.holder.name ?? asset.holder.id}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">{t.assets.owner}</dt>
-                      <dd>{asset.owner?.name ?? t.common.none}</dd>
-                    </div>
-                  </dl>
+                  {/* Where the device is now, and who answers for it. Read
+                      only, and said so: these two move through a transfer, and
+                      the form below has a pair of controls with almost the
+                      same names on it -- somebody who reads one for the other
+                      thinks Save reassigns a colleague. */}
+                  <div className="rounded-md border p-4">
+                    <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                      <div>
+                        <dt className="text-muted-foreground">{t.assets.currentHolder}</dt>
+                        <dd>{asset.holder.name ?? asset.holder.id}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">{t.assets.currentOwner}</dt>
+                        <dd>{asset.owner?.name ?? t.common.none}</dd>
+                      </div>
+                    </dl>
+                    <p className="text-muted-foreground mt-3 text-sm">{t.assets.currentHint}</p>
+                  </div>
 
                   {/* A sentence that belongs to the device and to no category's
                   schema: the scratch on the lid, the trial it is out on. It
@@ -247,9 +255,12 @@ export function AssetDetail() {
                   <FieldSet>
                     <FieldLegend variant="label">{t.assets.home}</FieldLegend>
                     <FieldDescription>{t.assets.homeHint}</FieldDescription>
-                    <FieldGroup className="grid gap-4 sm:grid-cols-2">
+                    {/* Boxed, because the fields underneath it are not part
+                        of it: with everything at one indent the model and the
+                        category's own fields read as more of the home. */}
+                    <FieldGroup className="grid gap-4 rounded-md border p-4 sm:grid-cols-2">
                       <Field>
-                        <FieldLabel htmlFor="home-holder">{t.assets.holder}</FieldLabel>
+                        <FieldLabel htmlFor="home-holder">{t.assets.homeHolder}</FieldLabel>
                         <Select value={homeID} onValueChange={setHomeID}>
                           <SelectTrigger id="home-holder">
                             <SelectValue />
@@ -267,7 +278,7 @@ export function AssetDetail() {
                         </Select>
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor="home-owner">{t.assets.owner}</FieldLabel>
+                        <FieldLabel htmlFor="home-owner">{t.assets.homeOwner}</FieldLabel>
                         <Select value={homeOwnerID} onValueChange={setHomeOwnerID}>
                           <SelectTrigger id="home-owner">
                             <SelectValue />
@@ -289,25 +300,32 @@ export function AssetDetail() {
                     </FieldGroup>
                   </FieldSet>
 
-                  <ModelPicker
-                    categoryID={asset.category_id}
-                    value={modelId}
-                    values={values}
-                    confirmOverwrite
-                    onChange={(mid, patch) => {
-                      setModelId(mid)
-                      setValues((cur) => ({ ...cur, ...patch }))
-                    }}
-                  />
+                  {/* The model and the category's own fields, under a legend
+                      of their own so the group above them ends somewhere. */}
+                  <FieldSet>
+                    <FieldLegend variant="label">{t.assets.attrs}</FieldLegend>
+                    <FieldGroup className="grid gap-4 rounded-md border p-4">
+                      <ModelPicker
+                        categoryID={asset.category_id}
+                        value={modelId}
+                        values={values}
+                        confirmOverwrite
+                        onChange={(mid, patch) => {
+                          setModelId(mid)
+                          setValues((cur) => ({ ...cur, ...patch }))
+                        }}
+                      />
 
-                  {schema.data && (
-                    <DynamicForm
-                      fields={schema.data.fields}
-                      values={values}
-                      errors={fieldErrors}
-                      onChange={(k, v) => setValues((cur) => ({ ...cur, [k]: v }))}
-                    />
-                  )}
+                      {schema.data && (
+                        <DynamicForm
+                          fields={schema.data.fields}
+                          values={values}
+                          errors={fieldErrors}
+                          onChange={(k, v) => setValues((cur) => ({ ...cur, [k]: v }))}
+                        />
+                      )}
+                    </FieldGroup>
+                  </FieldSet>
 
                   <div>
                     <Button onClick={() => save.mutate()} disabled={save.isPending}>

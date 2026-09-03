@@ -277,6 +277,24 @@ describe("AssetDetail", () => {
   })
 })
 
+// Two pairs of controls said "持有方" and "负责人": the state the device is in
+// now, and where it goes when it is returned. Read one for the other and Save
+// looks like it reassigns a colleague.
+it("keeps where it is now apart from where it belongs", async () => {
+  renderWithProviders(<AssetDetail />)
+  await screen.findByText("112394521950")
+
+  const dialog = screen.getByRole("dialog")
+  // The current pair is stated, not editable: it moves through a transfer.
+  expect(within(dialog).getByText("当前持有方")).toBeInTheDocument()
+  expect(within(dialog).getByText(/由流转改变/)).toBeInTheDocument()
+  expect(within(dialog).queryByLabelText("持有方")).not.toBeInTheDocument()
+
+  // The editable pair says which one it is in its own label.
+  expect(within(dialog).getByLabelText("默认持有方")).toBeInTheDocument()
+  expect(within(dialog).getByLabelText("默认负责人")).toBeInTheDocument()
+})
+
 // A device opens over the list rather than instead of it, and closing puts it
 // away without losing where the list was (decision 89).
 it("opens as a dialog over the list and closes back to it", async () => {
