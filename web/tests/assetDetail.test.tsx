@@ -378,3 +378,58 @@ it("keeps delete beside save rather than in a section of its own", async () => {
   const details = within(dialog).getByText("资产")
   expect(recent.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
+
+// A label for the one device on screen used to be two clicks and a page away
+// -- close this dialog, tick the row, open the list's own print dialog. The
+// header carries the same button the list page does.
+// This test and the one after it sit outside describe("AssetDetail")'s own
+// beforeEach, so each has to put the mocks back itself rather than lean on
+// whatever the previous test in the file left behind.
+it("prints this device from the header", async () => {
+  get.mockReset().mockImplementation((p: string) =>
+    p === "/capabilities"
+      ? Promise.resolve({ printing: true, printing_url: "http://printer:3000" })
+      : route(p),
+  )
+  post.mockReset().mockImplementation((p: string, body: { dry_run?: boolean }) =>
+    p === "/print" && body?.dry_run
+      ? Promise.resolve({
+          batches: [
+            {
+              category_id: "net",
+              category_name: "网络设备",
+              count: 1,
+              numbers: ["112394521950"],
+            },
+          ],
+        })
+      : Promise.resolve({ batch_id: null, transfers: [{ id: "t1" }] }),
+  )
+
+  const user = userEvent.setup()
+  renderWithProviders(<AssetDetail />)
+  await screen.findByText("112394521950")
+
+  const dialog = screen.getByRole("dialog")
+  await user.click(within(dialog).getByRole("button", { name: "打印标签" }))
+
+  // Its own overlay -- a dry run for just this one asset, not the whole list.
+  await screen.findByText("1 台设备，1 个类别，将产生 1 个打印作业。")
+  await waitFor(() =>
+    expect(post).toHaveBeenCalledWith("/print", { ids: ["a1"], dry_run: true }),
+  )
+})
+
+// Printing is a property of the installation: with no print service
+// configured there is no button, not one that would answer "not configured".
+it("has no print button without a print service configured", async () => {
+  get.mockReset().mockImplementation(route)
+  post.mockReset().mockResolvedValue({ batch_id: null, transfers: [{ id: "t1" }] })
+
+  renderWithProviders(<AssetDetail />)
+  await screen.findByText("112394521950")
+
+  expect(
+    within(screen.getByRole("dialog")).queryByRole("button", { name: "打印标签" }),
+  ).not.toBeInTheDocument()
+})

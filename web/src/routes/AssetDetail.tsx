@@ -1,4 +1,4 @@
-import { InfoIcon } from "lucide-react"
+import { InfoIcon, PrinterIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -8,6 +8,7 @@ import type { Asset, CategorySchema, HolderEntity, User } from "@/lib/types"
 import { NONE } from "@/lib/select"
 import type { Transfer } from "@/lib/transferTypes"
 import { t, tTransfer } from "@/i18n"
+import { usePermissions } from "@/features/auth/usePermissions"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { StateBoundary } from "@/components/StateBoundary"
 import { DynamicForm } from "@/features/assets/DynamicForm"
@@ -16,6 +17,8 @@ import { EditEvent } from "@/features/transfers/EditEvent"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { ModelPicker } from "@/features/assets/ModelPicker"
 import { TransferForm } from "@/features/transfers/TransferForm"
+import { PrintDialog } from "@/features/print/PrintDialog"
+import { usePrinting } from "@/features/print/usePrinting"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -77,6 +80,9 @@ export function AssetDetail() {
   const [modelId, setModelId] = useState<string | null>(null)
   const [homeID, setHomeID] = useState(NONE)
   const [homeOwnerID, setHomeOwnerID] = useState(NONE)
+  const [printing, setPrinting] = useState(false)
+  const { enabled: canPrint } = usePrinting()
+  const { deniedReason } = usePermissions()
 
   const detail = useQuery({
     queryKey: ["asset", id],
@@ -181,12 +187,31 @@ export function AssetDetail() {
           {asset && (
             <div className="grid gap-6">
               <DialogHeader>
-                {/* pe-8 leaves room for the close button. */}
-                <DialogTitle className="flex flex-wrap items-center gap-3 pe-8">
+                {/* pe-10 leaves room for the print button and, past it, the
+                    dialog's own close button. */}
+                <DialogTitle className="flex flex-wrap items-center gap-3 pe-10">
                   <span className="font-mono">{asset.display_name}</span>
                   <StatusBadge status={asset.status} />
+                  {/* Printing is a property of the installation: with no
+                      print service configured there is no button, the same
+                      rule the list page's own print entries follow. */}
+                  {canPrint && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="ml-auto"
+                      disabled={deniedReason("print") !== undefined}
+                      title={deniedReason("print") ?? t.print.action}
+                      onClick={() => setPrinting(true)}
+                    >
+                      <PrinterIcon data-icon="inline-start" />
+                      {t.print.action}
+                    </Button>
+                  )}
                 </DialogTitle>
               </DialogHeader>
+
+              {printing && <PrintDialog ids={[id]} onClose={() => setPrinting(false)} />}
 
               {banner && (
                 <Alert role="status">
