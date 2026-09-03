@@ -12,6 +12,7 @@ import (
 	"github.com/klskk23/nexus-assets/internal/asset"
 	"github.com/klskk23/nexus-assets/internal/audit"
 	"github.com/klskk23/nexus-assets/internal/auth"
+	"github.com/klskk23/nexus-assets/internal/authz"
 	"github.com/klskk23/nexus-assets/internal/config"
 	"github.com/klskk23/nexus-assets/internal/holder"
 	"github.com/klskk23/nexus-assets/internal/httpapi"
@@ -148,9 +149,10 @@ func (a *app) serve() error {
 
 	sessions := auth.NewSessions(a.db, a.cfg.RefreshTTL)
 	keys := auth.NewKeys(a.db)
+	roles := authz.NewRoles(a.db)
 
 	srv := httpapi.NewServer(a.cfg, a.db, issuer, a.users, a.schema, a.holders, a.assets,
-		a.transfers, a.importer, a.audit, oidcFlow, sessions, keys, webFS)
+		a.transfers, a.importer, a.audit, oidcFlow, sessions, keys, roles, webFS)
 
 	log.Printf("nexus %s listening on %s (database %s)", version, a.cfg.Addr, a.cfg.DBPath)
 	return srv.Router().Run(a.cfg.Addr)

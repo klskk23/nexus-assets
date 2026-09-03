@@ -160,8 +160,15 @@ type User struct {
 	PasswordHash string     `json:"-"`
 	OIDCSubject  string     `json:"-"`
 	Status       UserStatus `json:"status"`
-	Role         string     `json:"-"`
-	TokenVersion int        `json:"-"`
+	// Role is the column 001 reserved and never enforced. Left alone: nothing
+	// reads it, and deleting a column nobody reads is its own change.
+	Role string `json:"-"`
+	// RoleID is what this account may do, by way of a row in `roles`. Empty
+	// means nothing is allowed -- a state the migration and every create path
+	// avoid, because "unset means everything" turns one missed assignment into
+	// an open door.
+	RoleID       string `json:"role_id"`
+	TokenVersion int    `json:"-"`
 	// Lang and Theme are what this person chose for the interface; empty means
 	// follow the system. They live on the account rather than in one browser,
 	// because they are a property of the person and not of the machine.

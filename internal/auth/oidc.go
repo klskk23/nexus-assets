@@ -10,6 +10,7 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 
+	"github.com/klskk23/nexus-assets/internal/authz"
 	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 )
@@ -103,6 +104,12 @@ func (o *OIDC) Exchange(ctx context.Context, code string) (IDTokenClaims, error)
 
 // UpsertUser finds the account for a verified identity, creating it on first
 // sign-in. Automatic creation is safe precisely because Admit already ran.
+//
+// The role it lands on: **the first person ever to sign in through OIDC is an
+// administrator**, everyone after that is an ordinary user. That first person
+// is whoever set the deployment up and came to configure it -- and the
+// promotion is written to the audit log, so if it turns out to be somebody
+// else, the account from the configuration file can put it right.
 func UpsertUser(ctx context.Context, users *Store, claims IDTokenClaims) (model.User, error) {
 	u, err := users.ByEmail(ctx, claims.Email)
 	if err == nil {
@@ -112,7 +119,17 @@ func UpsertUser(ctx context.Context, users *Store, claims IDTokenClaims) (model.
 	if name == "" {
 		name = claims.Email
 	}
+
+	first, err := users.CountOIDC(ctx)
+	if err != nil {
+		return model.User{}, err
+	}
+	role := authz.UserRoleID
+	if first == 0 {
+		role = authz.AdminRoleID
+	}
 	return users.Create(ctx, CreateInput{
-		Email: claims.Email, Name: name, AuthType: model.AuthOIDC, OIDCSubject: claims.Subject,
+		Email: claims.Email, Name: name, AuthType: model.AuthOIDC,
+		OIDCSubject: claims.Subject, RoleID: role,
 	})
 }

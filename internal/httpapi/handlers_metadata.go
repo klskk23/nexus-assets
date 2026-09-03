@@ -10,6 +10,8 @@ import (
 	"github.com/klskk23/nexus-assets/internal/i18n"
 
 	"github.com/klskk23/nexus-assets/internal/audit"
+	"github.com/klskk23/nexus-assets/internal/auth"
+	"github.com/klskk23/nexus-assets/internal/authz"
 	"github.com/klskk23/nexus-assets/internal/holder"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
@@ -416,7 +418,14 @@ func (s *Server) patchHolder(c *gin.Context) {
 	ctx := c.Request.Context()
 	before, _ := s.holders.Get(ctx, c.Param("id"))
 
+	// One endpoint, two permissions. Renaming a warehouse and deciding where
+	// every unspecified check-in returns to are different acts, and the second
+	// one is felt for months by people who never touched it.
 	if req.Name != nil || req.Note != nil || len(req.ParentID) > 0 {
+		if !auth.Permissions(c).Can(authz.HolderUpdate) {
+			forbid(c, authz.HolderUpdate)
+			return
+		}
 		in := holder.UpdateInput{Name: req.Name, Note: req.Note}
 		if len(req.ParentID) > 0 {
 			var parent *string
@@ -433,6 +442,10 @@ func (s *Server) patchHolder(c *gin.Context) {
 	}
 
 	if req.DefaultStock != nil {
+		if !auth.Permissions(c).Can(authz.HolderDefaultStock) {
+			forbid(c, authz.HolderDefaultStock)
+			return
+		}
 		// Saying false used to be accepted and then quietly ignored, so a
 		// request that did nothing came back 200. The marker moves; it does not
 		// switch off.

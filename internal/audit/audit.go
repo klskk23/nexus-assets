@@ -39,6 +39,7 @@ const (
 	TargetModel    TargetType = "model"
 	TargetHolder   TargetType = "holder"
 	TargetUser     TargetType = "user"
+	TargetRole     TargetType = "role"
 	TargetStatus   TargetType = "status"
 )
 

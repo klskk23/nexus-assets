@@ -15,6 +15,7 @@ import (
 	"github.com/klskk23/nexus-assets/internal/asset"
 	"github.com/klskk23/nexus-assets/internal/audit"
 	"github.com/klskk23/nexus-assets/internal/auth"
+	"github.com/klskk23/nexus-assets/internal/authz"
 	"github.com/klskk23/nexus-assets/internal/config"
 	"github.com/klskk23/nexus-assets/internal/holder"
 	"github.com/klskk23/nexus-assets/internal/i18n"
@@ -29,6 +30,9 @@ type harness struct {
 	router    *gin.Engine
 	db        *store.Store
 	schema    *schema.Store
+	users     *auth.Store
+	roles     *authz.Roles
+	holders   *holder.Store
 	token     string
 	assets    *asset.Service
 	catID     string
@@ -76,6 +80,7 @@ func newHarnessWith(t *testing.T, over config.Config) *harness {
 	u, err := us.Create(ctx, auth.CreateInput{
 		Email: "admin@example.com", Name: "管理员",
 		AuthType: model.AuthLocal, Password: "correct-horse",
+		RoleID: authz.AdminRoleID,
 	})
 	if err != nil {
 		t.Fatalf("create user: %v", err)
@@ -128,9 +133,10 @@ func newHarnessWith(t *testing.T, over config.Config) *harness {
 
 	srv := NewServer(cfg, db, issuer, us, sch, hs, svc, transfer.New(db, hs),
 		importer.New(db, sch, hs, us, svc), audit.New(db), nil,
-		auth.NewSessions(db, 720*time.Hour), auth.NewKeys(db), nil)
+		auth.NewSessions(db, 720*time.Hour), auth.NewKeys(db), authz.NewRoles(db), nil)
 	return &harness{
 		router: srv.Router(), db: db, schema: sch, token: tok, assets: svc,
+		users: us, roles: authz.NewRoles(db), holders: hs,
 		catID: root.ID, locID: loc.ID, userID: u.ID, snFieldID: sn.ID, ctx: ctx,
 	}
 }
@@ -293,4 +299,46 @@ func (h *harness) assetIDs(t *testing.T) []string {
 		out = append(out, a.ID)
 	}
 	return out
+}
+
+// asRole re-issues the harness's token for an account bound to the given role,
+// so a test can ask "what can somebody on this role actually do".
+//
+// A second account rather than moving the existing one: the guards refuse to
+// demote the last administrator, which is exactly the behaviour under test
+// elsewhere.
+func (h *harness) asRole(t *testing.T, roleID string) string {
+	t.Helper()
+	u, err := h.users.Create(h.ctx, auth.CreateInput{
+		Email:    "user-" + roleID + "@example.com",
+		Name:     "同事",
+		AuthType: model.AuthLocal,
+		Password: "correct-horse",
+		RoleID:   roleID,
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	issuer := auth.NewIssuer([]byte("test"), time.Hour)
+	tok, err := issuer.Issue(u.ID, u.Email, u.Name, 0)
+	if err != nil {
+		t.Fatalf("issue token: %v", err)
+	}
+	return tok
+}
+
+// doAs is `do` with somebody else's token.
+func (h *harness) doAs(t *testing.T, token, method, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	var req *http.Request
+	if body == "" {
+		req = httptest.NewRequest(method, path, nil)
+	} else {
+		req = httptest.NewRequest(method, path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	h.router.ServeHTTP(rec, req)
+	return rec
 }

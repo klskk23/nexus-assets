@@ -102,5 +102,15 @@ func (s *Server) me(c *gin.Context) {
 		FailMsg(c, http.StatusUnauthorized, CodeUnauthenticated, i18n.KeyUnauthenticated)
 		return
 	}
-	c.JSON(http.StatusOK, u)
+	// The permissions travel with the account so the interface can disable what
+	// it must. It is a convenience, not a boundary: every endpoint checks for
+	// itself, the same way the holder tree's rules exist on both sides but only
+	// the server's copy decides.
+	set := auth.Permissions(c)
+	c.JSON(http.StatusOK, gin.H{
+		"id": u.ID, "email": u.Email, "name": u.Name, "auth_type": u.AuthType,
+		"status": u.Status, "lang": u.Lang, "theme": u.Theme, "role_id": u.RoleID,
+		"created_at": u.CreatedAt, "updated_at": u.UpdatedAt,
+		"permissions": set.List(), "is_admin": set.Admin(),
+	})
 }

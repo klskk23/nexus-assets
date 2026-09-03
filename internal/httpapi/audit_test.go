@@ -46,7 +46,8 @@ func TestEveryMetadataMutationIsAudited(t *testing.T) {
 		{
 			name: "create a user",
 			do: func() *httptest.ResponseRecorder {
-				return h.post(t, "/api/users", `{"email":"zhang@example.com","name":"张三","password":"correct-horse"}`)
+				return h.post(t, "/api/users",
+					`{"email":"zhang@example.com","name":"张三","password":"correct-horse","role_id":"role-user"}`)
 			},
 			target: audit.TargetUser, action: audit.ActionCreate,
 		},

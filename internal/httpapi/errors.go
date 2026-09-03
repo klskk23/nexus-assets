@@ -10,6 +10,7 @@ import (
 
 	"github.com/klskk23/nexus-assets/internal/asset"
 	"github.com/klskk23/nexus-assets/internal/auth"
+	"github.com/klskk23/nexus-assets/internal/authz"
 	"github.com/klskk23/nexus-assets/internal/holder"
 	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/schema"
@@ -31,7 +32,10 @@ type ErrorBody struct {
 
 // Error codes. Machine-readable, English, snake_case.
 const (
-	CodeUnauthenticated   = "unauthenticated"
+	CodeUnauthenticated = "unauthenticated"
+	// CodeForbidden is authenticated but not allowed -- a permission the
+	// account's role does not carry.
+	CodeForbidden         = "forbidden"
 	CodeDomainNotAllowed  = "domain_not_allowed"
 	CodeNotFound          = "not_found"
 	CodeValidationFailed  = "validation_failed"
@@ -135,6 +139,15 @@ var refusals = []struct {
 	{holder.ErrHasChildren, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
 
 	{auth.ErrStillOwnsAssets, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
+
+	{authz.ErrNotFound, refusal{http.StatusNotFound, CodeNotFound, i18n.KeyNotFound, ""}},
+	{authz.ErrInvalid, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", ""}},
+	{authz.ErrInUse, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
+	// The two that keep somebody in charge. A conflict rather than a
+	// validation failure: nothing about the request is malformed, the system
+	// is refusing to end up in that state.
+	{authz.ErrLastAdmin, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
+	{authz.ErrSelfDemote, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
 }
 
 // FailErr maps a domain error onto the right status and code.

@@ -29,13 +29,22 @@ func (s *Server) createUser(c *gin.Context) {
 		Email    string `json:"email" binding:"required"`
 		Name     string `json:"name"`
 		Password string `json:"password" binding:"required"`
+		// Chosen when the account is made. No default: an account whose
+		// permissions nobody decided is the kind of thing that turns out to
+		// have been an administrator.
+		RoleID string `json:"role_id" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
+	if _, err := s.roles.Get(c.Request.Context(), req.RoleID); err != nil {
+		FailErr(c, err)
+		return
+	}
 	out, err := s.users.Create(c.Request.Context(), auth.CreateInput{
-		Email: req.Email, Name: req.Name, AuthType: model.AuthLocal, Password: req.Password,
+		Email: req.Email, Name: req.Name, AuthType: model.AuthLocal,
+		Password: req.Password, RoleID: req.RoleID,
 	})
 	if err != nil {
 		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, userText(c, err), nil)

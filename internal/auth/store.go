@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klskk23/nexus-assets/internal/authz"
 	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/store"
@@ -27,14 +28,15 @@ type Store struct{ db *store.Store }
 // NewStore builds a user store.
 func NewStore(db *store.Store) *Store { return &Store{db: db} }
 
-const userCols = `id, email, name, auth_type, password_hash, oidc_subject, status, role, token_version, lang, theme, created_at, updated_at`
+const userCols = `id, email, name, auth_type, password_hash, oidc_subject, status, role, coalesce(role_id, ''), token_version, lang, theme, created_at, updated_at`
 
 func scanUser(row interface{ Scan(...any) error }) (model.User, error) {
 	var u model.User
 	var pw, sub sql.NullString
 	var created, updated string
 	if err := row.Scan(&u.ID, &u.Email, &u.Name, &u.AuthType, &pw, &sub,
-		&u.Status, &u.Role, &u.TokenVersion, &u.Lang, &u.Theme, &created, &updated); err != nil {
+		&u.Status, &u.Role, &u.RoleID, &u.TokenVersion, &u.Lang, &u.Theme,
+		&created, &updated); err != nil {
 		return u, err
 	}
 	u.PasswordHash = pw.String
@@ -93,6 +95,15 @@ func (s *Store) Count(ctx context.Context) (int, error) {
 	return n, err
 }
 
+// CountOIDC is how many accounts arrived through Google, which is what
+// decides whether the person signing in right now is the first one.
+func (s *Store) CountOIDC(ctx context.Context) (int, error) {
+	var n int
+	err := s.db.ReadDB().QueryRowContext(ctx,
+		`SELECT count(*) FROM users WHERE auth_type = ?`, string(model.AuthOIDC)).Scan(&n)
+	return n, err
+}
+
 // CreateInput describes a new account.
 type CreateInput struct {
 	Email       string
@@ -100,6 +111,9 @@ type CreateInput struct {
 	AuthType    model.AuthType
 	Password    string // local accounts only
 	OIDCSubject string // oidc accounts only
+	// RoleID is what this account may do. Every caller supplies one; empty
+	// means no permissions at all, which is the safe end of that mistake.
+	RoleID string
 }
 
 // Create inserts an account.
@@ -110,7 +124,8 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (model.User, error) 
 		Name:     in.Name,
 		AuthType: in.AuthType,
 		Status:   model.UserActive,
-		Role:     "admin", // reserved; no checks are performed on it yet
+		Role:     "admin", // reserved by 001; nothing reads it
+		RoleID:   in.RoleID,
 	}
 	if u.Name == "" {
 		u.Name = u.Email
@@ -128,11 +143,13 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (model.User, error) 
 	u.CreatedAt, u.UpdatedAt = now, now
 	err := s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
-			`INSERT INTO users (id, email, name, auth_type, password_hash, oidc_subject, status, role, token_version, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+			`INSERT INTO users (id, email, name, auth_type, password_hash, oidc_subject,
+			                    status, role, role_id, token_version, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
 			u.ID, u.Email, u.Name, string(u.AuthType),
 			nullIfEmpty(u.PasswordHash), nullIfEmpty(u.OIDCSubject),
-			string(u.Status), u.Role, store.FormatTime(now), store.FormatTime(now))
+			string(u.Status), u.Role, nullIfEmpty(u.RoleID),
+			store.FormatTime(now), store.FormatTime(now))
 		return err
 	})
 	if err != nil {
@@ -152,6 +169,11 @@ func (s *Store) Disable(ctx context.Context, id string) error {
 		}
 		if owned > 0 {
 			return i18n.Wrap(ErrStillOwnsAssets, i18n.KeyUserStillOwns, owned)
+		}
+		// Disabling the last administrator loses the same thing demoting them
+		// would, so it meets the same guard.
+		if err := guardLastAdmin(ctx, tx, id, ""); err != nil {
+			return err
 		}
 		now := time.Now().UTC()
 		res, err := tx.ExecContext(ctx,
@@ -205,4 +227,75 @@ func (s *Store) UpdatePreferences(ctx context.Context, id string, lang, theme *s
 		return nil
 	})
 	return out, err
+}
+
+// SetRole binds an account to a role.
+//
+// Two guards, and they are the reason this is not just an UPDATE:
+//
+//   - the system must keep at least one enabled administrator, so the last one
+//     cannot be demoted;
+//   - nobody changes their own role, because one wrong click would otherwise
+//     lock a person out of the page that could undo it.
+//
+// The same "at least one" guard lives on disabling an account, because
+// disabling the last administrator is the same loss by another route.
+func (s *Store) SetRole(ctx context.Context, id, roleID, actorID string) (model.User, error) {
+	var out model.User
+	if id == actorID {
+		return out, i18n.Wrap(authz.ErrSelfDemote, i18n.KeyRoleSelfDemote)
+	}
+	err := s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		if err := guardLastAdmin(ctx, tx, id, roleID); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx,
+			`UPDATE users SET role_id = ?, updated_at = ? WHERE id = ?`,
+			nullIfEmpty(roleID), store.FormatTime(time.Now().UTC()), id)
+		return err
+	})
+	if err != nil {
+		return out, err
+	}
+	return s.Get(ctx, id)
+}
+
+// guardLastAdmin refuses a change that would leave nobody in charge.
+//
+// nextRole is the role the account is moving to, or "" when it is being
+// disabled. Counted inside the write transaction: two administrators demoting
+// each other at the same moment would otherwise both see one left.
+func guardLastAdmin(ctx context.Context, tx *sql.Tx, userID, nextRole string) error {
+	var isAdminNow int
+	err := tx.QueryRowContext(ctx,
+		`SELECT count(*) FROM users u JOIN roles r ON r.id = u.role_id
+		 WHERE u.id = ? AND r.is_admin = 1 AND u.status = 'active'`, userID).Scan(&isAdminNow)
+	if err != nil {
+		return err
+	}
+	if isAdminNow == 0 {
+		return nil // not an administrator, or not enabled: nothing to protect
+	}
+
+	if nextRole != "" {
+		var stillAdmin int
+		if err := tx.QueryRowContext(ctx,
+			`SELECT count(*) FROM roles WHERE id = ? AND is_admin = 1`, nextRole).Scan(&stillAdmin); err != nil {
+			return err
+		}
+		if stillAdmin == 1 {
+			return nil // moving from one admin role to another
+		}
+	}
+
+	var others int
+	if err := tx.QueryRowContext(ctx,
+		`SELECT count(*) FROM users u JOIN roles r ON r.id = u.role_id
+		 WHERE r.is_admin = 1 AND u.status = 'active' AND u.id != ?`, userID).Scan(&others); err != nil {
+		return err
+	}
+	if others == 0 {
+		return i18n.Wrap(authz.ErrLastAdmin, i18n.KeyRoleLastAdmin)
+	}
+	return nil
 }
