@@ -233,6 +233,33 @@ export function AssetDetail() {
 
               <Card>
                 <CardHeader>
+                  <CardTitle>{t.assets.recentTransfers}</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4">
+                  {editing && (
+                    <EditEvent event={editing} assetID={id} onClose={() => setEditing(null)} />
+                  )}
+                  {/* The last few answer nearly every question anybody opens this
+                  for. Forty events in a dialog is a page inside a box, with
+                  one scrollbar inside another. */}
+                  <Timeline
+                    events={recent}
+                    isLoading={timeline.isLoading}
+                    error={timeline.error as Error | null}
+                    editableId={tailID}
+                    onEdit={setEditing}
+                  />
+                  {/* Offered whatever the length: somebody who came to read
+                      the history should not have to notice that this card is
+                      the short version of it. */}
+                  <Button variant="outline" className="w-fit" asChild>
+                    <Link to={`/assets/${id}/history`}>{t.assets.fullHistory}</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
                   <CardTitle>{t.assets.title}</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6">
@@ -341,38 +368,31 @@ export function AssetDetail() {
                     </CollapsibleContent>
                   </Collapsible>
 
-                  <div>
+                  <div className="flex items-center gap-2">
                     <Button onClick={() => save.mutate()} disabled={save.isPending}>
                       {save.isPending && <Spinner data-icon="inline-start" aria-hidden />}
                       {save.isPending ? t.assets.saving : t.assets.save}
                     </Button>
+                    {/* At the far end, and it still asks for the number to be
+                        typed out: near enough to find, far enough not to be
+                        hit on the way to Save. */}
+                    <ConfirmDialog
+                      trigger={
+                        <Button
+                          variant="destructive"
+                          className="ml-auto"
+                          disabled={remove.isPending}
+                        >
+                          {t.assets.delete}
+                        </Button>
+                      }
+                      title={t.assets.deleteTitle}
+                      description={t.assets.deleteHint(asset.display_name)}
+                      confirmLabel={t.assets.delete}
+                      requirePhrase={asset.display_name}
+                      onConfirm={() => remove.mutate()}
+                    />
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t.assets.recentTransfers}</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                  {editing && (
-                    <EditEvent event={editing} assetID={id} onClose={() => setEditing(null)} />
-                  )}
-                  {/* The last few answer nearly every question anybody opens this
-                  for. Forty events in a dialog is a page inside a box, with
-                  one scrollbar inside another. */}
-                  <Timeline
-                    events={recent}
-                    isLoading={timeline.isLoading}
-                    error={timeline.error as Error | null}
-                    editableId={tailID}
-                    onEdit={setEditing}
-                  />
-                  {(timeline.data ?? []).length > recent.length && (
-                    <Button variant="outline" className="w-fit" asChild>
-                      <Link to={`/assets/${id}/history`}>{t.assets.fullHistory}</Link>
-                    </Button>
-                  )}
                 </CardContent>
               </Card>
 
@@ -416,26 +436,6 @@ export function AssetDetail() {
                   </CollapsibleContent>
                 </Collapsible>
               )}
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t.assets.deleteTitle}</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-3">
-                  <ConfirmDialog
-                    trigger={
-                      <Button variant="destructive" className="w-fit" disabled={remove.isPending}>
-                        {t.assets.delete}
-                      </Button>
-                    }
-                    title={t.assets.deleteTitle}
-                    description={t.assets.deleteHint(asset.display_name)}
-                    confirmLabel={t.assets.delete}
-                    requirePhrase={asset.display_name}
-                    onConfirm={() => remove.mutate()}
-                  />
-                </CardContent>
-              </Card>
             </div>
           )}
         </StateBoundary>

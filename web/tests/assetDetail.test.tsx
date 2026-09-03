@@ -334,7 +334,7 @@ it("opens as a dialog over the list and closes back to it", async () => {
 
 // The dialog shows the last few movements; the rest is a page, because forty
 // events in a box is a page inside a box.
-it("links to the full history when there is more than it shows", async () => {
+it("links to the full history whatever the length of it", async () => {
   const events = Array.from({ length: 6 }, (_, i) => ({
     id: `t${i}`,
     asset_id: "a1",
@@ -359,4 +359,22 @@ it("links to the full history when there is more than it shows", async () => {
 
   const link = await screen.findByRole("link", { name: /查看全部流转/ })
   expect(link).toHaveAttribute("href", "/assets/a1/history")
+})
+
+// Deleting used to be a section of its own at the bottom of the dialog, which
+// gave the rarest thing on the screen a heading of its own.
+it("keeps delete beside save rather than in a section of its own", async () => {
+  renderWithProviders(<AssetDetail />)
+  await screen.findByText("112394521950")
+
+  const dialog = screen.getByRole("dialog")
+  expect(within(dialog).getByRole("button", { name: "删除" })).toBeInTheDocument()
+  // The card the two of them share is the device's own, not a delete card.
+  expect(within(dialog).queryByText("删除资产")).not.toBeInTheDocument()
+
+  // And the timeline sits above the details, since it is read far more often
+  // than the details are edited.
+  const recent = within(dialog).getByText("最近流转")
+  const details = within(dialog).getByText("资产")
+  expect(recent.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
