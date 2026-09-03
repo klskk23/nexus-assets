@@ -113,6 +113,21 @@ func (o *OIDC) Exchange(ctx context.Context, code string) (IDTokenClaims, error)
 func UpsertUser(ctx context.Context, users *Store, claims IDTokenClaims) (model.User, error) {
 	u, err := users.ByEmail(ctx, claims.Email)
 	if err == nil {
+		// An account with this address already exists -- typically the local
+		// one the deployment was bootstrapped with, now being used by its
+		// owner through Google. It is adopted rather than duplicated: one
+		// person is one account, and email is unique anyway.
+		//
+		// What it keeps: its role (signing in with Google does not promote
+		// anybody), its name, and its password. What it gains is the subject,
+		// so the account is tied to the Google identity rather than to a
+		// string that a Workspace can reassign to somebody else.
+		if u.OIDCSubject == "" {
+			if err := users.LinkOIDC(ctx, u.ID, claims.Subject); err != nil {
+				return u, err
+			}
+			return users.Get(ctx, u.ID)
+		}
 		return u, nil
 	}
 	name := claims.Name

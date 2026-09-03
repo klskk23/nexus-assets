@@ -49,9 +49,19 @@ func (c *Config) OIDCEnabled() bool {
 }
 
 // AllowsDomain reports whether the given domain is on the admission whitelist.
+//
+// Wildcards match as they do in auth.DomainChecker: `*.example.com` admits any
+// subdomain and not example.com itself.
 func (c *Config) AllowsDomain(domain string) bool {
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	for _, d := range c.AllowedDomains {
+		if suffix, ok := strings.CutPrefix(d, "*."); ok {
+			if suffix != "" && strings.HasSuffix(domain, "."+suffix) &&
+				len(domain) > len(suffix)+1 {
+				return true
+			}
+			continue
+		}
 		if d == domain {
 			return true
 		}

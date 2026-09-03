@@ -97,3 +97,66 @@ func TestEveryRefusalCarriesAMessage(t *testing.T) {
 		})
 	}
 }
+
+// TestWildcardDomains pins the one wildcard form and, just as importantly, the
+// shapes that must not match: an allow list where people guess wrong about
+// what they granted is a security setting doing the opposite of its job.
+func TestWildcardDomains(t *testing.T) {
+	d := DomainChecker{Allowed: []string{"*.mixlake.com", "partner.cn"}}
+
+	cases := []struct {
+		email string
+		ok    bool
+		why   string
+	}{
+		{"a@it.mixlake.com", true, "a subdomain is what the wildcard is for"},
+		{"b@a.b.mixlake.com", true, "and so is a deeper one"},
+		{"c@IT.MIXLAKE.COM", true, "case is not part of a domain"},
+		{"d@mixlake.com", false, "*.example.com does not include example.com -- write both to get both"},
+		{"e@evil-mixlake.com", false, "a suffix match would have let this through"},
+		{"f@mixlake.com.evil.net", false, "and so would a substring match"},
+		{"g@partner.cn", true, "plain entries still work beside a wildcard"},
+		{"h@sub.partner.cn", false, "a plain entry is not a wildcard"},
+	}
+	for _, c := range cases {
+		err := d.Admit(IDTokenClaims{Email: c.email, EmailVerified: true})
+		if (err == nil) != c.ok {
+			t.Errorf("%s: allowed=%v, want %v -- %s", c.email, err == nil, c.ok, c.why)
+		}
+	}
+
+	// Both forms together, which is how a company admits itself and its
+	// subsidiaries' subdomains.
+	both := DomainChecker{Allowed: []string{"mixlake.com", "*.mixlake.com"}}
+	for _, e := range []string{"a@mixlake.com", "b@it.mixlake.com"} {
+		if err := both.Admit(IDTokenClaims{Email: e, EmailVerified: true}); err != nil {
+			t.Errorf("%s should be admitted: %v", e, err)
+		}
+	}
+
+	// A star anywhere else is an ordinary character, so a typo narrows rather
+	// than widens: it matches nothing at all.
+	typo := DomainChecker{Allowed: []string{"mix*.com", "*"}}
+	for _, e := range []string{"a@mixlake.com", "b@anything.com"} {
+		if err := typo.Admit(IDTokenClaims{Email: e, EmailVerified: true}); err == nil {
+			t.Errorf("%s: a malformed wildcard must not widen the list", e)
+		}
+	}
+}
+
+// The hd claim goes through the same matcher, so a Workspace whose hosted
+// domain is a subdomain is admitted by the same entry.
+func TestWildcardAppliesToTheHostedDomainToo(t *testing.T) {
+	d := DomainChecker{Allowed: []string{"*.mixlake.com"}, RequireHD: true}
+
+	if err := d.Admit(IDTokenClaims{
+		Email: "a@it.mixlake.com", EmailVerified: true, HostedDomain: "it.mixlake.com",
+	}); err != nil {
+		t.Errorf("a subdomain hd should be admitted: %v", err)
+	}
+	if err := d.Admit(IDTokenClaims{
+		Email: "b@mixlake.com", EmailVerified: true, HostedDomain: "mixlake.com",
+	}); err == nil {
+		t.Error("the parent domain is not included by *.mixlake.com")
+	}
+}

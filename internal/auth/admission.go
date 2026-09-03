@@ -62,10 +62,36 @@ func (d DomainChecker) Admit(c IDTokenClaims) error {
 	return nil
 }
 
+// allows matches a domain against the list, including one wildcard form.
+//
+// `*.mixlake.com` admits any subdomain and **not** mixlake.com itself. Writing
+// both is `mixlake.com,*.mixlake.com`. The alternative -- one entry standing
+// for a domain and everything under it -- reads the same and means something
+// else, and everywhere this notation already exists (DNS, TLS certificates) it
+// means the strict form. An allow list where people guess wrong about what
+// they just granted is a security setting doing the opposite of its job.
+//
+// Only a leading `*.` is special. A `*` anywhere else is an ordinary
+// character, so a typo cannot silently widen the list -- it matches nothing,
+// and the refusal names the domain that was turned away.
 func (d DomainChecker) allows(domain string) bool {
 	domain = strings.ToLower(strings.TrimSpace(domain))
+	if domain == "" {
+		return false
+	}
 	for _, a := range d.Allowed {
-		if strings.ToLower(a) == domain {
+		a = strings.ToLower(strings.TrimSpace(a))
+		if suffix, ok := strings.CutPrefix(a, "*."); ok {
+			// A subdomain, and a real one: ".mixlake.com" must not admit the
+			// empty label, and "evil-mixlake.com" must not pass for a
+			// subdomain of "mixlake.com".
+			if suffix != "" && strings.HasSuffix(domain, "."+suffix) &&
+				len(domain) > len(suffix)+1 {
+				return true
+			}
+			continue
+		}
+		if a == domain {
 			return true
 		}
 	}

@@ -95,13 +95,39 @@ func (s *Store) Count(ctx context.Context) (int, error) {
 	return n, err
 }
 
-// CountOIDC is how many accounts arrived through Google, which is what
-// decides whether the person signing in right now is the first one.
+// CountOIDC is how many accounts have ever signed in through Google, which is
+// what decides whether the person signing in right now is the first one.
+//
+// Counted by the recorded subject rather than by auth_type, because an account
+// can arrive at Google from the other direction: a local account whose email
+// matches is adopted on first sign-in and keeps auth_type "local". Counting
+// the type left that account uncounted, so the *next* colleague to sign in was
+// still "the first" -- and became an administrator.
 func (s *Store) CountOIDC(ctx context.Context) (int, error) {
 	var n int
 	err := s.db.ReadDB().QueryRowContext(ctx,
-		`SELECT count(*) FROM users WHERE auth_type = ?`, string(model.AuthOIDC)).Scan(&n)
+		`SELECT count(*) FROM users WHERE oidc_subject IS NOT NULL AND oidc_subject != ''`).Scan(&n)
 	return n, err
+}
+
+// LinkOIDC records which Google identity an existing account belongs to.
+//
+// The password keeps working: somebody who set the deployment up with a local
+// account and then signs in with Google has not asked to give that up, and
+// taking it away would leave them locked out the day Google is unreachable.
+// What this fixes is the link itself -- without a subject the account is tied
+// to an email string, and an address reassigned inside a Workspace would hand
+// somebody else the account.
+func (s *Store) LinkOIDC(ctx context.Context, id, subject string) error {
+	if strings.TrimSpace(subject) == "" {
+		return nil
+	}
+	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx,
+			`UPDATE users SET oidc_subject = ?, updated_at = ? WHERE id = ?`,
+			subject, store.FormatTime(time.Now().UTC()), id)
+		return err
+	})
 }
 
 // CreateInput describes a new account.

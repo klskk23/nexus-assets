@@ -283,3 +283,56 @@ func TestConfigKeyIsAlwaysAnAdministrator(t *testing.T) {
 		t.Errorf("the demoted account should be refused, got %d", rec.Code)
 	}
 }
+
+// TestOIDCAdoptsAnExistingAccount covers what happens when a local account and
+// a Google identity share an address -- which is the normal case, not an edge
+// one: the deployment is bootstrapped with somebody's email and then that
+// person signs in with Google.
+func TestOIDCAdoptsAnExistingAccount(t *testing.T) {
+	h := newHarness(t)
+
+	local, err := h.users.Create(h.ctx, auth.CreateInput{
+		Email: "zhang@example.com", Name: "张三", AuthType: model.AuthLocal,
+		Password: "correct-horse", RoleID: authz.UserRoleID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := auth.UpsertUser(h.ctx, h.users, auth.IDTokenClaims{
+		Email: "zhang@example.com", Name: "Zhang San", Subject: "google-sub-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != local.ID {
+		t.Fatal("one person is one account: the address is unique, so it is adopted, not duplicated")
+	}
+	// Signing in with Google does not promote anybody.
+	if got.RoleID != authz.UserRoleID {
+		t.Errorf("the adopted account keeps its role, got %q", got.RoleID)
+	}
+	// And the password still works: whoever set this up did not ask to give it
+	// up, and losing it would mean losing the way in the day Google is down.
+	if got.AuthType != model.AuthLocal {
+		t.Errorf("the account keeps its own sign-in method, got %q", got.AuthType)
+	}
+	// What it gains is the link, so the account belongs to the identity rather
+	// than to a string a Workspace can hand to somebody else.
+	if got.OIDCSubject != "google-sub-1" {
+		t.Errorf("the Google subject should be recorded, got %q", got.OIDCSubject)
+	}
+
+	// The hole this closes: the adopted account is still auth_type "local", so
+	// counting the type left it uncounted -- and the next colleague to sign in
+	// was still "the first through OIDC" and became an administrator.
+	next, err := auth.UpsertUser(h.ctx, h.users, auth.IDTokenClaims{
+		Email: "li@example.com", Name: "李四", Subject: "google-sub-2",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next.RoleID != authz.UserRoleID {
+		t.Errorf("somebody signing in after the first is an ordinary user, got %q", next.RoleID)
+	}
+}
