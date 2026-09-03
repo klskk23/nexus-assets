@@ -1,10 +1,11 @@
-import { ExternalLinkIcon } from "lucide-react"
+import { AlertCircleIcon, CheckIcon, ExternalLinkIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useMutation, useQueries } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
 import { t } from "@/i18n"
 import { usePrinting } from "@/features/print/usePrinting"
+import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -212,7 +213,7 @@ export function PrintDialog({ ids, onClose }: Props) {
         )}
 
         {batches.length > 0 && (
-          <div className="overflow-x-auto rounded-md border">
+          <TableFrame>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -333,13 +334,16 @@ export function PrintDialog({ ids, onClose }: Props) {
                 })}
               </TableBody>
             </Table>
-          </div>
+          </TableFrame>
         )}
 
         {settled && (
-          <p className={anyFailed ? "text-destructive text-sm" : "text-sm"}>
-            {anyFailed ? t.print.someFailed : t.print.allDone}
-          </p>
+          <Alert variant={anyFailed ? "destructive" : "default"}>
+            {anyFailed ? <AlertCircleIcon /> : <CheckIcon />}
+            <AlertDescription>
+              {anyFailed ? t.print.someFailed : t.print.allDone}
+            </AlertDescription>
+          </Alert>
         )}
 
         <DialogFooter>

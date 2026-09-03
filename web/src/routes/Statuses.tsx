@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertCircleIcon } from "lucide-react"
+import { AlertCircleIcon, InfoIcon } from "lucide-react"
 
 import { api, ApiError } from "@/lib/api"
 import type { Status, StatusUsage } from "@/lib/types"
@@ -160,7 +160,10 @@ export function Statuses() {
         <>
           {/* Said once above the table rather than repeated on five rows: the
               built-ins have no delete button, and this is the answer to why. */}
-          <p className="text-muted-foreground text-sm">{tStatuses.builtinLocked}</p>
+          <Alert>
+            <InfoIcon />
+            <AlertDescription>{tStatuses.builtinLocked}</AlertDescription>
+          </Alert>
           {notice && (
             <Alert variant="destructive">
               <AlertCircleIcon />
@@ -323,7 +326,7 @@ function StatusEditor({ status, colors, onOpenChange, onSave, saving }: EditProp
           <DialogTitle>{tStatuses.editTitle}</DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4">
+        <FieldGroup>
           <Field>
             <FieldLabel htmlFor="se-label">{tStatuses.label}</FieldLabel>
             <Input
@@ -354,7 +357,7 @@ function StatusEditor({ status, colors, onOpenChange, onSave, saving }: EditProp
               </Badge>
             </FieldDescription>
           </Field>
-        </div>
+        </FieldGroup>
 
         <DialogFooter>
           <DialogClose asChild>

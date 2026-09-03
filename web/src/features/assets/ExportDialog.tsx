@@ -16,7 +16,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldLabel, FieldSet, FieldLegend } from "@/components/ui/field"
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+  FieldLegend,
+} from "@/components/ui/field"
 import {
   Select,
   SelectContent,
@@ -136,7 +143,7 @@ export function ExportDialog({
           <DialogDescription>{tImport.exportIntro}</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
+        <FieldGroup>
           {/* Only when something is ticked: an empty selection is not a choice
               worth offering, and the radio would sit there disabled. */}
           {selected.length > 0 && (
@@ -235,7 +242,7 @@ export function ExportDialog({
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-        </div>
+        </FieldGroup>
 
         <DialogFooter>
           <DialogClose asChild>

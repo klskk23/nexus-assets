@@ -8,7 +8,7 @@ import type { Transfer } from "@/lib/transferTypes"
 import { t, tTransfer } from "@/i18n"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Field, FieldLabel } from "@/components/ui/field"
 import {
@@ -41,7 +41,10 @@ export function EditEvent({ event, assetID, onClose }: Props) {
   const [banner, setBanner] = useState<string | null>(null)
 
   const users = useQuery({ queryKey: ["users"], queryFn: () => api.get<User[]>("/users") })
-  const holders = useQuery({ queryKey: ["holders"], queryFn: () => api.get<HolderEntity[]>("/holders") })
+  const holders = useQuery({
+    queryKey: ["holders"],
+    queryFn: () => api.get<HolderEntity[]>("/holders"),
+  })
 
   const save = useMutation({
     mutationFn: () =>
@@ -58,16 +61,15 @@ export function EditEvent({ event, assetID, onClose }: Props) {
     onError: (err) => setBanner(err instanceof ApiError ? err.message : t.common.error),
   })
 
-  const options = holderType === "user" ? users.data ?? [] : holders.data ?? []
+  const options = holderType === "user" ? (users.data ?? []) : (holders.data ?? [])
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>{tTransfer.editTail}</CardTitle>
+        <CardDescription>{tTransfer.editHint}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <p className="text-sm text-muted-foreground">{tTransfer.editHint}</p>
-
         <div className="flex flex-wrap items-end gap-4">
           <Field>
             <FieldLabel htmlFor="ee-type">{tTransfer.actions.target}</FieldLabel>

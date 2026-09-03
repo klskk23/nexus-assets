@@ -12,7 +12,9 @@ import { cn } from "@/lib/utils"
 import { getLang, locale, tAudit } from "@/i18n"
 import { StateBoundary } from "@/components/StateBoundary"
 import { ListToolbar } from "@/features/common/ListToolbar"
+import { PageHeader } from "@/features/common/PageHeader"
 import { PAGE_SIZES, Pager } from "@/features/common/Pager"
+import { TableFrame } from "@/features/common/TableFrame"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -187,11 +189,8 @@ export function Audit() {
     `${e.target_label ?? e.target_id}`
 
   return (
-    <div className="grid gap-5">
-      <div>
-        <h1 className="text-xl font-semibold">{tAudit.title}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{tAudit.hint}</p>
-      </div>
+    <div className="grid gap-6">
+      <PageHeader title={tAudit.title} description={tAudit.hint} />
 
       {/* One row, the same one every table page wears. Every control carries
           its own "all of them" wording, so the labels are for screen readers
@@ -323,7 +322,7 @@ export function Audit() {
         onRetry={() => query.refetch()}
       >
         <>
-          <div className="overflow-x-auto rounded-md border">
+          <TableFrame>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -388,7 +387,7 @@ export function Audit() {
                 })}
               </TableBody>
             </Table>
-          </div>
+          </TableFrame>
 
           {/* Under the table, where you land after reading it -- and where the
               asset list keeps its own pager. */}

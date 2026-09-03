@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import {
   Dialog,
   DialogClose,
@@ -249,7 +249,7 @@ export function Holders() {
           },
         ]}
         form={
-          <div className="grid gap-4 sm:grid-cols-2">
+          <FieldGroup className="sm:grid sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="h-name">{tMeta.holders.name}</FieldLabel>
               <Input id="h-name" value={name} onChange={(e) => setName(e.target.value)} />
@@ -326,7 +326,7 @@ export function Holders() {
                 onChange={(e) => setNote(e.target.value)}
               />
             </Field>
-          </div>
+          </FieldGroup>
         }
       />
     </>

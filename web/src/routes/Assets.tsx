@@ -20,6 +20,7 @@ import {
 import { ActionBar } from "@/features/assets/ActionBar"
 import { PrintDialog } from "@/features/print/PrintDialog"
 import { usePrinting } from "@/features/print/usePrinting"
+import { PageHeader } from "@/features/common/PageHeader"
 import { PAGE_SIZES, Pager } from "@/features/common/Pager"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import {
@@ -30,6 +31,7 @@ import {
 import { usePermissions } from "@/features/auth/usePermissions"
 import { ExportDialog } from "@/features/assets/ExportDialog"
 import { NewAssetDialog } from "@/features/assets/NewAssetDialog"
+import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -275,9 +277,8 @@ export function Assets() {
   const total = assets.data?.total ?? 0
 
   return (
-    <div className="grid gap-5">
-      <div className="flex flex-wrap items-end gap-3">
-        <h1 className="mr-auto text-xl font-semibold">{t.assets.title}</h1>
+    <div className="grid gap-6">
+      <PageHeader title={t.assets.title}>
         {/* Not a link: every credential this app has travels in a header, and
             a plain download navigation carries none of them. */}
         <Button
@@ -295,7 +296,7 @@ export function Assets() {
         >
           {t.assets.newAsset}
         </Button>
-      </div>
+      </PageHeader>
 
       {/* One row. The labels are read out but not drawn: each control already
           shows what it is -- the magnifier, "全部类别", "全部状态" -- so drawing
@@ -477,7 +478,7 @@ export function Assets() {
         onRetry={() => assets.refetch()}
       >
         <>
-          <div className="overflow-x-auto rounded-md border">
+          <TableFrame>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -578,7 +579,7 @@ export function Assets() {
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </TableFrame>
 
           {/* Under the table, where you land after reading it. */}
           <Pager

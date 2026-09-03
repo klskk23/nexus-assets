@@ -1,3 +1,4 @@
+import { ChartColumnIcon } from "lucide-react"
 import { Suspense, lazy, useState } from "react"
 import { useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
@@ -10,9 +11,25 @@ import { t, tOverview } from "@/i18n"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { StateBoundary } from "@/components/StateBoundary"
+import { PageHeader } from "@/features/common/PageHeader"
 import { Timeline } from "@/features/transfers/Timeline"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -32,7 +49,6 @@ interface StatusCount {
   status: AssetStatus
   count: number
 }
-
 
 interface OverviewData {
   status_counts: StatusCount[]
@@ -65,7 +81,7 @@ export function Overview() {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-xl font-semibold">{tOverview.title}</h1>
+      <PageHeader title={tOverview.title} />
 
       <StateBoundary
         isLoading={overview.isLoading}
@@ -114,16 +130,19 @@ export function Overview() {
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>
-                  {tOverview.categoryTitle}
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    {tOverview.categoryHint}
-                  </span>
-                </CardTitle>
+                <CardTitle>{tOverview.categoryTitle}</CardTitle>
+                <CardDescription>{tOverview.categoryHint}</CardDescription>
               </CardHeader>
               <CardContent>
                 {distribution.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{tOverview.emptyDistribution}</p>
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <ChartColumnIcon />
+                      </EmptyMedia>
+                      <EmptyDescription>{tOverview.emptyDistribution}</EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 ) : (
                   <Suspense fallback={<Skeleton className="h-40 w-full" />}>
                     <CategoryChart
@@ -140,11 +159,13 @@ export function Overview() {
             <Card>
               <CardHeader>
                 <CardTitle>{tOverview.quickTitle}</CardTitle>
+                <CardDescription>
+                  {hasCategories ? tOverview.quickHint : tOverview.noCategoriesHint}
+                </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4">
                 {hasCategories ? (
                   <>
-                    <p className="text-sm text-muted-foreground">{tOverview.quickHint}</p>
                     <Field>
                       <FieldLabel htmlFor="ov-category">{tOverview.quickCategory}</FieldLabel>
                       <Select value={quickCategory} onValueChange={setQuickCategory}>
@@ -162,56 +183,61 @@ export function Overview() {
                         </SelectContent>
                       </Select>
                     </Field>
-                    <div>
-                      <Button
-                        disabled={quickCategory === ""}
-                        onClick={() => navigate(`/assets?new=1&category_id=${quickCategory}`)}
-                      >
-                        {tOverview.quickStart}
-                      </Button>
-                    </div>
+                    <Button
+                      className="w-fit"
+                      disabled={quickCategory === ""}
+                      onClick={() => navigate(`/assets?new=1&category_id=${quickCategory}`)}
+                    >
+                      {tOverview.quickStart}
+                    </Button>
                   </>
                 ) : (
                   // A fresh install has nothing configured, so the card points
                   // at the one thing that has to happen first.
-                  <>
-                    <p className="font-medium">{tOverview.noCategories}</p>
-                    <p className="text-sm text-muted-foreground">{tOverview.noCategoriesHint}</p>
-                    <div>
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyTitle>{tOverview.noCategories}</EmptyTitle>
+                    </EmptyHeader>
+                    <EmptyContent>
                       <Button onClick={() => navigate("/categories")}>
                         {tOverview.goConfigure}
                       </Button>
-                    </div>
-                  </>
+                    </EmptyContent>
+                  </Empty>
                 )}
               </CardContent>
             </Card>
           </div>
 
           <Card>
-            <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+            <CardHeader>
               <CardTitle>{tOverview.recentTitle}</CardTitle>
               {/* Each entry is a multi-line block, so how many belong here is a
                   matter of taste rather than a constant worth guessing at. */}
-              <Field orientation="horizontal" className="ml-auto w-auto">
-                <FieldLabel htmlFor="recent-count" className="sr-only">
-                  {tOverview.recentCount}
-                </FieldLabel>
-                <Select value={String(recentCount)} onValueChange={(v) => setRecentCount(Number(v))}>
-                  <SelectTrigger id="recent-count" size="sm" className="w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {RECENT_COUNTS.map((n) => (
-                        <SelectItem key={n} value={String(n)}>
-                          {tOverview.recentCountUnit(n)}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
+              <CardAction>
+                <Field orientation="horizontal" className="w-auto">
+                  <FieldLabel htmlFor="recent-count" className="sr-only">
+                    {tOverview.recentCount}
+                  </FieldLabel>
+                  <Select
+                    value={String(recentCount)}
+                    onValueChange={(v) => setRecentCount(Number(v))}
+                  >
+                    <SelectTrigger id="recent-count" size="sm" className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {RECENT_COUNTS.map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {tOverview.recentCountUnit(n)}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </CardAction>
             </CardHeader>
             <CardContent>
               <Timeline events={overview.data?.recent_transfers ?? []} />

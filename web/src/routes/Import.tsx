@@ -5,13 +5,15 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { api, ApiError, download } from "@/lib/api"
 import type { Category } from "@/lib/types"
 import { t, tImport } from "@/i18n"
+import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Field, FieldLabel } from "@/components/ui/field"
+import { PageHeader } from "@/features/common/PageHeader"
 import {
   Select,
   SelectContent,
@@ -108,16 +110,16 @@ export function Import() {
 
   return (
     <div className="grid max-w-4xl gap-6">
-      <h1 className="text-xl font-semibold">{tImport.title}</h1>
+      <PageHeader title={tImport.title} />
 
       <Card>
         <CardHeader>
           <CardTitle>{tImport.step1}</CardTitle>
+          <CardDescription>{tImport.step1Hint}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <p className="text-sm text-muted-foreground">{tImport.step1Hint}</p>
           <div className="flex flex-wrap items-end gap-4">
-            <Field>
+            <Field className="w-56">
               <FieldLabel htmlFor="im-category">{tImport.category}</FieldLabel>
               <Select
                 value={categoryID}
@@ -126,7 +128,7 @@ export function Import() {
                   setReport(null)
                 }}
               >
-                <SelectTrigger id="im-category" className="w-56">
+                <SelectTrigger id="im-category">
                   <SelectValue placeholder={t.common.select} />
                 </SelectTrigger>
                 <SelectContent>
@@ -173,11 +175,11 @@ export function Import() {
       <Card>
         <CardHeader>
           <CardTitle>{tImport.step2}</CardTitle>
+          <CardDescription>{tImport.step2Hint}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <p className="text-sm text-muted-foreground">{tImport.step2Hint}</p>
           <div className="flex flex-wrap items-end gap-4">
-            <Field>
+            <Field className="w-80">
               <FieldLabel htmlFor="im-file">{tImport.file}</FieldLabel>
               <Input
                 id="im-file"
@@ -191,7 +193,6 @@ export function Import() {
               />
             </Field>
             <Button
-              className="mb-0.5"
               disabled={!canPreview || preview.isPending}
               onClick={() => preview.mutate()}
             >
@@ -213,10 +214,9 @@ export function Import() {
         <Card>
           <CardHeader>
             <CardTitle>{tImport.step3}</CardTitle>
+            <CardDescription>{tImport.step3Hint}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <p className="text-sm text-muted-foreground">{tImport.step3Hint}</p>
-
             <p role="status">
               {tImport.summary(report.ok, report.total)}
               {failing.length === 0 ? (
@@ -229,7 +229,7 @@ export function Import() {
             </p>
 
             {failing.length > 0 && (
-              <div className="overflow-x-auto rounded-md border">
+              <TableFrame>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -254,7 +254,7 @@ export function Import() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </TableFrame>
             )}
 
             <div>

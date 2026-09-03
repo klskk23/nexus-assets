@@ -8,9 +8,10 @@ import { useAuth } from "@/features/auth/useAuth"
 import { t } from "@/i18n"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Spinner } from "@/components/ui/spinner"
 import { Separator } from "@/components/ui/separator"
 
 interface LoginResponse {
@@ -71,48 +72,53 @@ export function Login() {
           <CardTitle>{t.appName}</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={onSubmit} className="grid gap-4" aria-label={t.login.title}>
-            <div className="grid gap-2">
-              <Label htmlFor="email">{t.login.email}</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="username"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password">{t.login.password}</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+          <form onSubmit={onSubmit} aria-label={t.login.title}>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="email">{t.login.email}</FieldLabel>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="username"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="password">{t.login.password}</FieldLabel>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </Field>
 
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircleIcon />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircleIcon />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-            <Button type="submit" disabled={submitting}>
-              {submitting ? t.login.submitting : t.login.submit}
-            </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting && <Spinner data-icon="inline-start" aria-hidden />}
+                {submitting ? t.login.submitting : t.login.submit}
+              </Button>
+            </FieldGroup>
           </form>
-
-          <Separator className="my-6" />
-
+        </CardContent>
+        {/* The other way in, on the other side of a rule: one of these is a
+            password, the other is somebody else's sign-in page. */}
+        <CardFooter className="flex-col gap-4">
+          <Separator />
           <Button variant="outline" className="w-full" asChild>
             <a href="/api/auth/oidc/start">{t.login.google}</a>
           </Button>
-        </CardContent>
+        </CardFooter>
       </Card>
     </div>
   )

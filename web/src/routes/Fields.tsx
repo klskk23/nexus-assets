@@ -16,7 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import {
   Select,
   SelectContent,
@@ -209,7 +209,7 @@ export function Fields() {
         },
       ]}
       form={
-        <div className="grid gap-4 sm:grid-cols-2">
+        <FieldGroup className="sm:grid sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="f-key">{tMeta.fields.key}</FieldLabel>
             <Input id="f-key" value={key} onChange={(e) => setKey(e.target.value)} />
@@ -338,7 +338,7 @@ export function Fields() {
               <FieldDescription>{tConfig.field.depsHint}</FieldDescription>
             </Field>
           )}
-        </div>
+        </FieldGroup>
       }
     />
     </>

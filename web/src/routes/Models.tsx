@@ -228,7 +228,7 @@ function ModelEditor({ model, categories, onOpenChange, onSave, saving }: EditPr
           <DialogTitle>{tMeta.models.editTitle}</DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <FieldGroup className="sm:grid sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="me-name">{tMeta.models.name}</FieldLabel>
             <Input
@@ -271,7 +271,7 @@ function ModelEditor({ model, categories, onOpenChange, onSave, saving }: EditPr
           <div className="sm:col-span-2">
             <AttrDefaultsEditor rows={rows} onChange={setRows} />
           </div>
-        </div>
+        </FieldGroup>
 
         <DialogFooter>
           <DialogClose asChild>

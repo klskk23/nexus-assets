@@ -7,6 +7,7 @@ import { t } from "@/i18n"
 import { cn } from "@/lib/utils"
 import { StateBoundary } from "@/components/StateBoundary"
 import { ListToolbar } from "@/features/common/ListToolbar"
+import { PageHeader } from "@/features/common/PageHeader"
 import { Pager } from "@/features/common/Pager"
 import { useListQuery, type ListQuery } from "@/features/common/useListQuery"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
@@ -17,6 +18,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -186,8 +188,7 @@ export function CrudPage<T extends { id: string }>({
     <div className="grid gap-6">
       {/* Creating is occasional; the list is what the page is for. The form
           lives behind a button so the records get the screen. */}
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold">{title}</h1>
+      <PageHeader title={title}>
         <Dialog
           open={open}
           onOpenChange={(next) => {
@@ -201,11 +202,7 @@ export function CrudPage<T extends { id: string }>({
           }}
         >
           <DialogTrigger asChild>
-            <Button
-              className="ml-auto"
-              disabled={createDeniedReason !== undefined}
-              title={createDeniedReason}
-            >
+            <Button disabled={createDeniedReason !== undefined} title={createDeniedReason}>
               <PlusIcon data-icon="inline-start" />
               {createLabel}
             </Button>
@@ -241,7 +238,7 @@ export function CrudPage<T extends { id: string }>({
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       {notice}
 
@@ -263,7 +260,7 @@ export function CrudPage<T extends { id: string }>({
         emptyHint={emptyHint}
         onRetry={() => query.refetch()}
       >
-        <div className="overflow-x-auto rounded-md border">
+        <TableFrame>
           <Table>
             <TableHeader>
               <TableRow>
@@ -311,7 +308,7 @@ export function CrudPage<T extends { id: string }>({
               })}
             </TableBody>
           </Table>
-        </div>
+        </TableFrame>
         <Pager
           page={listQuery.page}
           pageSize={listQuery.pageSize}

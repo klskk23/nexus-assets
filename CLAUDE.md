@@ -274,3 +274,11 @@
   `archived_attrs` 是**解绑**产生的孤儿键，与停用无关，不要跟着一起清理掉 ——
   删掉它会让「解绑后仍能查看旧值」当场失效，且没有任何现有测试会失败。
 <!-- SPECKIT END -->
+- **页面骨架有三个共用件**：`features/common/` 的 `PageHeader`（标题 + 一句说明 +
+  右端动作）、`TableFrame`（`overflow-x-auto rounded-md border`）、
+  以及 014 的 `ListToolbar` / `useListQuery` / `Pager`。**页面容器一律 `grid gap-6`**，
+  不要再各写各的 `ml-auto` 与 `gap-5`。卡片用全套组合：标题下的那句话是
+  `CardDescription`，右上角的控件是 `CardAction`，都不要用 `<p>` 或 `ml-auto` 手搭；
+  表单容器是 `FieldGroup`（栅格写成 `className="sm:grid sm:grid-cols-2"`），
+  空状态是 `Empty`，提示是 `Alert`。`Field` 默认占满宽度 ——
+  要窄的控件把宽度写在 `Field` 上，写在 `SelectTrigger` 上不生效。

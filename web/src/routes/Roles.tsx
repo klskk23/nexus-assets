@@ -11,7 +11,7 @@ import { RoleEditor } from "@/features/roles/RoleEditor"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
 /**
@@ -102,7 +102,7 @@ export function Roles() {
           { header: tMeta.roles.accounts, cell: (r) => r.users },
         ]}
         form={
-          <div className="grid gap-4">
+          <FieldGroup>
             <Field>
               <FieldLabel htmlFor="role-name">{tMeta.roles.name}</FieldLabel>
               <Input id="role-name" value={name} onChange={(e) => setName(e.target.value)} />
@@ -125,7 +125,7 @@ export function Roles() {
                 ))}
               </div>
             </Field>
-          </div>
+          </FieldGroup>
         }
       />
     </>

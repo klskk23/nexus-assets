@@ -9,6 +9,7 @@ import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
 import { StateBoundary } from "@/components/StateBoundary"
 import { ListToolbar } from "@/features/common/ListToolbar"
+import { PageHeader } from "@/features/common/PageHeader"
 import { useListQuery } from "@/features/common/useListQuery"
 import { CategoryTable } from "@/features/categories/CategoryTable"
 import { CategoryEditor } from "@/features/categories/CategoryEditor"
@@ -72,11 +73,10 @@ export function Categories() {
   }
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-6">
       {/* The list is what the page is for; creating a category is occasional,
           so the form waits behind a button. */}
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold">{tMeta.categories.title}</h1>
+      <PageHeader title={tMeta.categories.title} description={tMeta.categories.selectHint}>
         <Dialog
           open={createOpen}
           onOpenChange={(next) => {
@@ -86,7 +86,6 @@ export function Categories() {
         >
           <DialogTrigger asChild>
             <Button
-              className="ml-auto"
               disabled={deniedReason("schema.manage") !== undefined}
               title={deniedReason("schema.manage")}
             >
@@ -151,15 +150,9 @@ export function Categories() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
-      <p className="text-muted-foreground text-sm">{tMeta.categories.selectHint}</p>
-
-      <ListToolbar
-        q={listQuery.q}
-        onQ={listQuery.setQ}
-        searchHint={tMeta.categories.searchHint}
-      />
+      <ListToolbar q={listQuery.q} onQ={listQuery.setQ} searchHint={tMeta.categories.searchHint} />
 
       <StateBoundary
         isLoading={categories.isLoading}

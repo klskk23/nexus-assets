@@ -7,6 +7,7 @@ import type { AssetPage, Category, Conflict, RecomputeReport } from "@/lib/types
 import type { FieldOptions } from "@/lib/types"
 import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
+import { TableFrame } from "@/features/common/TableFrame"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   ContextMenu,
@@ -335,7 +336,7 @@ export function FieldEditor({ field, onClose }: Props) {
             </Alert>
           )}
 
-          <div className="overflow-x-auto rounded-md border">
+          <TableFrame>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -377,7 +378,7 @@ export function FieldEditor({ field, onClose }: Props) {
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </TableFrame>
           {bound.length === 0 && (
             <p className="text-muted-foreground text-sm">{tMeta.fields.unboundHint}</p>
           )}

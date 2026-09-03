@@ -22,7 +22,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Field,
   FieldDescription,
@@ -287,7 +287,7 @@ export function AssetDetail() {
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="grid gap-6 pt-4">
-                      <p className="text-muted-foreground text-sm">{t.assets.editAttrsHint}</p>
+                      <FieldDescription>{t.assets.editAttrsHint}</FieldDescription>
                       {/* Where it belongs when it is not out. Editable here rather
                     than on the entry form: a device's home changes when it is
                     relocated for good, which is an edit, not a recording. */}
@@ -400,9 +400,9 @@ export function AssetDetail() {
                 <Card>
                   <CardHeader>
                     <CardTitle>{t.assets.valueHistory}</CardTitle>
+                    <CardDescription>{t.assets.valueHistoryHint}</CardDescription>
                   </CardHeader>
-                  <CardContent className="grid gap-2">
-                    <p className="text-sm text-muted-foreground">{t.assets.valueHistoryHint}</p>
+                  <CardContent>
                     <ul className="grid gap-1 font-mono text-sm">
                       {(detail.data?.value_history ?? []).map((h, i) => (
                         <li key={i}>
@@ -421,18 +421,22 @@ export function AssetDetail() {
                       {t.assets.archivedFields}（{archived.length}）
                     </Button>
                   </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="mt-3 rounded-md border p-4">
-                      <p className="mb-3 text-sm text-muted-foreground">{t.assets.archivedHint}</p>
-                      <dl className="grid gap-2 text-sm">
-                        {archived.map(([k, v]) => (
-                          <div key={k} className="flex gap-3">
-                            <dt className="font-mono text-muted-foreground">{k}</dt>
-                            <dd>{String(v)}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    </div>
+                  <CollapsibleContent className="pt-3">
+                    <Card>
+                      <CardHeader>
+                        <CardDescription>{t.assets.archivedHint}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <dl className="grid gap-2 text-sm">
+                          {archived.map(([k, v]) => (
+                            <div key={k} className="flex gap-3">
+                              <dt className="font-mono text-muted-foreground">{k}</dt>
+                              <dd>{String(v)}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </CardContent>
+                    </Card>
                   </CollapsibleContent>
                 </Collapsible>
               )}

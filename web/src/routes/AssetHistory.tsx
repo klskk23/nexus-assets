@@ -8,6 +8,7 @@ import type { Asset } from "@/lib/types"
 import type { Transfer } from "@/lib/transferTypes"
 import { t } from "@/i18n"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
+import { PageHeader } from "@/features/common/PageHeader"
 import { Timeline } from "@/features/transfers/Timeline"
 import { EditEvent } from "@/features/transfers/EditEvent"
 import { Button } from "@/components/ui/button"
@@ -51,19 +52,21 @@ export function AssetHistory() {
         </Link>
       </Button>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-mono text-xl font-semibold">{asset?.display_name ?? id}</h1>
-        {asset && <StatusBadge status={asset.status} />}
-      </div>
+      <PageHeader
+        title={
+          <>
+            <span className="font-mono">{asset?.display_name ?? id}</span>
+            {asset && <StatusBadge status={asset.status} />}
+          </>
+        }
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>{t.assets.historyTitle}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
-          {editing && (
-            <EditEvent event={editing} assetID={id} onClose={() => setEditing(null)} />
-          )}
+          {editing && <EditEvent event={editing} assetID={id} onClose={() => setEditing(null)} />}
           <Timeline
             events={events}
             isLoading={timeline.isLoading}

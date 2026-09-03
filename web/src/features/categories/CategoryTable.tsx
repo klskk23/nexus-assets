@@ -2,6 +2,7 @@ import { useState } from "react"
 
 import type { Category } from "@/lib/types"
 import { t, tMeta } from "@/i18n"
+import { TableFrame } from "@/features/common/TableFrame"
 import {
   ContextMenu,
   ContextMenuContent,
@@ -120,7 +121,7 @@ export function CategoryTable({ categories, search = "", onOpen, onCreateChild }
     categories.find((c) => c.id === id)?.name ?? t.common.none
 
   return (
-    <div className="overflow-x-auto rounded-md border">
+    <TableFrame>
       <Table>
         <TableHeader>
           <TableRow>
@@ -168,6 +169,6 @@ export function CategoryTable({ categories, search = "", onOpen, onCreateChild }
           ))}
         </TableBody>
       </Table>
-    </div>
+    </TableFrame>
   )
 }

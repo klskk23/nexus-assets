@@ -9,6 +9,7 @@ import { LANGS, LANG_NAMES, locale, t, tConfirm, type Lang } from "@/i18n"
 import { useLanguage } from "@/i18n/useLanguage"
 import { useTheme, type Theme } from "@/features/theme/useTheme"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
+import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -275,7 +276,7 @@ export function SettingsDialog({ onClose }: Props) {
               </div>
             )}
 
-            <div className="overflow-x-auto rounded-md border">
+            <TableFrame>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -340,7 +341,7 @@ export function SettingsDialog({ onClose }: Props) {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </TableFrame>
             {(keys.data ?? []).length === 0 && (
               <p className="text-muted-foreground text-sm">{t.settings.keysEmpty}</p>
             )}

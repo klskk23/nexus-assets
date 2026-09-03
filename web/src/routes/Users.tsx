@@ -131,7 +131,7 @@ export function Users() {
         ]}
         form={
           <>
-            <FieldGroup className="grid gap-4 sm:grid-cols-3">
+            <FieldGroup className="sm:grid sm:grid-cols-3">
               <Field>
                 <FieldLabel htmlFor="u-email">{tMeta.users.email}</FieldLabel>
                 <Input

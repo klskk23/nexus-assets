@@ -9,6 +9,7 @@ import type { ProductModelRow } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { usePresets, usePrinting } from "@/features/print/usePrinting"
+import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -258,7 +259,7 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
                 actually gets answered. */}
             <p className="text-muted-foreground text-sm">{tMeta.categories.bindElsewhere}</p>
 
-            <div className="overflow-x-auto rounded-md border">
+            <TableFrame>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -291,7 +292,7 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </TableFrame>
           </div>
 
           {/* A refusal has to render in here: the page behind this dialog is

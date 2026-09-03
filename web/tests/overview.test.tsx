@@ -96,8 +96,10 @@ describe("Overview", () => {
 
   it("says the distribution leaves retired devices out", async () => {
     renderWithProviders(<Overview />)
-    const section = await screen.findByText("类别分布")
-    expect(section).toHaveTextContent("含子类别，不含已报废")
+    // The caveat is the card's description now, beside its title rather than
+    // inside it.
+    await screen.findByText("类别分布")
+    expect(screen.getByText("含子类别，不含已报废")).toBeInTheDocument()
   })
 
   // The chart replaced a list of bars and numbers, so it has to carry the same
