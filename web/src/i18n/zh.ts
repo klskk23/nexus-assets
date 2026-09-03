@@ -452,6 +452,9 @@ export const zhImport = {
   export: "导出 CSV",
   exportHint: "按当前筛选条件导出",
   exportTitle: "导出资产",
+  // The bar and the row menu export what is ticked, which may come back as a
+  // zip -- so they do not promise a CSV the way the header button can.
+  exportSelection: "导出",
   exportScope: "导出范围",
   exportTicked: (n: number) => `已勾选的 ${n} 台`,
   exportFiltered: "按当前筛选条件",

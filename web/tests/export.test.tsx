@@ -128,6 +128,22 @@ describe("export from the asset list", () => {
       expect(within(dialog).getByLabelText("资产类别")).toBeInTheDocument()
     })
 
+    // The bar is about the selection, so the export belongs on it: going back
+    // up to the header button to then answer "the ticked ones?" is a detour.
+    it("is reachable from the selection bar", async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Assets />)
+
+      await user.click(await screen.findByRole("checkbox", { name: /112394521950/ }))
+      await screen.findByText("已选 1 台")
+      // "导出", not "导出 CSV": the bar exports the ticked ones, which may come
+      // back as a zip.
+      await user.click(screen.getByRole("button", { name: "导出" }))
+
+      const dialog = await screen.findByRole("dialog")
+      expect(within(dialog).getByRole("radio", { name: /已勾选的 1 台/ })).toBeChecked()
+    })
+
     it("can be switched back to the filters", async () => {
       const user = userEvent.setup()
       renderWithProviders(<Assets />)

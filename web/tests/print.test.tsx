@@ -62,7 +62,7 @@ beforeEach(() => {
 describe("printing the ticked devices", () => {
   it("offers nothing when no print service is configured", async () => {
     get.mockImplementation(route(false))
-    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await screen.findByText(/已选/)
     expect(screen.queryByRole("button", { name: "打印标签" })).not.toBeInTheDocument()
@@ -72,7 +72,7 @@ describe("printing the ticked devices", () => {
   // not print anything: it says what would come out and waits to be told.
   it("asks before it prints, and prints nothing until it is told to", async () => {
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={["a1", "a2"]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={["a1", "a2"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await user.click(await screen.findByRole("button", { name: "打印标签" }))
     await waitFor(() =>
@@ -93,7 +93,7 @@ describe("printing the ticked devices", () => {
 
   it("prints, and watches until the labels are out", async () => {
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={["a1", "a2"]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={["a1", "a2"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await user.click(await screen.findByRole("button", { name: "打印标签" }))
     const dialog = await screen.findByRole("dialog")
@@ -122,7 +122,7 @@ describe("printing the ticked devices", () => {
     }
     plans(both, both)
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={["a1", "a2"]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={["a1", "a2"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await user.click(await screen.findByRole("button", { name: "打印标签" }))
     const dialog = await screen.findByRole("dialog")
@@ -137,7 +137,7 @@ describe("printing the ticked devices", () => {
   it("reports a job that failed at the printer", async () => {
     get.mockImplementation(route(true, { status: "failed", failureMessage: "缺纸" }))
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await user.click(await screen.findByRole("button", { name: "打印标签" }))
     const dialog = await screen.findByRole("dialog")
@@ -161,7 +161,7 @@ describe("printing the ticked devices", () => {
       },
     )
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await user.click(await screen.findByRole("button", { name: "打印标签" }))
     const dialog = await screen.findByRole("dialog")
@@ -192,7 +192,7 @@ describe("choosing which label", () => {
       { batches: [{ category_id: "net", category_name: "网络设备", count: 1, job_id: "job-1", status: "queued" }] },
     )
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await user.click(await screen.findByRole("button", { name: "打印标签" }))
     const dialog = await screen.findByRole("dialog")
@@ -222,7 +222,7 @@ describe("choosing which label", () => {
 
   it("does not ask when there is only one label", async () => {
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await user.click(await screen.findByRole("button", { name: "打印标签" }))
     const dialog = await screen.findByRole("dialog")
@@ -236,7 +236,7 @@ describe("choosing which label", () => {
 describe("getting to the print service", () => {
   it("links to where labels are managed, and to the label itself", async () => {
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await user.click(await screen.findByRole("button", { name: "打印标签" }))
     const dialog = await screen.findByRole("dialog")
@@ -258,7 +258,7 @@ describe("getting to the print service", () => {
   it("points at the queue after a failure", async () => {
     get.mockImplementation(route(true, { status: "failed", failureMessage: "缺纸" }))
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await user.click(await screen.findByRole("button", { name: "打印标签" }))
     const dialog = await screen.findByRole("dialog")

@@ -552,7 +552,12 @@ export function Assets() {
         initialCategoryID={searchParams.get("category_id") ?? undefined}
       />
 
-      <ActionBar selected={selected} onClear={() => setSelected([])} onDone={setDone} />
+      <ActionBar
+        selected={selected}
+        onClear={() => setSelected([])}
+        onDone={setDone}
+        onExport={() => setExporting(true)}
+      />
 
       {printingOne && <PrintDialog ids={[printingOne]} onClose={() => setPrintingOne(null)} />}
 

@@ -478,6 +478,7 @@ export const enImport: typeof zhImport = {
   export: "Export CSV",
   exportHint: "Exports what the current filters show",
   exportTitle: "Export assets",
+  exportSelection: "Export",
   exportScope: "What to export",
   exportTicked: (n: number) => `The ${n} ticked device(s)`,
   exportFiltered: "Everything the filters show",

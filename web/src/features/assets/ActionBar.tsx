@@ -3,14 +3,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Trash2Icon } from "lucide-react"
 
 import { api, ApiError } from "@/lib/api"
-import { t, tTransfer } from "@/i18n"
+import { t, tImport, tTransfer } from "@/i18n"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import {
   TransferDialog,
   transferActions,
   type TransferAction,
 } from "@/features/transfers/TransferDialog"
-import { PrinterIcon } from "lucide-react"
+import { DownloadIcon, PrinterIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup, ButtonGroupSeparator } from "@/components/ui/button-group"
 import { Card, CardContent } from "@/components/ui/card"
@@ -21,6 +21,9 @@ interface Props {
   selected: string[]
   onClear: () => void
   onDone: (message: string) => void
+  /** Opens the export dialog on these devices. Owned by the page, because the
+   *  same dialog serves the toolbar and the row menu. */
+  onExport: () => void
 }
 
 /**
@@ -33,7 +36,7 @@ interface Props {
  * with that action preselected, so the list page and the detail page cannot
  * end up behaving differently for the same operation.
  */
-export function ActionBar({ selected, onClear, onDone }: Props) {
+export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
   const queryClient = useQueryClient()
   const [action, setAction] = useState<TransferAction | null>(null)
   const [open, setOpen] = useState(false)
@@ -87,6 +90,13 @@ export function ActionBar({ selected, onClear, onDone }: Props) {
               {t.print.action}
             </Button>
           )}
+          {/* Exporting what was ticked, here rather than only in the header:
+              the selection is what the bar is about, and going back up to a
+              button that then asks "the ticked ones?" is a detour. */}
+          <Button size="sm" variant="outline" onClick={onExport}>
+            <DownloadIcon data-icon="inline-start" />
+            {tImport.exportSelection}
+          </Button>
           <ButtonGroupSeparator />
           {/* Destructive, so it sits after a separator rather than in the run
               of transfer actions -- the same click distance, a different act. */}

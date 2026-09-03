@@ -31,14 +31,14 @@ beforeEach(() => {
 
 describe("ActionBar", () => {
   it("stays hidden until something is selected", () => {
-    renderWithProviders(<ActionBar selected={[]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={[]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
     expect(screen.queryByText(/已选/)).not.toBeInTheDocument()
   })
 
   it("sends all twenty asset ids in one request", async () => {
     const onDone = vi.fn()
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={twenty} onClear={vi.fn()} onDone={onDone} />)
+    renderWithProviders(<ActionBar selected={twenty} onClear={vi.fn()} onDone={onDone} onExport={vi.fn()} />)
 
     expect(screen.getByText("已选 20 台")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "签出" }))
@@ -63,7 +63,7 @@ describe("ActionBar", () => {
   // own home, which is the only answer that can differ across a batch.
   it("returns each device to its own home by default", async () => {
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await user.click(screen.getByRole("button", { name: "归还" }))
     expect(screen.getByRole("combobox", { name: "目标" })).toHaveTextContent("各自的默认归属")
@@ -81,7 +81,7 @@ describe("ActionBar", () => {
 
   it("keeps submit unavailable until a destination is chosen", async () => {
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await user.click(screen.getByRole("button", { name: "转移" }))
     expect(screen.getByRole("button", { name: "提交" })).toBeDisabled()
@@ -95,7 +95,7 @@ describe("ActionBar", () => {
       new ApiError(422, "illegal_transition", "retired is terminal: correct a mistaken write-off by editing the tail transfer event"),
     )
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await user.click(screen.getByRole("button", { name: "改状态" }))
     await user.click(screen.getByRole("button", { name: "提交" }))
@@ -108,7 +108,7 @@ describe("ActionBar", () => {
 describe("ActionBar delete", () => {
   it("asks for the size of the batch before deleting", async () => {
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={twenty} onClear={vi.fn()} onDone={vi.fn()} />)
+    renderWithProviders(<ActionBar selected={twenty} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
     await user.click(screen.getByRole("button", { name: /删除/ }))
     const dialog = await screen.findByRole("alertdialog")
@@ -128,7 +128,7 @@ describe("ActionBar delete", () => {
     const onClear = vi.fn()
     post.mockResolvedValue({ deleted: 20 })
     const user = userEvent.setup()
-    renderWithProviders(<ActionBar selected={twenty} onClear={onClear} onDone={onDone} />)
+    renderWithProviders(<ActionBar selected={twenty} onClear={onClear} onDone={onDone} onExport={vi.fn()} />)
 
     await user.click(screen.getByRole("button", { name: /删除/ }))
     const dialog = await screen.findByRole("alertdialog")
