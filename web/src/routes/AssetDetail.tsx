@@ -15,7 +15,7 @@ import { Timeline } from "@/features/transfers/Timeline"
 import { EditEvent } from "@/features/transfers/EditEvent"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { ModelPicker } from "@/features/assets/ModelPicker"
-import { TransferDialog } from "@/features/transfers/TransferDialog"
+import { TransferForm } from "@/features/transfers/TransferForm"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -75,7 +75,6 @@ export function AssetDetail() {
   const [editing, setEditing] = useState<Transfer | null>(null)
   const [note, setNote] = useState("")
   const [modelId, setModelId] = useState<string | null>(null)
-  const [transferOpen, setTransferOpen] = useState(false)
   const [homeID, setHomeID] = useState(NONE)
   const [homeOwnerID, setHomeOwnerID] = useState(NONE)
 
@@ -182,27 +181,12 @@ export function AssetDetail() {
           {asset && (
             <div className="grid gap-6">
               <DialogHeader>
-                {/* pe-8 leaves room for the close button, which sits in the same
-                corner the transfer action wants. */}
-            <DialogTitle className="flex flex-wrap items-center gap-3 pe-8">
+                {/* pe-8 leaves room for the close button. */}
+                <DialogTitle className="flex flex-wrap items-center gap-3 pe-8">
                   <span className="font-mono">{asset.display_name}</span>
                   <StatusBadge status={asset.status} />
-                  <Button size="sm" className="ml-auto" onClick={() => setTransferOpen(true)}>
-                    {t.assets.transfer}
-                  </Button>
                 </DialogTitle>
               </DialogHeader>
-
-              <TransferDialog
-                assetIDs={[id]}
-                open={transferOpen}
-                onOpenChange={setTransferOpen}
-                onDone={() => {
-                  setBanner(tTransfer.actions.done(1))
-                  queryClient.invalidateQueries({ queryKey: ["asset", id] })
-                  queryClient.invalidateQueries({ queryKey: ["timeline", id] })
-                }}
-              />
 
               {banner && (
                 <Alert role="status">
@@ -211,11 +195,14 @@ export function AssetDetail() {
                 </Alert>
               )}
 
+              {/* Moving a device is what this system is for, so the form is
+                  on screen rather than behind a button -- it used to be one
+                  click further away than editing a field. */}
               <Card>
                 <CardHeader>
-                  <CardTitle>{t.assets.title}</CardTitle>
+                  <CardTitle>{tTransfer.actions.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="grid gap-6">
+                <CardContent className="grid gap-4">
                   {/* Where the device is now, and who answers for it. Read
                       only, and said so: these two move through a transfer, and
                       the form below has a pair of controls with almost the
@@ -235,6 +222,22 @@ export function AssetDetail() {
                     <p className="text-muted-foreground mt-3 text-sm">{t.assets.currentHint}</p>
                   </div>
 
+                  <TransferForm
+                    assetIDs={[id]}
+                    onDone={() => {
+                      setBanner(tTransfer.actions.done(1))
+                      queryClient.invalidateQueries({ queryKey: ["asset", id] })
+                      queryClient.invalidateQueries({ queryKey: ["timeline", id] })
+                    }}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t.assets.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-6">
                   {/* A sentence that belongs to the device and to no category's
                   schema: the scratch on the lid, the trial it is out on. It
                   sits with the built-ins because that is what it is. */}
@@ -249,83 +252,96 @@ export function AssetDetail() {
                     />
                   </Field>
 
-                  {/* Where it belongs when it is not out. Editable here rather
-                  than on the entry form: a device's home changes when it is
-                  relocated for good, which is an edit, not a recording. */}
-                  <FieldSet>
-                    <FieldLegend variant="label">{t.assets.home}</FieldLegend>
-                    <FieldDescription>{t.assets.homeHint}</FieldDescription>
-                    {/* Boxed, because the fields underneath it are not part
-                        of it: with everything at one indent the model and the
-                        category's own fields read as more of the home. */}
-                    <FieldGroup className="grid gap-4 rounded-md border p-4 sm:grid-cols-2">
-                      <Field>
-                        <FieldLabel htmlFor="home-holder">{t.assets.homeHolder}</FieldLabel>
-                        <Select value={homeID} onValueChange={setHomeID}>
-                          <SelectTrigger id="home-holder">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectItem value={NONE}>{t.assets.homeNone}</SelectItem>
-                              {(holders.data ?? []).map((h) => (
-                                <SelectItem key={h.id} value={h.id}>
-                                  {h.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                      <Field>
-                        <FieldLabel htmlFor="home-owner">{t.assets.homeOwner}</FieldLabel>
-                        <Select value={homeOwnerID} onValueChange={setHomeOwnerID}>
-                          <SelectTrigger id="home-owner">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectItem value={NONE}>{t.common.none}</SelectItem>
-                              {(users.data ?? [])
-                                .filter((u) => u.status === "active")
-                                .map((u) => (
-                                  <SelectItem key={u.id} value={u.id}>
-                                    {u.name}
-                                  </SelectItem>
-                                ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                    </FieldGroup>
-                  </FieldSet>
+                  {/* Behind a button: the model, the category's fields and the
+                      home are edited once in a device's life, and they were
+                      taking the room a movement should have. */}
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="outline" className="w-fit">
+                        {t.assets.editAttrs}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="grid gap-6 pt-4">
+                      <p className="text-muted-foreground text-sm">{t.assets.editAttrsHint}</p>
+                      {/* Where it belongs when it is not out. Editable here rather
+                    than on the entry form: a device's home changes when it is
+                    relocated for good, which is an edit, not a recording. */}
+                      <FieldSet>
+                        <FieldLegend variant="label">{t.assets.home}</FieldLegend>
+                        <FieldDescription>{t.assets.homeHint}</FieldDescription>
+                        {/* Boxed, because the fields underneath it are not part
+                          of it: with everything at one indent the model and the
+                          category's own fields read as more of the home. */}
+                        <FieldGroup className="grid gap-4 rounded-md border p-4 sm:grid-cols-2">
+                          <Field>
+                            <FieldLabel htmlFor="home-holder">{t.assets.homeHolder}</FieldLabel>
+                            <Select value={homeID} onValueChange={setHomeID}>
+                              <SelectTrigger id="home-holder">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  <SelectItem value={NONE}>{t.assets.homeNone}</SelectItem>
+                                  {(holders.data ?? []).map((h) => (
+                                    <SelectItem key={h.id} value={h.id}>
+                                      {h.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </Field>
+                          <Field>
+                            <FieldLabel htmlFor="home-owner">{t.assets.homeOwner}</FieldLabel>
+                            <Select value={homeOwnerID} onValueChange={setHomeOwnerID}>
+                              <SelectTrigger id="home-owner">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  <SelectItem value={NONE}>{t.common.none}</SelectItem>
+                                  {(users.data ?? [])
+                                    .filter((u) => u.status === "active")
+                                    .map((u) => (
+                                      <SelectItem key={u.id} value={u.id}>
+                                        {u.name}
+                                      </SelectItem>
+                                    ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </Field>
+                        </FieldGroup>
+                      </FieldSet>
 
-                  {/* The model and the category's own fields, under a legend
-                      of their own so the group above them ends somewhere. */}
-                  <FieldSet>
-                    <FieldLegend variant="label">{t.assets.attrs}</FieldLegend>
-                    <FieldGroup className="grid gap-4 rounded-md border p-4">
-                      <ModelPicker
-                        categoryID={asset.category_id}
-                        value={modelId}
-                        values={values}
-                        confirmOverwrite
-                        onChange={(mid, patch) => {
-                          setModelId(mid)
-                          setValues((cur) => ({ ...cur, ...patch }))
-                        }}
-                      />
+                      {/* The model and the category's own fields, under a legend
+                        of their own so the group above them ends somewhere. */}
+                      <FieldSet>
+                        <FieldLegend variant="label">{t.assets.attrs}</FieldLegend>
+                        <FieldGroup className="grid gap-4 rounded-md border p-4">
+                          <ModelPicker
+                            categoryID={asset.category_id}
+                            value={modelId}
+                            values={values}
+                            confirmOverwrite
+                            onChange={(mid, patch) => {
+                              setModelId(mid)
+                              setValues((cur) => ({ ...cur, ...patch }))
+                            }}
+                          />
 
-                      {schema.data && (
-                        <DynamicForm
-                          fields={schema.data.fields}
-                          values={values}
-                          errors={fieldErrors}
-                          onChange={(k, v) => setValues((cur) => ({ ...cur, [k]: v }))}
-                        />
-                      )}
-                    </FieldGroup>
-                  </FieldSet>
+                          {schema.data && (
+                            <DynamicForm
+                              fields={schema.data.fields}
+                              values={values}
+                              errors={fieldErrors}
+                              onChange={(k, v) => setValues((cur) => ({ ...cur, [k]: v }))}
+                            />
+                          )}
+                        </FieldGroup>
+                      </FieldSet>
+                    </CollapsibleContent>
+                  </Collapsible>
 
                   <div>
                     <Button onClick={() => save.mutate()} disabled={save.isPending}>

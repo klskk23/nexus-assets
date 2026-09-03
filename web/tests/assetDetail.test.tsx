@@ -162,6 +162,7 @@ describe("AssetDetail", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
+    await user.click(screen.getByRole("button", { name: "编辑设备属性" }))
     await user.click(screen.getByRole("button", { name: "保存" }))
     const alerts = await screen.findAllByRole("alert")
     expect(alerts.map((a) => a.textContent)).toContain("MAC 格式非法")
@@ -187,8 +188,7 @@ describe("AssetDetail", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
-    await user.click(screen.getByRole("button", { name: "流转" }))
-    const dialog = await screen.findByRole("dialog")
+    const dialog = screen.getByRole("dialog")
     for (const label of ["签出", "归还", "转移", "改负责人", "改状态"]) {
       expect(within(dialog).getByRole("radio", { name: label })).toBeInTheDocument()
     }
@@ -209,13 +209,11 @@ describe("AssetDetail", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
-    await user.click(screen.getByRole("button", { name: "流转" }))
-    const dialog = await screen.findByRole("dialog")
-    expect(within(dialog).getByText("已选 1 台")).toBeInTheDocument()
+    const dialog = screen.getByRole("dialog")
 
     await user.click(within(dialog).getByRole("radio", { name: "签出" }))
     await choose(user, await within(dialog).findByRole("combobox", { name: "账号" }), "张三")
-    await user.type(within(dialog).getByLabelText("备注"), "借给张三")
+    await user.type(within(dialog).getByLabelText("本次流转的备注"), "借给张三")
     await user.click(within(dialog).getByRole("button", { name: "提交" }))
 
     // A single device is just a one-element batch, through the same endpoint
@@ -236,8 +234,7 @@ describe("AssetDetail", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
-    await user.click(screen.getByRole("button", { name: "流转" }))
-    const dialog = await screen.findByRole("dialog")
+    const dialog = screen.getByRole("dialog")
     await user.click(within(dialog).getByRole("radio", { name: "改状态" }))
     await choose(user, within(dialog).getByRole("combobox", { name: "状态" }), "维修中")
     await user.click(within(dialog).getByRole("button", { name: "提交" }))
@@ -249,6 +246,27 @@ describe("AssetDetail", () => {
         to_status: "in_repair",
       }),
     )
+  })
+
+  // The form stays on screen after a move, so a submitted choice left selected
+  // would be one stray click away from recording the same move twice.
+  it("clears the chosen operation once the move is recorded", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+
+    const dialog = screen.getByRole("dialog")
+    await user.click(within(dialog).getByRole("radio", { name: "改状态" }))
+    await user.click(within(dialog).getByRole("button", { name: "提交" }))
+
+    await waitFor(() =>
+      expect(within(dialog).getByRole("radio", { name: "改状态" })).toHaveAttribute(
+        "data-state",
+        "off",
+      ),
+    )
+    // And with nothing chosen, submitting again is not possible.
+    expect(within(dialog).getByRole("button", { name: "提交" })).toBeDisabled()
   })
 
   // Deleting is irreversible, so it goes through a dialog that stays inert
@@ -287,10 +305,13 @@ it("keeps where it is now apart from where it belongs", async () => {
   const dialog = screen.getByRole("dialog")
   // The current pair is stated, not editable: it moves through a transfer.
   expect(within(dialog).getByText("当前持有方")).toBeInTheDocument()
-  expect(within(dialog).getByText(/由流转改变/)).toBeInTheDocument()
+  expect(within(dialog).getByText(/用下面的流转/)).toBeInTheDocument()
   expect(within(dialog).queryByLabelText("持有方")).not.toBeInTheDocument()
 
-  // The editable pair says which one it is in its own label.
+  // The editable pair is behind the details button, and says which one it is
+  // in its own label once opened.
+  const user = userEvent.setup()
+  await user.click(within(dialog).getByRole("button", { name: "编辑设备属性" }))
   expect(within(dialog).getByLabelText("默认持有方")).toBeInTheDocument()
   expect(within(dialog).getByLabelText("默认负责人")).toBeInTheDocument()
 })

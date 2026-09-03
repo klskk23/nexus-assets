@@ -43,7 +43,7 @@ describe("ActionBar", () => {
     expect(screen.getByText("已选 20 台")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "签出" }))
     await chooseByLabel(user, "账号", "张三")
-    await user.type(screen.getByLabelText("备注"), "发往 XX 集团")
+    await user.type(screen.getByLabelText("本次流转的备注"), "发往 XX 集团")
     await user.click(screen.getByRole("button", { name: "提交" }))
 
     await waitFor(() =>
