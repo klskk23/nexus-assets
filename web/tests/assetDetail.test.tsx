@@ -303,9 +303,9 @@ it("keeps where it is now apart from where it belongs", async () => {
   await screen.findByText("112394521950")
 
   const dialog = screen.getByRole("dialog")
-  // The current pair is stated, not editable: it moves through a transfer.
+  // The current pair is stated, not editable: it moves through the form
+  // below, which is what the card it sits in is for.
   expect(within(dialog).getByText("当前持有方")).toBeInTheDocument()
-  expect(within(dialog).getByText(/用下面的流转/)).toBeInTheDocument()
   expect(within(dialog).queryByLabelText("持有方")).not.toBeInTheDocument()
 
   // The editable pair is behind the details button, and says which one it is

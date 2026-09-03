@@ -205,7 +205,6 @@ export const en: typeof zh = {
     homeOwner: "Home owner",
     currentHolder: "Currently held by",
     currentOwner: "Currently responsible",
-    currentHint: "To hand this device to somebody else, use the movement below.",
     attrs: "Device details",
     editAttrs: "Edit device details",
     editAttrsHint: "The model, this category's fields and where it belongs. Changing these records no movement.",

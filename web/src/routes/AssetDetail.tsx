@@ -203,11 +203,10 @@ export function AssetDetail() {
                   <CardTitle>{tTransfer.actions.title}</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-4">
-                  {/* Where the device is now, and who answers for it. Read
-                      only, and said so: these two move through a transfer, and
-                      the form below has a pair of controls with almost the
-                      same names on it -- somebody who reads one for the other
-                      thinks Save reassigns a colleague. */}
+                  {/* Where the device is now, and who answers for it. Stated
+                      rather than editable: the form right below is how both of
+                      them change, which the transfer card's own title already
+                      says. */}
                   <div className="rounded-md border p-4">
                     <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                       <div>
@@ -219,7 +218,6 @@ export function AssetDetail() {
                         <dd>{asset.owner?.name ?? t.common.none}</dd>
                       </div>
                     </dl>
-                    <p className="text-muted-foreground mt-3 text-sm">{t.assets.currentHint}</p>
                   </div>
 
                   <TransferForm

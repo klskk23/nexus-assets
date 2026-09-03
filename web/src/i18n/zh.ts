@@ -193,7 +193,6 @@ export const zh = {
     homeOwner: "默认负责人",
     currentHolder: "当前持有方",
     currentOwner: "当前负责人",
-    currentHint: "要换持有方或负责人，用下面的流转。",
     attrs: "设备属性",
     editAttrs: "编辑设备属性",
     editAttrsHint: "型号、类别字段与默认归属。改这些不产生流转记录。",
