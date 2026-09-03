@@ -35,10 +35,11 @@ function route(printing: boolean, job: Record<string, unknown> = { status: "comp
 }
 
 /** The dry run answers first, then the real submission. */
-function plans(dry: unknown, real: unknown) {
-  post.mockImplementation((_p: string, body: { dry_run?: boolean }) =>
-    Promise.resolve(body?.dry_run ? dry : real),
-  )
+function plans(dry: unknown, real: unknown, sources: unknown = { sources: [] }) {
+  post.mockImplementation((p: string, body: { dry_run?: boolean }) => {
+    if (p === "/print/refresh-source") return Promise.resolve(sources)
+    return Promise.resolve(body?.dry_run ? dry : real)
+  })
 }
 
 beforeEach(() => {
@@ -231,6 +232,19 @@ describe("choosing which label", () => {
   })
 })
 
+// "every job has finished" is vacuously true before there are any jobs, and the
+// dialog used to say so above the button that had not been pressed yet.
+it("does not claim the labels printed before they were", async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
+
+  await user.click(await screen.findByRole("button", { name: "打印标签" }))
+  const dialog = await screen.findByRole("dialog")
+  await within(dialog).findByRole("button", { name: /确认打印/ })
+
+  expect(within(dialog).queryByText("全部打印完成")).not.toBeInTheDocument()
+})
+
 // Nothing here designs a label. When one is wrong, the only useful thing this
 // page can offer is the way over to where it can be fixed.
 describe("getting to the print service", () => {
@@ -251,6 +265,55 @@ describe("getting to the print service", () => {
       "href",
       "http://printer:3000/design/tpl-1?preset=p1",
     )
+  })
+
+  // The designer over there draws from the print service's own copy of these
+  // rows, which is only as fresh as the last time somebody pressed refresh in
+  // its interface.
+  it("has the print service re-read the category before the label opens", async () => {
+    plans(
+      {
+        batches: [
+          {
+            category_id: "net",
+            category_name: "网络设备",
+            count: 2,
+            preset_name: "路由器标签",
+            numbers: ["112394521950"],
+            preset_id: "p1",
+            presets: [{ id: "p1", name: "路由器标签", templateId: "tpl-1" }],
+          },
+        ],
+      },
+      { batches: [] },
+      { sources: [{ id: "ds-1", name: "网络设备", rows: 42 }] },
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
+
+    await user.click(await screen.findByRole("button", { name: "打印标签" }))
+    const dialog = await screen.findByRole("dialog")
+    await user.click(within(dialog).getByRole("link", { name: "路由器标签" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/print/refresh-source", { category_id: "net" }),
+    )
+    // Said here, because this is the screen being looked at while the other
+    // tab loads.
+    expect(await within(dialog).findByRole("status")).toHaveTextContent("42 行")
+  })
+
+  // Nobody has to connect a table over there, and a page that says nothing
+  // leaves "why is it showing yesterday's holder" unanswerable.
+  it("says when no table over there reads from this category", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
+
+    await user.click(await screen.findByRole("button", { name: "打印标签" }))
+    const dialog = await screen.findByRole("dialog")
+    await user.click(within(dialog).getByRole("link", { name: "路由器标签" }))
+
+    expect(await within(dialog).findByRole("status")).toHaveTextContent("没有连接这个类别的数据源")
   })
 
   // Once something has gone wrong at the printer, the useful place is the

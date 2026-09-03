@@ -186,6 +186,78 @@ func (s *Server) printPresets(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"presets": presets})
 }
 
+// refreshPrintSource makes the print service re-read this category before
+// somebody looks at a label built from it.
+//
+// The label designer over there works from the service's own copy of our rows.
+// Opening a label from here used to land on a table that was as old as the
+// last time anybody pressed refresh in that interface -- so the device you
+// came to check would show yesterday's holder, and nothing on either screen
+// would say why.
+//
+// Relayed rather than called from the page for the reason every other call to
+// that service is: it sends no CORS headers.
+//
+// A category with no table connected is not a failure. Nobody has to connect
+// one, and saying so plainly is more useful than an error that suggests
+// something broke.
+func (s *Server) refreshPrintSource(c *gin.Context) {
+	if !s.printer.Configured() {
+		FailMsg(c, http.StatusNotFound, CodeNotFound, i18n.KeyPrintNotConfigured)
+		return
+	}
+	var req struct {
+		CategoryID string `json:"category_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
+		return
+	}
+
+	lang := string(LangOf(c))
+	sources, err := s.printer.DataSources(c.Request.Context(), lang)
+	if err != nil {
+		printServiceFailed(c, "print data sources", err)
+		return
+	}
+
+	// Every table bound to this category, not the first: two labels wanting
+	// different columns is a reason somebody makes a second one, and leaving
+	// one of them stale would be the bug this endpoint exists to remove.
+	refreshed := []gin.H{}
+	for _, src := range sources {
+		if src.SourceKind != "nexus" || src.Nexus == nil || src.Nexus.CategoryID != req.CategoryID {
+			continue
+		}
+		out, err := s.printer.RefreshDataSource(c.Request.Context(), src.ID, lang)
+		if err != nil {
+			printServiceFailed(c, "refresh data source "+src.ID, err)
+			return
+		}
+		refreshed = append(refreshed, gin.H{
+			"id": src.ID, "name": src.Name, "outcome": out.Outcome,
+			"rows": out.RowsAfter, "added": out.Added,
+			"updated": out.Updated, "removed": out.Removed,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"sources": refreshed})
+}
+
+// printServiceFailed answers for a call the print service would not complete.
+//
+// Its refusals carry a sentence written for a reader, so that one is passed
+// through; anything else is the service being unreachable, which is a
+// different sentence and a different thing to do about it.
+func printServiceFailed(c *gin.Context, what string, err error) {
+	var refused *printing.Rejection
+	if errors.As(err, &refused) {
+		Fail(c, http.StatusBadGateway, CodeInternal, refused.Error(), nil)
+		return
+	}
+	log.Printf("%s: %v", what, err)
+	FailMsg(c, http.StatusBadGateway, CodeInternal, i18n.KeyPrintUnreachable)
+}
+
 // printingAvailable tells the interface whether to offer printing at all, and
 // where the print service lives.
 //

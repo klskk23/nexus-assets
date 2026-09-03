@@ -154,6 +154,7 @@ func (s *Server) Router() *gin.Engine {
 	authed.POST("/print", need(authz.Print), s.printAssets)
 	authed.GET("/print/presets", s.printPresets)
 	authed.GET("/print/jobs/:id", s.printJobStatus)
+	authed.POST("/print/refresh-source", need(authz.Print), s.refreshPrintSource)
 
 	authed.GET("/audit", need(authz.AuditRead), s.listAudit)
 	authed.GET("/overview", s.overview)

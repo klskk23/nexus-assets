@@ -128,13 +128,104 @@ type Preset struct {
 // copied identifier. Typing a uuid by hand is a step that exists only because
 // nobody wrote this call.
 func (c *Client) Presets(ctx context.Context, lang string) ([]Preset, error) {
+	raw, err := c.fetch(ctx, http.MethodGet, "/api/print-presets", nil, lang)
+	if err != nil {
+		return nil, err
+	}
+	// The service answers with an envelope, the way it does everywhere else.
+	var body struct {
+		Presets []Preset `json:"presets"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return nil, fmt.Errorf("print service answered with something that is not a preset list: %w", err)
+	}
+	return body.Presets, nil
+}
+
+// DataSource is one of the tables the print service prints from.
+//
+// Only the parts this side has any business knowing: which table it is, and
+// whether it reads from a category of ours. The service keeps a good deal more
+// about each one, none of which is ours to interpret.
+type DataSource struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	SourceKind string `json:"sourceKind"`
+	// Nexus is set exactly when SourceKind is "nexus": the category the table
+	// is a copy of.
+	Nexus *struct {
+		CategoryID string `json:"categoryId"`
+	} `json:"nexus"`
+}
+
+// Refresh is what became of a re-read.
+//
+// Outcome is the service's word for it: "applied" when the table was replaced,
+// "needsConfirmation" when the column set changed and somebody has to agree to
+// that over there, "refusedTooManyRows" when the category has outgrown what it
+// will hold. Only the first is silent.
+type Refresh struct {
+	Outcome        string   `json:"outcome"`
+	RowsAfter      int      `json:"rowsAfter"`
+	Added          int      `json:"added"`
+	Updated        int      `json:"updated"`
+	Removed        int      `json:"removed"`
+	AddedColumns   []string `json:"addedColumns"`
+	RemovedColumns []string `json:"removedColumns"`
+	RowCount       int      `json:"rowCount"`
+	Limit          int      `json:"limit"`
+}
+
+// DataSources lists the print service's tables.
+func (c *Client) DataSources(ctx context.Context, lang string) ([]DataSource, error) {
+	raw, err := c.fetch(ctx, http.MethodGet, "/api/data-sources", nil, lang)
+	if err != nil {
+		return nil, err
+	}
+	var body struct {
+		DataSources []DataSource `json:"dataSources"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return nil, fmt.Errorf("print service answered with something that is not a data source list: %w", err)
+	}
+	return body.DataSources, nil
+}
+
+// RefreshDataSource makes the service re-read one of its tables from here.
+//
+// Sent without confirmColumnChange on purpose. A changed column set is a
+// category whose fields moved, and agreeing to that on somebody's behalf can
+// silently break a label that prints a column which no longer exists. The
+// answer comes back as an outcome for a person to act on, over there.
+func (c *Client) RefreshDataSource(ctx context.Context, id, lang string) (Refresh, error) {
+	var out Refresh
+	raw, err := c.fetch(ctx, http.MethodPost, "/api/data-sources/"+id+"/refresh", []byte(`{}`), lang)
+	if err != nil {
+		return out, err
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return out, fmt.Errorf("print service answered with something that is not a refresh: %w", err)
+	}
+	return out, nil
+}
+
+// fetch performs one request and returns the body, turning the service's error
+// envelope into a Rejection. The three plain calls share it; Print and Status
+// go through do(), which decodes a job.
+func (c *Client) fetch(ctx context.Context, method, path string, body []byte, lang string) ([]byte, error) {
 	if !c.Configured() {
 		return nil, ErrNotConfigured
 	}
-	req, err := http.NewRequestWithContext(ctx,
-		http.MethodGet, c.baseURL+"/api/print-presets", nil)
+	var reader io.Reader
+	if body != nil {
+		reader = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, reader)
 	if err != nil {
 		return nil, err
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("Accept-Language", lang)
 
@@ -155,14 +246,7 @@ func (c *Client) Presets(ctx context.Context, lang string) ([]Preset, error) {
 		_ = json.Unmarshal(raw, &e)
 		return nil, &Rejection{Status: res.StatusCode, Code: e.Code, Message: e.What}
 	}
-	// The service answers with an envelope, the way it does everywhere else.
-	var body struct {
-		Presets []Preset `json:"presets"`
-	}
-	if err := json.Unmarshal(raw, &body); err != nil {
-		return nil, fmt.Errorf("print service answered with something that is not a preset list: %w", err)
-	}
-	return body.Presets, nil
+	return raw, nil
 }
 
 // Status asks what became of a job.

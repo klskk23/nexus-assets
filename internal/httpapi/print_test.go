@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -19,6 +20,10 @@ type fakePrintService struct {
 	status map[string]any
 	// refuse, when set, is returned instead of a job.
 	refuse *fakeRefusal
+	// sources is what /api/data-sources answers with, and refreshed records
+	// which of them were re-read.
+	sources   []map[string]any
+	refreshed []string
 }
 
 type printRequest struct {
@@ -88,6 +93,22 @@ func newFakePrintService(t *testing.T) *fakePrintService {
 		}
 		w.WriteHeader(http.StatusNotFound)
 		_ = json.NewEncoder(w).Encode(map[string]any{"code": "NOT_FOUND", "what": "没有这个作业"})
+	})
+
+	mux.HandleFunc("/api/data-sources", func(w http.ResponseWriter, _ *http.Request) {
+		if f.sources == nil {
+			f.sources = []map[string]any{}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"dataSources": f.sources})
+	})
+	mux.HandleFunc("/api/data-sources/", func(w http.ResponseWriter, r *http.Request) {
+		// /api/data-sources/<id>/refresh
+		id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/data-sources/"), "/refresh")
+		f.refreshed = append(f.refreshed, id)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"outcome": "applied", "rowsBefore": 2, "rowsAfter": 3,
+			"added": 1, "updated": 2, "removed": 0,
+		})
 	})
 
 	f.server = httptest.NewServer(mux)
@@ -452,5 +473,79 @@ func TestCapabilitiesCarryThePrinterAddress(t *testing.T) {
 	plain := decode[map[string]any](t, newHarness(t).get(t, "/api/capabilities"))
 	if plain["printing"] != false || plain["printing_url"] != "" {
 		t.Errorf("capabilities = %v", plain)
+	}
+}
+
+// Opening a label from here lands in the print service's designer, which draws
+// from that service's own copy of our rows. Without this the copy is as old as
+// the last time somebody pressed refresh over there.
+func TestRefreshingThePrintSourceForACategory(t *testing.T) {
+	fake := newFakePrintService(t)
+	fake.sources = []map[string]any{
+		{"id": "ds-rt", "name": "SDWAN 路由器", "sourceKind": "nexus",
+			"nexus": map[string]any{"categoryId": "will-be-replaced"}},
+		{"id": "ds-csv", "name": "手工表格", "sourceKind": "local", "nexus": nil},
+	}
+	h := newHarnessWithPrinting(t, fake.server.URL)
+	fake.sources[0]["nexus"] = map[string]any{"categoryId": h.catID}
+
+	rec := h.post(t, "/api/print/refresh-source", `{"category_id":"`+h.catID+`"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("%d %s", rec.Code, rec.Body.String())
+	}
+	if len(fake.refreshed) != 1 || fake.refreshed[0] != "ds-rt" {
+		t.Errorf("the category's own table is the one to re-read, got %v", fake.refreshed)
+	}
+	// What it did comes back, because "refreshed" with no numbers is a claim
+	// nobody can check.
+	if body := rec.Body.String(); !strings.Contains(body, `"rows":3`) ||
+		!strings.Contains(body, "SDWAN") {
+		t.Errorf("the outcome should say what happened: %s", body)
+	}
+}
+
+// Two labels wanting different columns is a reason to keep two tables, and
+// leaving one of them stale is the bug this endpoint exists to remove.
+func TestRefreshingEveryTableBoundToTheCategory(t *testing.T) {
+	fake := newFakePrintService(t)
+	h := newHarnessWithPrinting(t, fake.server.URL)
+	fake.sources = []map[string]any{
+		{"id": "ds-a", "sourceKind": "nexus", "nexus": map[string]any{"categoryId": h.catID}},
+		{"id": "ds-b", "sourceKind": "nexus", "nexus": map[string]any{"categoryId": h.catID}},
+		{"id": "ds-other", "sourceKind": "nexus", "nexus": map[string]any{"categoryId": "elsewhere"}},
+	}
+
+	if rec := h.post(t, "/api/print/refresh-source", `{"category_id":"`+h.catID+`"}`); rec.Code != http.StatusOK {
+		t.Fatal(rec.Body.String())
+	}
+	if len(fake.refreshed) != 2 {
+		t.Errorf("both tables for this category should be re-read, got %v", fake.refreshed)
+	}
+}
+
+// Nobody has to connect a table. Saying so plainly beats an error that
+// suggests something broke.
+func TestRefreshingWhenNoTableIsConnected(t *testing.T) {
+	fake := newFakePrintService(t)
+	h := newHarnessWithPrinting(t, fake.server.URL)
+
+	rec := h.post(t, "/api/print/refresh-source", `{"category_id":"`+h.catID+`"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("%d %s", rec.Code, rec.Body.String())
+	}
+	if body := rec.Body.String(); !strings.Contains(body, `"sources":[]`) {
+		t.Errorf("an empty list is the answer, not a failure: %s", body)
+	}
+	if len(fake.refreshed) != 0 {
+		t.Errorf("nothing should have been re-read, got %v", fake.refreshed)
+	}
+}
+
+// Without a print service there is no table to refresh, and the interface
+// shows nothing printing-related at all.
+func TestRefreshingThePrintSourceWithoutAService(t *testing.T) {
+	h := newHarness(t)
+	if rec := h.post(t, "/api/print/refresh-source", `{"category_id":"x"}`); rec.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d %s", rec.Code, rec.Body.String())
 	}
 }

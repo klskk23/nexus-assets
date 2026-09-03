@@ -106,6 +106,24 @@ zenith 的「数据源 → 新建」里选 **NEXUS**，然后从下拉框里选�
 zenith 认了这个参数才生效（截至本文写作时尚未实现，链接不会因此出错）。
 类别对话框里另有一个链接指向 `/print-presets`，那是管理标签的地方。
 
+**点这条链接会先让 zenith 重新读一遍这个类别。** 设计器画的是 zenith
+自己那份行拷贝，只有有人在那边按过刷新才是新的 —— 不刷的话，你跳过去核对的那台设备
+显示的是昨天的持有方，而两边屏幕上都没有一句话解释为什么。
+
+调用链是 `POST /api/print/refresh-source {"category_id"}` →
+`GET {zenith}/api/data-sources` 找出 `sourceKind=nexus` 且 `nexus.categoryId` 对得上的表
+→ 对每一张 `POST {zenith}/api/data-sources/{id}/refresh`。三件事要知道：
+
+- **绑到同一个类别的表格全刷**，一个类别可以有多张（两种标签要不同的列）；
+- **一张都没连不是错误**，打印对话框会照实说「那边看到的仍是它自己的表格」；
+- **列集变了时 zenith 回 `needsConfirmation` 而不刷新**，nexus 不带
+  `confirmColumnChange` 过去 —— 那意味着类别的字段动了，按列名取值的标签可能当场失效，
+  这个头要有人在 zenith 那边点。
+
+刷新是在浏览器打开新标签页的同时发出的，不挡着跳转（挡一下再 `window.open` 会被拦成弹窗）。
+另外 zenith 自己还有两条路会刷新：数据源上的定时刷新，以及作业提交前刷新
+（`refreshBeforePrint`）—— 这一条补的是**人跳过去看**的那条路。
+
 ## 七、不通的时候先看哪里
 
 | 现象 | 多半是 |

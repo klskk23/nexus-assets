@@ -131,6 +131,32 @@ and the print settings**, and takes effect once zenith honours the parameter
 (not implemented as of writing — the link is harmless meanwhile). The category
 dialog has a second link to `/print-presets`, which is where labels are managed.
 
+**Clicking that link first has zenith re-read the category.** The designer draws
+from zenith's own copy of the rows, which is only as fresh as the last time
+somebody pressed refresh over there — without this, the device you clicked
+through to check shows yesterday's holder, and nothing on either screen says
+why.
+
+The chain is `POST /api/print/refresh-source {"category_id"}` →
+`GET {zenith}/api/data-sources` to find the tables whose `sourceKind` is `nexus`
+and whose `nexus.categoryId` matches → `POST {zenith}/api/data-sources/{id}/refresh`
+for each. Three things to know:
+
+- **every table bound to that category is refreshed**; a category may have more
+  than one (two labels wanting different columns);
+- **none connected is not an error** — the dialog says plainly that what zenith
+  shows is its own table;
+- **a changed column set comes back as `needsConfirmation` and nothing is
+  refreshed.** nexus does not send `confirmColumnChange`: it means the
+  category's fields moved, a label that reads a column by name can break, and
+  that nod belongs to somebody looking at zenith.
+
+The refresh goes out as the browser opens the new tab, without holding the
+navigation up (holding it and then calling `window.open` gets caught as a
+popup). zenith has two refresh paths of its own — the per-source interval and
+`refreshBeforePrint` on submission; this one covers **a person jumping over to
+look**.
+
 ## 7. When it does not work, look here first
 
 | Symptom | Usually |

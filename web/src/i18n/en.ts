@@ -46,6 +46,10 @@ export const en: typeof zh = {
     lost: "That job's state could not be read",
     openService: "Manage labels in the print service",
     openQueue: "Open the printer queue",
+    sourceRefreshed: (n: number) =>
+      `The print service re-read this category: ${n} row(s) there now`,
+    sourceNone:
+      "No table in the print service reads from this category, so what it shows is its own",
     openDesign: "Open this label in the print service",
     allDone: "All labels printed",
     someFailed: "Some jobs did not finish; see below",

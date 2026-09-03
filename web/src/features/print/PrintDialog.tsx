@@ -1,4 +1,4 @@
-import { AlertCircleIcon, CheckIcon, ExternalLinkIcon } from "lucide-react"
+import { AlertCircleIcon, CheckIcon, ExternalLinkIcon, RefreshCwIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useMutation, useQueries } from "@tanstack/react-query"
 
@@ -91,6 +91,9 @@ export function PrintDialog({ ids, onClose }: Props) {
   const { url: printerURL } = usePrinting()
   const [batches, setBatches] = useState<Batch[]>([])
   const [banner, setBanner] = useState<string | null>(null)
+  // What became of the print service's copy of these rows, said once, after
+  // somebody has gone to look at a label.
+  const [sourceNote, setSourceNote] = useState<string | null>(null)
   // Until this, nothing has reached a printer.
   const [confirmed, setConfirmed] = useState(false)
   // Which label each category prints. One label is not a choice, so the plan
@@ -155,6 +158,33 @@ export function PrintDialog({ ids, onClose }: Props) {
     return template ? `${printerURL}/design/${template}?preset=${encodeURIComponent(preset)}` : ""
   }
 
+  /**
+   * Make the print service re-read this category before the designer opens.
+   *
+   * The label over there is drawn against that service's own copy of our rows,
+   * and until now that copy was as old as the last time somebody pressed
+   * refresh in its interface -- so the device you clicked through to check
+   * would show yesterday's holder, with nothing on either screen to say why.
+   *
+   * Fired without holding the link up: the anchor opens its tab the moment it
+   * is clicked, which is what keeps the browser from treating this as a popup,
+   * and the refresh lands while that tab is still loading. What it did is
+   * reported here rather than there, since this is the screen being looked at.
+   */
+  const refreshSource = useMutation({
+    mutationFn: (categoryID: string) =>
+      api.post<{ sources: { name?: string; rows: number }[] }>("/print/refresh-source", {
+        category_id: categoryID,
+      }),
+    onSuccess: (res) =>
+      setSourceNote(
+        res.sources.length === 0
+          ? t.print.sourceNone
+          : t.print.sourceRefreshed(res.sources.reduce((n, x) => n + x.rows, 0)),
+      ),
+    onError: (e) => setSourceNote(e instanceof ApiError ? e.message : t.common.error),
+  })
+
   const label = (status?: string) => {
     switch (status) {
       case "queued":
@@ -176,7 +206,11 @@ export function PrintDialog({ ids, onClose }: Props) {
   // contributes nothing, and if that is all of them there is nothing to press.
   const printable = batches.reduce((n, b) => (b.error ? n : n + b.count), 0)
 
+  // Only once paper has actually been asked for. Before that no batch has a
+  // job, "every job has finished" is vacuously true, and the dialog announced
+  // that everything had printed while the button to print it was still there.
   const settled =
+    confirmed &&
     batches.length > 0 &&
     batches.every((b) => {
       if (!b.job_id) return true
@@ -241,6 +275,7 @@ export function PrintDialog({ ids, onClose }: Props) {
                               target="_blank"
                               rel="noreferrer"
                               className="underline underline-offset-4"
+                              onClick={() => refreshSource.mutate(b.category_id)}
                             >
                               {b.preset_name}
                             </a>
@@ -285,6 +320,7 @@ export function PrintDialog({ ids, onClose }: Props) {
                                 rel="noreferrer"
                                 aria-label={t.print.openDesign}
                                 title={t.print.openDesign}
+                                onClick={() => refreshSource.mutate(b.category_id)}
                               >
                                 <ExternalLinkIcon />
                               </a>
@@ -335,6 +371,13 @@ export function PrintDialog({ ids, onClose }: Props) {
               </TableBody>
             </Table>
           </TableFrame>
+        )}
+
+        {sourceNote && (
+          <Alert role="status">
+            <RefreshCwIcon />
+            <AlertDescription>{sourceNote}</AlertDescription>
+          </Alert>
         )}
 
         {settled && (

@@ -1082,6 +1082,24 @@ paths:
       responses:
         "200": { description: OK }
 
+  /print/refresh-source:
+    post:
+      tags: [metadata]
+      summary: 让打印服务重新读取某个类别的数据源
+      description: >
+        打印服务的标签设计器画的是**它自己那份**行拷贝，只有有人在那边按过刷新才是新的。
+        从这边打开一个标签之前先调它，跳过去看到的就是当下的数据。
+        请求体 `{"category_id": "..."}`；转发是因为打印服务不发 CORS 头。
+        **绑到这个类别的表格全部刷新**（一个类别可以有多张），
+        返回 `{"sources":[{id,name,outcome,rows,added,updated,removed}]}`。
+        **一张都没连不是错误** —— 没人非得连，返回空数组，界面照实说。
+        列集变了时打印服务会回 `needsConfirmation` 而不真刷新：那要有人在那边确认，
+        因为按列名取值的标签可能会因此失效，nexus 不替人点这个头。
+      responses:
+        "200": { description: OK }
+        "404": { description: 本部署没有配置打印服务 }
+        "502": { description: 打印服务不可达，或它自己拒绝了这次刷新 }
+
   /import/preview:
     post:
       tags: [import]

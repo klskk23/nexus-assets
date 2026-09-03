@@ -81,6 +81,17 @@ test -n "$TOKEN"
 say "an authenticated request"
 curl -fsS "http://127.0.0.1:$PORT/api/categories" -H "Authorization: Bearer $TOKEN" >/dev/null
 
+# Printing is off unless an address is configured, and the interface asks this
+# endpoint whether to show anything printing-related at all. A deployment that
+# answered "true" here with no service behind it would put dead buttons on the
+# asset page.
+say "printing is absent without a print service"
+curl -fsS "http://127.0.0.1:$PORT/api/capabilities" -H "Authorization: Bearer $TOKEN" \
+  | tee /dev/stderr | grep -q '"printing":false'
+test "$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+  "http://127.0.0.1:$PORT/api/print/refresh-source" -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"category_id":"x"}')" = 404
+
 # Migrations ran once on a fresh directory; now they have to be a no-op against
 # a database that already has them, and the account has to still be there.
 say "restarting"
