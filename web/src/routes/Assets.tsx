@@ -537,6 +537,13 @@ export function Assets() {
                     {/* The same actions the selection bar offers, reachable on
                         one device without ticking it first. */}
                     <ContextMenuContent>
+                      {/* Reading before doing: the dialog a click opens shows
+                          the last five movements, and this is the way to the
+                          rest of them without opening it first. */}
+                      <ContextMenuItem onSelect={() => navigate(`/assets/${a.id}/history`)}>
+                        {t.assets.fullHistory}
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
                       {transferActions().map(([action, label]) => (
                         <ContextMenuItem
                           key={action}
