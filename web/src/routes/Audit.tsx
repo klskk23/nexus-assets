@@ -1,5 +1,6 @@
 import { CalendarIcon } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import type { DateRange } from "react-day-picker"
 import { enUS, zhCN } from "react-day-picker/locale"
@@ -84,17 +85,33 @@ function dayText(d: Date): string {
 }
 
 export function Audit() {
-  const [targetType, setTargetType] = useState("")
-  const [targetID, setTargetID] = useState("")
-  const [actorID, setActorID] = useState("")
+  // The filters live in the address, so leaving this page and coming back
+  // finds the same question rather than the whole log again. Same reason as
+  // the asset list: a narrowing somebody built by hand should survive a trip
+  // somewhere else.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [targetType, setTargetType] = useState(searchParams.get("target_type") ?? "")
+  const [targetID, setTargetID] = useState(searchParams.get("target_id") ?? "")
+  const [actorID, setActorID] = useState(searchParams.get("actor_id") ?? "")
   // The name the row menu came from, for an actor the account list no longer
   // has -- a deleted account still leaves its changes behind, which is the
   // point of an audit trail.
-  const [actorName, setActorName] = useState("")
-  const [action, setAction] = useState("")
-  const [range, setRange] = useState<DateRange | undefined>()
-  const [page, setPage] = useState(0)
-  const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
+  const [actorName, setActorName] = useState(searchParams.get("actor_name") ?? "")
+  const [action, setAction] = useState(searchParams.get("action") ?? "")
+  const [range, setRange] = useState<DateRange | undefined>(() => {
+    const from = searchParams.get("from")
+    if (!from) return undefined
+    const to = searchParams.get("to")
+    return { from: new Date(from), to: to ? new Date(to) : undefined }
+  })
+  const [page, setPage] = useState(() => {
+    const n = Number(searchParams.get("page"))
+    return Number.isFinite(n) && n > 0 ? n : 0
+  })
+  const [pageSize, setPageSize] = useState(() => {
+    const n = Number(searchParams.get("limit"))
+    return PAGE_SIZES.includes(n) ? n : PAGE_SIZES[0]
+  })
   // The entry whose values are on screen. A dialog rather than an expanded
   // row: JSON needs a width no other column wants, and the row underneath it
   // still has to be readable when you close it.
@@ -113,6 +130,24 @@ export function Audit() {
   // Narrowing the question sends you back to the first page. Page seven of a
   // different question is not a place anyone meant to be.
   useEffect(() => setPage(0), [filterKey, pageSize])
+
+  // Replaced rather than pushed: narrowing a log is not a place you navigate
+  // to, and Back should leave the page rather than undo one filter at a time.
+  // actor_name rides along because a deleted account has no name to look up --
+  // the row menu is where it came from, and the badge has to keep saying it.
+  const address = (() => {
+    const next = new URLSearchParams(params)
+    if (actorName) next.set("actor_name", actorName)
+    if (page > 0) next.set("page", String(page))
+    if (pageSize !== PAGE_SIZES[0]) next.set("limit", String(pageSize))
+    return next.toString()
+  })()
+  const current = searchParams.toString()
+  useEffect(() => {
+    if (address !== current) {
+      setSearchParams(new URLSearchParams(address), { replace: true })
+    }
+  }, [address, current, setSearchParams])
 
   const listParams = new URLSearchParams(filterKey)
   listParams.set("limit", String(pageSize))

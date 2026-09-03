@@ -139,6 +139,11 @@
   而 `aria-label` 是我们自己传的，所以按名字找元素的测试一直是绿的。
   **筛选是一栏**：控件横排一行，标签 `sr-only`，「全部 X」写在控件自己的值里，
   不要在控件上方再堆一层文字。
+  **筛选与翻页都写进地址栏**（`setSearchParams(..., { replace: true })`）——
+  否则点进一台设备再返回，筛选全没了，人要重新缩一遍。用 **replace 不用 push**：
+  筛选不是一个「去过的地方」，push 会让「后退」把搜索框的每一次击键都倒一遍，
+  而不是回到刚才那台设备。资产、审计、字段三页都照此办理；
+  比较的是 `useSearchParams()` 的值，不要读 `window.location`。
   **日期用 `Popover` + `Calendar`**（`mode="range"`），不写 `<input type="date">`；
   语言跟 `getLang()` 走 `react-day-picker/locale` 的 `zhCN`/`enUS`。
   测试里选日期按 `data-day="YYYY-MM-DD"` 定位，别按按钮名 —— 那是整句本地化日期。

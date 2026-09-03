@@ -10,6 +10,8 @@ import { chooseByLabel } from "@/test/choose"
 import { stubDownloads, type Downloads } from "@/test/downloads"
 
 const navigate = vi.fn()
+import { useLocation, useNavigationType } from "react-router"
+
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router")
   return { ...actual, useNavigate: () => navigate }
@@ -645,5 +647,98 @@ describe("Assets column picker", () => {
     const row = screen.getByRole("row", { name: /112394521950/ })
     expect(within(row).getByText("SDWAN-X100")).toBeInTheDocument()
     expect(within(row).getByText("Acme")).toBeInTheDocument()
+  })
+})
+
+describe("Assets filters in the address", () => {
+  beforeEach(() => {
+    navigate.mockReset()
+    get.mockReset().mockImplementation(route)
+    localStorage.clear()
+  })
+
+  /**
+   * Shows the router's address and how the last change got there. The tests
+   * run on a memory router, so window.location says nothing -- and the page
+   * should not be reading it either.
+   */
+  function Address() {
+    const location = useLocation()
+    const how = useNavigationType()
+    return (
+      <>
+        <span data-testid="address">{location.search}</span>
+        <span data-testid="how">{how}</span>
+      </>
+    )
+  }
+
+  /** What the list is asking the server for, which is what the address mirrors. */
+  function asked() {
+    const calls = get.mock.calls
+      .map((args) => String(args[0]))
+      .filter((p) => p.startsWith("/assets?"))
+    return new URLSearchParams(calls[calls.length - 1].split("?")[1])
+  }
+
+  // Opening a device and coming back used to find the list wide open again:
+  // the filters were read from the address once and never written to it, so
+  // there was nothing to come back to.
+  it("writes the filters into the address", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <>
+        <Assets />
+        <Address />
+      </>,
+    )
+    await screen.findByText(/共 1 条/)
+
+    await user.type(screen.getByLabelText(/搜索资产/), "4D5E")
+    await chooseByLabel(user, "类别", "网络设备")
+    await chooseByLabel(user, "状态", "在库")
+
+    // The address is the router's, not the browser's: the tests run on a
+    // memory router, and the app should not be reading window.location either.
+    await waitFor(() => {
+      expect(asked().get("q")).toBe("4D5E")
+      expect(asked().get("category_id")).toBe("net")
+      expect(asked().get("status")).toBe("in_stock")
+    })
+    expect(screen.getByTestId("address")).toHaveTextContent("q=4D5E")
+  })
+
+  it("reads them back, so returning to the list finds it as it was", async () => {
+    renderWithProviders(<Assets />, {
+      route: "/assets?q=4D5E&category_id=net&status=in_stock",
+    })
+
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "类别" })).toHaveTextContent("网络设备"),
+    )
+    expect(screen.getByLabelText(/搜索资产/)).toHaveValue("4D5E")
+    expect(screen.getByRole("combobox", { name: "状态" })).toHaveTextContent("在库")
+    // And the list is asked the same question the address describes.
+    await waitFor(() => expect(asked().get("q")).toBe("4D5E"))
+  })
+
+  // Filtering is not a place you navigate to: pushing would make Back walk
+  // through every keystroke instead of returning to the device you opened.
+  it("replaces rather than pushes", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <>
+        <Assets />
+        <Address />
+      </>,
+    )
+    await screen.findByText(/共 1 条/)
+
+    await user.type(screen.getByLabelText(/搜索资产/), "abc")
+    await waitFor(() => expect(screen.getByTestId("address")).toHaveTextContent("q=abc"))
+
+    // Filtering is not a place you navigate to: pushing would make Back walk
+    // through every keystroke instead of returning to the device you opened.
+    expect(screen.getByTestId("how")).toHaveTextContent("REPLACE")
   })
 })

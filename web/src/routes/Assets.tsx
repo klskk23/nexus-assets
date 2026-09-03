@@ -91,8 +91,8 @@ export function Assets() {
 
   // The overview links here with a filter already chosen, so the URL seeds the
   // initial state rather than the page opening blank and then jumping.
-  const [searchParams] = useSearchParams()
-  const [q, setQ] = useState("")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [q, setQ] = useState(searchParams.get("q") ?? "")
   const [categoryId, setCategoryId] = useState(searchParams.get("category_id") ?? "")
   const [includeDescendants, setIncludeDescendants] = useState(
     searchParams.get("include_descendants") !== "false",
@@ -112,11 +112,17 @@ export function Assets() {
   const [printingOne, setPrintingOne] = useState<string | null>(null)
   const { enabled: printing } = usePrinting()
   const [done, setDone] = useState<string | null>(null)
-  const [page, setPage] = useState(0)
+  const [page, setPage] = useState(() => {
+    const n = Number(searchParams.get("page"))
+    return Number.isFinite(n) && n > 0 ? n : 0
+  })
   // The overview's quick-entry card links here with a category already picked.
   const [creating, setCreating] = useState(searchParams.get("new") === "1")
   const [exporting, setExporting] = useState(false)
-  const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
+  const [pageSize, setPageSize] = useState(() => {
+    const n = Number(searchParams.get("limit"))
+    return PAGE_SIZES.includes(n) ? n : PAGE_SIZES[0]
+  })
   // A context menu closes as it fires, so what it starts is parked here and
   // rendered outside the table.
   const [rowTransfer, setRowTransfer] = useState<{ id: string; action: TransferAction } | null>(
@@ -170,6 +176,27 @@ export function Assets() {
   useEffect(() => {
     setPage(0)
   }, [filterKey, pageSize])
+
+  // The filters live in the address, so opening a device and coming back finds
+  // the list as it was. They used to be read from the address once and never
+  // written to it, which meant every trip into a device threw them away and
+  // the operator narrowed the list again by hand.
+  //
+  // Replaced rather than pushed: filtering is not a place you navigate to, and
+  // pushing would make Back walk through every keystroke of the search box
+  // instead of returning to the device you were just looking at.
+  const address = (() => {
+    const next = new URLSearchParams(params)
+    if (page > 0) next.set("page", String(page))
+    if (pageSize !== PAGE_SIZES[0]) next.set("limit", String(pageSize))
+    return next.toString()
+  })()
+  const current = searchParams.toString()
+  useEffect(() => {
+    if (address !== current) {
+      setSearchParams(new URLSearchParams(address), { replace: true })
+    }
+  }, [address, current, setSearchParams])
 
   const categories = useQuery({
     queryKey: ["categories"],

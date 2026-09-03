@@ -1,6 +1,7 @@
 import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
 import { useEffect, useState as useReactState } from "react"
+import { useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
@@ -57,12 +58,36 @@ export function Fields() {
   // Which category's fields are being looked at. A key is only unique inside
   // one category chain now, so an unfiltered library can hold two "rack"s and
   // the filter is what tells them apart.
-  const [categoryId, setCategoryId] = useState("")
-  const [page, setPage] = useReactState(0)
-  const [pageSize, setPageSize] = useReactState(PAGE_SIZES[0])
+  //
+  // In the address, like every other filter: leaving the page and coming back
+  // should find the same question.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [categoryId, setCategoryId] = useState(searchParams.get("category_id") ?? "")
+  const [page, setPage] = useReactState(() => {
+    const n = Number(searchParams.get("page"))
+    return Number.isFinite(n) && n > 0 ? n : 0
+  })
+  const [pageSize, setPageSize] = useReactState(() => {
+    const n = Number(searchParams.get("limit"))
+    return PAGE_SIZES.includes(n) ? n : PAGE_SIZES[0]
+  })
   const [total, setTotal] = useReactState(0)
 
   useEffect(() => setPage(0), [categoryId, pageSize, setPage])
+
+  const address = (() => {
+    const next = new URLSearchParams()
+    if (categoryId) next.set("category_id", categoryId)
+    if (page > 0) next.set("page", String(page))
+    if (pageSize !== PAGE_SIZES[0]) next.set("limit", String(pageSize))
+    return next.toString()
+  })()
+  const current = searchParams.toString()
+  useEffect(() => {
+    if (address !== current) {
+      setSearchParams(new URLSearchParams(address), { replace: true })
+    }
+  }, [address, current, setSearchParams])
 
   const categories = useQuery({
     queryKey: ["categories"],
