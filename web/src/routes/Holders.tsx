@@ -1,4 +1,5 @@
 import { AlertCircleIcon } from "lucide-react"
+import { Hint } from "@/features/common/Hint"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -427,10 +428,8 @@ function EditDialog({ holder, holders, refusal, onOpenChange, onSave, saving }: 
                 onCheckedChange={(v) => setDraft({ ...draft, is_default_stock: v === true })}
               />
               <FieldLabel htmlFor="he-default">{tMeta.holders.setDefault}</FieldLabel>
+              <Hint>{tMeta.holders.defaultStockHint}</Hint>
             </Field>
-          )}
-          {draft.type === "location" && (
-            <FieldDescription>{tMeta.holders.defaultStockHint}</FieldDescription>
           )}
 
           {refusal && <RefusalAlert refusal={refusal} />}

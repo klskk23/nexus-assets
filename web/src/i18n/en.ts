@@ -225,6 +225,7 @@ export const en: typeof zh = {
   },
 
   common: {
+    whatIsThis: "What is this",
     searchPlaceholder: (what: string) => `Search ${what}`,
     loading: "Loading…",
     error: "Something went wrong",
@@ -269,7 +270,7 @@ export const enMeta: typeof zhMeta = {
     unique: "Unique",
     uniqueScopeHint: "No duplicates within the category subtree, or across the models it binds to",
     uniqueFixed: "Fixed once the field exists",
-    keyFixed: "Fixed once the field exists",
+    keyPlaceholder: "lower case and underscores; fixed once created",
     typeFixed: "Fixed once the field exists",
     requiredScopeHint: "Asked for on every binding; existing devices at their next edit",
     uniqueInCategory: "Unique in its category",
@@ -674,7 +675,8 @@ export const enStatuses: typeof zhStatuses = {
   title: "Statuses",
   create: "New status",
   key: "Key",
-  keyHint: "Lowercase letters, digits and underscores. Fixed once created.",
+  keyHint: "Lowercase letters, digits and underscores",
+  keyFixed: "Fixed once created",
   label: "Display name",
   color: "Colour",
   kind: "Kind",

@@ -1,4 +1,5 @@
 import { AlertCircleIcon } from "lucide-react"
+import { Hint } from "@/features/common/Hint"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -170,7 +171,10 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="ce-display-key">{tConfig.displayKey.label}</FieldLabel>
+            <div className="flex items-center gap-1.5">
+              <FieldLabel htmlFor="ce-display-key">{tConfig.displayKey.label}</FieldLabel>
+              <Hint>{tConfig.displayKey.hint}</Hint>
+            </div>
             <Select
               value={toNone(displayKey)}
               onValueChange={(v) => setDisplayKey(fromNone(v))}
@@ -189,7 +193,6 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
                 </SelectGroup>
               </SelectContent>
             </Select>
-            <FieldDescription>{tConfig.displayKey.hint}</FieldDescription>
           </Field>
 
           {/* Only where something can print. The value is opaque here: what a
@@ -197,8 +200,10 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
               installation without one should not be asked about it. */}
           {printing && (
             <FieldSet>
-              <FieldLegend variant="label">{tMeta.categories.printPreset}</FieldLegend>
-              <FieldDescription>{tMeta.categories.printPresetHint}</FieldDescription>
+              <div className="flex items-center gap-1.5">
+                <FieldLegend variant="label">{tMeta.categories.printPreset}</FieldLegend>
+                <Hint>{tMeta.categories.printPresetHint}</Hint>
+              </div>
               <FieldGroup className="gap-2">
                 {(presets.data?.presets ?? []).map((p) => (
                   <Field key={p.id} orientation="horizontal" className="w-auto">

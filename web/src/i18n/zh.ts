@@ -211,6 +211,7 @@ export const zh = {
   },
 
   common: {
+    whatIsThis: "这是什么",
     searchPlaceholder: (what: string) => `搜索${what}`,
     loading: "加载中…",
     error: "出错了",
@@ -255,7 +256,7 @@ export const zhMeta = {
     unique: "唯一",
     uniqueScopeHint: "类别子树内或所绑型号内不重复",
     uniqueFixed: "建好后不能改",
-    keyFixed: "建好后不能改",
+    keyPlaceholder: "小写英文与下划线，建好后不能改",
     typeFixed: "建好后不能改",
     requiredScopeHint: "所有绑定都要求填；存量设备下次编辑时才补",
     uniqueInCategory: "类别内唯一",
@@ -639,7 +640,8 @@ export const zhStatuses = {
   title: "状态",
   create: "新建状态",
   key: "键名",
-  keyHint: "小写字母、数字与下划线，建好后不可更改",
+  keyHint: "小写字母、数字与下划线",
+  keyFixed: "建好后不可更改",
   label: "显示名",
   color: "颜色",
   kind: "类型",

@@ -331,9 +331,13 @@ describe("FieldEditor bindings", () => {
     renderWithProviders(
       <FieldEditor field={field("text", { key: "rack", is_unique: true })} onClose={vi.fn()} />,
     )
+    const user = userEvent.setup()
     expect(await screen.findByLabelText("键名（英文）")).toBeDisabled()
     expect(screen.getByLabelText("唯一")).toBeDisabled()
-    expect(screen.getAllByText("建好后不能改").length).toBeGreaterThan(0)
+    // The reason is behind the question mark beside it, not on a line of its
+    // own -- a form explains what to do, and answers "why not" when asked.
+    await user.hover(screen.getAllByRole("button", { name: "这是什么" })[0])
+    expect(await screen.findByText("建好后不能改")).toBeInTheDocument()
   })
 })
 

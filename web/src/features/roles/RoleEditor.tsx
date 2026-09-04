@@ -1,4 +1,5 @@
 import { AlertCircleIcon } from "lucide-react"
+import { Hint } from "@/features/common/Hint"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
@@ -85,8 +86,10 @@ export function RoleEditor({ role, onClose }: Props) {
             <FieldDescription>{tMeta.roles.adminFixed}</FieldDescription>
           ) : (
             <Field>
-              <FieldLabel>{tMeta.roles.permissions}</FieldLabel>
-              <FieldDescription>{tMeta.roles.permissionsHint}</FieldDescription>
+              <div className="flex items-center gap-1.5">
+                <FieldLabel>{tMeta.roles.permissions}</FieldLabel>
+                <Hint>{tMeta.roles.permissionsHint}</Hint>
+              </div>
               <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto">
                 {PERMISSIONS.map((p) => (
                   <Field key={p} orientation="horizontal">

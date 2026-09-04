@@ -1,4 +1,5 @@
 import { CheckIcon, CopyIcon, ExternalLinkIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { Hint } from "@/features/common/Hint"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -27,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -152,7 +153,10 @@ export function SettingsDialog({ onClose }: Props) {
 
         <div className="grid gap-5">
           <div className="grid gap-3">
-            <p className="text-sm font-medium">{t.settings.appearance}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium">{t.settings.appearance}</p>
+              <Hint>{t.settings.savedToAccount}</Hint>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="set-lang">{t.settings.language}</FieldLabel>
@@ -186,7 +190,6 @@ export function SettingsDialog({ onClose }: Props) {
                 </Select>
               </Field>
             </div>
-            <FieldDescription>{t.settings.savedToAccount}</FieldDescription>
           </div>
 
           <Separator />
@@ -194,6 +197,7 @@ export function SettingsDialog({ onClose }: Props) {
           <div className="grid gap-3">
             <div className="flex items-center gap-3">
               <p className="text-sm font-medium">{t.settings.keys}</p>
+              <Hint>{t.settings.keysHint}</Hint>
               <Button
                 size="sm"
                 variant="outline"
@@ -204,8 +208,6 @@ export function SettingsDialog({ onClose }: Props) {
                 {t.settings.keyCreate}
               </Button>
             </div>
-            <FieldDescription>{t.settings.keysHint}</FieldDescription>
-
             {/* Shown once, and only here. Closing the dialog is the point of
                 no return, which is why it says so. */}
             {secret && (
@@ -350,8 +352,10 @@ export function SettingsDialog({ onClose }: Props) {
           <Separator />
 
           <div className="grid gap-2">
-            <p className="text-sm font-medium">{t.settings.docs}</p>
-            <FieldDescription>{t.settings.docsHint}</FieldDescription>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium">{t.settings.docs}</p>
+              <Hint>{t.settings.docsHint}</Hint>
+            </div>
             <div>
               <Button variant="outline" size="sm" asChild>
                 <a href="/api/docs" target="_blank" rel="noreferrer">

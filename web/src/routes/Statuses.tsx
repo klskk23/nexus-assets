@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/api"
 import type { Status, StatusUsage } from "@/lib/types"
 import { t, tMeta, tStatuses } from "@/i18n"
 import { usePermissions } from "@/features/auth/usePermissions"
+import { Hint } from "@/features/common/Hint"
 import { CrudPage, type ListPage } from "@/features/metadata/CrudPage"
 import {
   Dialog,
@@ -223,14 +224,17 @@ export function Statuses() {
       form={
         <div className="grid gap-4 sm:grid-cols-3">
           <Field>
-            <FieldLabel htmlFor="st-key">{tStatuses.key}</FieldLabel>
+            <div className="flex items-center gap-1.5">
+              <FieldLabel htmlFor="st-key">{tStatuses.key}</FieldLabel>
+              <Hint>{tStatuses.keyFixed}</Hint>
+            </div>
             <Input
               id="st-key"
               className="font-mono"
               value={key}
+              placeholder={tStatuses.keyHint}
               onChange={(e) => setKey(e.target.value)}
             />
-            <FieldDescription>{tStatuses.keyHint}</FieldDescription>
           </Field>
           <Field>
             <FieldLabel htmlFor="st-label">{tStatuses.label}</FieldLabel>
@@ -268,18 +272,22 @@ export function Statuses() {
                   checked={countsAsAvailable}
                   onCheckedChange={(v) => setCountsAsAvailable(v === true)}
                 />
-                <FieldLabel htmlFor="st-counts">{tStatuses.countsAsAvailable}</FieldLabel>
+                <div className="flex items-center gap-1.5">
+                  <FieldLabel htmlFor="st-counts">{tStatuses.countsAsAvailable}</FieldLabel>
+                  <Hint>{tStatuses.countsAsAvailableHint}</Hint>
+                </div>
               </Field>
-              <FieldDescription>{tStatuses.countsAsAvailableHint}</FieldDescription>
               <Field orientation="horizontal">
                 <Checkbox
                   id="st-terminal"
                   checked={terminal}
                   onCheckedChange={(v) => setTerminal(v === true)}
                 />
-                <FieldLabel htmlFor="st-terminal">{tStatuses.terminal}</FieldLabel>
+                <div className="flex items-center gap-1.5">
+                  <FieldLabel htmlFor="st-terminal">{tStatuses.terminal}</FieldLabel>
+                  <Hint>{tStatuses.terminalHint}</Hint>
+                </div>
               </Field>
-              <FieldDescription>{tStatuses.terminalHint}</FieldDescription>
             </FieldGroup>
           </FieldSet>
         </div>

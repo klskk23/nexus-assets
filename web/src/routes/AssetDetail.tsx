@@ -1,4 +1,5 @@
 import { InfoIcon, PrinterIcon } from "lucide-react"
+import { Hint } from "@/features/common/Hint"
 import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -30,7 +31,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty"
 import {
   Field,
-  FieldDescription,
   FieldGroup,
   FieldLabel,
   FieldLegend,
@@ -352,19 +352,25 @@ export function AssetDetail() {
                       home are edited once in a device's life, and they were
                       taking the room a movement should have. */}
                   <Collapsible>
-                    <CollapsibleTrigger asChild>
+                    {/* Beside the trigger, so it is readable before opening --
+                        which is when someone is deciding whether to. */}
+                    <div className="flex items-center gap-1.5">
+                      <CollapsibleTrigger asChild>
                       <Button variant="outline" className="w-fit">
                         {t.assets.editAttrs}
                       </Button>
-                    </CollapsibleTrigger>
+                      </CollapsibleTrigger>
+                      <Hint>{t.assets.editAttrsHint}</Hint>
+                    </div>
                     <CollapsibleContent className="grid gap-6 pt-4">
-                      <FieldDescription>{t.assets.editAttrsHint}</FieldDescription>
                       {/* Where it belongs when it is not out. Editable here rather
                     than on the entry form: a device's home changes when it is
                     relocated for good, which is an edit, not a recording. */}
                       <FieldSet>
-                        <FieldLegend variant="label">{t.assets.home}</FieldLegend>
-                        <FieldDescription>{t.assets.homeHint}</FieldDescription>
+                        <div className="flex items-center gap-1.5">
+                          <FieldLegend variant="label">{t.assets.home}</FieldLegend>
+                          <Hint>{t.assets.homeHint}</Hint>
+                        </div>
                         {/* Boxed, because the fields underneath it are not part
                           of it: with everything at one indent the model and the
                           category's own fields read as more of the home. */}

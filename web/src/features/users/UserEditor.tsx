@@ -1,4 +1,5 @@
 import { AlertCircleIcon, InfoIcon } from "lucide-react"
+import { Hint } from "@/features/common/Hint"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
@@ -123,11 +124,13 @@ export function UserEditor({ user, roles, onClose }: Props) {
 
         <FieldGroup>
           <Field>
-            <FieldLabel htmlFor="edit-email">{tMeta.users.email}</FieldLabel>
+            <div className="flex items-center gap-1.5">
+              <FieldLabel htmlFor="edit-email">{tMeta.users.email}</FieldLabel>
+              <Hint>{tMeta.users.emailFixed}</Hint>
+            </div>
             {/* Read-only rather than absent: it is the thing that identifies
                 this row, and hiding it would make the dialog ambiguous. */}
             <Input id="edit-email" value={user.email} readOnly disabled />
-            <FieldDescription>{tMeta.users.emailFixed}</FieldDescription>
           </Field>
           <Field>
             <FieldLabel htmlFor="edit-name">{tMeta.users.name}</FieldLabel>

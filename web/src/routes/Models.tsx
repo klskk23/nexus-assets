@@ -1,4 +1,5 @@
 import { AlertCircleIcon } from "lucide-react"
+import { Hint } from "@/features/common/Hint"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -27,7 +28,6 @@ import {
 } from "@/components/ui/dialog"
 import {
   Field,
-  FieldDescription,
   FieldGroup,
   FieldLabel,
   FieldLegend,
@@ -158,8 +158,10 @@ export function Models() {
               multi-select list box hides the choices behind a scroll -- here
               the whole set is visible at once. */}
           <FieldSet className="sm:col-span-3">
-            <FieldLegend variant="label">{tMeta.models.category}</FieldLegend>
-            <FieldDescription>{tMeta.models.categoryHint}</FieldDescription>
+            <div className="flex items-center gap-1.5">
+              <FieldLegend variant="label">{tMeta.models.category}</FieldLegend>
+              <Hint>{tMeta.models.categoryHint}</Hint>
+            </div>
             <FieldGroup className="flex flex-row flex-wrap items-center gap-4">
               {(categories.data ?? []).map((c) => (
                 <Field key={c.id} orientation="horizontal" className="w-auto">

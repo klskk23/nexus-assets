@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ExpressionHelp } from "@/features/fields/ExpressionHelp"
+import { Hint } from "@/features/common/Hint"
 
 export interface FieldFormValue {
   key: string
@@ -122,9 +123,9 @@ export function FieldForm({
           className="font-mono"
           value={value.key}
           disabled={!creating}
+          placeholder={creating ? tMeta.fields.keyPlaceholder : undefined}
           onChange={(e) => onChange({ key: e.target.value })}
         />
-        {!creating && <FieldDescription>{tMeta.fields.keyFixed}</FieldDescription>}
       </Field>
       <Field>
         <FieldLabel htmlFor={`${p}-label`}>{tMeta.fields.label}</FieldLabel>
@@ -136,7 +137,10 @@ export function FieldForm({
       </Field>
 
       <Field>
-        <FieldLabel htmlFor={`${p}-type`}>{tMeta.fields.type}</FieldLabel>
+        <div className="flex items-center gap-1.5">
+          <FieldLabel htmlFor={`${p}-type`}>{tMeta.fields.type}</FieldLabel>
+          {!creating && <Hint>{tMeta.fields.typeFixed}</Hint>}
+        </div>
         <Select
           value={value.type}
           disabled={!creating}
@@ -168,7 +172,6 @@ export function FieldForm({
             </SelectGroup>
           </SelectContent>
         </Select>
-        {!creating && <FieldDescription>{tMeta.fields.typeFixed}</FieldDescription>}
       </Field>
 
       {/* The two flags a field carries, side by side because they are read
@@ -187,10 +190,8 @@ export function FieldForm({
                 onCheckedChange={(v) => onChange({ isUnique: v === true })}
               />
               <FieldLabel htmlFor={`${p}-unique`}>{tMeta.fields.unique}</FieldLabel>
+              <Hint>{creating ? tMeta.fields.uniqueScopeHint : tMeta.fields.uniqueFixed}</Hint>
             </div>
-            <FieldDescription>
-              {creating ? tMeta.fields.uniqueScopeHint : tMeta.fields.uniqueFixed}
-            </FieldDescription>
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -200,8 +201,8 @@ export function FieldForm({
                 onCheckedChange={(v) => onChange({ required: v === true })}
               />
               <FieldLabel htmlFor={`${p}-required`}>{tMeta.categories.required}</FieldLabel>
+              <Hint>{tMeta.fields.requiredScopeHint}</Hint>
             </div>
-            <FieldDescription>{tMeta.fields.requiredScopeHint}</FieldDescription>
           </div>
         </div>
         {value.required && (impact ?? 0) > 0 && (
@@ -273,7 +274,12 @@ export function FieldForm({
       {value.type === "computed" && (
         <Field className="sm:col-span-2">
           <div className="flex items-center justify-between gap-2">
-            <FieldLabel htmlFor={`${p}-template`}>{tConfig.field.template}</FieldLabel>
+            <div className="flex items-center gap-1.5">
+              <FieldLabel htmlFor={`${p}-template`}>{tConfig.field.template}</FieldLabel>
+              <Hint>
+                {tConfig.field.templateHint} {tConfig.field.depsHint}
+              </Hint>
+            </div>
             <ExpressionHelp />
           </div>
           <Input
@@ -283,15 +289,17 @@ export function FieldForm({
             value={value.options.template ?? ""}
             onChange={(e) => setOption({ template: e.target.value })}
           />
-          <FieldDescription>{tConfig.field.templateHint}</FieldDescription>
-          <FieldDescription>{tConfig.field.depsHint}</FieldDescription>
+
         </Field>
       )}
 
       {/* The two modes are exclusive, so this is one list with a switch above
           it rather than two lists somebody could tick both of. */}
       <Field className="sm:col-span-2">
-        <FieldLabel htmlFor={`${p}-bind-mode`}>{tMeta.fields.bindingMode}</FieldLabel>
+        <div className="flex items-center gap-1.5">
+          <FieldLabel htmlFor={`${p}-bind-mode`}>{tMeta.fields.bindingMode}</FieldLabel>
+          <Hint>{tMeta.fields.bindingModeHint}</Hint>
+        </div>
         <ToggleGroup
           id={`${p}-bind-mode`}
           type="single"
@@ -310,20 +318,24 @@ export function FieldForm({
             {tMeta.fields.bindByModel}
           </ToggleGroupItem>
         </ToggleGroup>
-        <FieldDescription>
-          {bindModeFrozen ? tMeta.fields.bindingModeFrozen : tMeta.fields.bindingModeHint}
-        </FieldDescription>
+        {/* Why the switch is dead is the state of the thing in front of
+            them, not a hint they can go looking for. */}
+        {bindModeFrozen && <FieldDescription>{tMeta.fields.bindingModeFrozen}</FieldDescription>}
       </Field>
 
       <Field className="sm:col-span-2">
-        <FieldLabel>
-          {value.bindMode === "model" ? tMeta.fields.bindOnCreateModel : tMeta.fields.bindOnCreate}
-        </FieldLabel>
-        <FieldDescription>
-          {value.bindMode === "model"
-            ? tMeta.fields.bindOnCreateModelHint
-            : tMeta.fields.bindOnCreateHint}
-        </FieldDescription>
+        <div className="flex items-center gap-1.5">
+          <FieldLabel>
+            {value.bindMode === "model"
+              ? tMeta.fields.bindOnCreateModel
+              : tMeta.fields.bindOnCreate}
+          </FieldLabel>
+          <Hint>
+            {value.bindMode === "model"
+              ? tMeta.fields.bindOnCreateModelHint
+              : tMeta.fields.bindOnCreateHint}
+          </Hint>
+        </div>
         <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto">
           {(value.bindMode === "model"
             ? models.map((m) => ({ id: m.id, name: m.vendor ? `${m.vendor} ${m.name}` : m.name }))

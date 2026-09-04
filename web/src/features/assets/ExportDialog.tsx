@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Hint } from "@/features/common/Hint"
 import { useQuery } from "@tanstack/react-query"
 
 import { ApiError, api, download } from "@/lib/api"
@@ -148,7 +149,10 @@ export function ExportDialog({
               worth offering, and the radio would sit there disabled. */}
           {selected.length > 0 && (
             <FieldSet>
-              <FieldLegend variant="label">{tImport.exportScope}</FieldLegend>
+              <div className="flex items-center gap-1.5">
+                <FieldLegend variant="label">{tImport.exportScope}</FieldLegend>
+                <Hint>{tImport.exportTickedHint}</Hint>
+              </div>
               <RadioGroup
                 value={ticked ? "ticked" : "filtered"}
                 onValueChange={(v) => setTicked(v === "ticked")}
@@ -166,7 +170,6 @@ export function ExportDialog({
                   </FieldLabel>
                 </Field>
               </RadioGroup>
-              {ticked && <FieldDescription>{tImport.exportTickedHint}</FieldDescription>}
             </FieldSet>
           )}
 
@@ -194,8 +197,10 @@ export function ExportDialog({
               </Field>
 
               <FieldSet>
-                <FieldLegend variant="label">{tImport.exportFields}</FieldLegend>
-                <FieldDescription>{tImport.exportFieldsHint}</FieldDescription>
+                <div className="flex items-center gap-1.5">
+                  <FieldLegend variant="label">{tImport.exportFields}</FieldLegend>
+                  <Hint>{tImport.exportFieldsHint}</Hint>
+                </div>
                 {chosen === "" ? null : schema.isPending ? (
                   <Skeleton className="h-16 w-full" />
                 ) : fields.length === 0 ? (

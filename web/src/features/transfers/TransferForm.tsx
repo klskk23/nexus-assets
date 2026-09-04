@@ -1,4 +1,5 @@
 import { AlertCircleIcon } from "lucide-react"
+import { Hint } from "@/features/common/Hint"
 import { useCallback, useEffect, useState, type ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -8,7 +9,6 @@ import type { TransferResult } from "@/lib/transferTypes"
 import { t, tTransfer } from "@/i18n"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { useAuth } from "@/features/auth/useAuth"
-import { FieldDescription } from "@/components/ui/field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -220,7 +220,10 @@ export function TransferForm({
 
       {action === "checkin" && (
         <Field>
-          <FieldLabel htmlFor="td-checkin-holder">{tTransfer.actions.target}</FieldLabel>
+          <div className="flex items-center gap-1.5">
+            <FieldLabel htmlFor="td-checkin-holder">{tTransfer.actions.target}</FieldLabel>
+            <Hint>{tTransfer.actions.checkinHint}</Hint>
+          </div>
           <Select value={holderID} onValueChange={setHolderID}>
             <SelectTrigger id="td-checkin-holder">
               <SelectValue />
@@ -238,7 +241,6 @@ export function TransferForm({
               </SelectGroup>
             </SelectContent>
           </Select>
-          <FieldDescription>{tTransfer.actions.checkinHint}</FieldDescription>
         </Field>
       )}
 
@@ -288,7 +290,10 @@ export function TransferForm({
 
       {needsResponsible && (
         <Field>
-          <FieldLabel htmlFor="td-responsible">{tTransfer.actions.owner}</FieldLabel>
+          <div className="flex items-center gap-1.5">
+            <FieldLabel htmlFor="td-responsible">{tTransfer.actions.owner}</FieldLabel>
+            <Hint>{tTransfer.actions.ownerHint}</Hint>
+          </div>
           <Select value={responsibleID} onValueChange={setResponsibleID}>
             <SelectTrigger id="td-responsible">
               <SelectValue />
@@ -308,7 +313,6 @@ export function TransferForm({
               </SelectGroup>
             </SelectContent>
           </Select>
-          <FieldDescription>{tTransfer.actions.ownerHint}</FieldDescription>
         </Field>
       )}
 

@@ -1,4 +1,5 @@
 import { AlertCircleIcon } from "lucide-react"
+import { Hint } from "@/features/common/Hint"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
@@ -11,7 +12,7 @@ import { RoleEditor } from "@/features/roles/RoleEditor"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
 /**
@@ -108,8 +109,10 @@ export function Roles() {
               <Input id="role-name" value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
             <Field>
-              <FieldLabel>{tMeta.roles.permissions}</FieldLabel>
-              <FieldDescription>{tMeta.roles.permissionsHint}</FieldDescription>
+              <div className="flex items-center gap-1.5">
+                <FieldLabel>{tMeta.roles.permissions}</FieldLabel>
+                <Hint>{tMeta.roles.permissionsHint}</Hint>
+              </div>
               <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto">
                 {PERMISSIONS.map((p) => (
                   <Field key={p} orientation="horizontal">

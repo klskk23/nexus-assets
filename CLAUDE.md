@@ -61,6 +61,18 @@
   不用 `div + Label`；提示用 `Alert`、空状态用 `Empty`、加载用 `Skeleton`/`Spinner`。
   `Select` 是 Radix 组件不是原生控件，测试要用 `src/test/choose.ts` 的助手而非
   `user.selectOptions`；`SelectItem` 不接受空字符串值，「未选/全部」走 `lib/select.ts` 的哨兵。
+- **提示文案：简洁；有输入框的进输入框，没有的进问号。**
+  一句提示只写「此刻要做什么」，不写规则为什么存在 —— 那些留在代码注释里。
+  **有输入框的（`Input`/`Textarea`）写进 `placeholder`**，不要在下面另起一行；
+  它在需要的那一刻被读到，且不占版面。**没有输入框的**（`Select`、`Checkbox`、
+  `ToggleGroup`、一组勾选项……）挂到标签右边的问号上 ——
+  `features/common/Hint.tsx`，shadcn 的 `HoverCard`，鼠标悬停或键盘聚焦才展开。
+  **不要再往控件下面堆 `FieldDescription`**：一屏说明比控件还多的时候，
+  没有人会读其中任何一条。
+  **三类东西不适用**，它们必须一直可见：**拒绝**（`FieldError`）、
+  **勾之前就该知道的后果**（`Alert`，例如「这会波及 N 台设备」）、
+  以及**当前状态的说明**（例如「已经绑定之后不能再换」）——
+  藏进悬停里等于没说。
 - **前端测试必须含 DOM 测试**（Vitest + React Testing Library，断言 `getByRole` 与
   `userEvent`）。只测纯函数或只做快照比对不算数。触及 UI 的 PR 必须新增或更新 DOM 测试。
 - **文档中文、代码英文；用户可见文案走目录，且必须两种语言都有。**
