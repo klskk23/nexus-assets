@@ -171,35 +171,39 @@ export function FieldForm({
         {!creating && <FieldDescription>{tMeta.fields.typeFixed}</FieldDescription>}
       </Field>
 
-      <Field>
-        <div className="flex items-center gap-2 pt-6">
-          <Checkbox
-            id={`${p}-unique`}
-            checked={value.isUnique}
-            disabled={!creating}
-            onCheckedChange={(v) => onChange({ isUnique: v === true })}
-          />
-          <FieldLabel htmlFor={`${p}-unique`}>{tMeta.fields.unique}</FieldLabel>
+      {/* The two flags a field carries, side by side because they are read
+          together: does this value have to be there, and does it have to be
+          unlike every other. Required is the field's own since 018 -- it used
+          to be set per binding, which made "is this field required" a question
+          with more than one answer. */}
+      <Field className="pt-6">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id={`${p}-unique`}
+                checked={value.isUnique}
+                disabled={!creating}
+                onCheckedChange={(v) => onChange({ isUnique: v === true })}
+              />
+              <FieldLabel htmlFor={`${p}-unique`}>{tMeta.fields.unique}</FieldLabel>
+            </div>
+            <FieldDescription>
+              {creating ? tMeta.fields.uniqueScopeHint : tMeta.fields.uniqueFixed}
+            </FieldDescription>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id={`${p}-required`}
+                checked={value.required}
+                onCheckedChange={(v) => onChange({ required: v === true })}
+              />
+              <FieldLabel htmlFor={`${p}-required`}>{tMeta.categories.required}</FieldLabel>
+            </div>
+            <FieldDescription>{tMeta.fields.requiredScopeHint}</FieldDescription>
+          </div>
         </div>
-        <FieldDescription>
-          {creating ? tMeta.fields.uniqueScopeHint : tMeta.fields.uniqueFixed}
-        </FieldDescription>
-      </Field>
-
-      {/* Required is the field's own flag (018): required here means required
-          on every category or model it is bound to. It used to be set per
-          binding, which made "is this field required" a question with more
-          than one answer. */}
-      <Field className="sm:col-span-2">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id={`${p}-required`}
-            checked={value.required}
-            onCheckedChange={(v) => onChange({ required: v === true })}
-          />
-          <FieldLabel htmlFor={`${p}-required`}>{tMeta.categories.required}</FieldLabel>
-        </div>
-        <FieldDescription>{tMeta.fields.requiredScopeHint}</FieldDescription>
         {value.required && (impact ?? 0) > 0 && (
           <Alert>
             <AlertCircleIcon />
@@ -356,11 +360,6 @@ export function FieldForm({
             )
           })}
         </div>
-        {value.bindTo.length === 0 && (
-          <FieldDescription>
-            {value.bindMode === "model" ? tMeta.fields.unboundModelHint : tMeta.fields.unboundHint}
-          </FieldDescription>
-        )}
       </Field>
     </FieldGroup>
   )

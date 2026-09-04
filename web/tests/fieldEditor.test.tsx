@@ -277,7 +277,6 @@ describe("FieldEditor bindings", () => {
     const user = userEvent.setup()
     renderWithProviders(<FieldEditor field={field("text")} onClose={vi.fn()} />)
 
-    expect(await screen.findByText(/还没有绑定到任何类别/)).toBeInTheDocument()
     await user.click(await screen.findByLabelText("网络设备"))
 
     await waitFor(() =>
@@ -334,7 +333,7 @@ describe("FieldEditor bindings", () => {
     )
     expect(await screen.findByLabelText("键名（英文）")).toBeDisabled()
     expect(screen.getByLabelText("唯一")).toBeDisabled()
-    expect(screen.getByText(/唯一性在建好之后不能改/)).toBeInTheDocument()
+    expect(screen.getAllByText("建好后不能改").length).toBeGreaterThan(0)
   })
 })
 
@@ -376,7 +375,7 @@ describe("binding a field to models", () => {
     )
 
     expect(screen.getByRole("radio", { name: "型号" })).toBeDisabled()
-    expect(screen.getByText(/要换请先解除现有的全部绑定/)).toBeInTheDocument()
+    expect(screen.getByText("要换先解除现有的全部绑定")).toBeInTheDocument()
   })
 
   // The count a required field shows is this model's devices, not the

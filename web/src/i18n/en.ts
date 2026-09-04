@@ -259,24 +259,19 @@ export const enMeta: typeof zhMeta = {
     bindingMode: "Binds to",
     bindByCategory: "Categories",
     bindByModel: "Models",
-    bindingModeHint:
-      "A field binds either to categories or to models, never both. A model-bound field appears only on devices of those models.",
-    bindingModeFrozen: "Fixed once anything is bound: remove every binding first to change it.",
-    unboundModelHint: "Bound to no model yet, so it appears on no device.",
+    bindingModeHint: "One or the other; a model field appears only on devices of those models",
+    bindingModeFrozen: "Unbind everything first to switch",
     title: "Fields",
     create: "New field",
     key: "Key",
     label: "Display name",
     type: "Type",
     unique: "Unique",
-    uniqueScopeHint:
-      "The scope follows the binding: within the category's subtree for a category field, across every model it binds to for a model field.",
-    uniqueFixed:
-      "Uniqueness cannot be changed after the field exists: turning it on has to prove the stored values do not collide and record one for every device.",
-    keyFixed: "The key cannot change: the values already stored are filed under it.",
-    typeFixed: "The type cannot change: the values already stored were written to this shape.",
-    requiredScopeHint:
-      "Required belongs to the field: tick it and every category or model it is bound to asks for a value. Existing devices are not re-checked; the next edit of one is where it is asked for.",
+    uniqueScopeHint: "No duplicates within the category subtree, or across the models it binds to",
+    uniqueFixed: "Fixed once the field exists",
+    keyFixed: "Fixed once the field exists",
+    typeFixed: "Fixed once the field exists",
+    requiredScopeHint: "Asked for on every binding; existing devices at their next edit",
     uniqueInCategory: "Unique in its category",
     uniqueInModels: "Unique in its models",
     binding: "Bound to",
@@ -285,19 +280,16 @@ export const enMeta: typeof zhMeta = {
     boundOnDescendant: (name: string) =>
       `${name} below it already has this field. Unbind it there to bind it here.`,
     bindOnCreateModel: "Bind to models",
-    bindOnCreateModelHint:
-      "Only devices of these models get the field. Leaving this empty is fine; it can be bound later from the field editor.",
+    bindOnCreateModelHint: "Only devices of these models get the field",
     categories: "Categories",
     categoryFilter: "Category",
     allCategories: "All categories",
     unbound: "Not bound",
-    unboundHint: "Not bound to any category or model yet. A field only appears on the entry form once it is.",
     empty: "No fields yet",
     emptyHint:
       "Fields are shared system-wide: one key means one thing everywhere. Create it here, then bind it on a category.",
     bindOnCreate: "Bind to categories",
-    bindOnCreateHint:
-      "A field only appears on the entry form once it is bound. Leaving this empty is fine; it can be bound later from the field editor.",
+    bindOnCreateHint: "Unbound, it appears on no entry form; it can be bound later",
   },
   roles: {
     searchHint: "name",
