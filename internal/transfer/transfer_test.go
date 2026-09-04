@@ -77,12 +77,12 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatalf("create category: %v", err)
 	}
 	mac, err := sch.CreateField(ctx, schema.CreateFieldInput{
-		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true, Required: true,
 	})
 	if err != nil {
 		t.Fatalf("create field: %v", err)
 	}
-	if err := sch.Bind(ctx, cat.ID, mac.ID, true, 10); err != nil {
+	if err := sch.Bind(ctx, cat.ID, mac.ID, 10); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
 

@@ -127,7 +127,7 @@ func seedSchema(ctx context.Context, a *app) (seeded, error) {
 	out = seeded{location: loc.ID, root: root.ID, child: child.ID}
 
 	mac, err := a.schema.CreateField(ctx, schema.CreateFieldInput{
-		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true, Required: true,
 	})
 	if err != nil {
 		return out, err
@@ -148,12 +148,12 @@ func seedSchema(ctx context.Context, a *app) (seeded, error) {
 		return out, err
 	}
 
+	// Required is on the field itself now (018), so binding only says where.
 	for _, b := range []struct {
-		field    string
-		required bool
-		sort     int
-	}{{mac.ID, true, 10}, {fw.ID, false, 20}, {sn.ID, false, 30}} {
-		if err := a.schema.Bind(ctx, root.ID, b.field, b.required, b.sort); err != nil {
+		field string
+		sort  int
+	}{{mac.ID, 10}, {fw.ID, 20}, {sn.ID, 30}} {
+		if err := a.schema.Bind(ctx, root.ID, b.field, b.sort); err != nil {
 			return out, err
 		}
 	}

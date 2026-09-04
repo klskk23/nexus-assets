@@ -59,7 +59,7 @@ func newApp(t *testing.T) (*app, string, string) {
 	mac, _ := sch.CreateField(ctx, schema.CreateFieldInput{
 		Key: "mac", Label: "MAC", Type: model.FieldMAC, IsUnique: true,
 	})
-	if err := sch.Bind(ctx, cat.ID, mac.ID, true, 10); err != nil {
+	if err := sch.Bind(ctx, cat.ID, mac.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 

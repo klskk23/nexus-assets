@@ -54,7 +54,7 @@ func TestDeleteFieldRemovesAnUnusedItemEntirely(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, root.ID, g.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, g.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, _, err := s.DeleteField(ctx, g.ID); err != nil {
@@ -79,7 +79,7 @@ func TestDeleteFieldRefusedWhileAssetsCarryAValue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, root.ID, f.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, f.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 	seedAsset(t, s, ctx, root.ID, "a1", `{"rack":"R-01"}`)
@@ -112,7 +112,7 @@ func TestDeleteFieldIgnoresEmptyAndBlankValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, root.ID, f.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, f.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 	seedAsset(t, s, ctx, root.ID, "a1", `{"rack":""}`)
@@ -139,7 +139,7 @@ func TestDeleteFieldRefusedWhileConfigurationPointsAtIt(t *testing.T) {
 	root, _ := tree(t, s, ctx)
 
 	mac, err := s.CreateField(ctx, CreateFieldInput{
-		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true, Required: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -151,10 +151,10 @@ func TestDeleteFieldRefusedWhileConfigurationPointsAtIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, mac.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, root.ID, sn.ID, false, 20); err != nil {
+	if err := s.Bind(ctx, root.ID, sn.ID, 20); err != nil {
 		t.Fatal(err)
 	}
 

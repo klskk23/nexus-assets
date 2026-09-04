@@ -434,7 +434,8 @@ func TestRequiredFieldCanBeBoundToAPopulatedCategory(t *testing.T) {
 	h := newHarness(t)
 	h.seed(t, 0, 2)
 
-	rec := h.post(t, "/api/fields", `{"key":"rack","label":"机柜位","type":"text"}`)
+	// Required is the field's own flag (018); the binding only says where.
+	rec := h.post(t, "/api/fields", `{"key":"rack","label":"机柜位","type":"text","required":true}`)
 	if rec.Code != http.StatusCreated {
 		t.Fatal(rec.Body.String())
 	}
@@ -443,7 +444,7 @@ func TestRequiredFieldCanBeBoundToAPopulatedCategory(t *testing.T) {
 	}](t, rec).ID
 
 	if b := h.post(t, "/api/categories/"+h.catID+"/bindings",
-		`{"field_id":"`+fieldID+`","required":true,"sort":30}`); b.Code != http.StatusNoContent {
+		`{"field_id":"`+fieldID+`","sort":30}`); b.Code != http.StatusNoContent {
 		t.Fatalf("binding a required field = %d %s", b.Code, b.Body.String())
 	}
 

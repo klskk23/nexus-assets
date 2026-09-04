@@ -488,9 +488,9 @@ paths:
         "200":
           description: >
             OK。items 的每一项额外带 category_ids（绑定到的类别）、model_ids（绑定到的型号，
-            两者互斥）、binding_mode（category | model | unbound）以及 required_in ——
-            必填是**逐条绑定**设的，一个字段可以在一个类别必填、在另一个类别选填，
-            所以这里给的是"哪几条绑定要求填"的 id 列表，不是一个布尔。
+            两者互斥）与 binding_mode（category | model | unbound）。
+            **必填在字段自己身上**（018 起，`required`）：勾上就是它绑到的每个类别或
+            型号都要求填。以前它在每条绑定上，于是「这个字段必填吗」有不止一个答案。
     post:
       tags: [metadata]
       summary: 新建字段，可同时绑定类别或型号
@@ -516,7 +516,7 @@ paths:
                 is_unique: { type: boolean }
                 category_ids: { type: array, items: { type: string } }
                 model_ids: { type: array, items: { type: string } }
-                required: { type: boolean }
+                required: { type: boolean }   # 字段自己的标志，作用于它的每一条绑定
       responses:
         "201": { description: Created }
         "409": { $ref: "#/components/responses/Error" }
@@ -526,7 +526,21 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     patch:
       tags: [metadata]
-      summary: 修改信息项。不再接受 archive —— 停用机制已移除
+      summary: 修改字段。可改 label、options 与 required；**不可改 is_unique**
+      description: >
+        `required` 是字段自己的标志（018），改一次就作用于它绑到的每个类别与型号。
+        `is_unique` 即使传了也不读：打开唯一性得先证明存量的值不重复，再为每台
+        持有该值的设备补一条记录，那是另一件事，不是一个勾。
+        键名与类型同样不可改 —— 存量的值就记在那个键下、按那个类型写进去的。
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label: { type: string }
+                options: { type: object }
+                required: { type: boolean }
       responses:
         "200": { description: OK }
         "409": { $ref: "#/components/responses/Error" }
@@ -579,7 +593,6 @@ paths:
               required: [field_id]
               properties:
                 field_id: { type: string }
-                required: { type: boolean, default: false }
                 sort: { type: integer, default: 0 }
       responses:
         "204": { description: Bound }
@@ -643,8 +656,9 @@ paths:
       summary: 把一个字段绑到这个型号上（015 决策 96）
       description: >
         字段绑定有两种模式且**互斥**：要么全绑类别，要么全绑型号，一个字段只能是一种。
-        混绑会同时撞上三件事——被类别绑定已覆盖的型号再绑一次没有任何效果、
-        两条绑定的必填开关对同一台资产各说各话、唯一性范围变成说不圆的并集。
+        混绑会同时撞上两件事——被类别绑定已覆盖的型号再绑一次没有任何效果、
+        唯一性范围变成说不圆的并集。（原本还有第三件：两条绑定的必填开关对同一台资产
+        各说各话；018 起必填在字段自己身上，那一条不再成立。）
         值仍然属于每台资产（存 `attrs`），变的只是"这个字段该不该出现在这台设备上"的判断依据。
         权限沿用 `schema.manage`，不新增开关。
       responses:

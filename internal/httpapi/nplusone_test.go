@@ -100,12 +100,12 @@ func newHarnessWith(t *testing.T, over config.Config) *harness {
 		t.Fatalf("create category: %v", err)
 	}
 	mac, err := sch.CreateField(ctx, schema.CreateFieldInput{
-		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true, Required: true,
 	})
 	if err != nil {
 		t.Fatalf("create field: %v", err)
 	}
-	if err := sch.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
+	if err := sch.Bind(ctx, root.ID, mac.ID, 10); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
 	sn, err := sch.CreateField(ctx, schema.CreateFieldInput{
@@ -115,7 +115,7 @@ func newHarnessWith(t *testing.T, over config.Config) *harness {
 	if err != nil {
 		t.Fatalf("create sn field: %v", err)
 	}
-	if err := sch.Bind(ctx, root.ID, sn.ID, false, 20); err != nil {
+	if err := sch.Bind(ctx, root.ID, sn.ID, 20); err != nil {
 		t.Fatalf("bind sn: %v", err)
 	}
 	displayKey := "sn"

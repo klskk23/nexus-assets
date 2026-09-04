@@ -16,7 +16,7 @@ func TestDeleteCategoryRemovesAnEmptyLeaf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, child.ID, f.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, child.ID, f.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 

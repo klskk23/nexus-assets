@@ -77,7 +77,7 @@ func Resolve(path string, bindingsByCategory map[string][]Binding) ([]model.Boun
 
 			bf := model.BoundField{
 				FieldDefinition: b.Field,
-				Required:        b.Required,
+				Required:        b.Field.Required,
 				Sort:            b.Sort,
 			}
 			if id != self {
@@ -151,7 +151,7 @@ func resolveModelFields(
 			if !seen {
 				bf := model.BoundField{
 					FieldDefinition: b.Field,
-					Required:        b.Required,
+					Required:        b.Field.Required,
 					Sort:            b.Sort,
 					ModelIDs:        []string{modelID},
 				}
@@ -160,9 +160,6 @@ func resolveModelFields(
 				continue
 			}
 			existing.ModelIDs = append(existing.ModelIDs, modelID)
-			// Required anywhere is required there: the flag is per binding, and
-			// the asset it lands on has exactly one model.
-			existing.Required = existing.Required || b.Required
 		}
 	}
 

@@ -5,59 +5,65 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, ApiError } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category } from "@/lib/types"
-import type { FieldDefinitionRow, FieldType, ProductModelRow } from "@/lib/metaTypes"
+import type { FieldDefinitionRow, ProductModelRow } from "@/lib/metaTypes"
+import { EXPRESSION_FIELD_TYPES, STATIC_FIELD_TYPES } from "@/lib/metaTypes"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tConfig, tMeta } from "@/i18n"
 import { CategoryFilter } from "@/features/common/CategoryFilter"
 import { CrudPage, type ListPage } from "@/features/metadata/CrudPage"
 import { FieldEditor } from "@/features/fields/FieldEditor"
-import { ExpressionHelp } from "@/features/fields/ExpressionHelp"
+import { FieldForm, type FieldFormValue } from "@/features/fields/FieldForm"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { Input } from "@/components/ui/input"
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Field, FieldLabel } from "@/components/ui/field"
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectLabel,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
 
-// Static keys carry what someone typed or imported; an expression key carries
-// what the system worked out from them. One enum in the database, two groups
-// here, because that is the distinction a person is actually choosing between.
-const staticTypes: FieldType[] = [
-  "text", "number", "boolean", "date", "mac", "ip", "url",
-]
-const expressionTypes: FieldType[] = ["computed"]
+/** A blank field, and what "reset the form" means. */
+const emptyDraft: FieldFormValue = {
+  key: "",
+  label: "",
+  type: "text",
+  isUnique: false,
+  required: false,
+  options: {},
+  bindTo: [],
+  bindMode: "category",
+}
+
+/**
+ * Per type, and only what that type means: a regex on a computed field would
+ * be configuration nothing reads.
+ */
+function optionsFor(d: FieldFormValue) {
+  switch (d.type) {
+    case "computed":
+      return { template: d.options.template ?? "" }
+    case "text":
+      return { regex: d.options.regex ?? "", regex_hint: d.options.regex_hint ?? "" }
+    case "number":
+      return { min: d.options.min, max: d.options.max, unit: d.options.unit }
+    default:
+      return {}
+  }
+}
 
 export function Fields() {
   const queryClient = useQueryClient()
   const { deniedReason } = usePermissions()
   const [editing, setEditing] = useState<FieldDefinitionRow | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const [key, setKey] = useState("")
-  const [label, setLabel] = useState("")
-  const [type, setType] = useState<FieldType>("text")
-  const [isUnique, setIsUnique] = useState(false)
-  const [template, setTemplate] = useState("")
-  const [regex, setRegex] = useState("")
-  const [regexHint, setRegexHint] = useState("")
-  // Which categories the new field is bound to as it is created. A field bound
-  // nowhere is on no entry form, so creating one used to be the first half of a
-  // job that had to be finished in another dialog.
-  const [bindTo, setBindTo] = useState<string[]>([])
-  const [bindRequired, setBindRequired] = useState(false)
-  // Which kind of thing bindTo holds. Creating a model field used to mean
-  // creating it bound to nothing and finishing the job in the edit dialog --
-  // the same two-step v6 decision 72 removed for categories.
-  const [bindMode, setBindMode] = useState<"category" | "model">("category")
+  // One object, because it is what FieldForm takes and what the create request
+  // is built from -- the two used to be a dozen separate useStates that the
+  // edit dialog then declared its own slightly different copies of.
+  const [draft, setDraft] = useState<FieldFormValue>(emptyDraft)
+  const patch = (p: Partial<FieldFormValue>) => setDraft((d) => ({ ...d, ...p }))
 
 
 
@@ -85,11 +91,11 @@ export function Fields() {
   // matters, and only for the categories actually ticked -- the answer is a
   // promise about somebody's next edit, not a reason to refuse anything.
   const bound = useQuery({
-    queryKey: ["binding-asset-count", bindMode, bindTo],
+    queryKey: ["binding-asset-count", draft.bindMode, draft.bindTo],
     queryFn: async () => {
       const counts = await Promise.all(
-        bindTo.map((id) =>
-          bindMode === "model"
+        draft.bindTo.map((id) =>
+          draft.bindMode === "model"
             ? api.get<{ total: number }>(`/models/${id}/required-impact`).then((r) => r.total)
             : api
                 .get<{ total: number }>(`/assets?category_id=${id}&include_descendants=true&limit=1`)
@@ -98,7 +104,7 @@ export function Fields() {
       )
       return counts.reduce((a, b) => a + b, 0)
     },
-    enabled: bindTo.length > 0 && bindRequired,
+    enabled: draft.bindTo.length > 0 && draft.required,
   })
 
   // The same delete the editor offers, reachable without opening it first --
@@ -141,7 +147,7 @@ export function Fields() {
               <SelectContent>
                 <SelectGroup>
                   <SelectItem value={NONE}>{tMeta.fields.allTypes}</SelectItem>
-                  {[...staticTypes, ...expressionTypes].map((k) => (
+                  {[...STATIC_FIELD_TYPES, ...EXPRESSION_FIELD_TYPES].map((k) => (
                     <SelectItem key={k} value={k}>
                       {tMeta.fieldTypes[k]}
                     </SelectItem>
@@ -154,39 +160,21 @@ export function Fields() {
       )}
       createLabel={tMeta.fields.create}
       createDeniedReason={deniedReason("schema.manage")}
-      createDisabled={key === "" || label === ""}
-      onCreated={() => {
-        setKey("")
-        setLabel("")
-        setType("text")
-        setIsUnique(false)
-        setTemplate("")
-        setRegex("")
-        setRegexHint("")
-        setBindTo([])
-        setBindRequired(false)
-        setBindMode("category")
-      }}
+      createDisabled={draft.key === "" || draft.label === ""}
+      onCreated={() => setDraft(emptyDraft)}
       create={() =>
         api.post("/fields", {
-          key,
-          label,
-          type,
-          is_unique: isUnique,
+          key: draft.key,
+          label: draft.label,
+          type: draft.type,
+          is_unique: draft.isUnique,
           // Bound in the same request, so a refused binding leaves no field
           // behind: the pair is what was asked for. One list or the other,
           // never both -- the server refuses a mix, and so does this.
-          category_ids: bindMode === "category" ? bindTo : [],
-          model_ids: bindMode === "model" ? bindTo : [],
-          required: bindRequired,
-          // Per type, and only what that type means: a regex on a computed
-          // field would be configuration nothing reads.
-          options:
-            type === "computed"
-              ? { template }
-              : type === "text"
-                ? { regex, regex_hint: regexHint }
-                : {},
+          category_ids: draft.bindMode === "category" ? draft.bindTo : [],
+          model_ids: draft.bindMode === "model" ? draft.bindTo : [],
+          required: draft.required,
+          options: optionsFor(draft),
         })
       }
       notice={
@@ -263,193 +251,15 @@ export function Fields() {
         },
       ]}
       form={
-        <FieldGroup className="sm:grid sm:grid-cols-2">
-          <Field>
-            <FieldLabel htmlFor="f-key">{tMeta.fields.key}</FieldLabel>
-            <Input id="f-key" value={key} onChange={(e) => setKey(e.target.value)} />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="f-label">{tMeta.fields.label}</FieldLabel>
-            <Input id="f-label" value={label} onChange={(e) => setLabel(e.target.value)} />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="f-type">{tMeta.fields.type}</FieldLabel>
-            <Select value={type} onValueChange={(v) => setType(v as FieldType)}>
-              <SelectTrigger id="f-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {/* The two kinds are one enum in the database; the split lives
-                    here, where it is the difference a person actually cares
-                    about: is this value typed in, or worked out? */}
-                <SelectGroup>
-                  <SelectLabel>{tConfig.field.staticGroup}</SelectLabel>
-                  {staticTypes.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {tMeta.fieldTypes[t]}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-                <SelectSeparator />
-                <SelectGroup>
-                  <SelectLabel>{tConfig.field.expressionGroup}</SelectLabel>
-                  {expressionTypes.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {tMeta.fieldTypes[t]}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-          {/* Not "类别内唯一": the same checkbox governs a model field, whose
-              values are unique across every model it binds to (015, decision
-              99). The label names the rule, the description names its reach. */}
-          <Field>
-            <div className="flex items-center gap-2 pt-6">
-              <Checkbox
-                id="f-unique"
-                checked={isUnique}
-                onCheckedChange={(v) => setIsUnique(v === true)}
-              />
-              <FieldLabel htmlFor="f-unique">{tMeta.fields.unique}</FieldLabel>
-            </div>
-            <FieldDescription>{tMeta.fields.uniqueScopeHint}</FieldDescription>
-          </Field>
-          {/* The pattern a value must match, and the sentence shown when it
-              does not. Both were editable only after the field existed, which
-              made creating a validated field a two-step job for no reason. */}
-          {type === "text" && (
-            <>
-              <Field>
-                <FieldLabel htmlFor="f-regex">{tConfig.field.regex}</FieldLabel>
-                <Input
-                  id="f-regex"
-                  className="font-mono"
-                  placeholder="^[A-Z]{2}-\d{4}$"
-                  value={regex}
-                  onChange={(e) => setRegex(e.target.value)}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="f-regex-hint">{tConfig.field.regexHint}</FieldLabel>
-                <Input
-                  id="f-regex-hint"
-                  value={regexHint}
-                  onChange={(e) => setRegexHint(e.target.value)}
-                />
-              </Field>
-            </>
-          )}
-
-          {/* The two modes are exclusive, so this is one list with a switch
-              above it rather than two lists someone could tick both of. */}
-          <Field className="sm:col-span-2">
-            <FieldLabel htmlFor="f-bind-mode">{tMeta.fields.bindingMode}</FieldLabel>
-            <ToggleGroup
-              id="f-bind-mode"
-              type="single"
-              variant="outline"
-              className="justify-start"
-              value={bindMode}
-              onValueChange={(v) => {
-                if (v === "category" || v === "model") {
-                  setBindMode(v)
-                  // The ids meant something else a moment ago.
-                  setBindTo([])
-                }
-              }}
-            >
-              <ToggleGroupItem value="category" aria-label={tMeta.fields.bindByCategory}>
-                {tMeta.fields.bindByCategory}
-              </ToggleGroupItem>
-              <ToggleGroupItem value="model" aria-label={tMeta.fields.bindByModel}>
-                {tMeta.fields.bindByModel}
-              </ToggleGroupItem>
-            </ToggleGroup>
-            <FieldDescription>{tMeta.fields.bindingModeHint}</FieldDescription>
-          </Field>
-
-          <Field className="sm:col-span-2">
-            <FieldLabel>
-              {bindMode === "model" ? tMeta.fields.bindOnCreateModel : tMeta.fields.bindOnCreate}
-            </FieldLabel>
-            <FieldDescription>
-              {bindMode === "model"
-                ? tMeta.fields.bindOnCreateModelHint
-                : tMeta.fields.bindOnCreateHint}
-            </FieldDescription>
-            <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto">
-              {bindMode === "model"
-                ? modelList.map((m) => (
-                    <Field key={m.id} orientation="horizontal">
-                      <Checkbox
-                        id={`f-bind-${m.id}`}
-                        checked={bindTo.includes(m.id)}
-                        onCheckedChange={(v) =>
-                          setBindTo((cur) =>
-                            v === true ? [...cur, m.id] : cur.filter((id) => id !== m.id),
-                          )
-                        }
-                      />
-                      <FieldLabel htmlFor={`f-bind-${m.id}`} className="font-normal">
-                        {modelName(m.id)}
-                      </FieldLabel>
-                    </Field>
-                  ))
-                : (categories.data ?? []).map((c) => (
-                    <Field key={c.id} orientation="horizontal">
-                      <Checkbox
-                        id={`f-bind-${c.id}`}
-                        checked={bindTo.includes(c.id)}
-                        onCheckedChange={(v) =>
-                          setBindTo((cur) =>
-                            v === true ? [...cur, c.id] : cur.filter((id) => id !== c.id),
-                          )
-                        }
-                      />
-                      <FieldLabel htmlFor={`f-bind-${c.id}`} className="font-normal">
-                        {c.name}
-                      </FieldLabel>
-                    </Field>
-                  ))}
-            </div>
-            {bindTo.length > 0 && (
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="f-bind-required"
-                  checked={bindRequired}
-                  onCheckedChange={(v) => setBindRequired(v === true)}
-                />
-                <FieldLabel htmlFor="f-bind-required">{tMeta.categories.required}</FieldLabel>
-              </Field>
-            )}
-            {/* Required is a write-time rule, not a data invariant: existing
-                devices keep what they have, and the next edit of one is where
-                it is asked for. Whoever ticks this should know that. */}
-            {bindTo.length > 0 && bindRequired && bound.data !== undefined && bound.data > 0 && (
-              <FieldDescription>{tMeta.categories.requiredWarning(bound.data)}</FieldDescription>
-            )}
-          </Field>
-
-          {type === "computed" && (
-            <Field className="sm:col-span-2">
-              <div className="flex items-center justify-between gap-2">
-                <FieldLabel htmlFor="f-template">{t.common.template}</FieldLabel>
-                <ExpressionHelp />
-              </div>
-              <Input
-                id="f-template"
-                className="font-mono"
-                placeholder="hex2dec(attrs.mac)"
-                value={template}
-                onChange={(e) => setTemplate(e.target.value)}
-              />
-              <FieldDescription>{tConfig.field.templateHint}</FieldDescription>
-              <FieldDescription>{tConfig.field.depsHint}</FieldDescription>
-            </Field>
-          )}
-        </FieldGroup>
+        <FieldForm
+          mode="create"
+          idPrefix="f"
+          value={draft}
+          onChange={patch}
+          categories={categories.data ?? []}
+          models={modelList}
+          impact={bound.data}
+        />
       }
     />
     </>

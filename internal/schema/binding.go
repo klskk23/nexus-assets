@@ -25,8 +25,9 @@ var ErrFieldDependedOn = errors.New("field is still read by something bound here
 // Resolve. Categories number in the hundreds, so loading the lot is cheaper
 // than a per-request join.
 func (s *Store) BindingsByCategory(ctx context.Context) (map[string][]Binding, error) {
-	q := `SELECT cf.category_id, cf.required, cf.sort, ` +
-		`f.id, f.key, f.label, f.type, f.options, f.is_unique, f.created_at, f.updated_at
+	q := `SELECT cf.category_id, cf.sort, ` +
+		`f.id, f.key, f.label, f.type, f.options, f.is_unique, f.required,
+		 f.created_at, f.updated_at
 		 FROM category_fields cf JOIN field_definitions f ON f.id = cf.field_id`
 	rows, err := s.db.ReadDB().QueryContext(ctx, q)
 	if err != nil {
@@ -41,13 +42,13 @@ func (s *Store) BindingsByCategory(ctx context.Context) (map[string][]Binding, e
 		var opts string
 		var created, updated string
 		var isUnique int
-		if err := rows.Scan(&b.CategoryID, &required, &b.Sort,
-			&b.Field.ID, &b.Field.Key, &b.Field.Label, &b.Field.Type, &opts, &isUnique,
+		if err := rows.Scan(&b.CategoryID, &b.Sort,
+			&b.Field.ID, &b.Field.Key, &b.Field.Label, &b.Field.Type, &opts, &isUnique, &required,
 			&created, &updated); err != nil {
 			return nil, err
 		}
-		b.Required = required == 1
 		b.Field.IsUnique = isUnique == 1
+		b.Field.Required = required == 1
 		if err := decodeOptions(opts, &b.Field.Options); err != nil {
 			return nil, err
 		}
@@ -146,9 +147,9 @@ func AppliesTo(f model.BoundField, modelID *string) bool {
 // The ancestor chain and the whole subtree are both checked, because a key
 // bound on a parent and on a child would make the union ambiguous and there is
 // no override rule to fall back on.
-func (s *Store) Bind(ctx context.Context, categoryID, fieldID string, required bool, sort int) error {
+func (s *Store) Bind(ctx context.Context, categoryID, fieldID string, sort int) error {
 	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		return bindTx(ctx, tx, categoryID, fieldID, required, sort)
+		return bindTx(ctx, tx, categoryID, fieldID, sort)
 	})
 }
 
@@ -157,7 +158,7 @@ func (s *Store) Bind(ctx context.Context, categoryID, fieldID string, required b
 // Creating a field with categories already chosen has to be one transaction:
 // a field that exists but is bound nowhere, because the second half failed, is
 // exactly the half-finished state the form was meant to save someone from.
-func bindTx(ctx context.Context, tx *sql.Tx, categoryID, fieldID string, required bool, sort int) error {
+func bindTx(ctx context.Context, tx *sql.Tx, categoryID, fieldID string, sort int) error {
 	var path, key, ftype string
 	if err := tx.QueryRowContext(ctx, `SELECT path FROM categories WHERE id = ?`, categoryID).Scan(&path); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -188,8 +189,8 @@ func bindTx(ctx context.Context, tx *sql.Tx, categoryID, fieldID string, require
 	// Anything on the ancestor chain, or anywhere in the subtree below.
 	//
 	// Only this exact pair is exempt, and that is the whole of it: re-binding
-	// the same field to the same category is how required and sort are
-	// changed. The check used to exempt the whole category, which let a second
+	// the same field to the same category is how sort is changed (required
+	// moved onto the field in 018). The check used to exempt the whole category, which let a second
 	// field carrying the same key be bound right beside the first -- the
 	// effective field set then had two answers for one key, which is the
 	// ambiguity this rule exists to prevent. Binding the same field on a
@@ -217,10 +218,12 @@ func bindTx(ctx context.Context, tx *sql.Tx, categoryID, fieldID string, require
 	}
 
 	_, err = tx.ExecContext(ctx,
-		`INSERT INTO category_fields (category_id, field_id, required, sort)
-		 VALUES (?, ?, ?, ?)
-		 ON CONFLICT(category_id, field_id) DO UPDATE SET required = excluded.required, sort = excluded.sort`,
-		categoryID, fieldID, boolInt(required), sort)
+		// required is not written: it lives on the field now (018), and the
+		// column is left holding whatever it held before that migration.
+		`INSERT INTO category_fields (category_id, field_id, sort)
+		 VALUES (?, ?, ?)
+		 ON CONFLICT(category_id, field_id) DO UPDATE SET sort = excluded.sort`,
+		categoryID, fieldID, sort)
 	return err
 }
 
@@ -290,7 +293,7 @@ func loadLibrary(ctx context.Context, tx *sql.Tx) (map[string]model.FieldDefinit
 // loadChain reads the effective field set of one category: every binding on its
 // ancestor chain, itself included.
 func loadChain(ctx context.Context, tx *sql.Tx, path string) (map[string]chainBinding, error) {
-	const q = `SELECT f.key, f.label, f.type, cf.required
+	const q = `SELECT f.key, f.label, f.type, f.required
 	           FROM category_fields cf
 	           JOIN categories c ON c.id = cf.category_id
 	           JOIN field_definitions f ON f.id = cf.field_id

@@ -236,10 +236,10 @@ func TestRecomputeFieldCoversEveryCategoryItIsBoundTo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create category: %v", err)
 	}
-	if err := f.schema.Bind(f.ctx, office.ID, f.macField, true, 10); err != nil {
+	if err := f.schema.Bind(f.ctx, office.ID, f.macField, 10); err != nil {
 		t.Fatalf("bind mac: %v", err)
 	}
-	if err := f.schema.Bind(f.ctx, office.ID, f.snField, false, 20); err != nil {
+	if err := f.schema.Bind(f.ctx, office.ID, f.snField, 20); err != nil {
 		t.Fatalf("bind sn: %v", err)
 	}
 	displayKey := "sn"
@@ -310,10 +310,10 @@ func TestRecomputeFieldDoesNotRepeatNestedSubtrees(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create category: %v", err)
 	}
-	if err := f.schema.Bind(f.ctx, office.ID, f.macField, true, 10); err != nil {
+	if err := f.schema.Bind(f.ctx, office.ID, f.macField, 10); err != nil {
 		t.Fatalf("bind mac: %v", err)
 	}
-	if err := f.schema.Bind(f.ctx, office.ID, f.snField, false, 20); err != nil {
+	if err := f.schema.Bind(f.ctx, office.ID, f.snField, 20); err != nil {
 		t.Fatalf("bind sn: %v", err)
 	}
 	parent := &f.rootID

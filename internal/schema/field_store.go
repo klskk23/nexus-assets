@@ -14,17 +14,19 @@ import (
 	"github.com/klskk23/nexus-assets/internal/store"
 )
 
-const fieldCols = `id, key, label, type, options, is_unique, created_at, updated_at`
+const fieldCols = `id, key, label, type, options, is_unique, required, created_at, updated_at`
 
 func scanField(row interface{ Scan(...any) error }) (model.FieldDefinition, error) {
 	var f model.FieldDefinition
 	var opts string
 	var created, updated string
-	var isUnique int
-	if err := row.Scan(&f.ID, &f.Key, &f.Label, &f.Type, &opts, &isUnique, &created, &updated); err != nil {
+	var isUnique, required int
+	if err := row.Scan(&f.ID, &f.Key, &f.Label, &f.Type, &opts, &isUnique, &required,
+		&created, &updated); err != nil {
 		return f, err
 	}
 	f.IsUnique = isUnique == 1
+	f.Required = required == 1
 	if err := json.Unmarshal([]byte(opts), &f.Options); err != nil {
 		return f, fmt.Errorf("decode options for field %q: %w", f.Key, err)
 	}
@@ -130,34 +132,6 @@ func (s *Store) BoundCategories(ctx context.Context) (map[string][]string, error
 	return out, rows.Err()
 }
 
-// RequiredBindings lists, per field, the bindings that ask for a value: a
-// category id in category mode, a model id in model mode.
-//
-// One map for both because the two modes are exclusive (015, decision 96), so
-// a field's ids are all of one kind and the caller already knows which. The
-// list page needs it to answer "is this field required" without a query per
-// row -- and the honest answer is often "in some of them", which is why the
-// ids come back rather than a flag.
-func (s *Store) RequiredBindings(ctx context.Context) (map[string][]string, error) {
-	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT field_id, category_id FROM category_fields WHERE required = 1
-		 UNION ALL
-		 SELECT field_id, model_id FROM model_fields WHERE required = 1`)
-	if err != nil {
-		return nil, fmt.Errorf("load required bindings: %w", err)
-	}
-	defer rows.Close()
-	out := map[string][]string{}
-	for rows.Next() {
-		var fieldID, ownerID string
-		if err := rows.Scan(&fieldID, &ownerID); err != nil {
-			return nil, err
-		}
-		out[fieldID] = append(out[fieldID], ownerID)
-	}
-	return out, rows.Err()
-}
-
 func (s *Store) ListFields(ctx context.Context) ([]model.FieldDefinition, error) {
 	rows, err := s.db.ReadDB().QueryContext(ctx, `SELECT `+fieldCols+` FROM field_definitions ORDER BY key`)
 	if err != nil {
@@ -200,9 +174,9 @@ type CreateFieldInput struct {
 	// refused by the same guard that refuses it later, so the two modes cannot
 	// be mixed by coming in through the door marked "create".
 	ModelIDs []string
-	// Required applies to each of those bindings. It is a write-time rule, not
-	// a data invariant: existing assets keep whatever they have, and the next
-	// edit of one is where it is asked for.
+	// Required belongs to the field and reaches every binding it has (018).
+	// It is a write-time rule, not a data invariant: existing assets keep
+	// whatever they have, and the next edit of one is where it is asked for.
 	Required bool
 }
 
@@ -226,14 +200,16 @@ func (s *Store) CreateField(ctx context.Context, in CreateFieldInput) (model.Fie
 	now := time.Now().UTC()
 	f := model.FieldDefinition{
 		ID: store.NewID(), Key: in.Key, Label: in.Label, Type: in.Type,
-		Options: in.Options, IsUnique: in.IsUnique, CreatedAt: now, UpdatedAt: now,
+		Options: in.Options, IsUnique: in.IsUnique, Required: in.Required,
+		CreatedAt: now, UpdatedAt: now,
 	}
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO field_definitions (id, key, label, type, options, is_unique, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO field_definitions
+			   (id, key, label, type, options, is_unique, required, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			f.ID, f.Key, f.Label, string(f.Type), string(opts), boolInt(f.IsUnique),
-			store.FormatTime(now), store.FormatTime(now)); err != nil {
+			boolInt(f.Required), store.FormatTime(now), store.FormatTime(now)); err != nil {
 			return err
 		}
 		// Bound in the same transaction, so a refused binding -- a key already
@@ -241,12 +217,12 @@ func (s *Store) CreateField(ctx context.Context, in CreateFieldInput) (model.Fie
 		// field behind either. The refusal is about the pair, and half of it is
 		// not worth keeping.
 		for i, categoryID := range in.CategoryIDs {
-			if err := bindTx(ctx, tx, categoryID, f.ID, in.Required, (i+1)*10); err != nil {
+			if err := bindTx(ctx, tx, categoryID, f.ID, (i+1)*10); err != nil {
 				return err
 			}
 		}
 		for i, modelID := range in.ModelIDs {
-			if err := bindModelTx(ctx, tx, modelID, f.ID, in.Required, (i+1)*10); err != nil {
+			if err := bindModelTx(ctx, tx, modelID, f.ID, (i+1)*10); err != nil {
 				return err
 			}
 		}
@@ -268,6 +244,12 @@ func (s *Store) CreateField(ctx context.Context, in CreateFieldInput) (model.Fie
 type UpdateFieldInput struct {
 	Label   *string
 	Options *model.FieldOptions
+	// Required can be changed after the fact; IsUnique deliberately cannot.
+	// Turning uniqueness on would have to prove the existing values do not
+	// collide and backfill asset_unique_values for every asset that has one,
+	// which is a job of its own -- whereas required only ever describes the
+	// next edit, so flipping it is free.
+	Required *bool
 }
 
 // UpdateField changes or archives a field. Archiving is guarded elsewhere by
@@ -294,6 +276,9 @@ func (s *Store) UpdateField(ctx context.Context, id string, in UpdateFieldInput)
 				cur.Options.Template != in.Options.Template
 			cur.Options = *in.Options
 		}
+		if in.Required != nil {
+			cur.Required = *in.Required
+		}
 		now := time.Now().UTC()
 		opts, err := json.Marshal(cur.Options)
 		if err != nil {
@@ -301,8 +286,9 @@ func (s *Store) UpdateField(ctx context.Context, id string, in UpdateFieldInput)
 		}
 		cur.UpdatedAt = now
 		if _, err := tx.ExecContext(ctx,
-			`UPDATE field_definitions SET label = ?, options = ?, updated_at = ? WHERE id = ?`,
-			cur.Label, string(opts), store.FormatTime(now), id); err != nil {
+			`UPDATE field_definitions SET label = ?, options = ?, required = ?, updated_at = ?
+			 WHERE id = ?`,
+			cur.Label, string(opts), boolInt(cur.Required), store.FormatTime(now), id); err != nil {
 			return err
 		}
 		// Re-run the dependency gate after the write, so the check reads the

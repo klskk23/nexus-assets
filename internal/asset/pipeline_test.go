@@ -76,7 +76,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 
 	mac, err := sch.CreateField(ctx, schema.CreateFieldInput{
-		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true, Required: true,
 	})
 	if err != nil {
 		t.Fatalf("create mac field: %v", err)
@@ -87,7 +87,7 @@ func newFixture(t *testing.T) *fixture {
 	if err != nil {
 		t.Fatalf("create firmware field: %v", err)
 	}
-	if err := sch.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
+	if err := sch.Bind(ctx, root.ID, mac.ID, 10); err != nil {
 		t.Fatalf("bind mac: %v", err)
 	}
 	sn, err := sch.CreateField(ctx, schema.CreateFieldInput{
@@ -97,10 +97,10 @@ func newFixture(t *testing.T) *fixture {
 	if err != nil {
 		t.Fatalf("create sn field: %v", err)
 	}
-	if err := sch.Bind(ctx, root.ID, fw.ID, false, 20); err != nil {
+	if err := sch.Bind(ctx, root.ID, fw.ID, 20); err != nil {
 		t.Fatalf("bind firmware: %v", err)
 	}
-	if err := sch.Bind(ctx, root.ID, sn.ID, false, 30); err != nil {
+	if err := sch.Bind(ctx, root.ID, sn.ID, 30); err != nil {
 		t.Fatalf("bind sn: %v", err)
 	}
 	displayKey := "sn"
@@ -376,10 +376,10 @@ func TestComputedChainEvaluatesInDependencyOrder(t *testing.T) {
 	// somewhere else: full_tag is given the lower sort, which puts it ahead of
 	// base_num in the resolved field list. A correct result therefore cannot
 	// come from list order alone.
-	if err := f.schema.Bind(ctx, rootID, base.ID, false, 40); err != nil {
+	if err := f.schema.Bind(ctx, rootID, base.ID, 40); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.schema.Bind(ctx, rootID, full.ID, false, 30); err != nil {
+	if err := f.schema.Bind(ctx, rootID, full.ID, 30); err != nil {
 		t.Fatal(err)
 	}
 
@@ -541,7 +541,7 @@ func TestBindingAnExpressionKeyBeforeItsInputsIsRefused(t *testing.T) {
 		t.Fatalf("create rack: %v", err)
 	}
 
-	err = f.schema.Bind(ctx, f.catID, tag.ID, false, 50)
+	err = f.schema.Bind(ctx, f.catID, tag.ID, 50)
 	if !errors.Is(err, schema.ErrDependenciesUnmet) {
 		t.Fatalf("want ErrDependenciesUnmet, got %v", err)
 	}
@@ -551,10 +551,10 @@ func TestBindingAnExpressionKeyBeforeItsInputsIsRefused(t *testing.T) {
 
 	// Bound but optional is still not enough: an empty value would fail to
 	// evaluate, and a failed evaluation rolls the whole save back.
-	if err := f.schema.Bind(ctx, f.catID, rack.ID, false, 40); err != nil {
+	if err := f.schema.Bind(ctx, f.catID, rack.ID, 40); err != nil {
 		t.Fatalf("bind rack: %v", err)
 	}
-	err = f.schema.Bind(ctx, f.catID, tag.ID, false, 50)
+	err = f.schema.Bind(ctx, f.catID, tag.ID, 50)
 	if !errors.Is(err, schema.ErrDependenciesUnmet) {
 		t.Fatalf("an optional input must still be refused, got %v", err)
 	}
@@ -562,10 +562,13 @@ func TestBindingAnExpressionKeyBeforeItsInputsIsRefused(t *testing.T) {
 		t.Errorf("the refusal should say the input must be required, got %v", err)
 	}
 
-	if err := f.schema.Bind(ctx, f.catID, rack.ID, true, 40); err != nil {
+	// Marking it required is one edit on the field now (018), not a re-bind
+	// per category.
+	yes := true
+	if _, err := f.schema.UpdateField(ctx, rack.ID, schema.UpdateFieldInput{Required: &yes}); err != nil {
 		t.Fatalf("mark rack required: %v", err)
 	}
-	if err := f.schema.Bind(ctx, f.catID, tag.ID, false, 50); err != nil {
+	if err := f.schema.Bind(ctx, f.catID, tag.ID, 50); err != nil {
 		t.Fatalf("with its input bound and required, the expression key must bind: %v", err)
 	}
 }

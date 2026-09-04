@@ -15,11 +15,11 @@ export interface FieldDefinitionRow {
   /** Which of the two it is, or "unbound" while it is on nothing yet. */
   binding_mode?: "category" | "model" | "unbound"
   /**
-   * The bindings that ask for a value, as a subset of whichever list above is
-   * populated. Required is per binding -- a field can be required on one
-   * category and optional on another -- so this is a list and not a flag.
+   * Whether every binding this field has asks for a value (018). It is the
+   * field's own flag, not the binding's: "required in some of them" was a
+   * state nobody could hold in their head and no cell could report.
    */
-  required_in?: string[]
+  required?: boolean
 }
 
 export interface ProductModelRow {
@@ -32,3 +32,12 @@ export interface ProductModelRow {
   attr_defaults: Record<string, unknown>
   archived_at?: string | null
 }
+
+// Static keys carry what someone typed or imported; an expression key carries
+// what the system worked out from them. One enum in the database, two groups
+// here, because that is the distinction a person is actually choosing between.
+// They live here rather than in a page because both field dialogs read them.
+export const STATIC_FIELD_TYPES: FieldType[] = [
+  "text", "number", "boolean", "date", "mac", "ip", "url",
+]
+export const EXPRESSION_FIELD_TYPES: FieldType[] = ["computed"]

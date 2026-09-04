@@ -134,11 +134,6 @@ type fieldRow struct {
 	// that is on nothing yet and may still become either.
 	ModelIDs    []string `json:"model_ids"`
 	BindingMode string   `json:"binding_mode"`
-	// RequiredIn names the bindings that ask for a value, as a subset of
-	// whichever of the two lists above is populated. A field can be required
-	// on one category and optional on another, so a bare boolean here would
-	// have to pick one of those to report and be wrong about the other.
-	RequiredIn []string `json:"required_in"`
 }
 
 func (s *Server) listFields(c *gin.Context) {
@@ -165,11 +160,6 @@ func (s *Server) listFields(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
-	requiredIn, err := s.schema.RequiredBindings(c.Request.Context())
-	if err != nil {
-		FailErr(c, err)
-		return
-	}
 
 	rows := make([]fieldRow, 0, len(page.Items))
 	for _, f := range page.Items {
@@ -188,13 +178,8 @@ func (s *Server) listFields(c *gin.Context) {
 		case len(ids) > 0:
 			mode = "category"
 		}
-		req := requiredIn[f.ID]
-		if req == nil {
-			req = []string{}
-		}
 		rows = append(rows, fieldRow{
 			FieldDefinition: f, CategoryIDs: ids, ModelIDs: models, BindingMode: mode,
-			RequiredIn: req,
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -250,6 +235,12 @@ func (s *Server) patchField(c *gin.Context) {
 	var req struct {
 		Label   *string             `json:"label"`
 		Options *model.FieldOptions `json:"options"`
+		// Required can be changed after the fact (018); is_unique deliberately
+		// cannot, and is not read here even if it is sent. Turning uniqueness
+		// on would have to prove the stored values do not collide and backfill
+		// asset_unique_values for every asset holding one -- required only
+		// ever describes the next edit, so flipping it costs nothing.
+		Required *bool `json:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
@@ -259,7 +250,7 @@ func (s *Server) patchField(c *gin.Context) {
 	before, _ := s.schema.GetField(ctx, c.Param("id"))
 
 	out, err := s.schema.UpdateField(ctx, c.Param("id"), schema.UpdateFieldInput{
-		Label: req.Label, Options: req.Options,
+		Label: req.Label, Options: req.Options, Required: req.Required,
 	})
 	if err != nil {
 		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, userText(c, err), nil)
@@ -275,15 +266,14 @@ func (s *Server) patchField(c *gin.Context) {
 
 func (s *Server) bindField(c *gin.Context) {
 	var req struct {
-		FieldID  string `json:"field_id" binding:"required"`
-		Required bool   `json:"required"`
-		Sort     int    `json:"sort"`
+		FieldID string `json:"field_id" binding:"required"`
+		Sort    int    `json:"sort"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
-	if err := s.schema.Bind(c.Request.Context(), c.Param("id"), req.FieldID, req.Required, req.Sort); err != nil {
+	if err := s.schema.Bind(c.Request.Context(), c.Param("id"), req.FieldID, req.Sort); err != nil {
 		FailErr(c, err)
 		return
 	}
@@ -301,15 +291,14 @@ func (s *Server) bindField(c *gin.Context) {
 // could act on.
 func (s *Server) bindModelField(c *gin.Context) {
 	var req struct {
-		FieldID  string `json:"field_id" binding:"required"`
-		Required bool   `json:"required"`
-		Sort     int    `json:"sort"`
+		FieldID string `json:"field_id" binding:"required"`
+		Sort    int    `json:"sort"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
-	if err := s.schema.BindModel(c.Request.Context(), c.Param("id"), req.FieldID, req.Required, req.Sort); err != nil {
+	if err := s.schema.BindModel(c.Request.Context(), c.Param("id"), req.FieldID, req.Sort); err != nil {
 		FailErr(c, err)
 		return
 	}

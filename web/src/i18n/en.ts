@@ -271,6 +271,12 @@ export const enMeta: typeof zhMeta = {
     unique: "Unique",
     uniqueScopeHint:
       "The scope follows the binding: within the category's subtree for a category field, across every model it binds to for a model field.",
+    uniqueFixed:
+      "Uniqueness cannot be changed after the field exists: turning it on has to prove the stored values do not collide and record one for every device.",
+    keyFixed: "The key cannot change: the values already stored are filed under it.",
+    typeFixed: "The type cannot change: the values already stored were written to this shape.",
+    requiredScopeHint:
+      "Required belongs to the field: tick it and every category or model it is bound to asks for a value. Existing devices are not re-checked; the next edit of one is where it is asked for.",
     uniqueInCategory: "Unique in its category",
     uniqueInModels: "Unique in its models",
     binding: "Bound to",

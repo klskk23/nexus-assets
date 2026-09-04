@@ -209,14 +209,21 @@ type Category struct {
 // applies, rather than asking an administrator to remember the difference
 // between two similar-looking buttons.
 type FieldDefinition struct {
-	ID        string       `json:"id"`
-	Key       string       `json:"key"`
-	Label     string       `json:"label"`
-	Type      FieldType    `json:"type"`
-	Options   FieldOptions `json:"options"`
-	IsUnique  bool         `json:"is_unique"`
-	CreatedAt time.Time    `json:"created_at"`
-	UpdatedAt time.Time    `json:"updated_at"`
+	ID       string       `json:"id"`
+	Key      string       `json:"key"`
+	Label    string       `json:"label"`
+	Type     FieldType    `json:"type"`
+	Options  FieldOptions `json:"options"`
+	IsUnique bool         `json:"is_unique"`
+	// Required is a write-time rule the field carries everywhere it applies
+	// (018). It used to sit on each binding, which allowed a field to be
+	// required on one category and optional on another -- a distinction the
+	// list page could only report as "in some of them", and one nobody could
+	// hold in their head. Existing assets are never checked against it: the
+	// next edit of one is where it is asked for.
+	Required  bool      `json:"required"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // FieldOptions carries per-type configuration. Which members matter is decided

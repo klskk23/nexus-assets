@@ -72,7 +72,7 @@ func TestBindGateRefusesUnmetDependencies(t *testing.T) {
 	}
 
 	// 1. The input does not exist in the library at all.
-	err = s.Bind(ctx, root.ID, sn.ID, false, 10)
+	err = s.Bind(ctx, root.ID, sn.ID, 10)
 	if !errors.Is(err, ErrDependenciesUnmet) {
 		t.Fatalf("want ErrDependenciesUnmet, got %v", err)
 	}
@@ -80,6 +80,7 @@ func TestBindGateRefusesUnmetDependencies(t *testing.T) {
 		t.Errorf("the refusal should say the key is unknown, got %v", err)
 	}
 
+	// Optional to begin with, so the gate has something to refuse below.
 	mac, err := s.CreateField(ctx, CreateFieldInput{
 		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
 	})
@@ -88,26 +89,28 @@ func TestBindGateRefusesUnmetDependencies(t *testing.T) {
 	}
 
 	// 2. It exists but is not bound here.
-	err = s.Bind(ctx, root.ID, sn.ID, false, 10)
+	err = s.Bind(ctx, root.ID, sn.ID, 10)
 	if !errors.Is(err, ErrDependenciesUnmet) || !strings.Contains(err.Error(), "尚未绑定") {
 		t.Fatalf("an unbound input should be named as such, got %v", err)
 	}
 
 	// 3. Bound but optional: an empty value would fail to evaluate, and a failed
 	//    evaluation rolls the whole save back.
-	if err := s.Bind(ctx, root.ID, mac.ID, false, 5); err != nil {
+	if err := s.Bind(ctx, root.ID, mac.ID, 5); err != nil {
 		t.Fatal(err)
 	}
-	err = s.Bind(ctx, root.ID, sn.ID, false, 10)
+	err = s.Bind(ctx, root.ID, sn.ID, 10)
 	if !errors.Is(err, ErrDependenciesUnmet) || !strings.Contains(err.Error(), "必填") {
 		t.Fatalf("an optional input should be named as such, got %v", err)
 	}
 
-	// 4. Required: now it binds.
-	if err := s.Bind(ctx, root.ID, mac.ID, true, 5); err != nil {
+	// 4. Required: now it binds. The flag is the field's own (018), so this is
+	//    one edit rather than a re-bind per category.
+	yes := true
+	if _, err := s.UpdateField(ctx, mac.ID, UpdateFieldInput{Required: &yes}); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, root.ID, sn.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, sn.ID, 10); err != nil {
 		t.Fatalf("with the input bound and required, the bind must succeed: %v", err)
 	}
 }
@@ -119,7 +122,7 @@ func TestBindGateAcceptsAnInheritedInput(t *testing.T) {
 	root, child := tree(t, s, ctx)
 
 	mac, err := s.CreateField(ctx, CreateFieldInput{
-		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true, Required: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -131,10 +134,10 @@ func TestBindGateAcceptsAnInheritedInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, mac.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, child.ID, sn.ID, false, 20); err != nil {
+	if err := s.Bind(ctx, child.ID, sn.ID, 20); err != nil {
 		t.Fatalf("an inherited input should satisfy the gate: %v", err)
 	}
 }
@@ -147,18 +150,18 @@ func TestUnbindGateRefusesWhileSomethingReadsTheField(t *testing.T) {
 	root, child := tree(t, s, ctx)
 
 	mac, _ := s.CreateField(ctx, CreateFieldInput{
-		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true, Required: true,
 	})
 	sn, _ := s.CreateField(ctx, CreateFieldInput{
 		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
 		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
 	})
-	if err := s.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, mac.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 	// Bound on the child, reading a field bound on the parent: the reach of the
 	// check has to be the subtree, not just the category itself.
-	if err := s.Bind(ctx, child.ID, sn.ID, false, 20); err != nil {
+	if err := s.Bind(ctx, child.ID, sn.ID, 20); err != nil {
 		t.Fatal(err)
 	}
 
@@ -186,7 +189,7 @@ func TestUnbindGateRefusesWhileTheFieldIsADisplayKey(t *testing.T) {
 	tag, _ := s.CreateField(ctx, CreateFieldInput{
 		Key: "tag", Label: "资产标签", Type: model.FieldText, IsUnique: true,
 	})
-	if err := s.Bind(ctx, root.ID, tag.ID, true, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, tag.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 	key := "tag"
@@ -210,7 +213,7 @@ func TestTemplateEditIsReCheckedAgainstEveryBoundCategory(t *testing.T) {
 	root, _ := tree(t, s, ctx)
 
 	mac, _ := s.CreateField(ctx, CreateFieldInput{
-		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true, Required: true,
 	})
 	fw, _ := s.CreateField(ctx, CreateFieldInput{
 		Key: "firmware", Label: "固件版本", Type: model.FieldText,
@@ -219,11 +222,8 @@ func TestTemplateEditIsReCheckedAgainstEveryBoundCategory(t *testing.T) {
 		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
 		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
 	})
-	for _, b := range []struct {
-		id       string
-		required bool
-	}{{mac.ID, true}, {fw.ID, false}, {sn.ID, false}} {
-		if err := s.Bind(ctx, root.ID, b.id, b.required, 10); err != nil {
+	for _, id := range []string{mac.ID, fw.ID, sn.ID} {
+		if err := s.Bind(ctx, root.ID, id, 10); err != nil {
 			t.Fatal(err)
 		}
 	}

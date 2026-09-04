@@ -27,10 +27,9 @@ var ErrDisplayKeyNotCategoryField = errors.New("the numbering field must be boun
 
 // ModelBinding is one model_fields row joined to its definition.
 type ModelBinding struct {
-	ModelID  string
-	Field    model.FieldDefinition
-	Required bool
-	Sort     int
+	ModelID string
+	Field   model.FieldDefinition
+	Sort    int
 }
 
 // ModelBindingsByModel loads every model binding, grouped by model id.
@@ -39,8 +38,9 @@ type ModelBinding struct {
 // and one query beats a join per request. Nothing here may become a per-row
 // lookup -- that is the N+1 the constitution forbids.
 func (s *Store) ModelBindingsByModel(ctx context.Context) (map[string][]ModelBinding, error) {
-	q := `SELECT mf.model_id, mf.required, mf.sort,
-	             f.id, f.key, f.label, f.type, f.options, f.is_unique, f.created_at, f.updated_at
+	q := `SELECT mf.model_id, mf.sort,
+	             f.id, f.key, f.label, f.type, f.options, f.is_unique, f.required,
+	             f.created_at, f.updated_at
 	      FROM model_fields mf JOIN field_definitions f ON f.id = mf.field_id`
 	rows, err := s.db.ReadDB().QueryContext(ctx, q)
 	if err != nil {
@@ -53,13 +53,13 @@ func (s *Store) ModelBindingsByModel(ctx context.Context) (map[string][]ModelBin
 		var b ModelBinding
 		var required, isUnique int
 		var opts, created, updated string
-		if err := rows.Scan(&b.ModelID, &required, &b.Sort,
-			&b.Field.ID, &b.Field.Key, &b.Field.Label, &b.Field.Type, &opts, &isUnique,
+		if err := rows.Scan(&b.ModelID, &b.Sort,
+			&b.Field.ID, &b.Field.Key, &b.Field.Label, &b.Field.Type, &opts, &isUnique, &required,
 			&created, &updated); err != nil {
 			return nil, err
 		}
-		b.Required = required == 1
 		b.Field.IsUnique = isUnique == 1
+		b.Field.Required = required == 1
 		if err := decodeOptions(opts, &b.Field.Options); err != nil {
 			return nil, err
 		}
@@ -119,13 +119,13 @@ func (s *Store) CategoriesOfModel(ctx context.Context) (map[string][]string, err
 // aimed at every category this model is registered under -- assets.attrs is a
 // flat map, and two field definitions fighting over one key is wrong in the
 // data whichever way the binding arrived.
-func (s *Store) BindModel(ctx context.Context, modelID, fieldID string, required bool, sort int) error {
+func (s *Store) BindModel(ctx context.Context, modelID, fieldID string, sort int) error {
 	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		return bindModelTx(ctx, tx, modelID, fieldID, required, sort)
+		return bindModelTx(ctx, tx, modelID, fieldID, sort)
 	})
 }
 
-func bindModelTx(ctx context.Context, tx *sql.Tx, modelID, fieldID string, required bool, sort int) error {
+func bindModelTx(ctx context.Context, tx *sql.Tx, modelID, fieldID string, sort int) error {
 	var key string
 	if err := tx.QueryRowContext(ctx,
 		`SELECT key FROM field_definitions WHERE id = ?`, fieldID).Scan(&key); err != nil {
@@ -158,10 +158,12 @@ func bindModelTx(ctx context.Context, tx *sql.Tx, modelID, fieldID string, requi
 	}
 
 	_, err := tx.ExecContext(ctx,
-		`INSERT INTO model_fields (model_id, field_id, required, sort)
-		 VALUES (?, ?, ?, ?)
-		 ON CONFLICT(model_id, field_id) DO UPDATE SET required = excluded.required, sort = excluded.sort`,
-		modelID, fieldID, boolInt(required), sort)
+		// required is on the field now (018); this column keeps its pre-018
+		// value and stops changing.
+		`INSERT INTO model_fields (model_id, field_id, sort)
+		 VALUES (?, ?, ?)
+		 ON CONFLICT(model_id, field_id) DO UPDATE SET sort = excluded.sort`,
+		modelID, fieldID, sort)
 	return err
 }
 

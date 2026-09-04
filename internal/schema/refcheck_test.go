@@ -13,7 +13,7 @@ func TestReferrersFindsExpressionKeys(t *testing.T) {
 	root, _ := tree(t, s, ctx)
 
 	mac, err := s.CreateField(ctx, CreateFieldInput{
-		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true, Required: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -25,13 +25,13 @@ func TestReferrersFindsExpressionKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, mac.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 	// Bound, because a template that governs no category reads nothing: scope
 	// is what a binding gives a field, and keys only have to be unique inside
 	// one chain now.
-	if err := s.Bind(ctx, root.ID, tag.ID, false, 20); err != nil {
+	if err := s.Bind(ctx, root.ID, tag.ID, 20); err != nil {
 		t.Fatal(err)
 	}
 
@@ -56,7 +56,7 @@ func TestDeleteRefusedWhileAFieldIsADisplayKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, root.ID, tag.ID, true, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, tag.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 	key := "tag"
@@ -81,7 +81,9 @@ func TestReferrersIgnoresStringLiteralsAndFindsNestedCalls(t *testing.T) {
 	s, ctx := newStore(t)
 	root, _ := tree(t, s, ctx)
 
-	realField, err := s.CreateField(ctx, CreateFieldInput{Key: "real", Label: "真实项", Type: model.FieldText})
+	realField, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "real", Label: "真实项", Type: model.FieldText, Required: true,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,11 +100,11 @@ func TestReferrersIgnoresStringLiteralsAndFindsNestedCalls(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, f := range []model.FieldDefinition{realField, decoyField} {
-		if err := s.Bind(ctx, root.ID, f.ID, true, 10); err != nil {
+		if err := s.Bind(ctx, root.ID, f.ID, 10); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := s.Bind(ctx, root.ID, derived.ID, false, 30); err != nil {
+	if err := s.Bind(ctx, root.ID, derived.ID, 30); err != nil {
 		t.Fatal(err)
 	}
 
@@ -126,7 +128,9 @@ func TestDeleteFieldRefusedWhileReferenced(t *testing.T) {
 	s, ctx := newStore(t)
 	root, _ := tree(t, s, ctx)
 
-	mac, err := s.CreateField(ctx, CreateFieldInput{Key: "mac", Label: "基准 MAC", Type: model.FieldMAC})
+	mac, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, Required: true,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,10 +143,10 @@ func TestDeleteFieldRefusedWhileReferenced(t *testing.T) {
 	}
 	// Both bound: scope comes from bindings, so a template governing no
 	// category is in nobody's way.
-	if err := s.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, mac.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, root.ID, sn.ID, false, 20); err != nil {
+	if err := s.Bind(ctx, root.ID, sn.ID, 20); err != nil {
 		t.Fatal(err)
 	}
 
@@ -194,7 +198,9 @@ func TestReferenceChecksStopAtTheCategoriesAFieldIsBoundTo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	theirs, err := s.CreateField(ctx, CreateFieldInput{Key: "rack", Label: "机柜位（交换机）", Type: model.FieldText})
+	theirs, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "rack", Label: "机柜位（交换机）", Type: model.FieldText, Required: true,
+	})
 	if err != nil {
 		t.Fatalf("a second field may take the same key: %v", err)
 	}
@@ -206,15 +212,15 @@ func TestReferenceChecksStopAtTheCategoriesAFieldIsBoundTo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, root.ID, mine.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, mine.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 	// Their static key first, and required, which is what the dependency gate
 	// asks of anything a template reads.
-	if err := s.Bind(ctx, other.ID, theirs.ID, true, 10); err != nil {
+	if err := s.Bind(ctx, other.ID, theirs.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, other.ID, derived.ID, false, 20); err != nil {
+	if err := s.Bind(ctx, other.ID, derived.ID, 20); err != nil {
 		t.Fatal(err)
 	}
 

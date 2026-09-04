@@ -29,7 +29,7 @@ func TestListFieldPageFiltersByCategory(t *testing.T) {
 		category string
 		field    string
 	}{{root.ID, mac.ID}, {root.ID, fw.ID}, {child.ID, port.ID}} {
-		if err := s.Bind(ctx, b.category, b.field, false, 10); err != nil {
+		if err := s.Bind(ctx, b.category, b.field, 10); err != nil {
 			t.Fatalf("bind: %v", err)
 		}
 	}
@@ -97,10 +97,10 @@ func TestBoundCategoriesTellsFieldsApart(t *testing.T) {
 
 	here := mustField(t, s, ctx, "sn", "本机编号", model.FieldText)
 	there := mustField(t, s, ctx, "sn", "厂商序列号", model.FieldText)
-	if err := s.Bind(ctx, root.ID, here.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, here.ID, 10); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
-	if err := s.Bind(ctx, office.ID, there.ID, false, 20); err != nil {
+	if err := s.Bind(ctx, office.ID, there.ID, 20); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
 
@@ -144,24 +144,24 @@ func TestBindRefusesASecondFieldWithTheSameKeyOnOneCategory(t *testing.T) {
 	first := mustField(t, s, ctx, "rack", "机柜位", model.FieldText)
 	second := mustField(t, s, ctx, "rack", "另一个机柜位", model.FieldText)
 
-	if err := s.Bind(ctx, root.ID, first.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, first.ID, 10); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
-	if err := s.Bind(ctx, root.ID, second.ID, false, 20); !errors.Is(err, ErrKeyConflict) {
+	if err := s.Bind(ctx, root.ID, second.ID, 20); !errors.Is(err, ErrKeyConflict) {
 		t.Fatalf("a second field with the same key on one category should conflict, got %v", err)
 	}
 
-	// What must stay allowed: re-binding the same field, which is how required
-	// and sort are changed.
-	if err := s.Bind(ctx, root.ID, first.ID, true, 30); err != nil {
+	// What must stay allowed: re-binding the same field, which is how sort is
+	// changed (required moved onto the field in 018).
+	if err := s.Bind(ctx, root.ID, first.ID, 30); err != nil {
 		t.Fatalf("re-binding the same field should be allowed: %v", err)
 	}
 	fields, err := s.EffectiveFields(ctx, root.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(fields) != 1 || !fields[0].Required {
-		t.Errorf("expected one field, now required; got %+v", fields)
+	if len(fields) != 1 || fields[0].Sort != 30 {
+		t.Errorf("expected one field, re-sorted; got %+v", fields)
 	}
 }
 

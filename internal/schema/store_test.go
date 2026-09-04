@@ -88,7 +88,7 @@ func TestDisplayKeyIsNotInherited(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, root.ID, tag.ID, true, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, tag.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 	key := "tag"
@@ -118,18 +118,18 @@ func TestBindRejectsKeyAlreadyOnTheChain(t *testing.T) {
 	root, child := tree(t, s, ctx)
 
 	mac, err := s.CreateField(ctx, CreateFieldInput{
-		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true, Required: true,
 	})
 	if err != nil {
 		t.Fatalf("create field: %v", err)
 	}
-	if err := s.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, mac.ID, 10); err != nil {
 		t.Fatalf("bind on root: %v", err)
 	}
 
 	// A child may only append. Rebinding the same key must be refused, since
 	// there is no override rule to resolve the ambiguity.
-	err = s.Bind(ctx, child.ID, mac.ID, false, 10)
+	err = s.Bind(ctx, child.ID, mac.ID, 10)
 	if !errors.Is(err, ErrKeyConflict) {
 		t.Fatalf("expected ErrKeyConflict, got %v", err)
 	}
@@ -142,12 +142,14 @@ func TestEffectiveFieldsUnionsTheChain(t *testing.T) {
 	s, ctx := newStore(t)
 	root, child := tree(t, s, ctx)
 
-	mac, _ := s.CreateField(ctx, CreateFieldInput{Key: "mac", Label: "MAC", Type: model.FieldMAC})
+	mac, _ := s.CreateField(ctx, CreateFieldInput{
+		Key: "mac", Label: "MAC", Type: model.FieldMAC, Required: true,
+	})
 	tun, _ := s.CreateField(ctx, CreateFieldInput{Key: "tunnels", Label: "隧道数", Type: model.FieldNumber})
-	if err := s.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, mac.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, child.ID, tun.ID, false, 20); err != nil {
+	if err := s.Bind(ctx, child.ID, tun.ID, 20); err != nil {
 		t.Fatal(err)
 	}
 
@@ -177,7 +179,7 @@ func TestUnbindLeavesTheDefinitionAlone(t *testing.T) {
 	s, ctx := newStore(t)
 	root, _ := tree(t, s, ctx)
 	f, _ := s.CreateField(ctx, CreateFieldInput{Key: "firmware", Label: "固件", Type: model.FieldText})
-	if err := s.Bind(ctx, root.ID, f.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, f.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Unbind(ctx, root.ID, f.ID); err != nil {
@@ -274,12 +276,14 @@ func TestEffectiveFieldsIncludesModelBoundFields(t *testing.T) {
 	root, child := tree(t, s, ctx)
 	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
 
-	mac, _ := s.CreateField(ctx, CreateFieldInput{Key: "mac", Label: "MAC", Type: model.FieldMAC})
+	mac, _ := s.CreateField(ctx, CreateFieldInput{
+		Key: "mac", Label: "MAC", Type: model.FieldMAC, Required: true,
+	})
 	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
-	if err := s.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, mac.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.BindModel(ctx, dell.ID, tag.ID, false, 20); err != nil {
+	if err := s.BindModel(ctx, dell.ID, tag.ID, 20); err != nil {
 		t.Fatalf("bind model: %v", err)
 	}
 
@@ -314,7 +318,7 @@ func TestEffectiveFieldsMergesAFieldBoundToSeveralModels(t *testing.T) {
 
 	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
 	for _, m := range []model.ProductModel{a, b} {
-		if err := s.BindModel(ctx, m.ID, tag.ID, false, 10); err != nil {
+		if err := s.BindModel(ctx, m.ID, tag.ID, 10); err != nil {
 			t.Fatalf("bind %s: %v", m.Name, err)
 		}
 	}
@@ -342,7 +346,7 @@ func TestEffectiveFieldsIgnoresModelsOutsideTheChain(t *testing.T) {
 	elsewhere := modelOn(t, s, ctx, "Catalyst", other.ID)
 
 	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
-	if err := s.BindModel(ctx, elsewhere.ID, tag.ID, false, 10); err != nil {
+	if err := s.BindModel(ctx, elsewhere.ID, tag.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 
@@ -364,18 +368,18 @@ func TestBindingModesAreExclusive(t *testing.T) {
 	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
 
 	byCategory, _ := s.CreateField(ctx, CreateFieldInput{Key: "mac", Label: "MAC", Type: model.FieldMAC})
-	if err := s.Bind(ctx, root.ID, byCategory.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, byCategory.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.BindModel(ctx, dell.ID, byCategory.ID, false, 10); !errors.Is(err, ErrBindingModeConflict) {
+	if err := s.BindModel(ctx, dell.ID, byCategory.ID, 10); !errors.Is(err, ErrBindingModeConflict) {
 		t.Errorf("binding a category field to a model should be refused, got %v", err)
 	}
 
 	byModel, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
-	if err := s.BindModel(ctx, dell.ID, byModel.ID, false, 10); err != nil {
+	if err := s.BindModel(ctx, dell.ID, byModel.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, child.ID, byModel.ID, false, 10); !errors.Is(err, ErrBindingModeConflict) {
+	if err := s.Bind(ctx, child.ID, byModel.ID, 10); !errors.Is(err, ErrBindingModeConflict) {
 		t.Errorf("binding a model field to a category should be refused, got %v", err)
 	}
 }
@@ -387,7 +391,7 @@ func TestUnbindModelLeavesTheDefinitionAlone(t *testing.T) {
 	_, child := tree(t, s, ctx)
 	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
 	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
-	if err := s.BindModel(ctx, dell.ID, tag.ID, false, 10); err != nil {
+	if err := s.BindModel(ctx, dell.ID, tag.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 
@@ -418,7 +422,7 @@ func TestModelsOfFieldNamesEveryBinding(t *testing.T) {
 	b := modelOn(t, s, ctx, "OptiPlex 7090", child.ID)
 	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
 	for _, m := range []model.ProductModel{a, b} {
-		if err := s.BindModel(ctx, m.ID, tag.ID, false, 10); err != nil {
+		if err := s.BindModel(ctx, m.ID, tag.ID, 10); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -441,12 +445,12 @@ func TestModelBindingRefusesAKeyTakenOnTheCategory(t *testing.T) {
 	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
 
 	onCategory, _ := s.CreateField(ctx, CreateFieldInput{Key: "sn", Label: "编号", Type: model.FieldText})
-	if err := s.Bind(ctx, root.ID, onCategory.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, onCategory.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 	// A different definition carrying the same key.
 	clash, _ := s.CreateField(ctx, CreateFieldInput{Key: "sn", Label: "另一个编号", Type: model.FieldText})
-	if err := s.BindModel(ctx, dell.ID, clash.ID, false, 10); !errors.Is(err, ErrKeyConflict) {
+	if err := s.BindModel(ctx, dell.ID, clash.ID, 10); !errors.Is(err, ErrKeyConflict) {
 		t.Errorf("a key taken on the model's own category should be refused, got %v", err)
 	}
 
@@ -454,10 +458,10 @@ func TestModelBindingRefusesAKeyTakenOnTheCategory(t *testing.T) {
 	other := modelOn(t, s, ctx, "OptiPlex 7090", child.ID)
 	first, _ := s.CreateField(ctx, CreateFieldInput{Key: "tag", Label: "标签", Type: model.FieldText})
 	second, _ := s.CreateField(ctx, CreateFieldInput{Key: "tag", Label: "另一个标签", Type: model.FieldText})
-	if err := s.BindModel(ctx, other.ID, first.ID, false, 10); err != nil {
+	if err := s.BindModel(ctx, other.ID, first.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.BindModel(ctx, other.ID, second.ID, false, 10); !errors.Is(err, ErrKeyConflict) {
+	if err := s.BindModel(ctx, other.ID, second.ID, 10); !errors.Is(err, ErrKeyConflict) {
 		t.Errorf("a key taken on the same model should be refused, got %v", err)
 	}
 }
@@ -469,10 +473,10 @@ func TestModelBindingRefusesUnknownIDs(t *testing.T) {
 	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
 	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
 
-	if err := s.BindModel(ctx, dell.ID, "no-such-field", false, 10); !errors.Is(err, ErrNotFound) {
+	if err := s.BindModel(ctx, dell.ID, "no-such-field", 10); !errors.Is(err, ErrNotFound) {
 		t.Errorf("unknown field should be reported, got %v", err)
 	}
-	if err := s.BindModel(ctx, "no-such-model", tag.ID, false, 10); !errors.Is(err, ErrNotFound) {
+	if err := s.BindModel(ctx, "no-such-model", tag.ID, 10); !errors.Is(err, ErrNotFound) {
 		t.Errorf("unknown model should be reported, got %v", err)
 	}
 }
@@ -530,7 +534,7 @@ func TestDisplayKeyRefusesModelBoundFields(t *testing.T) {
 	tag, _ := s.CreateField(ctx, CreateFieldInput{
 		Key: "servicetag", Label: "ServiceTag", Type: model.FieldText, IsUnique: true,
 	})
-	if err := s.BindModel(ctx, dell.ID, tag.ID, false, 10); err != nil {
+	if err := s.BindModel(ctx, dell.ID, tag.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 
@@ -588,39 +592,60 @@ func TestCreateFieldBindsModelsInTheSameTransaction(t *testing.T) {
 	}
 }
 
-// Required is set per binding, so the answer is a set of bindings and not a
-// flag: the same field can be required on one category and optional on another.
-func TestRequiredBindingsNamesOnlyTheOnesThatAsk(t *testing.T) {
+// Required is the field's own flag now (018): it reaches every binding, and
+// changing it is one edit rather than one per category the field is on.
+func TestRequiredBelongsToTheFieldAndReachesEveryBinding(t *testing.T) {
 	s, ctx := newStore(t)
 	root, _ := tree(t, s, ctx)
 	other, err := s.CreateCategory(ctx, CreateCategoryInput{Code: "PRN", Name: "打印机"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	dell := modelOn(t, s, ctx, "Latitude 5420", root.ID)
 
-	rack, _ := s.CreateField(ctx, CreateFieldInput{Key: "rack", Label: "机柜", Type: model.FieldText})
-	if err := s.Bind(ctx, root.ID, rack.ID, true, 10); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Bind(ctx, other.ID, rack.ID, false, 10); err != nil {
-		t.Fatal(err)
-	}
-	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
-	if err := s.BindModel(ctx, dell.ID, tag.ID, true, 10); err != nil {
-		t.Fatal(err)
-	}
-
-	req, err := s.RequiredBindings(ctx)
+	rack, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "rack", Label: "机柜", Type: model.FieldText, Required: true,
+	})
 	if err != nil {
-		t.Fatalf("required bindings: %v", err)
+		t.Fatal(err)
 	}
-	if got := req[rack.ID]; len(got) != 1 || got[0] != root.ID {
-		t.Errorf("only the binding that asks for a value should be listed, got %v", got)
+	if err := s.Bind(ctx, root.ID, rack.ID, 10); err != nil {
+		t.Fatal(err)
 	}
-	// Model bindings come back in the same map: the two modes are exclusive, so
-	// a field's ids are all of one kind and the caller already knows which.
-	if got := req[tag.ID]; len(got) != 1 || got[0] != dell.ID {
-		t.Errorf("a required model binding should be listed too, got %v", got)
+	if err := s.Bind(ctx, other.ID, rack.ID, 10); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, c := range []model.Category{root, other} {
+		fields, err := s.EffectiveFields(ctx, c.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, f := range fields {
+			if f.Key == "rack" {
+				found = true
+				if !f.Required {
+					t.Errorf("rack should be required on %s too", c.Name)
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("rack missing from %s", c.Name)
+		}
+	}
+
+	// And turning it off is one edit, not one per binding.
+	no := false
+	if _, err := s.UpdateField(ctx, rack.ID, UpdateFieldInput{Required: &no}); err != nil {
+		t.Fatal(err)
+	}
+	fields, err := s.EffectiveFields(ctx, other.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range fields {
+		if f.Key == "rack" && f.Required {
+			t.Error("clearing the field's flag should clear it everywhere")
+		}
 	}
 }

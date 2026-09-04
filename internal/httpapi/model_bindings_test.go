@@ -304,9 +304,10 @@ func TestCreateFieldBoundToModels(t *testing.T) {
 	if !strings.Contains(body, `"binding_mode":"model"`) {
 		t.Errorf("and in model mode: %s", body)
 	}
-	// Required is per binding, so the row says where, not just whether.
-	if !strings.Contains(body, `"required_in":["`+modelID+`"]`) {
-		t.Errorf("the required binding should be named: %s", body)
+	// Required rides on the field itself (018), so it comes back on the row
+	// without anyone having to ask which binding it belongs to.
+	if !strings.Contains(body, `"key":"servicetag","label":"ServiceTag","type":"text","options":{},"is_unique":true,"required":true`) {
+		t.Errorf("the field should come back required: %s", body)
 	}
 }
 
@@ -330,25 +331,35 @@ func TestCreateFieldRefusesBothBindingModes(t *testing.T) {
 	}
 }
 
-// A field required on one category and optional on another cannot be reported
-// with a single flag, so the row names the bindings that ask for a value.
-func TestRequiredIsReportedPerBinding(t *testing.T) {
+// Required reaches every binding the field has (018). It used to be settable
+// per binding, which made "is this field required" a question with more than
+// one answer -- and the library page could only report "in some of them".
+func TestRequiredReachesEveryBinding(t *testing.T) {
 	h := newHarness(t)
-	// A separate chain, because the same key may not be bound twice on one.
-	other := decode[map[string]any](t, h.post(t, "/api/categories",
-		`{"code":"PRN","name":"打印机"}`))
+	other := decode[map[string]any](t, h.post(t, "/api/categories", `{"code":"PRN","name":"打印机"}`))
 	otherID, _ := other["id"].(string)
 
 	f := decode[map[string]any](t, h.post(t, "/api/fields",
 		`{"key":"rack","label":"机柜","type":"text","category_ids":["`+h.catID+`"],"required":true}`))
 	fieldID, _ := f["id"].(string)
 	if rec := h.post(t, "/api/categories/"+otherID+"/bindings",
-		`{"field_id":"`+fieldID+`","required":false}`); rec.Code != http.StatusNoContent {
+		`{"field_id":"`+fieldID+`"}`); rec.Code != http.StatusNoContent {
 		t.Fatalf("bind to the other category: %s", rec.Body.String())
 	}
 
-	body := h.get(t, "/api/fields").Body.String()
-	if !strings.Contains(body, `"required_in":["`+h.catID+`"]`) {
-		t.Errorf("only the binding that asks for a value should be listed: %s", body)
+	for _, cat := range []string{h.catID, otherID} {
+		body := h.get(t, "/api/categories/"+cat+"/schema").Body.String()
+		if !strings.Contains(body, `"key":"rack"`) || !strings.Contains(body, `"required":true`) {
+			t.Errorf("rack should be required on category %s: %s", cat, body)
+		}
+	}
+
+	// And clearing it is one edit, not one per category.
+	if rec := h.patch(t, "/api/fields/"+fieldID, `{"required":false}`); rec.Code != http.StatusOK {
+		t.Fatalf("clear required: %s", rec.Body.String())
+	}
+	body := h.get(t, "/api/categories/"+otherID+"/schema").Body.String()
+	if strings.Contains(body, `"key":"rack","label":"机柜","type":"text","options":{},"is_unique":false,"required":true`) {
+		t.Errorf("clearing the field's flag should clear it everywhere: %s", body)
 	}
 }

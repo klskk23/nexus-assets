@@ -5,8 +5,6 @@ import userEvent from "@testing-library/user-event"
 import { FieldEditor } from "@/features/fields/FieldEditor"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { ApiError } from "@/lib/api"
-import { chooseFromMenu } from "@/test/menu"
-import { chooseByLabel } from "@/test/choose"
 import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import type { FieldType } from "@/lib/types"
 
@@ -93,6 +91,7 @@ describe("FieldEditor", () => {
       expect(patch).toHaveBeenCalledWith("/fields/f1", {
         label: "标签",
         options: { template: "attrs.mac" },
+        required: false,
       }),
     )
     expect(post).toHaveBeenCalledWith("/fields/f1/recompute?dry_run=false", {})
@@ -270,71 +269,46 @@ describe("FieldEditor", () => {
 // A field belongs to categories, not the other way round: this is where that
 // is decided, so the page that owns the field owns the binding.
 describe("FieldEditor bindings", () => {
-  it("binds the field to a category and lists it", async () => {
+  // Ticking a box is the binding: the field already exists, so there is
+  // nothing to defer until save. Creating is the other way round, and that is
+  // the one difference between the two dialogs' use of the same form.
+  it("binds the field to a category when its box is ticked", async () => {
     const user = userEvent.setup()
-    renderWithProviders(
-      <FieldEditor field={field("text")} onClose={vi.fn()} />,
-    )
+    renderWithProviders(<FieldEditor field={field("text")} onClose={vi.fn()} />)
 
     expect(await screen.findByText(/还没有绑定到任何类别/)).toBeInTheDocument()
-
-    await user.click(screen.getByRole("combobox", { name: "绑定字段" }))
-    await user.click(await screen.findByRole("option", { name: "网络设备" }))
-    await user.click(screen.getByRole("button", { name: "绑定字段" }))
+    await user.click(await screen.findByLabelText("网络设备"))
 
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/categories/net/bindings", {
-        field_id: "f1",
-        required: false,
-      }),
+      expect(post).toHaveBeenCalledWith("/categories/net/bindings", { field_id: "f1" }),
     )
-    expect(await screen.findByRole("row", { name: "网络设备" })).toBeInTheDocument()
+    expect(screen.getByLabelText("网络设备")).toBeChecked()
   })
 
   it("warns before making it required where devices already exist", async () => {
     const user = userEvent.setup()
-    renderWithProviders(<FieldEditor field={field("text")} onClose={vi.fn()} />)
+    renderWithProviders(
+      <FieldEditor field={field("text", { category_ids: ["net"] })} onClose={vi.fn()} />,
+    )
 
-    await user.click(screen.getByRole("combobox", { name: "绑定字段" }))
-    await user.click(await screen.findByRole("option", { name: "网络设备" }))
-    await user.click(screen.getByLabelText("必填"))
-
+    await user.click(await screen.findByLabelText("必填"))
     expect(await screen.findByText(/已有 4 台设备/)).toBeInTheDocument()
   })
 
-  // The action has to be on screen. It was reachable only by right-clicking a
-  // two-row table inside a dialog, which is nowhere anybody thinks to try: the
-  // bug report was "a bound field cannot be unbound", and the mechanism worked
-  // the whole time.
-  it("offers unbind as a visible button", async () => {
+  // Unticking takes the field off every device under that category, so it is
+  // the one direction that asks first.
+  it("asks before unticking a binding, then unbinds", async () => {
     const user = userEvent.setup()
     renderWithProviders(
       <FieldEditor field={field("text", { category_ids: ["net"] })} onClose={vi.fn()} />,
     )
 
-    const row = await screen.findByRole("row", { name: "网络设备" })
-    await user.click(within(row).getByRole("button", { name: "解绑" }))
-
-    const dialog = await screen.findByRole("alertdialog")
-    await user.click(within(dialog).getByRole("button", { name: "解绑" }))
-    await waitFor(() => expect(del).toHaveBeenCalledWith("/categories/net/bindings/f1"))
-  })
-
-  it("unbinds from the row menu, after confirming", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(
-      <FieldEditor field={field("text", { category_ids: ["net"] })} onClose={vi.fn()} />,
-    )
-
-    const row = await screen.findByRole("row", { name: "网络设备" })
-    await chooseFromMenu(user, row, "解绑")
+    await user.click(await screen.findByLabelText("网络设备"))
     const dialog = await screen.findByRole("alertdialog")
     await user.click(within(dialog).getByRole("button", { name: "解绑" }))
 
     await waitFor(() => expect(del).toHaveBeenCalledWith("/categories/net/bindings/f1"))
-    await waitFor(() =>
-      expect(screen.queryByRole("row", { name: "网络设备" })).not.toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.getByLabelText("网络设备")).not.toBeChecked())
   })
 
   // The refusal has to land in the dialog: the page behind it is covered.
@@ -345,11 +319,21 @@ describe("FieldEditor bindings", () => {
     const user = userEvent.setup()
     renderWithProviders(<FieldEditor field={field("text")} onClose={vi.fn()} />)
 
-    await user.click(screen.getByRole("combobox", { name: "绑定字段" }))
-    await user.click(await screen.findByRole("option", { name: "服务器" }))
-    await user.click(screen.getByRole("button", { name: "绑定字段" }))
-
+    await user.click(await screen.findByLabelText("服务器"))
     expect(await screen.findByRole("alert")).toHaveTextContent("已经绑定在")
+  })
+
+  // Key, type and uniqueness were decided when the field was created, and the
+  // values already stored were written to those decisions. Uniqueness is the
+  // one worth spelling out: turning it on would have to prove nothing collides
+  // and backfill a record per device.
+  it("freezes key, type and uniqueness once the field exists", async () => {
+    renderWithProviders(
+      <FieldEditor field={field("text", { key: "rack", is_unique: true })} onClose={vi.fn()} />,
+    )
+    expect(await screen.findByLabelText("键名（英文）")).toBeDisabled()
+    expect(screen.getByLabelText("唯一")).toBeDisabled()
+    expect(screen.getByText(/唯一性在建好之后不能改/)).toBeInTheDocument()
   })
 })
 
@@ -375,14 +359,10 @@ describe("binding a field to models", () => {
 
     await user.click(screen.getByRole("radio", { name: "型号" }))
     // The picker now offers models rather than categories.
-    await chooseByLabel(user, "绑定字段", "Latitude 5420（Dell）")
-    await user.click(screen.getByRole("button", { name: "绑定字段" }))
+    await user.click(await screen.findByLabelText("Dell Latitude 5420"))
 
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/models/m-dell/bindings", {
-        field_id: "f1",
-        required: false,
-      }),
+      expect(post).toHaveBeenCalledWith("/models/m-dell/bindings", { field_id: "f1" }),
     )
   })
 
@@ -398,46 +378,18 @@ describe("binding a field to models", () => {
     expect(screen.getByText(/要换请先解除现有的全部绑定/)).toBeInTheDocument()
   })
 
-  // The count a required binding shows is this model's devices, not the
+  // The count a required field shows is this model's devices, not the
   // category's -- what it promises is about the devices the rule will reach.
   it("counts only that model's devices before required is ticked", async () => {
     get.mockReset().mockImplementation(withModels)
     const user = userEvent.setup()
-    renderWithProviders(<FieldEditor field={field("text")} onClose={vi.fn()} />)
+    renderWithProviders(
+      <FieldEditor field={field("text", { model_ids: ["m-dell"] })} onClose={vi.fn()} />,
+    )
 
-    await user.click(screen.getByRole("radio", { name: "型号" }))
-    await chooseByLabel(user, "绑定字段", "Latitude 5420（Dell）")
-    await user.click(screen.getByLabelText("必填"))
+    await user.click(await screen.findByLabelText("必填"))
 
     expect(await screen.findByText(/已有 3 台设备/)).toBeInTheDocument()
-    await waitFor(() =>
-      expect(get).toHaveBeenCalledWith("/models/m-dell/required-impact"),
-    )
-  })
-})
-
-// Required is set per binding, so it belongs beside each binding. The library
-// page used to carry one cell for it, which had to summarise a field that is
-// required on one category and optional on another.
-describe("FieldEditor required per binding", () => {
-  beforeEach(() => {
-    get.mockReset().mockImplementation(route)
-    post.mockReset().mockResolvedValue({})
-    patch.mockReset().mockResolvedValue({})
-    del.mockReset().mockResolvedValue({})
-  })
-
-  it("marks the bindings that ask for a value and leaves the others blank", async () => {
-    renderWithProviders(
-      <FieldEditor
-        field={field("text", { category_ids: ["net", "srv"], required_in: ["net"] })}
-        onClose={vi.fn()}
-      />,
-    )
-    const required = await screen.findByRole("row", { name: "网络设备" })
-    expect(within(required).getByText("必填")).toBeInTheDocument()
-
-    const optional = screen.getByRole("row", { name: "服务器" })
-    expect(within(optional).queryByText("必填")).not.toBeInTheDocument()
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/models/m-dell/required-impact"))
   })
 })

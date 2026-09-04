@@ -69,7 +69,7 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	mac, _ := sch.CreateField(ctx, schema.CreateFieldInput{
-		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true,
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, IsUnique: true, Required: true,
 	})
 	fw, _ := sch.CreateField(ctx, schema.CreateFieldInput{
 		Key: "firmware", Label: "固件版本", Type: model.FieldText,
@@ -79,11 +79,10 @@ func newFixture(t *testing.T) *fixture {
 		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
 	})
 	for _, f := range []struct {
-		id       string
-		required bool
-		sort     int
-	}{{mac.ID, true, 10}, {fw.ID, false, 20}, {tag.ID, false, 30}} {
-		if err := sch.Bind(ctx, cat.ID, f.id, f.required, f.sort); err != nil {
+		id   string
+		sort int
+	}{{mac.ID, 10}, {fw.ID, 20}, {tag.ID, 30}} {
+		if err := sch.Bind(ctx, cat.ID, f.id, f.sort); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -581,7 +580,7 @@ func TestPreviewRefusesAValueThatDoesNotBelongToTheRowsModel(t *testing.T) {
 	tag, _ := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
 		Key: "servicetag", Label: "ServiceTag", Type: model.FieldText,
 	})
-	if err := f.schema.BindModel(f.ctx, dell.ID, tag.ID, false, 40); err != nil {
+	if err := f.schema.BindModel(f.ctx, dell.ID, tag.ID, 40); err != nil {
 		t.Fatal(err)
 	}
 

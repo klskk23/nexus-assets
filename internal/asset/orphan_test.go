@@ -19,7 +19,7 @@ func TestOrphanValuesSurviveALaterSave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.schema.Bind(f.ctx, f.rootID, rack.ID, false, 40); err != nil {
+	if err := f.schema.Bind(f.ctx, f.rootID, rack.ID, 40); err != nil {
 		t.Fatal(err)
 	}
 

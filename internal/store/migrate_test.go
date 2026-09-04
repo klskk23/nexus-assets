@@ -123,7 +123,7 @@ func TestMigrateUpAndDown(t *testing.T) {
 	// Rolling back one revision at a time must restore each earlier shape
 	// exactly, so a half-applied upgrade can be undone rather than requiring a
 	// fresh file.
-	for _, rev := range []string{"017", "016", "015", "014", "013", "012", "011", "010", "009"} {
+	for _, rev := range []string{"018", "017", "016", "015", "014", "013", "012", "011", "010", "009"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -320,7 +320,7 @@ func TestMigrateConvertsEnumAndReferenceFieldsToText(t *testing.T) {
 	}
 	// Back past the withdrawal, so the rows can be written in the shape that
 	// revision allowed.
-	for _, rev := range []string{"017", "016", "015", "014", "013", "012", "011", "010"} {
+	for _, rev := range []string{"018", "017", "016", "015", "014", "013", "012", "011", "010"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -359,5 +359,77 @@ func TestMigrateConvertsEnumAndReferenceFieldsToText(t *testing.T) {
 		if typ != want.typ || options != want.options {
 			t.Errorf("%s = (%s, %s), want (%s, %s)", want.id, typ, options, want.typ, want.options)
 		}
+	}
+}
+
+// 018 moves required from the binding to the field, and has to decide what a
+// partial requirement becomes. It takes required from ANY binding: somebody who
+// marked it required on one category meant it there, and the other reading
+// would silently drop requirements people had deliberately set.
+func TestMigrateMovesRequiredOntoTheField(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "required.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+	if err := s.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+	// Back to before the move, so the rows can be written the way that
+	// revision allowed: required on the binding.
+	if err := s.MigrateDown(ctx); err != nil {
+		t.Fatalf("MigrateDown 018: %v", err)
+	}
+
+	now := "2026-09-04T00:00:00Z"
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := s.write.ExecContext(ctx, q, args...); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	for _, c := range []string{"c1", "c2"} {
+		exec(`INSERT INTO categories (id, code, name, parent_id, path, created_at, updated_at)
+		      VALUES (?, ?, ?, NULL, ?, ?, ?)`, c, c, c, "/"+c+"/", now, now)
+	}
+	for _, f := range []string{"f-partial", "f-never"} {
+		exec(`INSERT INTO field_definitions (id, key, label, type, options, is_unique, created_at, updated_at)
+		      VALUES (?, ?, ?, 'text', '{}', 0, ?, ?)`, f, f, f, now, now)
+	}
+	// Required on one of its two categories, optional on the other.
+	exec(`INSERT INTO category_fields (category_id, field_id, required, sort) VALUES ('c1','f-partial',1,10)`)
+	exec(`INSERT INTO category_fields (category_id, field_id, required, sort) VALUES ('c2','f-partial',0,10)`)
+	exec(`INSERT INTO category_fields (category_id, field_id, required, sort) VALUES ('c1','f-never',0,20)`)
+
+	if err := s.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate up to 018: %v", err)
+	}
+
+	want := map[string]int{"f-partial": 1, "f-never": 0}
+	for id, w := range want {
+		var got int
+		if err := s.read.QueryRowContext(ctx,
+			`SELECT required FROM field_definitions WHERE id = ?`, id).Scan(&got); err != nil {
+			t.Fatalf("read %s: %v", id, err)
+		}
+		if got != w {
+			t.Errorf("%s required = %d, want %d", id, got, w)
+		}
+	}
+
+	// And going back down puts it where the older code reads it.
+	if err := s.MigrateDown(ctx); err != nil {
+		t.Fatalf("MigrateDown 018: %v", err)
+	}
+	var n int
+	if err := s.read.QueryRowContext(ctx,
+		`SELECT count(*) FROM category_fields WHERE field_id = 'f-partial' AND required = 1`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Errorf("after down, required bindings for f-partial = %d, want both", n)
 	}
 }

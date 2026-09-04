@@ -20,21 +20,23 @@ func TestChildInheritsEverythingAndMayOnlyAppend(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mac, _ := s.CreateField(ctx, CreateFieldInput{Key: "mac", Label: "基准 MAC", Type: model.FieldMAC})
+	mac, _ := s.CreateField(ctx, CreateFieldInput{
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC, Required: true,
+	})
 	fw, _ := s.CreateField(ctx, CreateFieldInput{Key: "firmware", Label: "固件版本", Type: model.FieldText})
 	tun, _ := s.CreateField(ctx, CreateFieldInput{Key: "tunnels", Label: "隧道数", Type: model.FieldNumber})
 	pwr, _ := s.CreateField(ctx, CreateFieldInput{Key: "watts", Label: "功耗", Type: model.FieldNumber})
 
-	if err := s.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
+	if err := s.Bind(ctx, root.ID, mac.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, root.ID, fw.ID, false, 20); err != nil {
+	if err := s.Bind(ctx, root.ID, fw.ID, 20); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, child.ID, tun.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, child.ID, tun.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, grandchild.ID, pwr.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, grandchild.ID, pwr.ID, 10); err != nil {
 		t.Fatal(err)
 	}
 
@@ -65,11 +67,11 @@ func TestChildInheritsEverythingAndMayOnlyAppend(t *testing.T) {
 	}
 
 	// Appending is fine; rebinding an inherited key is not.
-	if err := s.Bind(ctx, grandchild.ID, mac.ID, false, 99); !errors.Is(err, ErrKeyConflict) {
+	if err := s.Bind(ctx, grandchild.ID, mac.ID, 99); !errors.Is(err, ErrKeyConflict) {
 		t.Fatalf("rebinding an inherited key should conflict, got %v", err)
 	}
 	// Nor may an ancestor take a key a descendant already uses.
-	if err := s.Bind(ctx, root.ID, pwr.ID, false, 99); !errors.Is(err, ErrKeyConflict) {
+	if err := s.Bind(ctx, root.ID, pwr.ID, 99); !errors.Is(err, ErrKeyConflict) {
 		t.Fatalf("binding a descendant's key on an ancestor should conflict, got %v", err)
 	}
 }
@@ -86,10 +88,10 @@ func TestSiblingsMayUseTheSameKey(t *testing.T) {
 	}
 	ports, _ := s.CreateField(ctx, CreateFieldInput{Key: "ports", Label: "端口数", Type: model.FieldNumber})
 
-	if err := s.Bind(ctx, child.ID, ports.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, child.ID, ports.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Bind(ctx, sibling.ID, ports.ID, false, 10); err != nil {
+	if err := s.Bind(ctx, sibling.ID, ports.ID, 10); err != nil {
 		t.Errorf("two sibling branches may both use a key: %v", err)
 	}
 }
