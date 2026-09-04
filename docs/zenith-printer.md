@@ -56,7 +56,9 @@ nexus   ──  GET  /api/print-presets            有哪些标签
 - 行的身份是 `sys_id`，zenith 按它合并刷新，所以刷新前勾的行刷新后还是同一批设备；
 - 内建列一共十个：`sys_id`、`sys_sn`、`sys_category`、`sys_status`、`sys_holder`、
   `sys_owner`、`sys_model`、`sys_vendor`、`sys_note`、`sys_created_at`；
-- **必须指定类别**，理由同上：字段键只在一个类别的子树内唯一。
+- **必须指定类别**，理由同上：字段键只在一个类别的子树内唯一；
+- 015 起字段还可以绑到**型号**而不是类别，这类字段同样会作为该类别的一列出现，
+  不属于该型号的设备那一行留空——是**加列**不是改列，按列名取值不会因此报错。
 
 ## 三、在 zenith 里接一个数据源
 

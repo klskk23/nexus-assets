@@ -71,7 +71,11 @@ same data as `export.csv` in a different shape:
   `sys_status`, `sys_holder`, `sys_owner`, `sys_model`, `sys_vendor`,
   `sys_note`, `sys_created_at`;
 - **a category is required**, for the same reason: field keys are unique only
-  within one category's subtree.
+  within one category's subtree;
+- since 015 a field may bind to a **model** rather than a category. Such a field
+  still appears as a column of that category; rows whose device is not one of
+  those models leave it empty. That adds a column rather than changing one, so
+  reading by column name is unaffected.
 
 ## 3. Adding the data source in zenith
 

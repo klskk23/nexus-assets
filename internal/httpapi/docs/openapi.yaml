@@ -162,6 +162,7 @@ paths:
         - { name: include_descendants, in: query, schema: { type: boolean, default: true } }
         - { name: status, in: query, schema: { $ref: "#/components/schemas/AssetStatus" } }
         - { name: owner_id, in: query, schema: { type: string } }
+        - { name: model_id, in: query, schema: { type: string, description: 只看这个型号的设备（015 决策 103）；只影响行，不影响列 } }
         - { name: holder_type, in: query, schema: { type: string, enum: [user, entity] } }
         - { name: holder_id, in: query, schema: { type: string } }
         - { name: offset, in: query, schema: { type: integer, default: 0 } }
@@ -401,6 +402,9 @@ paths:
         "409": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
+  # 015：fields[] 的每一项多带一个 model_ids —— 型号模式字段列出它绑到的型号，
+  # 类别模式为空数组。调用方据此判断：录入/编辑时按资产的 model_id 决定渲不渲染，
+  # 列表的显示列下拉据此决定该列该不该解锁（决策 103）。这是加字段不是改形状。
   /categories/{id}/schema:
     get:
       tags: [metadata]
@@ -624,6 +628,46 @@ paths:
       responses:
         "204": { description: Deleted }
         "409": { $ref: "#/components/responses/Error" }
+
+  /models/{id}/bindings:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [metadata]
+      summary: 把一个字段绑到这个型号上（015 决策 96）
+      description: >
+        字段绑定有两种模式且**互斥**：要么全绑类别，要么全绑型号，一个字段只能是一种。
+        混绑会同时撞上三件事——被类别绑定已覆盖的型号再绑一次没有任何效果、
+        两条绑定的必填开关对同一台资产各说各话、唯一性范围变成说不圆的并集。
+        值仍然属于每台资产（存 `attrs`），变的只是"这个字段该不该出现在这台设备上"的判断依据。
+        权限沿用 `schema.manage`，不新增开关。
+      responses:
+        "204": { description: 已绑定 }
+        "409": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /models/{id}/bindings/{field_id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: field_id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [metadata]
+      summary: 解绑。存量取值按既有规则变成只读的已归档字段
+      responses:
+        "204": { description: 已解绑 }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /models/{id}/required-impact:
+    get:
+      tags: [metadata]
+      summary: 勾"必填"前的影响面：这个型号名下现有多少台设备
+      description: >
+        与类别侧同一条承诺（决策 70）：必填是写入时的规则，存量不回溯校验，
+        这个数字说的是"以后有多少次编辑要补上它"。范围只含这个型号的设备。
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: "OK，形如 {total}" }
 
   /models/{id}/usage:
     get:

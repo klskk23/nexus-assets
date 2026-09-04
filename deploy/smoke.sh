@@ -92,6 +92,14 @@ test "$(curl -s -o /dev/null -w '%{http_code}' -X POST \
   "http://127.0.0.1:$PORT/api/print/refresh-source" -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' -d '{"category_id":"x"}')" = 404
 
+# Field bindings can hang on a model as well as a category (015). Asked for a
+# model that does not exist, the endpoint must say so rather than 500 or
+# silently accept -- which is also proof the route is in this binary at all.
+say "binding a field to a missing model is refused"
+test "$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+  "http://127.0.0.1:$PORT/api/models/no-such-model/bindings" -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"field_id":"no-such-field"}')" = 404
+
 # Migrations ran once on a fresh directory; now they have to be a no-op against
 # a database that already has them, and the account has to still be there.
 say "restarting"
