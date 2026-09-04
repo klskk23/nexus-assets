@@ -194,3 +194,29 @@ func TestRequiredImpactCountsOnlyThatModelsDevices(t *testing.T) {
 		t.Errorf("only this model's devices count, got %s", body)
 	}
 }
+
+// Columns are the category's schema; rows are the query (decision 102). The
+// column is there whether or not this export happened to match a device of
+// that model -- otherwise the file's shape would change with the filter, and
+// anything downstream parsing a fixed header would break on it.
+func TestExportKeepsTheModelColumnWithNoMatchingDevices(t *testing.T) {
+	h := newHarness(t)
+	modelWithField(t, h, "Latitude 5420", "servicetag", false)
+	h.seed(t, 0, 1) // a device with no model at all
+
+	body := h.get(t, "/api/export.csv?category_id="+h.catID).Body.String()
+	if !strings.Contains(body, "servicetag") {
+		t.Errorf("the column should stand whether or not a row fills it: %s", body)
+	}
+}
+
+// The import template is the same field set, so it gains the column too.
+func TestImportTemplateCarriesModelFields(t *testing.T) {
+	h := newHarness(t)
+	modelWithField(t, h, "Latitude 5420", "servicetag", false)
+
+	body := h.get(t, "/api/categories/"+h.catID+"/import-template.csv").Body.String()
+	if !strings.Contains(body, "servicetag") {
+		t.Errorf("the template should offer the column: %s", body)
+	}
+}

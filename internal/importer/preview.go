@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/klskk23/nexus-assets/internal/asset"
@@ -197,17 +198,7 @@ func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, lang i18n.Lang, cate
 		in.Holder = model.Holder{Type: model.HolderTypeEntity, ID: entity.ID}
 	}
 
-	for key, raw := range row.byKey {
-		if key == ColModel || key == ColVendor || key == ColHolder || key == ColNote || raw == "" {
-			continue
-		}
-		if _, known := look.fieldByKey[key]; !known {
-			// An unknown column is ignored rather than fatal: a template kept
-			// from before a field was unbound should still import.
-			continue
-		}
-		in.Attrs[key] = raw
-	}
+	readAttrs(lang, look, row, &in, &res)
 
 	if len(res.Fields) > 0 {
 		return res
@@ -245,4 +236,42 @@ func collect(res *RowResult, err error, lang i18n.Lang) {
 		return
 	}
 	res.Fields["_row"] = i18n.Text(err, lang)
+}
+
+// readAttrs moves the row's field columns onto the input, refusing the ones
+// that do not belong to the model the row names.
+//
+// Its own function so checkRow stays inside the complexity limit -- and
+// because "which columns count as attributes" is one question, kept in one
+// place rather than mixed in with resolving models and holders.
+func readAttrs(lang i18n.Lang, look *lookups, row parsedRow, in *asset.SaveInput, res *RowResult) {
+	for key, raw := range row.byKey {
+		if key == ColModel || key == ColVendor || key == ColHolder || key == ColNote || raw == "" {
+			continue
+		}
+		f, known := look.fieldByKey[key]
+		if !known {
+			// An unknown column is ignored rather than fatal: a template kept
+			// from before a field was unbound should still import.
+			continue
+		}
+		// A model-bound column filled in for a model it does not belong to
+		// (015, decision 102). Refused rather than dropped: whoever typed the
+		// value meant it, and the likely mistake is the model column, not this
+		// one -- silently discarding it would hide which.
+		if len(f.ModelIDs) > 0 && !appliesToModel(f, in.ModelID) {
+			res.Fields[key] = i18n.M(i18n.KeyFieldNotForModel, f.Label).In(lang)
+			continue
+		}
+		in.Attrs[key] = raw
+	}
+}
+
+// appliesToModel says whether a model-bound field belongs to the device a row
+// describes. A row that names no model is covered by none of them.
+func appliesToModel(f model.BoundField, modelID *string) bool {
+	if modelID == nil {
+		return false
+	}
+	return slices.Contains(f.ModelIDs, *modelID)
 }

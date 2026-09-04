@@ -563,3 +563,46 @@ func TestVendorColumnSettlesModelsThatShareAName(t *testing.T) {
 		t.Error("an unknown vendor should be refused rather than resolved to somebody else's model")
 	}
 }
+
+// A model-bound column filled in for a model it does not belong to is refused
+// on the row, not dropped from it (015, decision 102). Whoever typed the value
+// meant it; the likely mistake is the model column, and silently discarding
+// the value would hide which of the two is wrong.
+func TestPreviewRefusesAValueThatDoesNotBelongToTheRowsModel(t *testing.T) {
+	f := newFixture(t)
+
+	// A second model in the same category, with a field of its own.
+	dell, err := f.schema.CreateModel(f.ctx, schema.CreateModelInput{
+		CategoryIDs: []string{f.catID}, Name: "Latitude 5420", Vendor: "Dell",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tag, _ := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
+		Key: "servicetag", Label: "ServiceTag", Type: model.FieldText,
+	})
+	if err := f.schema.BindModel(f.ctx, dell.ID, tag.ID, false, 40); err != nil {
+		t.Fatal(err)
+	}
+
+	head := "型号,持有方（名称）,设备备注,基准 MAC（必填）,ServiceTag\n" +
+		"model,holder,note,mac,servicetag\n"
+	file := strings.NewReader(head +
+		"Latitude 5420,上海仓库,,00:1A:2B:3C:4D:01,ABC1234\n" + // belongs to this model
+		"SDWAN-X100,上海仓库,,00:1A:2B:3C:4D:02,ZZZ9999\n") // does not
+
+	rep, err := f.svc.Preview(f.ctx, i18n.ZH, f.catID, f.userID, file)
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	if rep.OK != 1 {
+		t.Fatalf("one row should pass and one should not, got %d of %d: %+v", rep.OK, rep.Total, rep.Rows)
+	}
+	bad := rep.Rows[1]
+	if bad.Status != "error" || bad.Fields["servicetag"] == "" {
+		t.Errorf("the mismatched row should be refused on that column: %+v", bad)
+	}
+	if n := f.count(t); n != 0 {
+		t.Errorf("a preview writes nothing, found %d assets", n)
+	}
+}
