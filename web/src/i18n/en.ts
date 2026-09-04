@@ -268,8 +268,9 @@ export const enMeta: typeof zhMeta = {
     key: "Key",
     label: "Display name",
     type: "Type",
-    unique: "Unique in its category",
-    uniqueCol: "Unique",
+    unique: "Unique",
+    uniqueScopeHint:
+      "The scope follows the binding: within the category's subtree for a category field, across every model it binds to for a model field.",
     uniqueInCategory: "Unique within its category",
     uniqueInModels: "Unique across the models it binds to",
     binding: "Bound to",

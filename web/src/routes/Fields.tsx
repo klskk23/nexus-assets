@@ -236,7 +236,7 @@ export function Fields() {
         {
           // The scope differs with the binding mode, so the badge carries it
           // and the header stays a plain noun.
-          header: tMeta.fields.uniqueCol,
+          header: tMeta.fields.unique,
           cell: (f) =>
             f.is_unique ? (
               <Badge variant="outline">
@@ -287,13 +287,19 @@ export function Fields() {
               </SelectContent>
             </Select>
           </Field>
-          <Field orientation="horizontal" className="pt-6">
-            <Checkbox
-              id="f-unique"
-              checked={isUnique}
-              onCheckedChange={(v) => setIsUnique(v === true)}
-            />
-            <FieldLabel htmlFor="f-unique">{tMeta.fields.unique}</FieldLabel>
+          {/* Not "类别内唯一": the same checkbox governs a model field, whose
+              values are unique across every model it binds to (015, decision
+              99). The label names the rule, the description names its reach. */}
+          <Field>
+            <div className="flex items-center gap-2 pt-6">
+              <Checkbox
+                id="f-unique"
+                checked={isUnique}
+                onCheckedChange={(v) => setIsUnique(v === true)}
+              />
+              <FieldLabel htmlFor="f-unique">{tMeta.fields.unique}</FieldLabel>
+            </div>
+            <FieldDescription>{tMeta.fields.uniqueScopeHint}</FieldDescription>
           </Field>
           {/* The pattern a value must match, and the sentence shown when it
               does not. Both were editable only after the field existed, which

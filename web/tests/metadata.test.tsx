@@ -146,7 +146,7 @@ describe("Fields page", () => {
     await openCreate(user, "新建字段")
     await user.type(screen.getByLabelText("键名（英文）"), "rack")
     await user.type(screen.getByLabelText("显示名"), "机柜位")
-    await user.click(screen.getByLabelText("类别内唯一"))
+    await user.click(screen.getByLabelText("唯一"))
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "新建字段" }))
 
     await waitFor(() =>
