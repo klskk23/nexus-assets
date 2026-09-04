@@ -120,15 +120,25 @@ func (s *Store) FieldsOfPath(ctx context.Context, path string) ([]model.BoundFie
 func ForModel(fields []model.BoundField, modelID *string) []model.BoundField {
 	out := make([]model.BoundField, 0, len(fields))
 	for _, f := range fields {
-		if len(f.ModelIDs) == 0 {
-			out = append(out, f)
-			continue
-		}
-		if modelID != nil && slices.Contains(f.ModelIDs, *modelID) {
+		if AppliesTo(f, modelID) {
 			out = append(out, f)
 		}
 	}
 	return out
+}
+
+// AppliesTo answers ForModel's question for one field.
+//
+// Wherever a category's whole field set meets a single device, this is the
+// check. It matters most where the column set is the category's but the rows
+// are devices -- the export and the row view (decision 102): the column stands
+// for every row, and a row whose model does not have the field leaves it empty
+// rather than showing a value that is no longer live.
+func AppliesTo(f model.BoundField, modelID *string) bool {
+	if len(f.ModelIDs) == 0 {
+		return true
+	}
+	return modelID != nil && slices.Contains(f.ModelIDs, *modelID)
 }
 
 // Bind attaches a field to a category.

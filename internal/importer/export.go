@@ -94,8 +94,12 @@ func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter
 			a.CreatedAt.Format("2006-01-02 15:04"),
 		}
 		for _, fd := range fields {
+			// The column belongs to the category; the value belongs to the
+			// device. A model field on a row of a different model is empty --
+			// whatever is still stored under that key stopped being live when
+			// the model changed (015, decisions 98 and 102).
 			v, ok := a.Attrs[fd.Key]
-			if !ok || v == nil {
+			if !ok || v == nil || !schema.AppliesTo(fd, a.ModelID) {
 				rec = append(rec, "")
 				continue
 			}

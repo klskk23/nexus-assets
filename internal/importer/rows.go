@@ -102,6 +102,13 @@ func (s *Service) Rows(ctx context.Context, lang i18n.Lang, f asset.ListFilter) 
 			SysPrefix + "created_at": a.CreatedAt.Format("2006-01-02"),
 		}
 		for _, fd := range fields {
+			// Same rule as the export: the column is the category's, the value
+			// is the device's, and a model field on a row of another model is
+			// empty rather than showing what stopped being live.
+			if !schema.AppliesTo(fd, a.ModelID) {
+				row[fd.Key] = ""
+				continue
+			}
 			row[fd.Key] = renderValue(a.Attrs[fd.Key], fd.Type, lang)
 		}
 		page.Rows = append(page.Rows, row)

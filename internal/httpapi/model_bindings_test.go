@@ -243,3 +243,39 @@ func TestAssetsFilterByModel(t *testing.T) {
 		t.Errorf("only the one model's devices should come back: %s", body)
 	}
 }
+
+// The column belongs to the category, the value belongs to the device. Once an
+// asset's model no longer has the field, its stored value is archived -- and
+// the export must not go on showing it as though it were live.
+//
+// Found by walking the quickstart against a running server: the column was
+// right and the cell was wrong.
+func TestExportLeavesTheCellEmptyForAnotherModel(t *testing.T) {
+	h := newHarness(t)
+	dell, _ := modelWithField(t, h, "Latitude 5420", "servicetag", false)
+	lenovo := decode[map[string]any](t, h.post(t, "/api/models",
+		`{"name":"ThinkPad T14","vendor":"Lenovo","category_ids":["`+h.catID+`"]}`))
+	lenovoID, _ := lenovo["id"].(string)
+
+	created := decode[map[string]any](t, h.post(t, "/api/assets",
+		`{"category_id":"`+h.catID+`","owner_id":"`+h.userID+
+			`","holder_type":"entity","holder_id":"`+h.locID+`","model_id":"`+dell+
+			`","attrs":{"mac":"001A2B3C4D77","servicetag":"KEEPME"}}`))
+	id, _ := created["id"].(string)
+	version, _ := created["version"].(float64)
+
+	// Move it to a model that does not have the field.
+	if rec := h.patch(t, "/api/assets/"+id, `{"category_id":"`+h.catID+`","owner_id":"`+h.userID+
+		`","holder_type":"entity","holder_id":"`+h.locID+`","model_id":"`+lenovoID+
+		`","attrs":{"mac":"001A2B3C4D77"},"version":`+strconv.Itoa(int(version))+`}`); rec.Code != http.StatusOK {
+		t.Fatal(rec.Body.String())
+	}
+
+	body := h.get(t, "/api/export.csv?category_id="+h.catID).Body.String()
+	if !strings.Contains(body, "servicetag") && !strings.Contains(body, "ServiceTag") {
+		t.Fatalf("the column should still stand: %s", body)
+	}
+	if strings.Contains(body, "KEEPME") {
+		t.Errorf("an archived value must not be exported as a live one: %s", body)
+	}
+}
