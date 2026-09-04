@@ -34,8 +34,17 @@ const categories = [
 ]
 
 const fields = [
-  { id: "f1", key: "mac", label: "基准 MAC", type: "mac", options: {}, is_unique: true },
-  { id: "f2", key: "firmware", label: "固件版本", type: "text", options: {}, is_unique: false },
+  { id: "f1", key: "mac", label: "基准 MAC", type: "mac", options: {}, is_unique: true,
+    category_ids: ["net"], model_ids: [] },
+  { id: "f2", key: "firmware", label: "固件版本", type: "text", options: {}, is_unique: false,
+    category_ids: ["net"], model_ids: [] },
+  // Bound the other way (015): it belongs to models, not to a category.
+  { id: "f3", key: "servicetag", label: "ServiceTag", type: "text", options: {}, is_unique: true,
+    category_ids: [], model_ids: ["m1"] },
+]
+
+const productModels = [
+  { id: "m1", category_ids: ["net"], name: "Latitude 5420", vendor: "Dell", attr_defaults: {} },
 ]
 
 const holders = [
@@ -59,6 +68,7 @@ const schema = {
 
 function route(p: string) {
   if (p === "/categories") return Promise.resolve(categories)
+  if (p === "/models") return Promise.resolve(productModels)
   // The library is paged and filterable now, so it answers with an envelope.
   if (p.startsWith("/fields")) {
     return Promise.resolve({ items: fields, total: fields.length, offset: 0, limit: 20 })
@@ -90,7 +100,19 @@ describe("Fields page", () => {
     renderWithProviders(<Fields />)
     const row = await screen.findByRole("row", { name: /基准 MAC/ })
     expect(within(row).getByText("MAC 地址")).toBeInTheDocument()
-    expect(within(row).getByText("唯一")).toBeInTheDocument()
+    expect(within(row).getByText("类别内唯一")).toBeInTheDocument()
+  })
+
+  // A model-bound field used to read "未绑定" under a column headed 所属类别 --
+  // true about categories, and a lie about the field.
+  it("names the models a field binds to instead of calling it unbound", async () => {
+    renderWithProviders(<Fields />)
+    const row = await screen.findByRole("row", { name: /ServiceTag/ })
+    expect(within(row).getByText("型号")).toBeInTheDocument()
+    expect(within(row).getByText(/Dell Latitude 5420/)).toBeInTheDocument()
+    expect(within(row).queryByText("未绑定")).not.toBeInTheDocument()
+    // And its uniqueness reaches those models, not a category.
+    expect(within(row).getByText("所绑型号内唯一")).toBeInTheDocument()
   })
 
   it("reveals a template input only for a computed field", async () => {

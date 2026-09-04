@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, ApiError } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category } from "@/lib/types"
-import type { FieldDefinitionRow, FieldType } from "@/lib/metaTypes"
+import type { FieldDefinitionRow, FieldType, ProductModelRow } from "@/lib/metaTypes"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tConfig, tMeta } from "@/i18n"
 import { CategoryFilter } from "@/features/common/CategoryFilter"
@@ -62,6 +62,18 @@ export function Fields() {
   })
   const categoryName = (id: string) =>
     (categories.data ?? []).find((c) => c.id === id)?.name ?? id
+
+  // Loaded for the binding column: a model-bound field has to say which
+  // models, and an id in that cell would be no better than saying nothing.
+  const models = useQuery({
+    queryKey: ["models"],
+    queryFn: () => api.get<ProductModelRow[]>("/models"),
+  })
+  const modelName = (id: string) => {
+    const m = (Array.isArray(models.data) ? models.data : []).find((x) => x.id === id)
+    if (!m) return id
+    return m.vendor ? `${m.vendor} ${m.name}` : m.name
+  }
 
   // How many devices a required binding would land on. Asked only when it
   // matters, and only for the categories actually ticked -- the answer is a
@@ -195,17 +207,44 @@ export function Fields() {
         { header: tMeta.fields.label, cell: (f) => f.label },
         { header: tMeta.fields.type, cell: (f) => tMeta.fieldTypes[f.type] ?? f.type },
         {
-          header: tMeta.fields.categories,
-          cell: (f) =>
-            (f.category_ids ?? []).length === 0 ? (
-              <span className="text-muted-foreground">{tMeta.fields.unbound}</span>
-            ) : (
-              (f.category_ids ?? []).map((id) => categoryName(id)).join("、")
-            ),
+          // One column for both kinds of binding, and it says which kind.
+          // Headed "所属类别" it called a model-bound field unbound -- true of
+          // categories, and false about the field (015, decision 96).
+          header: tMeta.fields.binding,
+          cell: (f) => {
+            const models = f.model_ids ?? []
+            if (models.length > 0) {
+              return (
+                <span className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{tMeta.fields.bindByModel}</Badge>
+                  {models.map((id) => modelName(id)).join("、")}
+                </span>
+              )
+            }
+            const cats = f.category_ids ?? []
+            if (cats.length === 0) {
+              return <span className="text-muted-foreground">{tMeta.fields.unbound}</span>
+            }
+            return (
+              <span className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline">{tMeta.fields.bindByCategory}</Badge>
+                {cats.map((id) => categoryName(id)).join("、")}
+              </span>
+            )
+          },
         },
         {
-          header: tMeta.fields.unique,
-          cell: (f) => (f.is_unique ? <Badge variant="outline">{t.common.unique}</Badge> : null),
+          // The scope differs with the binding mode, so the badge carries it
+          // and the header stays a plain noun.
+          header: tMeta.fields.uniqueCol,
+          cell: (f) =>
+            f.is_unique ? (
+              <Badge variant="outline">
+                {(f.model_ids ?? []).length > 0
+                  ? tMeta.fields.uniqueInModels
+                  : tMeta.fields.uniqueInCategory}
+              </Badge>
+            ) : null,
         },
       ]}
       form={
