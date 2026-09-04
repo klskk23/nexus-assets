@@ -43,6 +43,12 @@ describe("ActionBar", () => {
     expect(screen.getByText("已选 20 台")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "签出" }))
     await chooseByLabel(user, "账号", "张三")
+    // The box says what it is for and how it differs from the device's own
+    // note; it used to say it on a line underneath, next to a second note box.
+    expect(screen.getByLabelText("本次流转的备注")).toHaveAttribute(
+      "placeholder",
+      "记这一次移动的缘由。设备本身的备注在下面，与流转无关。",
+    )
     await user.type(screen.getByLabelText("本次流转的备注"), "发往 XX 集团")
     await user.click(screen.getByRole("button", { name: "提交" }))
 

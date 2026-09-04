@@ -96,4 +96,17 @@ describe("DynamicForm", () => {
     expect(input).toHaveAttribute("readonly")
     expect(input).toBeDisabled()
   })
+
+  // The reason lives in the empty box rather than on a line of its own under
+  // it, but a screen reader must still be told -- a placeholder alone would
+  // have quietly dropped it.
+  it("says inside the box why a computed field cannot be typed in", () => {
+    renderWithProviders(<DynamicForm fields={[byKey("sn_calc")]} values={{}} onChange={vi.fn()} />)
+    const input = screen.getByLabelText(/推导编号/)
+    expect(input).toHaveAttribute("placeholder", "由其他字段自动计算，不可直接填写")
+    expect(input).toHaveAttribute("aria-describedby", "field-sn_calc-hint")
+    expect(document.getElementById("field-sn_calc-hint")).toHaveTextContent(
+      "由其他字段自动计算，不可直接填写",
+    )
+  })
 })

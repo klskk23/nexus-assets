@@ -354,11 +354,17 @@ export function TransferForm({
 
       <Field>
         <FieldLabel htmlFor="td-note">{tTransfer.actions.note}</FieldLabel>
-        <Input id="td-note" value={note} onChange={(e) => setNote(e.target.value)} />
         {/* The asset dialog shows this form beside the device's own note, and
             the two are different things: this one belongs to the movement and
-            is never edited afterwards. */}
-        <FieldDescription>{tTransfer.actions.noteHint}</FieldDescription>
+            is never edited afterwards. That is said in the box, the way the
+            device's own note says it -- two note boxes one above the other,
+            and only one of them explaining itself, was the confusing half. */}
+        <Input
+          id="td-note"
+          value={note}
+          placeholder={tTransfer.actions.noteHint}
+          onChange={(e) => setNote(e.target.value)}
+        />
       </Field>
 
       {banner && (

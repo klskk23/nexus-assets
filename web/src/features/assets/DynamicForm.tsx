@@ -48,7 +48,10 @@ function FieldRow({
   onChange: (key: string, value: unknown) => void
 }) {
   const id = `field-${field.key}`
-  const describedBy = error ? `${id}-error` : undefined
+  // A computed field keeps its explanation as a description for screen
+  // readers even though sighted readers now get it inside the empty box.
+  const hintID = field.type === "computed" ? `${id}-hint` : undefined
+  const describedBy = [error ? `${id}-error` : null, hintID].filter(Boolean).join(" ") || undefined
 
   return (
     // data-invalid marks the whole field; the control carries aria-invalid, so
@@ -65,7 +68,11 @@ function FieldRow({
 
       <FieldControl id={id} field={field} value={value} describedBy={describedBy} onChange={onChange} />
 
-      {field.type === "computed" && <FieldDescription>{t.common.computedHint}</FieldDescription>}
+      {hintID && (
+        <FieldDescription id={hintID} className="sr-only">
+          {t.common.computedHint}
+        </FieldDescription>
+      )}
       {error && (
         <FieldError id={`${id}-error`} role="alert">
           {error}
@@ -92,7 +99,19 @@ function FieldControl({
 
   switch (field.type) {
     case "computed":
-      return <Input id={id} value={str} readOnly disabled aria-describedby={describedBy} />
+      // The box is empty and cannot be typed in, so the box is where the
+      // reason belongs -- a line under it was one more row to scroll past
+      // for something the empty box could say itself.
+      return (
+        <Input
+          id={id}
+          value={str}
+          placeholder={t.common.computedHint}
+          readOnly
+          disabled
+          aria-describedby={describedBy}
+        />
+      )
 
     case "boolean":
       return (
