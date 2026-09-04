@@ -200,6 +200,7 @@ export const zh = {
     currentOwner: "当前负责人",
     attrs: "设备属性",
     noAttrs: "这个类别还没有配置任何字段",
+    noAttrsForModel: "这个类别的字段都绑在别的型号上，这台设备没有可显示的",
     editAttrs: "编辑设备属性",
     editAttrsHint: "型号、类别字段与默认归属。改这些不产生流转记录。",
     transfer: "流转",

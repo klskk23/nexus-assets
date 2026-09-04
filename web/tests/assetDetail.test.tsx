@@ -512,3 +512,38 @@ describe("the attribute card", () => {
     expect(within(card).queryByText("ServiceTag")).not.toBeInTheDocument()
   })
 })
+
+// A device whose model has none of its category's fields gets an empty card --
+// and the reason matters. Saying "this category has no fields" would send
+// someone to the category page to add the field that is already sitting there.
+describe("AssetDetail empty attribute card", () => {
+  beforeEach(() => {
+    navigate.mockReset()
+    post.mockReset()
+    patch.mockReset()
+    del.mockReset()
+    get.mockReset().mockImplementation((p: string) => {
+      if (p === "/assets/a1") {
+        return Promise.resolve({
+          asset: { ...asset, model_id: "m-lenovo", attrs: {}, archived_attrs: {} },
+          value_history: [],
+        })
+      }
+      if (p.endsWith("/schema")) {
+        return Promise.resolve({
+          ...schema,
+          fields: [{ id: "f9", key: "servicetag", label: "ServiceTag", type: "text",
+                     options: {}, is_unique: false, required: false, sort: 10,
+                     model_ids: ["m-dell"] }],
+        })
+      }
+      return route(p)
+    })
+  })
+
+  it("blames the model, not the category, when the category does have fields", async () => {
+    renderWithProviders(<AssetDetail />)
+    expect(await screen.findByText(/都绑在别的型号上/)).toBeInTheDocument()
+    expect(screen.queryByText(/还没有配置任何字段/)).not.toBeInTheDocument()
+  })
+})

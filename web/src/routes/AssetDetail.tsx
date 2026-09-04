@@ -234,7 +234,14 @@ export function AssetDetail() {
                   {shown.length === 0 ? (
                     <Empty>
                       <EmptyHeader>
-                        <EmptyDescription>{t.assets.noAttrs}</EmptyDescription>
+                        {/* Two different reasons for an empty card, and
+                            saying the wrong one sends someone to the category
+                            page to add a field that is already there. */}
+                        <EmptyDescription>
+                          {(schema.data?.fields ?? []).length > 0
+                            ? t.assets.noAttrsForModel
+                            : t.assets.noAttrs}
+                        </EmptyDescription>
                       </EmptyHeader>
                     </Empty>
                   ) : (
