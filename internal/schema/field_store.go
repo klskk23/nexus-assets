@@ -368,6 +368,11 @@ func (s *Store) deleteFieldTx(ctx context.Context, tx *sql.Tx, id, key string) e
 		args []any
 	}{
 		{`DELETE FROM category_fields WHERE field_id = ?`, []any{id}},
+		// And the other kind (015). model_fields.field_id references
+		// field_definitions without a cascade, so leaving these behind does not
+		// orphan a row -- it makes the delete fail outright, which is what
+		// deleting a model-bound field used to do.
+		{`DELETE FROM model_fields WHERE field_id = ?`, []any{id}},
 		// Only ever empty residue: a non-empty value would have been refused
 		// upstream. This is what makes "delete" mean what it says.
 		{`UPDATE assets SET attrs = json_remove(attrs, '$.' || ?) WHERE json_extract(attrs, '$.' || ?) IS NOT NULL`,

@@ -649,3 +649,41 @@ func TestRequiredBelongsToTheFieldAndReachesEveryBinding(t *testing.T) {
 		}
 	}
 }
+
+// Deleting a field bound to models returned "服务器内部错误": model_fields
+// references field_definitions with no cascade, and the delete never removed
+// those rows, so SQLite refused the whole statement.
+func TestDeleteFieldBoundToModels(t *testing.T) {
+	s, ctx := newStore(t)
+	_, child := tree(t, s, ctx)
+	a := modelOn(t, s, ctx, "EDGE620", child.ID)
+	b := modelOn(t, s, ctx, "EDGE640", child.ID)
+
+	f, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "servicetag", Label: "ServiceTag", Type: model.FieldText,
+		ModelIDs: []string{a.ID, b.ID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, _, err := s.DeleteField(ctx, f.ID); err != nil {
+		t.Fatalf("deleting a model-bound field: %v", err)
+	}
+	onModels, err := s.ModelsOfField(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := onModels[f.ID]; len(got) != 0 {
+		t.Errorf("its model bindings should be gone, got %v", got)
+	}
+	all, err := s.ListFields(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, x := range all {
+		if x.ID == f.ID {
+			t.Error("the field itself should be gone")
+		}
+	}
+}

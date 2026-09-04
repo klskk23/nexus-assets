@@ -51,9 +51,19 @@ func (r Referrer) String() string { return r.Message().Error() }
 // therefore limited to the trees this field is actually part of, and a field
 // bound nowhere blocks nothing.
 func (s *Store) boundPaths(ctx context.Context, fieldID string) ([]string, error) {
+	// Both kinds of binding (015). A model-bound field reaches the categories
+	// its models are registered under, and asking only category_fields
+	// answered "nowhere" for it -- which quietly switched off every guard
+	// scoped by these paths, including the one that refuses to delete a field
+	// forty devices still hold a value for.
 	rows, err := s.db.ReadDB().QueryContext(ctx,
 		`SELECT c.path FROM category_fields cf JOIN categories c ON c.id = cf.category_id
-		 WHERE cf.field_id = ?`, fieldID)
+		 WHERE cf.field_id = ?
+		 UNION
+		 SELECT c.path FROM model_fields mf
+		   JOIN product_model_categories pmc ON pmc.model_id = mf.model_id
+		   JOIN categories c ON c.id = pmc.category_id
+		  WHERE mf.field_id = ?`, fieldID, fieldID)
 	if err != nil {
 		return nil, fmt.Errorf("load bound categories: %w", err)
 	}

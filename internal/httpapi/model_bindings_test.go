@@ -363,3 +363,38 @@ func TestRequiredReachesEveryBinding(t *testing.T) {
 		t.Errorf("clearing the field's flag should clear it everywhere: %s", body)
 	}
 }
+
+// The quieter half of the same bug. A field's "some devices still have a
+// value" guard scoped itself to the categories the field is bound to, and a
+// model-bound field is bound to none -- so the guard looked at nothing,
+// found nothing, and deleting the field would have taken forty ServiceTags
+// with it without a word.
+func TestDeletingAModelFieldIsRefusedWhileDevicesHoldValues(t *testing.T) {
+	h := newHarness(t)
+	dell, fieldID := modelWithField(t, h, "EDGE620", "servicetag", false)
+
+	created := decode[map[string]any](t, h.post(t, "/api/assets",
+		`{"category_id":"`+h.catID+`","owner_id":"`+h.userID+
+			`","holder_type":"entity","holder_id":"`+h.locID+`","model_id":"`+dell+
+			`","attrs":{"mac":"001A2B3C4D01","servicetag":"ABC1234"}}`))
+	if created["id"] == nil {
+		t.Fatalf("create: %v", created)
+	}
+
+	rec := h.do(t, http.MethodDelete, "/api/fields/"+fieldID, "")
+	if rec.Code == http.StatusNoContent {
+		t.Fatal("deleting it should be refused while a device still holds the value")
+	}
+	if rec.Code == http.StatusInternalServerError {
+		t.Fatalf("and refused properly, not with a 500: %s", rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "servicetag") || !strings.Contains(body, "blockers") {
+		t.Errorf("the refusal should name the field and the devices holding it: %s", body)
+	}
+	// And it must not send them to the category page: this field is on models,
+	// and there is no category binding to remove.
+	if strings.Contains(body, "从类别上解绑") {
+		t.Errorf("a model-bound field cannot be unbound from a category: %s", body)
+	}
+}
