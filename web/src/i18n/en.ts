@@ -274,9 +274,6 @@ export const enMeta: typeof zhMeta = {
     uniqueInCategory: "Unique in its category",
     uniqueInModels: "Unique in its models",
     binding: "Bound to",
-    requiredCol: "Required",
-    requiredAll: "Required",
-    requiredSome: "Required in some",
     bindOnCreateModel: "Bind to models",
     bindOnCreateModelHint:
       "Only devices of these models get the field. Leaving this empty is fine; it can be bound later from the field editor.",

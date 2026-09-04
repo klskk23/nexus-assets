@@ -244,23 +244,10 @@ export function Fields() {
             )
           },
         },
-        {
-          // Required is set per binding, so the answer is often "in some of
-          // them" -- which the binding column beside this one lets somebody
-          // finish reading. A bare yes/no here would have had to pick one
-          // binding to report and be wrong about the rest.
-          header: tMeta.fields.requiredCol,
-          cell: (f) => {
-            const req = (f.required_in ?? []).length
-            if (req === 0) return null
-            const all = ((f.model_ids ?? []).length || (f.category_ids ?? []).length) === req
-            return (
-              <Badge variant={all ? "secondary" : "outline"}>
-                {all ? tMeta.fields.requiredAll : tMeta.fields.requiredSome}
-              </Badge>
-            )
-          },
-        },
+        // No 必填 column here on purpose: required is set per binding, so one
+        // cell would have to summarise a field that is required on one
+        // category and optional on another. It is shown against each binding
+        // in the edit dialog, where the two are not squeezed into one answer.
         {
           // The scope differs with the binding mode, so the badge carries it
           // and the header stays a plain noun.

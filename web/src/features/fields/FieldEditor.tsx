@@ -83,6 +83,11 @@ export function FieldEditor({ field, onClose }: Props) {
   // frozen while either kind of binding exists, because switching would mean
   // silently dropping what is already there.
   const [boundModels, setBoundModels] = useState<string[]>(field.model_ids ?? [])
+  // Which of those bindings ask for a value. Required is per binding -- the
+  // same field can be required on one category and optional on another -- so
+  // it belongs beside each binding and not in one cell on the library page.
+  const [requiredIn, setRequiredIn] = useState<string[]>(field.required_in ?? [])
+  const isRequired = (id: string) => requiredIn.includes(id)
   const [mode, setMode] = useState<"category" | "model">(
     (field.model_ids ?? []).length > 0 ? "model" : "category",
   )
@@ -122,6 +127,9 @@ export function FieldEditor({ field, onClose }: Props) {
     onSuccess: () => {
       setBanner(null)
       setBoundModels((cur) => (cur.includes(bindTo) ? cur : [...cur, bindTo]))
+      setRequiredIn((cur) =>
+        bindRequired ? (cur.includes(bindTo) ? cur : [...cur, bindTo]) : cur.filter((id) => id !== bindTo),
+      )
       setBindTo("")
       setBindRequired(false)
       queryClient.invalidateQueries({ queryKey: ["fields"] })
@@ -135,6 +143,7 @@ export function FieldEditor({ field, onClose }: Props) {
     onSuccess: (_data, modelID) => {
       setBanner(null)
       setBoundModels((cur) => cur.filter((id) => id !== modelID))
+      setRequiredIn((cur) => cur.filter((id) => id !== modelID))
       queryClient.invalidateQueries({ queryKey: ["fields"] })
       queryClient.invalidateQueries({ queryKey: ["schema"] })
     },
@@ -150,6 +159,9 @@ export function FieldEditor({ field, onClose }: Props) {
     onSuccess: () => {
       setBanner(null)
       setBound((cur) => (cur.includes(bindTo) ? cur : [...cur, bindTo]))
+      setRequiredIn((cur) =>
+        bindRequired ? (cur.includes(bindTo) ? cur : [...cur, bindTo]) : cur.filter((id) => id !== bindTo),
+      )
       setBindTo("")
       setBindRequired(false)
       queryClient.invalidateQueries({ queryKey: ["fields"] })
@@ -440,6 +452,7 @@ export function FieldEditor({ field, onClose }: Props) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>{tMeta.fields.models}</TableHead>
+                      <TableHead className="w-20">{tMeta.categories.required}</TableHead>
                       <TableHead className="w-24" />
                     </TableRow>
                   </TableHeader>
@@ -451,6 +464,11 @@ export function FieldEditor({ field, onClose }: Props) {
                           <TableCell>
                             {m?.name ?? id}
                             {m?.vendor ? `（${m.vendor}）` : ""}
+                          </TableCell>
+                          <TableCell>
+                            {isRequired(id) && (
+                              <Badge variant="secondary">{tMeta.categories.required}</Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             <Button
@@ -475,6 +493,7 @@ export function FieldEditor({ field, onClose }: Props) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>{tMeta.categories.title}</TableHead>
+                      <TableHead className="w-20">{tMeta.categories.required}</TableHead>
                       <TableHead className="w-24" />
                     </TableRow>
                   </TableHeader>
@@ -487,6 +506,11 @@ export function FieldEditor({ field, onClose }: Props) {
                           >
                             <TableCell>
                               {(categories.data ?? []).find((c) => c.id === id)?.name ?? id}
+                            </TableCell>
+                            <TableCell>
+                              {isRequired(id) && (
+                                <Badge variant="secondary">{tMeta.categories.required}</Badge>
+                              )}
                             </TableCell>
                             {/* Visible, not only on right-click. These rows do
                             nothing when clicked, so there is no gesture for a

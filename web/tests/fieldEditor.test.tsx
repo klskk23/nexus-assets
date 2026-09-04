@@ -415,3 +415,29 @@ describe("binding a field to models", () => {
     )
   })
 })
+
+// Required is set per binding, so it belongs beside each binding. The library
+// page used to carry one cell for it, which had to summarise a field that is
+// required on one category and optional on another.
+describe("FieldEditor required per binding", () => {
+  beforeEach(() => {
+    get.mockReset().mockImplementation(route)
+    post.mockReset().mockResolvedValue({})
+    patch.mockReset().mockResolvedValue({})
+    del.mockReset().mockResolvedValue({})
+  })
+
+  it("marks the bindings that ask for a value and leaves the others blank", async () => {
+    renderWithProviders(
+      <FieldEditor
+        field={field("text", { category_ids: ["net", "srv"], required_in: ["net"] })}
+        onClose={vi.fn()}
+      />,
+    )
+    const required = await screen.findByRole("row", { name: "网络设备" })
+    expect(within(required).getByText("必填")).toBeInTheDocument()
+
+    const optional = screen.getByRole("row", { name: "服务器" })
+    expect(within(optional).queryByText("必填")).not.toBeInTheDocument()
+  })
+})

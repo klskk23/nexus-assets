@@ -193,30 +193,6 @@ describe("Fields page", () => {
     )
   })
 
-  // Required is per binding, so "yes" and "no" are not the only two answers.
-  it("says when a field is required in only some of its bindings", async () => {
-    get.mockImplementation((p: string) => {
-      if (p.startsWith("/fields")) {
-        return Promise.resolve({
-          items: [
-            { ...fields[0], category_ids: ["net", "rt"], model_ids: [], required_in: ["net"] },
-            { ...fields[1], category_ids: ["net"], model_ids: [], required_in: ["net"] },
-          ],
-          total: 2,
-          offset: 0,
-          limit: 20,
-        })
-      }
-      return route(p)
-    })
-    renderWithProviders(<Fields />)
-
-    const partial = await screen.findByRole("row", { name: /基准 MAC/ })
-    expect(within(partial).getByText("部分必填")).toBeInTheDocument()
-    const all = screen.getByRole("row", { name: /固件版本/ })
-    expect(within(all).getByText("必填")).toBeInTheDocument()
-  })
-
   // Binding took a second trip through a second dialog, and a field bound
   // nowhere is on no entry form -- so every new field was half-finished until
   // somebody remembered to go back for it.
