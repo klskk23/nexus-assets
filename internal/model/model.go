@@ -242,6 +242,14 @@ type BoundField struct {
 	// InheritedFrom names the ancestor category the binding comes from; it is
 	// empty when the binding lives on the category being resolved.
 	InheritedFrom string `json:"inherited_from,omitempty"`
+	// ModelIDs are the models this field is bound to, empty for a field bound
+	// to categories (015, decision 96 -- the two are exclusive).
+	//
+	// Carried out to the interface because "does this field apply here" stops
+	// being answerable from the category alone: the entry form renders it only
+	// when the asset's model is one of these, and the list's column picker
+	// only unlocks the column once the model filter names one of them.
+	ModelIDs []string `json:"model_ids"`
 }
 
 // ProductModel groups devices of the same make.

@@ -60,6 +60,18 @@ func (s *Store) BindingsByCategory(ctx context.Context) (map[string][]Binding, e
 }
 
 // EffectiveFields resolves the field set a category asks for.
+//
+// Two sources, unioned: the bindings along the category's own ancestor chain,
+// and the bindings of every model registered anywhere on that chain (015,
+// decision 101). This function is the single answer to "which fields does this
+// category have" -- the entry form, asset validation, the import template, the
+// export and the column picker all read it -- so unioning here is what makes
+// those five agree without each being taught about models.
+//
+// The result is the category's whole vocabulary, not one asset's. A model
+// field appears here even for a caller looking at an asset of a different
+// model; deciding whether it applies to one device is the caller's job, and
+// three of the five callers deliberately want the full set (decisions 102/103).
 func (s *Store) EffectiveFields(ctx context.Context, categoryID string) ([]model.BoundField, error) {
 	cat, err := s.GetCategory(ctx, categoryID)
 	if err != nil {
@@ -69,7 +81,23 @@ func (s *Store) EffectiveFields(ctx context.Context, categoryID string) ([]model
 	if err != nil {
 		return nil, err
 	}
-	return Resolve(cat.Path, bindings)
+	fields, err := Resolve(cat.Path, bindings)
+	if err != nil {
+		return nil, err
+	}
+
+	modelBindings, err := s.ModelBindingsByModel(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(modelBindings) == 0 {
+		return fields, nil
+	}
+	categoriesOfModel, err := s.CategoriesOfModel(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return append(fields, resolveModelFields(cat.Path, modelBindings, categoriesOfModel)...), nil
 }
 
 // Bind attaches a field to a category.
@@ -102,6 +130,18 @@ func bindTx(ctx context.Context, tx *sql.Tx, categoryID, fieldID string, require
 			return ErrNotFound
 		}
 		return err
+	}
+
+	// The other half of the exclusion (015, decision 96). A field already hung
+	// on models cannot also hang on a category: the two would disagree about
+	// required, and the uniqueness scope would stop having one answer.
+	var boundToModel int
+	if err := tx.QueryRowContext(ctx,
+		`SELECT count(*) FROM model_fields WHERE field_id = ?`, fieldID).Scan(&boundToModel); err != nil {
+		return err
+	}
+	if boundToModel > 0 {
+		return i18n.Wrap(ErrBindingModeConflict, i18n.KeyBindingModeConflict)
 	}
 
 	// Anything on the ancestor chain, or anywhere in the subtree below.

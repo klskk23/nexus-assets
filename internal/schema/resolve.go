@@ -99,3 +99,77 @@ func Resolve(path string, bindingsByCategory map[string][]Binding) ([]model.Boun
 func ActiveFields(fields []model.BoundField) []model.BoundField {
 	return fields
 }
+
+// resolveModelFields is the model-bound half of a category's field set.
+//
+// A model contributes its fields to a category when it is registered on that
+// category's ancestor chain -- the same reach a category binding has. One field
+// bound to several models appears once, carrying all of them in ModelIDs, so a
+// caller can ask "does this apply to the device in front of me" with one lookup
+// rather than a search.
+//
+// Everything is already in memory: both maps arrive loaded whole, the way
+// category bindings do, because there are hundreds of models rather than
+// millions and a query per row is the N+1 the constitution forbids.
+func resolveModelFields(
+	path string,
+	bindingsByModel map[string][]ModelBinding,
+	categoriesOfModel map[string][]string,
+) []model.BoundField {
+	chain := make(map[string]bool, 8)
+	for _, id := range AncestorIDs(path) {
+		chain[id] = true
+	}
+
+	// Field id -> the entry being built, so a field on four models is one
+	// column with four model ids and not four columns.
+	byField := map[string]*model.BoundField{}
+	order := make([]string, 0, 8)
+
+	modelIDs := make([]string, 0, len(bindingsByModel))
+	for id := range bindingsByModel {
+		modelIDs = append(modelIDs, id)
+	}
+	sort.Strings(modelIDs)
+
+	for _, modelID := range modelIDs {
+		inChain := false
+		for _, categoryID := range categoriesOfModel[modelID] {
+			if chain[categoryID] {
+				inChain = true
+				break
+			}
+		}
+		if !inChain {
+			continue
+		}
+		bindings := append([]ModelBinding(nil), bindingsByModel[modelID]...)
+		sort.SliceStable(bindings, func(i, j int) bool { return bindings[i].Sort < bindings[j].Sort })
+
+		for _, b := range bindings {
+			existing, seen := byField[b.Field.ID]
+			if !seen {
+				bf := model.BoundField{
+					FieldDefinition: b.Field,
+					Required:        b.Required,
+					Sort:            b.Sort,
+					ModelIDs:        []string{modelID},
+				}
+				byField[b.Field.ID] = &bf
+				order = append(order, b.Field.ID)
+				continue
+			}
+			existing.ModelIDs = append(existing.ModelIDs, modelID)
+			// Required anywhere is required there: the flag is per binding, and
+			// the asset it lands on has exactly one model.
+			existing.Required = existing.Required || b.Required
+		}
+	}
+
+	out := make([]model.BoundField, 0, len(order))
+	for _, id := range order {
+		out = append(out, *byField[id])
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Sort < out[j].Sort })
+	return out
+}

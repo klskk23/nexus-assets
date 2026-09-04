@@ -254,3 +254,128 @@ func TestListFieldsAndModelsReturnEverything(t *testing.T) {
 		t.Errorf("ListModels = %d, %v", len(models), err)
 	}
 }
+
+// modelOn creates a product model registered under the given categories.
+func modelOn(t *testing.T, s *Store, ctx context.Context, name string, categoryIDs ...string) model.ProductModel {
+	t.Helper()
+	m, err := s.CreateModel(ctx, CreateModelInput{
+		Name: name, Vendor: "Dell", CategoryIDs: categoryIDs,
+	})
+	if err != nil {
+		t.Fatalf("create model %s: %v", name, err)
+	}
+	return m
+}
+
+// A category's field set is both halves at once: what its own chain binds, and
+// what the models registered on that chain bind (015, decision 101).
+func TestEffectiveFieldsIncludesModelBoundFields(t *testing.T) {
+	s, ctx := newStore(t)
+	root, child := tree(t, s, ctx)
+	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+
+	mac, _ := s.CreateField(ctx, CreateFieldInput{Key: "mac", Label: "MAC", Type: model.FieldMAC})
+	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
+	if err := s.Bind(ctx, root.ID, mac.ID, true, 10); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.BindModel(ctx, dell.ID, tag.ID, false, 20); err != nil {
+		t.Fatalf("bind model: %v", err)
+	}
+
+	fields, err := s.EffectiveFields(ctx, child.ID)
+	if err != nil {
+		t.Fatalf("effective fields: %v", err)
+	}
+	byKey := map[string]model.BoundField{}
+	for _, f := range fields {
+		byKey[f.Key] = f
+	}
+	if len(fields) != 2 {
+		t.Fatalf("got %d fields, want mac and servicetag", len(fields))
+	}
+	// A category field carries no models: that is what says it applies to every
+	// asset here rather than to some of them.
+	if len(byKey["mac"].ModelIDs) != 0 {
+		t.Errorf("a category-bound field should carry no model ids, got %v", byKey["mac"].ModelIDs)
+	}
+	if got := byKey["servicetag"].ModelIDs; len(got) != 1 || got[0] != dell.ID {
+		t.Errorf("servicetag should name the model it is bound to, got %v", got)
+	}
+}
+
+// One field on several models is one column, not one per model -- otherwise the
+// export would repeat it and the entry form would draw it twice.
+func TestEffectiveFieldsMergesAFieldBoundToSeveralModels(t *testing.T) {
+	s, ctx := newStore(t)
+	_, child := tree(t, s, ctx)
+	a := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+	b := modelOn(t, s, ctx, "OptiPlex 7090", child.ID)
+
+	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
+	for _, m := range []model.ProductModel{a, b} {
+		if err := s.BindModel(ctx, m.ID, tag.ID, false, 10); err != nil {
+			t.Fatalf("bind %s: %v", m.Name, err)
+		}
+	}
+
+	fields, err := s.EffectiveFields(ctx, child.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 1 {
+		t.Fatalf("got %d fields, want one merged entry", len(fields))
+	}
+	if len(fields[0].ModelIDs) != 2 {
+		t.Errorf("the entry should name both models, got %v", fields[0].ModelIDs)
+	}
+}
+
+// A model registered somewhere else contributes nothing here.
+func TestEffectiveFieldsIgnoresModelsOutsideTheChain(t *testing.T) {
+	s, ctx := newStore(t)
+	root, child := tree(t, s, ctx)
+	other, err := s.CreateCategory(ctx, CreateCategoryInput{Code: "SW", Name: "交换机"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	elsewhere := modelOn(t, s, ctx, "Catalyst", other.ID)
+
+	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
+	if err := s.BindModel(ctx, elsewhere.ID, tag.ID, false, 10); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, id := range []string{root.ID, child.ID} {
+		fields, err := s.EffectiveFields(ctx, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(fields) != 0 {
+			t.Errorf("category %s picked up a field from a model registered elsewhere: %v", id, fields)
+		}
+	}
+}
+
+// The two binding modes are exclusive (decision 96).
+func TestBindingModesAreExclusive(t *testing.T) {
+	s, ctx := newStore(t)
+	root, child := tree(t, s, ctx)
+	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+
+	byCategory, _ := s.CreateField(ctx, CreateFieldInput{Key: "mac", Label: "MAC", Type: model.FieldMAC})
+	if err := s.Bind(ctx, root.ID, byCategory.ID, false, 10); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.BindModel(ctx, dell.ID, byCategory.ID, false, 10); !errors.Is(err, ErrBindingModeConflict) {
+		t.Errorf("binding a category field to a model should be refused, got %v", err)
+	}
+
+	byModel, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
+	if err := s.BindModel(ctx, dell.ID, byModel.ID, false, 10); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Bind(ctx, child.ID, byModel.ID, false, 10); !errors.Is(err, ErrBindingModeConflict) {
+		t.Errorf("binding a model field to a category should be refused, got %v", err)
+	}
+}
