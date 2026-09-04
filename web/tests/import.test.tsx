@@ -166,7 +166,12 @@ describe("Import page", () => {
     const commit = screen.getByRole("button", { name: "确认导入" })
     expect(commit).toBeEnabled()
 
-    fetchMock.mockReturnValue(ok({ total: 3, ok: 3, rows: [] }, 201))
+    // The shape the server actually sends: the count is `created`, and the
+    // report is nested. Stubbing a bare report here is what let the page read
+    // a top-level `ok` that never existed and report every import as 0.
+    fetchMock.mockReturnValue(
+      ok({ created: 3, batch_id: "b1", report: { total: 3, ok: 3, rows: [] } }, 201),
+    )
     await user.click(commit)
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("已导入 3 台设备"))
   })

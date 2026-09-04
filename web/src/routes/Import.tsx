@@ -44,12 +44,27 @@ interface Report {
   rows: RowResult[]
 }
 
+/**
+ * What a committed import produced.
+ *
+ * Not the same shape the preview answers with: the count of what was written
+ * is `created`, and the row-by-row report is nested under it. The page used to
+ * read a top-level `ok` here -- which a preview has and this does not -- so
+ * every successful import announced itself as 0 devices while writing all of
+ * them.
+ */
+interface CommitResult {
+  created: number
+  batch_id: string
+  report: Report
+}
+
 /** The two steps send the same thing: a category and a file. */
-function upload(path: string, categoryID: string, file: File): Promise<Report> {
+function upload<T>(path: string, categoryID: string, file: File): Promise<T> {
   const body = new FormData()
   body.append("category_id", categoryID)
   body.append("file", file)
-  return api.upload<Report>(path, body)
+  return api.upload<T>(path, body)
 }
 
 /**
@@ -78,7 +93,7 @@ export function Import() {
   })
 
   const preview = useMutation({
-    mutationFn: () => upload("/import/preview", categoryID, file!),
+    mutationFn: () => upload<Report>("/import/preview", categoryID, file!),
     onSuccess: (r) => {
       setBanner(null)
       setReport(r)
@@ -90,12 +105,12 @@ export function Import() {
   })
 
   const commit = useMutation({
-    mutationFn: () => upload("/import/commit", categoryID, file!),
+    mutationFn: () => upload<CommitResult>("/import/commit", categoryID, file!),
     onSuccess: (r) => {
       setReport(null)
       setFile(null)
       if (fileInput.current) fileInput.current.value = ""
-      setBanner(tImport.done(r.ok ?? 0))
+      setBanner(tImport.done(r.created))
     },
     onError: (e) => {
       const refused = reportOf(e)
