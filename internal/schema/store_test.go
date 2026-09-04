@@ -379,3 +379,171 @@ func TestBindingModesAreExclusive(t *testing.T) {
 		t.Errorf("binding a model field to a category should be refused, got %v", err)
 	}
 }
+
+// Unbinding takes the field off the model and nothing else: the definition
+// stays, and so does every value already stored under it.
+func TestUnbindModelLeavesTheDefinitionAlone(t *testing.T) {
+	s, ctx := newStore(t)
+	_, child := tree(t, s, ctx)
+	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
+	if err := s.BindModel(ctx, dell.ID, tag.ID, false, 10); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.UnbindModel(ctx, dell.ID, tag.ID); err != nil {
+		t.Fatalf("unbind: %v", err)
+	}
+	fields, err := s.EffectiveFields(ctx, child.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 0 {
+		t.Errorf("the field should be off the category's set, got %v", fields)
+	}
+	if _, err := s.GetField(ctx, tag.ID); err != nil {
+		t.Errorf("the definition itself should survive: %v", err)
+	}
+	// Unbinding what is not bound is a miss, not a silent success.
+	if err := s.UnbindModel(ctx, dell.ID, tag.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("second unbind should report the binding is gone, got %v", err)
+	}
+}
+
+// ModelsOfField is what tells the interface which models a field is for.
+func TestModelsOfFieldNamesEveryBinding(t *testing.T) {
+	s, ctx := newStore(t)
+	_, child := tree(t, s, ctx)
+	a := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+	b := modelOn(t, s, ctx, "OptiPlex 7090", child.ID)
+	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
+	for _, m := range []model.ProductModel{a, b} {
+		if err := s.BindModel(ctx, m.ID, tag.ID, false, 10); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got, err := s.ModelsOfField(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got[tag.ID]) != 2 {
+		t.Errorf("the field should name both models, got %v", got[tag.ID])
+	}
+}
+
+// A key already reachable by the assets this binding would cover is refused,
+// whichever kind of binding put it there: attrs is a flat map, and two
+// definitions cannot share one key.
+func TestModelBindingRefusesAKeyTakenOnTheCategory(t *testing.T) {
+	s, ctx := newStore(t)
+	root, child := tree(t, s, ctx)
+	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+
+	onCategory, _ := s.CreateField(ctx, CreateFieldInput{Key: "sn", Label: "编号", Type: model.FieldText})
+	if err := s.Bind(ctx, root.ID, onCategory.ID, false, 10); err != nil {
+		t.Fatal(err)
+	}
+	// A different definition carrying the same key.
+	clash, _ := s.CreateField(ctx, CreateFieldInput{Key: "sn", Label: "另一个编号", Type: model.FieldText})
+	if err := s.BindModel(ctx, dell.ID, clash.ID, false, 10); !errors.Is(err, ErrKeyConflict) {
+		t.Errorf("a key taken on the model's own category should be refused, got %v", err)
+	}
+
+	// And one taken by another field on the same model.
+	other := modelOn(t, s, ctx, "OptiPlex 7090", child.ID)
+	first, _ := s.CreateField(ctx, CreateFieldInput{Key: "tag", Label: "标签", Type: model.FieldText})
+	second, _ := s.CreateField(ctx, CreateFieldInput{Key: "tag", Label: "另一个标签", Type: model.FieldText})
+	if err := s.BindModel(ctx, other.ID, first.ID, false, 10); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.BindModel(ctx, other.ID, second.ID, false, 10); !errors.Is(err, ErrKeyConflict) {
+		t.Errorf("a key taken on the same model should be refused, got %v", err)
+	}
+}
+
+// Binding to something that does not exist is a miss, not a panic.
+func TestModelBindingRefusesUnknownIDs(t *testing.T) {
+	s, ctx := newStore(t)
+	_, child := tree(t, s, ctx)
+	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
+
+	if err := s.BindModel(ctx, dell.ID, "no-such-field", false, 10); !errors.Is(err, ErrNotFound) {
+		t.Errorf("unknown field should be reported, got %v", err)
+	}
+	if err := s.BindModel(ctx, "no-such-model", tag.ID, false, 10); !errors.Is(err, ErrNotFound) {
+		t.Errorf("unknown model should be reported, got %v", err)
+	}
+}
+
+// ForModel is the narrowing that decides what one device sees.
+func TestForModelNarrowsToTheDeviceInFront(t *testing.T) {
+	dell, lenovo := "m-dell", "m-lenovo"
+	fields := []model.BoundField{
+		{FieldDefinition: model.FieldDefinition{ID: "f1", Key: "mac"}},
+		{FieldDefinition: model.FieldDefinition{ID: "f2", Key: "servicetag"}, ModelIDs: []string{dell}},
+	}
+
+	keys := func(in []model.BoundField) []string {
+		out := make([]string, 0, len(in))
+		for _, f := range in {
+			out = append(out, f.Key)
+		}
+		return out
+	}
+	if got := keys(ForModel(fields, &dell)); strings.Join(got, ",") != "mac,servicetag" {
+		t.Errorf("a Dell sees both, got %v", got)
+	}
+	if got := keys(ForModel(fields, &lenovo)); strings.Join(got, ",") != "mac" {
+		t.Errorf("a Lenovo sees only the category field, got %v", got)
+	}
+	if got := keys(ForModel(fields, nil)); strings.Join(got, ",") != "mac" {
+		t.Errorf("a device with no model sees only category fields, got %v", got)
+	}
+}
+
+// The count a required model binding shows is this model's devices and no
+// others -- the same promise the category side makes, aimed narrower.
+func TestModelRequiredImpactCountsThisModelOnly(t *testing.T) {
+	s, ctx := newStore(t)
+	_, child := tree(t, s, ctx)
+	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+
+	n, err := s.ModelRequiredImpact(ctx, dell.ID)
+	if err != nil {
+		t.Fatalf("impact: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("a model with no devices should count zero, got %d", n)
+	}
+}
+
+// The numbering field must apply to every asset in the category, and a model
+// field applies to some of them (decision 100). The refusal has its own reason:
+// saying "unbound" would send somebody looking for a binding already there.
+func TestDisplayKeyRefusesModelBoundFields(t *testing.T) {
+	s, ctx := newStore(t)
+	_, child := tree(t, s, ctx)
+	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+
+	tag, _ := s.CreateField(ctx, CreateFieldInput{
+		Key: "servicetag", Label: "ServiceTag", Type: model.FieldText, IsUnique: true,
+	})
+	if err := s.BindModel(ctx, dell.ID, tag.ID, false, 10); err != nil {
+		t.Fatal(err)
+	}
+
+	key := "servicetag"
+	_, err := s.UpdateCategory(ctx, child.ID, UpdateCategoryInput{DisplayKey: &key})
+	if !errors.Is(err, ErrDisplayKeyNotCategoryField) {
+		t.Fatalf("a model field must not become the numbering field, got %v", err)
+	}
+
+	// A key bound nowhere still reports the older, different reason.
+	missing := "nothing"
+	_, err = s.UpdateCategory(ctx, child.ID, UpdateCategoryInput{DisplayKey: &missing})
+	if !errors.Is(err, ErrDisplayKeyInvalid) {
+		t.Errorf("an unbound key should still be reported as unbound, got %v", err)
+	}
+}

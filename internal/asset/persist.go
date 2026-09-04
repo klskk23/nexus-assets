@@ -58,13 +58,25 @@ func loadForUpdate(ctx context.Context, tx *sql.Tx, id string) (model.Asset, err
 
 // UniqueValue is one value that must not collide, and where it must not.
 //
-// Scope is the category the binding was made on: the field exists across that
-// category's subtree and nowhere else, so that is the reach of its uniqueness.
-// Two categories may now each have a "rack" that counts from one.
+// Scope is where the field reaches, which is exactly where its uniqueness
+// reaches. For a category-bound field that is the category the binding was made
+// on: the field exists across that category's subtree and nowhere else, so two
+// categories may each have a "rack" that counts from one.
+//
+// For a model-bound field it is "f:" plus the field's own id (015, decision
+// 99). The reach there is every model the field is bound to, and a field has
+// exactly one set of those -- so the field itself names the scope. Scoping per
+// model instead would let two Dell models each hold a device with service tag
+// ABC1234, and those tags are unique across Dell's whole catalogue.
 type UniqueValue struct {
 	Value string
 	Scope string
 }
+
+// ModelScopePrefix marks a scope that belongs to a field's model bindings
+// rather than to a category. Both are ids; without the prefix, anyone reading
+// asset_unique_values has to guess which kind they are looking at.
+const ModelScopePrefix = "f:"
 
 // uniqueValues extracts the values that must not collide, keyed by field.
 //
@@ -85,14 +97,25 @@ func uniqueValues(fields []model.BoundField, attrs map[string]any, categoryID st
 		if s == "" {
 			continue
 		}
-		// InheritedFrom is empty when the binding is the category's own.
-		scope := f.InheritedFrom
-		if scope == "" {
-			scope = categoryID
-		}
-		out[f.Key] = UniqueValue{Value: s, Scope: scope}
+		out[f.Key] = UniqueValue{Value: s, Scope: uniqueScope(f, categoryID)}
 	}
 	return out
+}
+
+// uniqueScope is where one field's uniqueness reaches.
+//
+// A model-bound field is scoped by itself, because its reach is its own set of
+// models. A category-bound one is scoped by the category that bound it --
+// InheritedFrom when it came from an ancestor, otherwise the category being
+// saved into.
+func uniqueScope(f model.BoundField, categoryID string) string {
+	if len(f.ModelIDs) > 0 {
+		return ModelScopePrefix + f.ID
+	}
+	if f.InheritedFrom != "" {
+		return f.InheritedFrom
+	}
+	return categoryID
 }
 
 // probeUnique looks for a colliding live value so the error can name the device

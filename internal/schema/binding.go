@@ -77,11 +77,20 @@ func (s *Store) EffectiveFields(ctx context.Context, categoryID string) ([]model
 	if err != nil {
 		return nil, err
 	}
+	return s.FieldsOfPath(ctx, cat.Path)
+}
+
+// FieldsOfPath is EffectiveFields for a caller that already holds the category.
+//
+// The save pipeline is that caller: it loads the category for its code, name
+// and display key anyway, and reading it twice per save to get the same row
+// back would be a query bought for nothing.
+func (s *Store) FieldsOfPath(ctx context.Context, path string) ([]model.BoundField, error) {
 	bindings, err := s.BindingsByCategory(ctx)
 	if err != nil {
 		return nil, err
 	}
-	fields, err := Resolve(cat.Path, bindings)
+	fields, err := Resolve(path, bindings)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +106,29 @@ func (s *Store) EffectiveFields(ctx context.Context, categoryID string) ([]model
 	if err != nil {
 		return nil, err
 	}
-	return append(fields, resolveModelFields(cat.Path, modelBindings, categoriesOfModel)...), nil
+	return append(fields, resolveModelFields(path, modelBindings, categoriesOfModel)...), nil
+}
+
+// ForModel narrows a category's field set to the one device in front of you.
+//
+// The category's set is its whole vocabulary, model fields included; which of
+// those apply to a given asset depends on its model. A field bound to models
+// applies only when the asset's model is one of them, so an asset with no model
+// sees none of them, and changing an asset's model changes which it sees --
+// values left behind become archived attributes on the next read, the same way
+// unbinding a field leaves them (015, decision 98).
+func ForModel(fields []model.BoundField, modelID *string) []model.BoundField {
+	out := make([]model.BoundField, 0, len(fields))
+	for _, f := range fields {
+		if len(f.ModelIDs) == 0 {
+			out = append(out, f)
+			continue
+		}
+		if modelID != nil && slices.Contains(f.ModelIDs, *modelID) {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // Bind attaches a field to a category.

@@ -28,7 +28,7 @@ func (s *Service) Get(ctx context.Context, id string) (model.Asset, error) {
 	if err != nil {
 		return a, err
 	}
-	a.Attrs, a.ArchivedAttrs = SplitAttrs(schema.ActiveFields(fields), a.Attrs)
+	a.Attrs, a.ArchivedAttrs = SplitAttrs(schema.ActiveFields(schema.ForModel(fields, a.ModelID)), a.Attrs)
 
 	var displayKey string
 	if err := s.db.ReadDB().QueryRowContext(ctx,

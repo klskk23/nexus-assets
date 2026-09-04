@@ -111,6 +111,11 @@ func (s *Server) Router() *gin.Engine {
 	authed.PATCH("/models/:id", need(authz.ModelManage), s.patchModel)
 	authed.DELETE("/models/:id", need(authz.ModelManage), s.deleteModel)
 	authed.GET("/models/:id/usage", s.modelUsage)
+	// Field bindings that hang on a model (015). Schema-manage, like the
+	// category-side pair above: it is the same act on a different target.
+	authed.POST("/models/:id/bindings", need(authz.SchemaManage), s.bindModelField)
+	authed.DELETE("/models/:id/bindings/:field_id", need(authz.SchemaManage), s.unbindModelField)
+	authed.GET("/models/:id/required-impact", s.modelRequiredImpact)
 
 	authed.GET("/statuses", s.listStatuses)
 	authed.POST("/statuses", need(authz.StatusManage), s.createStatus)

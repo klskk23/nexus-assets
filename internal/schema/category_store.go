@@ -267,6 +267,25 @@ func validateDisplayKey(ctx context.Context, tx *sql.Tx, path, key string) error
 	var isUnique int
 	err := tx.QueryRowContext(ctx, q, key, path).Scan(&label, &isUnique)
 	if errors.Is(err, sql.ErrNoRows) {
+		// Bound, but to models. Refused for its own reason (015, decision
+		// 100): a model field covers only some of the category's assets, so
+		// the rest would fall back to the UUID prefix for good. Saying
+		// "unbound" here would send somebody looking for a binding that is
+		// already there.
+		var n int
+		if err := tx.QueryRowContext(ctx, `
+			SELECT count(*)
+			FROM model_fields mf
+			JOIN field_definitions f ON f.id = mf.field_id
+			JOIN product_model_categories pmc ON pmc.model_id = mf.model_id
+			JOIN categories c ON c.id = pmc.category_id
+			WHERE f.key = ? AND (? LIKE c.path || '%' OR c.path LIKE ? || '%')`,
+			key, path, path).Scan(&n); err != nil {
+			return err
+		}
+		if n > 0 {
+			return i18n.Wrap(ErrDisplayKeyNotCategoryField, i18n.KeyDisplayKeyNotCategory, key)
+		}
 		return i18n.Wrap(ErrDisplayKeyInvalid, i18n.KeyDisplayKeyUnbound, key)
 	}
 	if err != nil {

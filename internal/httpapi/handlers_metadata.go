@@ -128,6 +128,12 @@ func (s *Server) categorySchema(c *gin.Context) {
 type fieldRow struct {
 	model.FieldDefinition
 	CategoryIDs []string `json:"category_ids"`
+	// ModelIDs is the other kind of binding (015, decision 96): a field hangs
+	// on categories or on models, never both, so exactly one of these two is
+	// ever non-empty. BindingMode says which, including "unbound" for a field
+	// that is on nothing yet and may still become either.
+	ModelIDs    []string `json:"model_ids"`
+	BindingMode string   `json:"binding_mode"`
 }
 
 func (s *Server) listFields(c *gin.Context) {
@@ -149,6 +155,11 @@ func (s *Server) listFields(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
+	onModels, err := s.schema.ModelsOfField(c.Request.Context())
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
 
 	rows := make([]fieldRow, 0, len(page.Items))
 	for _, f := range page.Items {
@@ -156,7 +167,20 @@ func (s *Server) listFields(c *gin.Context) {
 		if ids == nil {
 			ids = []string{}
 		}
-		rows = append(rows, fieldRow{FieldDefinition: f, CategoryIDs: ids})
+		models := onModels[f.ID]
+		if models == nil {
+			models = []string{}
+		}
+		mode := "unbound"
+		switch {
+		case len(models) > 0:
+			mode = "model"
+		case len(ids) > 0:
+			mode = "category"
+		}
+		rows = append(rows, fieldRow{
+			FieldDefinition: f, CategoryIDs: ids, ModelIDs: models, BindingMode: mode,
+		})
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"items": rows, "total": page.Total, "offset": page.Offset, "limit": page.Limit,
@@ -248,6 +272,57 @@ func (s *Server) bindField(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+// bindModelField hangs a field on a model rather than on a category (015).
+//
+// Same permission as binding to a category: both are schema edits, and the
+// permission set is a closed eighteen -- a nineteenth switch for the same act
+// under a different target would be a distinction nobody administering this
+// could act on.
+func (s *Server) bindModelField(c *gin.Context) {
+	var req struct {
+		FieldID  string `json:"field_id" binding:"required"`
+		Required bool   `json:"required"`
+		Sort     int    `json:"sort"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
+		return
+	}
+	if err := s.schema.BindModel(c.Request.Context(), c.Param("id"), req.FieldID, req.Required, req.Sort); err != nil {
+		FailErr(c, err)
+		return
+	}
+	if !s.record(c, audit.ActionCreate, audit.TargetBinding, c.Param("id"), nil, req) {
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// unbindModelField detaches one. Values already stored under the field become
+// archived attributes, the same as unbinding from a category.
+func (s *Server) unbindModelField(c *gin.Context) {
+	if err := s.schema.UnbindModel(c.Request.Context(), c.Param("id"), c.Param("field_id")); err != nil {
+		FailErr(c, err)
+		return
+	}
+	if !s.record(c, audit.ActionDelete, audit.TargetBinding, c.Param("id"), nil, nil) {
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// modelRequiredImpact says how many existing devices a required binding would
+// eventually land on, so the person ticking the box knows what they are asking
+// of whoever edits those devices next (decision 70's promise, model-side).
+func (s *Server) modelRequiredImpact(c *gin.Context) {
+	n, err := s.schema.ModelRequiredImpact(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"total": n})
 }
 
 func (s *Server) listModels(c *gin.Context) {

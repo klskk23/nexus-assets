@@ -131,16 +131,17 @@ func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
 	if err != nil {
 		return prep, err
 	}
-	bindings, err := s.schema.BindingsByCategory(ctx)
+	// 1. effective field set, narrowed to this device's model.
+	//
+	// The category's set is its whole vocabulary; a model-bound field belongs
+	// to this asset only when its model is one the field was bound to (015).
+	// Narrowing here is what keeps validation, computed keys and uniqueness
+	// all talking about the same fields.
+	all, err := s.schema.FieldsOfPath(ctx, cat.Path)
 	if err != nil {
 		return prep, err
 	}
-	// 1. effective field set
-	fields, err := schema.Resolve(cat.Path, bindings)
-	if err != nil {
-		return prep, err
-	}
-	fields = schema.ActiveFields(fields)
+	fields := schema.ActiveFields(schema.ForModel(all, in.ModelID))
 
 	// 2. model defaults fill only the keys the caller left out
 	attrs := map[string]any{}

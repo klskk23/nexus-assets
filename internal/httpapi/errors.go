@@ -130,6 +130,11 @@ var refusals = []struct {
 	{schema.ErrStatusInvalid, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", ""}},
 	{schema.ErrDisplayKeyInvalid, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", ""}},
 	{schema.ErrFieldDependedOn, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
+	// One field binds to categories or to models, never both (015, decision
+	// 96). A conflict rather than a validation failure: nothing about the
+	// request is malformed, the system refuses to end up in that state.
+	{schema.ErrBindingModeConflict, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
+	{schema.ErrDisplayKeyNotCategoryField, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", "display_key"}},
 
 	{holder.ErrDefaultStockRequired, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
 	{holder.ErrParentRequired, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", "parent_id"}},
