@@ -570,6 +570,8 @@ export const enImport: typeof zhImport = {
   category: "Import into category",
   file: "CSV file",
   preview: "Preview",
+  previewNeedsCategory:
+    "Choose a category in step 1 first: the preview checks each row against that category's fields.",
   previewing: "Validating…",
   step3: "3. Confirm the import",
   step3Hint: "The whole file is written at once. If any row fails, nothing is written.",

@@ -194,12 +194,22 @@ export function Import() {
             </Field>
             <Button
               disabled={!canPreview || preview.isPending}
+              title={categoryID === "" ? tImport.previewNeedsCategory : undefined}
               onClick={() => preview.mutate()}
             >
               {preview.isPending && <Spinner data-icon="inline-start" aria-hidden />}
               {preview.isPending ? tImport.previewing : tImport.preview}
             </Button>
           </div>
+
+          {/* Why the button is dead, said where the button is. The category
+              lives in the card above this one, so from down here a chosen file
+              and a grey button look like a broken page -- which is what it was
+              reported as. A state, not a hint: hiding it behind a question
+              mark would hide the answer. */}
+          {categoryID === "" && (
+            <p className="text-muted-foreground text-sm">{tImport.previewNeedsCategory}</p>
+          )}
 
           {banner && (
             <Alert variant="destructive">

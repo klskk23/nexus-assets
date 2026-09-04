@@ -538,6 +538,7 @@ export const zhImport = {
   category: "导入到类别",
   file: "CSV 文件",
   preview: "预览",
+  previewNeedsCategory: "先在第 1 步选好类别：预览要按那个类别的字段逐行校验。",
   previewing: "校验中…",
   step3: "3. 确认导入",
   step3Hint: "整份文件一次写入。任何一行失败则全部不写入。",

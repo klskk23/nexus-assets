@@ -83,6 +83,21 @@ describe("Import page", () => {
     }
   })
 
+  // Reported as "the preview is dead": a file was chosen, the button stayed
+  // grey, and the reason lived in the card above with nothing pointing at it.
+  it("says why the preview is unavailable until a category is chosen", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Import />)
+
+    expect(await screen.findByText(/先在第 1 步选好类别/)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "预览" })).toBeDisabled()
+
+    await chooseCategory(user)
+    await waitFor(() =>
+      expect(screen.queryByText(/先在第 1 步选好类别/)).not.toBeInTheDocument(),
+    )
+  })
+
   // An import is a long session with a file picker in the middle of it, which
   // is precisely where a fifteen-minute token runs out. It used to be the one
   // request that did not renew: the upload had its own fetch beside the client.
