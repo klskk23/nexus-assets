@@ -236,6 +236,13 @@ export const zhMeta = {
   fields: {
     searchHint: "键名、显示名",
     allTypes: "全部类型",
+    models: "所属型号",
+    bindingMode: "绑定到",
+    bindByCategory: "类别",
+    bindByModel: "型号",
+    bindingModeHint: "一个字段要么绑类别、要么绑型号，不能两种都绑。绑到型号的字段只出现在这些型号的设备上。",
+    bindingModeFrozen: "已经绑定之后不能再换：要换请先解除现有的全部绑定。",
+    unboundModelHint: "这个字段还没绑到任何型号，暂时不会出现在任何设备上。",
     title: "字段",
     create: "新建字段",
     key: "键名（英文）",

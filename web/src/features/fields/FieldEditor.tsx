@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, ApiError, blockerKey, type Blocker, type Referrer } from "@/lib/api"
 import type { AssetPage, Category, Conflict, RecomputeReport } from "@/lib/types"
 import type { FieldOptions } from "@/lib/types"
-import type { FieldDefinitionRow } from "@/lib/metaTypes"
+import type { FieldDefinitionRow, ProductModelRow } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
 import { TableFrame } from "@/features/common/TableFrame"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -32,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -46,7 +47,7 @@ import {
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { ExpressionHelp } from "@/features/fields/ExpressionHelp"
 import { Input } from "@/components/ui/input"
-import { Field, FieldLabel } from "@/components/ui/field"
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 
 interface Props {
   field: FieldDefinitionRow
@@ -77,6 +78,14 @@ export function FieldEditor({ field, onClose }: Props) {
   // A field is bound to categories, not the other way round: this is where it
   // is decided. Held locally so the dialog reflects a binding immediately.
   const [bound, setBound] = useState<string[]>(field.category_ids ?? [])
+  // The other kind of binding (015, decision 96). A field hangs on categories
+  // or on models, never both, so the mode is a choice made once -- and it is
+  // frozen while either kind of binding exists, because switching would mean
+  // silently dropping what is already there.
+  const [boundModels, setBoundModels] = useState<string[]>(field.model_ids ?? [])
+  const [mode, setMode] = useState<"category" | "model">(
+    (field.model_ids ?? []).length > 0 ? "model" : "category",
+  )
   const [bindTo, setBindTo] = useState("")
   const [bindRequired, setBindRequired] = useState(false)
   const [unbinding, setUnbinding] = useState<string | null>(null)
@@ -92,6 +101,44 @@ export function FieldEditor({ field, onClose }: Props) {
     queryFn: () =>
       api.get<AssetPage>(`/assets?category_id=${bindTo}&include_descendants=true&limit=1`),
     enabled: bindTo !== "",
+  })
+
+  const models = useQuery({
+    queryKey: ["models"],
+    queryFn: () => api.get<ProductModelRow[]>("/models"),
+    enabled: mode === "model",
+  })
+  // What a required model binding would eventually ask for: this model's
+  // devices, and only those.
+  const modelPopulated = useQuery({
+    queryKey: ["model-required-impact", bindTo],
+    queryFn: () => api.get<{ total: number }>(`/models/${bindTo}/required-impact`),
+    enabled: mode === "model" && bindTo !== "",
+  })
+
+  const bindModel = useMutation({
+    mutationFn: () =>
+      api.post(`/models/${bindTo}/bindings`, { field_id: field.id, required: bindRequired }),
+    onSuccess: () => {
+      setBanner(null)
+      setBoundModels((cur) => (cur.includes(bindTo) ? cur : [...cur, bindTo]))
+      setBindTo("")
+      setBindRequired(false)
+      queryClient.invalidateQueries({ queryKey: ["fields"] })
+      queryClient.invalidateQueries({ queryKey: ["schema"] })
+    },
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
+  })
+
+  const unbindModel = useMutation({
+    mutationFn: (modelID: string) => api.del(`/models/${modelID}/bindings/${field.id}`),
+    onSuccess: (_data, modelID) => {
+      setBanner(null)
+      setBoundModels((cur) => cur.filter((id) => id !== modelID))
+      queryClient.invalidateQueries({ queryKey: ["fields"] })
+      queryClient.invalidateQueries({ queryKey: ["schema"] })
+    },
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
   })
 
   const bind = useMutation({
@@ -112,8 +159,7 @@ export function FieldEditor({ field, onClose }: Props) {
   })
 
   const unbind = useMutation({
-    mutationFn: (categoryID: string) =>
-      api.del(`/categories/${categoryID}/bindings/${field.id}`),
+    mutationFn: (categoryID: string) => api.del(`/categories/${categoryID}/bindings/${field.id}`),
     onSuccess: (_data, categoryID) => {
       setBanner(null)
       setBound((cur) => cur.filter((id) => id !== categoryID))
@@ -189,7 +235,7 @@ export function FieldEditor({ field, onClose }: Props) {
       // list is exactly what the user needs in order to act.
       if (e instanceof ApiError) {
         setBanner(e.message)
-        setRefBlockers(e.referrers ?? (e.blockers ? [] : referrers.data ?? []))
+        setRefBlockers(e.referrers ?? (e.blockers ? [] : (referrers.data ?? [])))
         setAssetBlockers(e.blockers ?? [])
       } else {
         setBanner(t.common.error)
@@ -208,224 +254,318 @@ export function FieldEditor({ field, onClose }: Props) {
         </DialogHeader>
 
         <div className="grid gap-4">
-        <Field>
-          <FieldLabel htmlFor="fe-label">{tMeta.fields.label}</FieldLabel>
-          <Input id="fe-label" value={label} onChange={(e) => setLabel(e.target.value)} />
-        </Field>
-
-        {field.type === "text" && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="fe-regex">{tConfig.field.regex}</FieldLabel>
-              <Input
-                id="fe-regex"
-                className="font-mono"
-                value={options.regex ?? ""}
-                onChange={(e) => set({ regex: e.target.value })}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="fe-regex-hint">{tConfig.field.regexHint}</FieldLabel>
-              <Input
-                id="fe-regex-hint"
-                value={options.regex_hint ?? ""}
-                onChange={(e) => set({ regex_hint: e.target.value })}
-              />
-            </Field>
-          </div>
-        )}
-
-        {field.type === "number" && (
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field>
-              <FieldLabel htmlFor="fe-min">{tConfig.field.min}</FieldLabel>
-              <Input
-                id="fe-min"
-                type="number"
-                value={options.min ?? ""}
-                onChange={(e) => set({ min: e.target.value === "" ? undefined : Number(e.target.value) })}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="fe-max">{tConfig.field.max}</FieldLabel>
-              <Input
-                id="fe-max"
-                type="number"
-                value={options.max ?? ""}
-                onChange={(e) => set({ max: e.target.value === "" ? undefined : Number(e.target.value) })}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="fe-unit">{tConfig.field.unit}</FieldLabel>
-              <Input
-                id="fe-unit"
-                value={options.unit ?? ""}
-                onChange={(e) => set({ unit: e.target.value })}
-              />
-            </Field>
-          </div>
-        )}
-
-        {field.type === "computed" && (
           <Field>
-            <div className="flex items-center justify-between gap-2">
-              <FieldLabel htmlFor="fe-template">{tConfig.field.template}</FieldLabel>
-              <ExpressionHelp />
-            </div>
-            <Input
-              id="fe-template"
-              className="font-mono"
-              placeholder="hex2dec(attrs.mac)"
-              value={options.template ?? ""}
-              onChange={(e) => set({ template: e.target.value })}
-            />
-            <p className="text-xs text-muted-foreground">{tConfig.field.templateHint}</p>
-            <p className="text-xs text-muted-foreground">{tConfig.field.depsHint}</p>
+            <FieldLabel htmlFor="fe-label">{tMeta.fields.label}</FieldLabel>
+            <Input id="fe-label" value={label} onChange={(e) => setLabel(e.target.value)} />
           </Field>
-        )}
 
-        <div className="grid gap-2">
-          <p className="text-sm font-medium">{tMeta.fields.categories}</p>
-          <div className="flex flex-wrap items-end gap-3">
-            <Field className="w-auto">
-              <FieldLabel htmlFor="fe-bind">{tMeta.categories.bind}</FieldLabel>
-              <Select value={bindTo} onValueChange={setBindTo}>
-                <SelectTrigger id="fe-bind" className="w-56">
-                  <SelectValue placeholder={t.common.select} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {(categories.data ?? [])
-                      .filter((c) => !bound.includes(c.id))
-                      .map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field orientation="horizontal" className="w-auto pb-2">
-              <Checkbox
-                id="fe-bind-required"
-                checked={bindRequired}
-                onCheckedChange={(v) => setBindRequired(v === true)}
-              />
-              <FieldLabel htmlFor="fe-bind-required">{tMeta.categories.required}</FieldLabel>
-            </Field>
-            <Button
-              className="mb-0.5"
-              size="sm"
-              onClick={() => bind.mutate()}
-              disabled={bindTo === "" || bind.isPending}
-            >
-              {tMeta.categories.bind}
-            </Button>
-          </div>
-
-          {/* Required is checked when an asset is written, not when the field
-              is bound, so the devices already recorded keep their gap until
-              someone edits one. Worth saying before the box is ticked. */}
-          {bindRequired && (populated.data?.total ?? 0) > 0 && (
-            <Alert>
-              <AlertCircleIcon />
-              <AlertDescription>
-                {tMeta.categories.requiredWarning(populated.data?.total ?? 0)}
-              </AlertDescription>
-            </Alert>
+          {field.type === "text" && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="fe-regex">{tConfig.field.regex}</FieldLabel>
+                <Input
+                  id="fe-regex"
+                  className="font-mono"
+                  value={options.regex ?? ""}
+                  onChange={(e) => set({ regex: e.target.value })}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="fe-regex-hint">{tConfig.field.regexHint}</FieldLabel>
+                <Input
+                  id="fe-regex-hint"
+                  value={options.regex_hint ?? ""}
+                  onChange={(e) => set({ regex_hint: e.target.value })}
+                />
+              </Field>
+            </div>
           )}
 
-          <TableFrame>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{tMeta.categories.title}</TableHead>
-                  <TableHead className="w-24" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {bound.map((id) => (
-                  <ContextMenu key={id}>
-                    <ContextMenuTrigger asChild>
-                      <TableRow aria-label={(categories.data ?? []).find((c) => c.id === id)?.name}>
-                        <TableCell>
-                          {(categories.data ?? []).find((c) => c.id === id)?.name ?? id}
-                        </TableCell>
-                        {/* Visible, not only on right-click. These rows do
+          {field.type === "number" && (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field>
+                <FieldLabel htmlFor="fe-min">{tConfig.field.min}</FieldLabel>
+                <Input
+                  id="fe-min"
+                  type="number"
+                  value={options.min ?? ""}
+                  onChange={(e) =>
+                    set({ min: e.target.value === "" ? undefined : Number(e.target.value) })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="fe-max">{tConfig.field.max}</FieldLabel>
+                <Input
+                  id="fe-max"
+                  type="number"
+                  value={options.max ?? ""}
+                  onChange={(e) =>
+                    set({ max: e.target.value === "" ? undefined : Number(e.target.value) })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="fe-unit">{tConfig.field.unit}</FieldLabel>
+                <Input
+                  id="fe-unit"
+                  value={options.unit ?? ""}
+                  onChange={(e) => set({ unit: e.target.value })}
+                />
+              </Field>
+            </div>
+          )}
+
+          {field.type === "computed" && (
+            <Field>
+              <div className="flex items-center justify-between gap-2">
+                <FieldLabel htmlFor="fe-template">{tConfig.field.template}</FieldLabel>
+                <ExpressionHelp />
+              </div>
+              <Input
+                id="fe-template"
+                className="font-mono"
+                placeholder="hex2dec(attrs.mac)"
+                value={options.template ?? ""}
+                onChange={(e) => set({ template: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">{tConfig.field.templateHint}</p>
+              <p className="text-xs text-muted-foreground">{tConfig.field.depsHint}</p>
+            </Field>
+          )}
+
+          <div className="grid gap-2">
+            {/* Which kind of thing this field hangs on. Frozen once either kind
+              of binding exists: switching would have to drop what is there,
+              and dropping bindings is a decision of its own (015). */}
+            <Field>
+              <FieldLabel htmlFor="fe-mode">{tMeta.fields.bindingMode}</FieldLabel>
+              <ToggleGroup
+                id="fe-mode"
+                type="single"
+                variant="outline"
+                className="justify-start"
+                value={mode}
+                onValueChange={(v) => {
+                  if (v === "category" || v === "model") {
+                    setMode(v)
+                    setBindTo("")
+                  }
+                }}
+                disabled={bound.length > 0 || boundModels.length > 0}
+              >
+                <ToggleGroupItem value="category" aria-label={tMeta.fields.bindByCategory}>
+                  {tMeta.fields.bindByCategory}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="model" aria-label={tMeta.fields.bindByModel}>
+                  {tMeta.fields.bindByModel}
+                </ToggleGroupItem>
+              </ToggleGroup>
+              <FieldDescription>
+                {bound.length > 0 || boundModels.length > 0
+                  ? tMeta.fields.bindingModeFrozen
+                  : tMeta.fields.bindingModeHint}
+              </FieldDescription>
+            </Field>
+
+            <p className="text-sm font-medium">
+              {mode === "model" ? tMeta.fields.models : tMeta.fields.categories}
+            </p>
+            <div className="flex flex-wrap items-end gap-3">
+              <Field className="w-auto">
+                <FieldLabel htmlFor="fe-bind">{tMeta.categories.bind}</FieldLabel>
+                <Select value={bindTo} onValueChange={setBindTo}>
+                  <SelectTrigger id="fe-bind" className="w-56">
+                    <SelectValue placeholder={t.common.select} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {mode === "model"
+                        ? (models.data ?? [])
+                            .filter((m) => !boundModels.includes(m.id))
+                            .map((m) => (
+                              <SelectItem key={m.id} value={m.id}>
+                                {m.name}
+                                {m.vendor ? `（${m.vendor}）` : ""}
+                              </SelectItem>
+                            ))
+                        : (categories.data ?? [])
+                            .filter((c) => !bound.includes(c.id))
+                            .map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field orientation="horizontal" className="w-auto pb-2">
+                <Checkbox
+                  id="fe-bind-required"
+                  checked={bindRequired}
+                  onCheckedChange={(v) => setBindRequired(v === true)}
+                />
+                <FieldLabel htmlFor="fe-bind-required">{tMeta.categories.required}</FieldLabel>
+              </Field>
+              <Button
+                className="mb-0.5"
+                size="sm"
+                onClick={() => (mode === "model" ? bindModel.mutate() : bind.mutate())}
+                disabled={bindTo === "" || bind.isPending || bindModel.isPending}
+              >
+                {tMeta.categories.bind}
+              </Button>
+            </div>
+
+            {/* Required is checked when an asset is written, not when the field
+              is bound, so the devices already recorded keep their gap until
+              someone edits one. Worth saying before the box is ticked. */}
+            {bindRequired &&
+              ((mode === "model" ? modelPopulated.data?.total : populated.data?.total) ?? 0) >
+                0 && (
+                <Alert>
+                  <AlertCircleIcon />
+                  <AlertDescription>
+                    {tMeta.categories.requiredWarning(
+                      (mode === "model" ? modelPopulated.data?.total : populated.data?.total) ?? 0,
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+            {mode === "model" ? (
+              <TableFrame>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{tMeta.fields.models}</TableHead>
+                      <TableHead className="w-24" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {boundModels.map((id) => {
+                      const m = (models.data ?? []).find((x) => x.id === id)
+                      return (
+                        <TableRow key={id} aria-label={m?.name}>
+                          <TableCell>
+                            {m?.name ?? id}
+                            {m?.vendor ? `（${m.vendor}）` : ""}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive"
+                              onClick={() => unbindModel.mutate(id)}
+                              disabled={unbindModel.isPending}
+                            >
+                              {tMeta.categories.unbind}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </TableFrame>
+            ) : (
+              <TableFrame>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{tMeta.categories.title}</TableHead>
+                      <TableHead className="w-24" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bound.map((id) => (
+                      <ContextMenu key={id}>
+                        <ContextMenuTrigger asChild>
+                          <TableRow
+                            aria-label={(categories.data ?? []).find((c) => c.id === id)?.name}
+                          >
+                            <TableCell>
+                              {(categories.data ?? []).find((c) => c.id === id)?.name ?? id}
+                            </TableCell>
+                            {/* Visible, not only on right-click. These rows do
                             nothing when clicked, so there is no gesture for a
                             hidden menu to belong to -- and a two-row table
                             inside a dialog is the last place anybody thinks to
                             try one. The menu stays for anyone who does. */}
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive"
-                            onClick={() => setUnbinding(id)}
-                          >
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive"
+                                onClick={() => setUnbinding(id)}
+                              >
+                                {tMeta.categories.unbind}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent>
+                          <ContextMenuItem variant="destructive" onSelect={() => setUnbinding(id)}>
                             {tMeta.categories.unbind}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent>
-                      <ContextMenuItem variant="destructive" onSelect={() => setUnbinding(id)}>
-                        {tMeta.categories.unbind}
-                      </ContextMenuItem>
-                    </ContextMenuContent>
-                  </ContextMenu>
-                ))}
-              </TableBody>
-            </Table>
-          </TableFrame>
-          {bound.length === 0 && (
-            <p className="text-muted-foreground text-sm">{tMeta.fields.unboundHint}</p>
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableFrame>
+            )}
+            {mode === "model"
+              ? boundModels.length === 0 && (
+                  <p className="text-muted-foreground text-sm">{tMeta.fields.unboundModelHint}</p>
+                )
+              : bound.length === 0 && (
+                  <p className="text-muted-foreground text-sm">{tMeta.fields.unboundHint}</p>
+                )}
+          </div>
+
+          {(referrers.data ?? []).length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {tConfig.field.referrers}
+              {(referrers.data ?? []).map((r) => r.label).join("、")}
+            </p>
           )}
-        </div>
 
-        {(referrers.data ?? []).length > 0 && (
-          <p className="text-sm text-muted-foreground">
-            {tConfig.field.referrers}
-            {(referrers.data ?? []).map((r) => r.label).join("、")}
-          </p>
-        )}
-
-        {banner && (
-          <Alert variant="destructive">
-            <AlertCircleIcon />
-            <AlertDescription className="grid gap-1">
-              {banner}
-              {refBlockers.length > 0 && (
-                <ul className="grid gap-0.5 text-xs">
-                  {refBlockers.map((b) => (
-                    <li key={b.id}>{b.label}</li>
-                  ))}
-                </ul>
-              )}
-              {conflicts.length > 0 && (
-                <ul className="grid gap-0.5 font-mono text-xs">
-                  {conflicts.map((c, i) => (
-                    <li key={i}>
-                      {tConfig.field.conflictRow(c.key, c.value, c.assets.join("、"))}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {assetBlockers.length > 0 && (
-                <>
-                  <p className="text-xs">{tConfig.field.blockedByAssets}</p>
-                  <ul className="grid gap-0.5 font-mono text-xs">
-                    {assetBlockers.map((b) => (
-                      <li key={blockerKey(b)}>{b.name}</li>
+          {banner && (
+            <Alert variant="destructive">
+              <AlertCircleIcon />
+              <AlertDescription className="grid gap-1">
+                {banner}
+                {refBlockers.length > 0 && (
+                  <ul className="grid gap-0.5 text-xs">
+                    {refBlockers.map((b) => (
+                      <li key={b.id}>{b.label}</li>
                     ))}
                   </ul>
-                </>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
-
+                )}
+                {conflicts.length > 0 && (
+                  <ul className="grid gap-0.5 font-mono text-xs">
+                    {conflicts.map((c, i) => (
+                      <li key={i}>
+                        {tConfig.field.conflictRow(c.key, c.value, c.assets.join("、"))}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {assetBlockers.length > 0 && (
+                  <>
+                    <p className="text-xs">{tConfig.field.blockedByAssets}</p>
+                    <ul className="grid gap-0.5 font-mono text-xs">
+                      {assetBlockers.map((b) => (
+                        <li key={blockerKey(b)}>{b.name}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         <DialogFooter>

@@ -50,11 +50,15 @@ type ListFilter struct {
 	IncludeDescendants bool
 	Status             string
 	OwnerID            string
-	HolderType         string
-	HolderID           string
-	AttrFilters        map[string]string
-	Offset             int
-	Limit              int
+	// ModelID narrows to one product model. It is what makes a model-bound
+	// field's column worth showing (015, decision 103): the column means
+	// something only once the list is looking at devices that have the field.
+	ModelID     string
+	HolderType  string
+	HolderID    string
+	AttrFilters map[string]string
+	Offset      int
+	Limit       int
 }
 
 // ListResult is one page plus the total, which the list page needs in order to
@@ -349,6 +353,10 @@ func (s *Service) filterClause(ctx context.Context, f ListFilter, res *ListResul
 	if f.OwnerID != "" {
 		where = append(where, `owner_id = ?`)
 		args = append(args, f.OwnerID)
+	}
+	if f.ModelID != "" {
+		where = append(where, `model_id = ?`)
+		args = append(args, f.ModelID)
 	}
 	if f.HolderType != "" && f.HolderID != "" {
 		where = append(where, `holder_type = ? AND holder_id = ?`)

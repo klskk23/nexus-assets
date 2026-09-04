@@ -6,6 +6,7 @@ import { FieldEditor } from "@/features/fields/FieldEditor"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { ApiError } from "@/lib/api"
 import { chooseFromMenu } from "@/test/menu"
+import { chooseByLabel } from "@/test/choose"
 import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import type { FieldType } from "@/lib/types"
 
@@ -349,5 +350,68 @@ describe("FieldEditor bindings", () => {
     await user.click(screen.getByRole("button", { name: "绑定字段" }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent("已经绑定在")
+  })
+})
+
+// A field hangs on categories or on models, never both (015, decision 96).
+describe("binding a field to models", () => {
+  const models = [
+    { id: "m-dell", name: "Latitude 5420", vendor: "Dell", category_ids: ["net"] },
+    { id: "m-lenovo", name: "ThinkPad T14", vendor: "Lenovo", category_ids: ["net"] },
+  ]
+
+  function withModels(p: string) {
+    if (p === "/models") return Promise.resolve(models)
+    if (p.startsWith("/models/") && p.endsWith("/required-impact")) {
+      return Promise.resolve({ total: 3 })
+    }
+    return route(p)
+  }
+
+  it("binds to a model once the mode is switched", async () => {
+    get.mockReset().mockImplementation(withModels)
+    const user = userEvent.setup()
+    renderWithProviders(<FieldEditor field={field("text")} onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole("radio", { name: "型号" }))
+    // The picker now offers models rather than categories.
+    await chooseByLabel(user, "绑定字段", "Latitude 5420（Dell）")
+    await user.click(screen.getByRole("button", { name: "绑定字段" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/models/m-dell/bindings", {
+        field_id: "f1",
+        required: false,
+      }),
+    )
+  })
+
+  // Switching mode after something is bound would mean silently dropping it,
+  // so the switch is frozen rather than destructive.
+  it("freezes the mode once the field is bound to a category", async () => {
+    get.mockReset().mockImplementation(withModels)
+    renderWithProviders(
+      <FieldEditor field={field("text", { category_ids: ["net"] })} onClose={vi.fn()} />,
+    )
+
+    expect(screen.getByRole("radio", { name: "型号" })).toBeDisabled()
+    expect(screen.getByText(/要换请先解除现有的全部绑定/)).toBeInTheDocument()
+  })
+
+  // The count a required binding shows is this model's devices, not the
+  // category's -- what it promises is about the devices the rule will reach.
+  it("counts only that model's devices before required is ticked", async () => {
+    get.mockReset().mockImplementation(withModels)
+    const user = userEvent.setup()
+    renderWithProviders(<FieldEditor field={field("text")} onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole("radio", { name: "型号" }))
+    await chooseByLabel(user, "绑定字段", "Latitude 5420（Dell）")
+    await user.click(screen.getByLabelText("必填"))
+
+    expect(await screen.findByText(/已有 3 台设备/)).toBeInTheDocument()
+    await waitFor(() =>
+      expect(get).toHaveBeenCalledWith("/models/m-dell/required-impact"),
+    )
   })
 })

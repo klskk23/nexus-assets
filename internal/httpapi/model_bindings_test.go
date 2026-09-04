@@ -220,3 +220,26 @@ func TestImportTemplateCarriesModelFields(t *testing.T) {
 		t.Errorf("the template should offer the column: %s", body)
 	}
 }
+
+// The list narrows by model, which is what makes a model field's column worth
+// showing at all (decision 103).
+func TestAssetsFilterByModel(t *testing.T) {
+	h := newHarness(t)
+	dell, _ := modelWithField(t, h, "Latitude 5420", "servicetag", false)
+	other := decode[map[string]any](t, h.post(t, "/api/models",
+		`{"name":"ThinkPad T14","vendor":"Lenovo","category_ids":["`+h.catID+`"]}`))
+	otherID, _ := other["id"].(string)
+
+	for i, m := range []string{dell, otherID} {
+		if rec := h.post(t, "/api/assets", `{"category_id":"`+h.catID+`","owner_id":"`+h.userID+
+			`","holder_type":"entity","holder_id":"`+h.locID+`","model_id":"`+m+
+			`","attrs":{"mac":"001A2B3C4F0`+strconv.Itoa(i)+`"}}`); rec.Code != http.StatusCreated {
+			t.Fatal(rec.Body.String())
+		}
+	}
+
+	body := h.get(t, "/api/assets?model_id="+dell).Body.String()
+	if !strings.Contains(body, `"total":1`) {
+		t.Errorf("only the one model's devices should come back: %s", body)
+	}
+}

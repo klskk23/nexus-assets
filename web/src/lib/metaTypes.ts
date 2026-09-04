@@ -10,6 +10,10 @@ export interface FieldDefinitionRow {
   is_unique: boolean
   /** The categories this field is bound to; empty until it is bound to one. */
   category_ids?: string[]
+  /** The models it is bound to instead -- the two are exclusive (015). */
+  model_ids?: string[]
+  /** Which of the two it is, or "unbound" while it is on nothing yet. */
+  binding_mode?: "category" | "model" | "unbound"
 }
 
 export interface ProductModelRow {

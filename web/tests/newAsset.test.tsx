@@ -231,3 +231,51 @@ describe("NewAssetDialog", () => {
     expect(screen.getByRole("button", { name: "保存" })).toBeDisabled()
   })
 })
+
+// A model-bound field is on the category's schema whatever device is being
+// recorded, but belongs only to its own models (015). The entry form is where
+// that difference first shows: pick a Dell and the field appears, pick a
+// Lenovo and it is not there to fill in wrongly.
+describe("fields that belong to a model", () => {
+  const models = [
+    { id: "m-dell", name: "Latitude 5420", vendor: "Dell", category_ids: ["rt"], attr_defaults: {} },
+    { id: "m-lenovo", name: "ThinkPad T14", vendor: "Lenovo", category_ids: ["rt"], attr_defaults: {} },
+  ]
+  const withModelField = {
+    category: categories[0],
+    fields: [
+      ...schema.fields,
+      {
+        id: "f2", key: "servicetag", label: "ServiceTag", type: "text",
+        options: {}, is_unique: false, required: false, sort: 20,
+        model_ids: ["m-dell"],
+      },
+    ],
+  }
+
+  beforeEach(() => {
+    get.mockReset().mockImplementation((p: string) => {
+      if (p === "/models") return Promise.resolve(models)
+      if (p.endsWith("/schema")) return Promise.resolve(withModelField)
+      return route(p)
+    })
+  })
+
+  it("shows the field only while a model it belongs to is chosen", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<NewAssetDialog open onOpenChange={vi.fn()} />)
+    await chooseByLabel(user, "类别", "SDWAN 路由器")
+
+    // No model yet: a field belonging to some models belongs to no device.
+    expect(await screen.findByLabelText(/基准 MAC/)).toBeInTheDocument()
+    expect(screen.queryByLabelText("ServiceTag")).not.toBeInTheDocument()
+
+    await chooseByLabel(user, "设备型号", "Dell Latitude 5420")
+    expect(await screen.findByLabelText("ServiceTag")).toBeInTheDocument()
+
+    await chooseByLabel(user, "设备型号", "Lenovo ThinkPad T14")
+    await waitFor(() =>
+      expect(screen.queryByLabelText("ServiceTag")).not.toBeInTheDocument(),
+    )
+  })
+})

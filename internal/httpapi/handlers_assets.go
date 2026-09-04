@@ -32,6 +32,7 @@ func (s *Server) listAssets(c *gin.Context) {
 		IncludeDescendants: c.DefaultQuery("include_descendants", "true") != "false",
 		Status:             c.Query("status"),
 		OwnerID:            c.Query("owner_id"),
+		ModelID:            c.Query("model_id"),
 		HolderType:         c.Query("holder_type"),
 		HolderID:           c.Query("holder_id"),
 		AttrFilters:        map[string]string{},

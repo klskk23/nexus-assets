@@ -64,6 +64,16 @@ export interface BoundField {
   required: boolean
   sort: number
   inherited_from?: string
+  /**
+   * The models this field is bound to, empty for a field bound to categories
+   * (015: the two are exclusive).
+   *
+   * A category's schema is its whole vocabulary, so a model field appears in
+   * it whatever device is being looked at. This is what says when it applies:
+   * the entry form draws it only for a matching model, and the list only
+   * unlocks its column once the model filter names one of these.
+   */
+  model_ids?: string[]
 }
 
 export interface Category {

@@ -250,6 +250,14 @@ export const enMeta: typeof zhMeta = {
   fields: {
     searchHint: "key, label",
     allTypes: "All types",
+    models: "Models",
+    bindingMode: "Binds to",
+    bindByCategory: "Categories",
+    bindByModel: "Models",
+    bindingModeHint:
+      "A field binds either to categories or to models, never both. A model-bound field appears only on devices of those models.",
+    bindingModeFrozen: "Fixed once anything is bound: remove every binding first to change it.",
+    unboundModelHint: "Bound to no model yet, so it appears on no device.",
     title: "Fields",
     create: "New field",
     key: "Key",

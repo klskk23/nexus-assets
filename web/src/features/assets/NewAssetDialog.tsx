@@ -16,6 +16,7 @@ import { t } from "@/i18n"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { useAuth } from "@/features/auth/useAuth"
 import { DynamicForm } from "@/features/assets/DynamicForm"
+import { fieldsForModel } from "@/features/assets/modelFields"
 import { ModelPicker } from "@/features/assets/ModelPicker"
 import { StateBoundary } from "@/components/StateBoundary"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -294,7 +295,7 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
               />
               {schema.data && (
                 <DynamicForm
-                  fields={schema.data.fields}
+                  fields={fieldsForModel(schema.data.fields, modelId)}
                   values={values}
                   errors={fieldErrors}
                   onChange={(k, v) => setValues((cur) => ({ ...cur, [k]: v }))}
