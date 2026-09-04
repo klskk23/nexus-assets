@@ -61,6 +61,11 @@
   不用 `div + Label`；提示用 `Alert`、空状态用 `Empty`、加载用 `Skeleton`/`Spinner`。
   `Select` 是 Radix 组件不是原生控件，测试要用 `src/test/choose.ts` 的助手而非
   `user.selectOptions`；`SelectItem` 不接受空字符串值，「未选/全部」走 `lib/select.ts` 的哨兵。
+- **`cn` 从 `cn` 包导入，不是 `@/lib/utils`。** 那个文件已删，`clsx` 与
+  `tailwind-merge` 也从直接依赖里移除了（`cn` 是这两者的编译版替代，API 相同）。
+  shadcn CLI 从 4.21 起给新组件写的就是 `import { cn } from "cn"`，两边一致，
+  不会每 add 一个组件就漂一次。**别再建第二套类名合并实现** ——
+  两套并存的差异，只会在某个覆盖忽然不生效的时候才被发现。
 - **提示文案：简洁；有输入框的进输入框，没有的进问号。**
   一句提示只写「此刻要做什么」，不写规则为什么存在 —— 那些留在代码注释里。
   **有输入框的（`Input`/`Textarea`）写进 `placeholder`**，不要在下面另起一行；

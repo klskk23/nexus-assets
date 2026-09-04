@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { ApiError } from "@/lib/api"
 import { t } from "@/i18n"
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 import { StateBoundary } from "@/components/StateBoundary"
 import { ListToolbar } from "@/features/common/ListToolbar"
 import { PageHeader } from "@/features/common/PageHeader"

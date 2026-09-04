@@ -1,5 +1,5 @@
 import { t } from "@/i18n"
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 import { Field, FieldLabel } from "@/components/ui/field"
 import {
   Pagination,

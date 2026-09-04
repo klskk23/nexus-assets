@@ -15,7 +15,7 @@ import type {
   User,
 } from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 import { t, tImport, tTransfer } from "@/i18n"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { useStatuses } from "@/features/statuses/useStatuses"

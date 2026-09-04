@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 import { useStatuses } from "@/features/statuses/useStatuses"
 
 interface Props {
