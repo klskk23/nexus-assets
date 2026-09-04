@@ -3,6 +3,7 @@ import { Suspense, lazy, useState } from "react"
 import { useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 
+import { cn } from "cn"
 import { api } from "@/lib/api"
 import type { AssetStatus, Category } from "@/lib/types"
 import type { CategoryCount } from "@/features/overview/CategoryChart"
@@ -118,9 +119,20 @@ export function Overview() {
                     }
                   }}
                 >
-                  <CardContent className="px-4 py-4">
+                  <CardContent className="px-4 py-3.5">
                     <StatusBadge status={s.status} />
-                    <p className="mt-1 text-2xl font-semibold tabular-nums">{s.count}</p>
+                    {/* The count is the content and the chip is its label, so
+                        the count is what carries weight -- and a zero is
+                        allowed to recede. Five equally loud cards, two of them
+                        reading 0, spend the page's attention on nothing. */}
+                    <p
+                      className={cn(
+                        "mt-1.5 text-[28px] leading-none font-semibold tabular-nums",
+                        s.count === 0 && "text-muted-foreground/50",
+                      )}
+                    >
+                      {s.count}
+                    </p>
                   </CardContent>
                 </Card>
               ))}

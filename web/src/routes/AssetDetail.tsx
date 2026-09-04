@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
+import { cn } from "cn"
 import { api, ApiError, type FieldErrors } from "@/lib/api"
 import type { Asset, CategorySchema, HolderEntity, User } from "@/lib/types"
 import { NONE } from "@/lib/select"
@@ -245,11 +246,18 @@ export function AssetDetail() {
                       </EmptyHeader>
                     </Empty>
                   ) : (
-                    <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+                    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
                       {shown.map((f) => (
                         <div key={f.key}>
-                          <dt className="text-muted-foreground">{f.label}</dt>
-                          <dd className={f.type === "computed" ? "font-mono" : undefined}>
+                          {/* The label names the row; the value is what
+                              somebody opened this to read. */}
+                          <dt className="text-muted-foreground text-[13px]">{f.label}</dt>
+                          <dd
+                            className={cn(
+                              "mt-0.5 tabular-nums",
+                              f.type === "computed" && "font-mono",
+                            )}
+                          >
                             {attrText(asset.attrs[f.key])}
                           </dd>
                         </div>
@@ -278,18 +286,20 @@ export function AssetDetail() {
                       rather than editable: the form right below is how both of
                       them change, which the transfer card's own title already
                       says. */}
-                  <div className="rounded-md border p-4">
-                    <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                      <div>
-                        <dt className="text-muted-foreground">{t.assets.currentHolder}</dt>
-                        <dd>{asset.holder.name ?? asset.holder.id}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted-foreground">{t.assets.currentOwner}</dt>
-                        <dd>{asset.owner?.name ?? t.common.none}</dd>
-                      </div>
-                    </dl>
-                  </div>
+                  {/* A rule, not a box. This sits inside a card inside a
+                      dialog, and a third border around it made three nested
+                      frames saying the same thing -- the line is enough to
+                      separate the state from the form that changes it. */}
+                  <dl className="grid grid-cols-2 gap-3 border-b pb-4 text-sm sm:grid-cols-4">
+                    <div>
+                      <dt className="text-muted-foreground text-[13px]">{t.assets.currentHolder}</dt>
+                      <dd className="mt-0.5">{asset.holder.name ?? asset.holder.id}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground text-[13px]">{t.assets.currentOwner}</dt>
+                      <dd className="mt-0.5">{asset.owner?.name ?? t.common.none}</dd>
+                    </div>
+                  </dl>
 
                   <TransferForm
                     assetIDs={[id]}

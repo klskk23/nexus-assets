@@ -18,7 +18,13 @@ interface Props {
 export function StatusBadge({ status, className }: Props) {
   const { label, color } = useStatuses()
   return (
-    <Badge variant="outline" className={cn("status-chip", `status-${color(status)}`, className)}>
+    // Squarer and tighter than the default pill: this is a stamp on a
+    // register line, and forty rounded lozenges down a column read as
+    // decoration rather than as the one column carrying meaning.
+    <Badge
+      variant="outline"
+      className={cn("status-chip rounded-sm px-1.5 py-0", `status-${color(status)}`, className)}
+    >
       {label(status)}
     </Badge>
   )

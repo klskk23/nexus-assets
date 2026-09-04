@@ -23,6 +23,13 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
+  /* Sunk below the card: table headers and grouped read-only values. A
+   * ledger nests two or three deep, and three identical bordered boxes is
+   * what makes it read as a kit of cards rather than one document. */
+  --well: oklch(0.975 0 0);
+  /* The rule between rows, as against the rule around things. Same colour
+   * family, a third of the weight: the eye should follow the column. */
+  --border-muted: oklch(0.945 0 0);
 }
 
 .dark {
@@ -44,6 +51,8 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
+  --well: oklch(0.175 0 0);
+  --border-muted: oklch(1 0 0 / 5%);
 }
 
 @theme inline {
@@ -67,11 +76,19 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
+  --color-border-muted: var(--border-muted);
+  --color-well: var(--well);
   --color-input: var(--input);
   --color-ring: var(--ring);
 }
 
 /* Chart palette.
+ *
+ * Ink, not a hue. On the overview a coloured bar sits beside the status chips,
+ * and those chips are the only thing in this application that means something
+ * by being coloured -- a blue bar counting devices next to a blue chip meaning
+ * "signed out" spends that meaning on nothing. The bar is the same neutral the
+ * text is, one step down.
  *
  * One series, one colour: the category distribution counts the same thing for
  * every bar, and giving each its own hue would imply a difference that is not
@@ -82,10 +99,10 @@
  * defaults to.
  */
 :root {
-  --chart-1: oklch(0.55 0.14 250);
+  --chart-1: oklch(0.62 0 0);
 }
 .dark {
-  --chart-1: oklch(0.68 0.14 250);
+  --chart-1: oklch(0.52 0 0);
 }
 
 /* Status palette.
@@ -139,5 +156,15 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* A ledger is read down a column, so the digits have to line up. Proportional
+   * numerals put 1 on a narrower body than 8, which is invisible in a sentence
+   * and wrong in a stack of forty asset numbers. Tables, counts and dates get
+   * tabular figures; prose keeps the default. */
+  table,
+  [data-slot="badge"],
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 }
