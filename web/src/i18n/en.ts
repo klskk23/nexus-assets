@@ -213,6 +213,7 @@ export const en: typeof zh = {
     currentHolder: "Currently held by",
     currentOwner: "Currently responsible",
     attrs: "Device details",
+    noAttrs: "This category has no fields configured yet",
     editAttrs: "Edit device details",
     editAttrsHint: "The model, this category's fields and where it belongs. Changing these records no movement.",
     transfer: "Transfer",

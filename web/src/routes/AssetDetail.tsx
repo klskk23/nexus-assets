@@ -12,6 +12,7 @@ import { usePermissions } from "@/features/auth/usePermissions"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { StateBoundary } from "@/components/StateBoundary"
 import { DynamicForm } from "@/features/assets/DynamicForm"
+import { attrText, fieldsForModel } from "@/features/assets/modelFields"
 import { Timeline } from "@/features/transfers/Timeline"
 import { EditEvent } from "@/features/transfers/EditEvent"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty"
 import {
   Field,
   FieldDescription,
@@ -173,6 +175,10 @@ export function AssetDetail() {
   })
 
   const archived = Object.entries(asset?.archived_attrs ?? {})
+  // Everything this device's category and model give it, in schema order --
+  // including the derived number, which is as much a property of the device as
+  // anything typed in.
+  const shown = fieldsForModel(schema.data?.fields ?? [], asset?.model_id ?? null)
   const events = timeline.data ?? []
   const recent = events.slice(-5)
 
@@ -212,6 +218,39 @@ export function AssetDetail() {
               </DialogHeader>
 
               {printing && <PrintDialog ids={[id]} onClose={() => setPrinting(false)} />}
+
+              {/* What this device is, before what can be done to it (015,
+                  decision 104). Read-only and first: identity comes before
+                  action, and reading it should not cost a click on an edit
+                  form. The six built-ins are deliberately absent -- status,
+                  holder, owner and note each already have their own place in
+                  this dialog, and repeating them here would make two places
+                  to look and two to keep right. */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t.assets.attrs}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {shown.length === 0 ? (
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyDescription>{t.assets.noAttrs}</EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
+                  ) : (
+                    <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+                      {shown.map((f) => (
+                        <div key={f.key}>
+                          <dt className="text-muted-foreground">{f.label}</dt>
+                          <dd className={f.type === "computed" ? "font-mono" : undefined}>
+                            {attrText(asset.attrs[f.key])}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </CardContent>
+              </Card>
 
               {banner && (
                 <Alert role="status">
@@ -382,7 +421,7 @@ export function AssetDetail() {
 
                           {schema.data && (
                             <DynamicForm
-                              fields={schema.data.fields}
+                              fields={fieldsForModel(schema.data.fields, asset.model_id)}
                               values={values}
                               errors={fieldErrors}
                               onChange={(k, v) => setValues((cur) => ({ ...cur, [k]: v }))}

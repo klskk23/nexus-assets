@@ -1,3 +1,4 @@
+import { t } from "@/i18n"
 import type { BoundField } from "@/lib/types"
 
 /**
@@ -17,4 +18,12 @@ export function fieldsForModel(fields: BoundField[], modelID: string | null): Bo
   return fields.filter(
     (f) => (f.model_ids ?? []).length === 0 || (modelID !== null && f.model_ids!.includes(modelID)),
   )
+}
+
+/** How one attribute reads. Booleans are words, not true/false. */
+export function attrText(v: unknown): string {
+  if (v === true) return t.common.yes
+  if (v === false) return t.common.no
+  if (v === null || v === undefined || v === "") return t.common.none
+  return String(v)
 }

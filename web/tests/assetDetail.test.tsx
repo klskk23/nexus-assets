@@ -433,3 +433,82 @@ it("has no print button without a print service configured", async () => {
     within(screen.getByRole("dialog")).queryByRole("button", { name: "打印标签" }),
   ).not.toBeInTheDocument()
 })
+
+// What the device is, before what can be done to it (015, decision 104).
+describe("the attribute card", () => {
+  // Its own, because this block sits outside describe("AssetDetail") and so
+  // never sees that one's hooks.
+  beforeEach(() => {
+    navigate.mockReset()
+    get.mockReset().mockImplementation(route)
+    post.mockReset().mockResolvedValue({ batch_id: null, transfers: [{ id: "t1" }] })
+    patch.mockReset()
+    del.mockReset()
+  })
+
+  it("shows every field's value without unfolding anything", async () => {
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+
+    const dialog = screen.getByRole("dialog")
+    const card = within(dialog).getByText("设备属性").closest("[data-slot=card]") as HTMLElement
+    expect(within(card).getByText("基准 MAC")).toBeInTheDocument()
+    expect(within(card).getByText("001A2B3C4D5E")).toBeInTheDocument()
+    expect(within(card).getByText("固件版本")).toBeInTheDocument()
+    expect(within(card).getByText("2.1.3")).toBeInTheDocument()
+  })
+
+  // Identity comes before action: the card sits above the transfer form.
+  it("sits above the transfer card", async () => {
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+
+    const dialog = screen.getByRole("dialog")
+    const attrs = within(dialog).getByText("设备属性")
+    const transfer = within(dialog).getByText("流转")
+    expect(attrs.compareDocumentPosition(transfer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  // The six built-ins each already have their own place in this dialog;
+  // repeating them here would make two places to look and two to keep right.
+  it("leaves the built-ins where they already are", async () => {
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+
+    const dialog = screen.getByRole("dialog")
+    const card = within(dialog).getByText("设备属性").closest("[data-slot=card]") as HTMLElement
+    for (const builtin of ["当前持有方", "当前负责人", "备注", "状态"]) {
+      expect(within(card).queryByText(builtin)).not.toBeInTheDocument()
+    }
+    // And the editable panel below is untouched.
+    expect(within(dialog).getByRole("button", { name: "编辑设备属性" })).toBeInTheDocument()
+  })
+
+  // A model field belongs to the card only when the device is one of its
+  // models -- the same narrowing the entry form and the server both apply.
+  it("carries a model field only for a device of that model", async () => {
+    get.mockReset().mockImplementation((p: string) => {
+      if (p.endsWith("/schema")) {
+        return Promise.resolve({
+          ...schema,
+          fields: [
+            ...schema.fields,
+            {
+              id: "f9", key: "servicetag", label: "ServiceTag", type: "text",
+              options: {}, is_unique: false, required: false, sort: 30,
+              model_ids: ["m-other"],
+            },
+          ],
+        })
+      }
+      return route(p)
+    })
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+
+    // The fixture asset has no model, so a field belonging to one is not its.
+    const dialog = screen.getByRole("dialog")
+    const card = within(dialog).getByText("设备属性").closest("[data-slot=card]") as HTMLElement
+    expect(within(card).queryByText("ServiceTag")).not.toBeInTheDocument()
+  })
+})
