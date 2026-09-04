@@ -42,6 +42,7 @@
 - [ ] T011 [US1] 在 `internal/schema/model_binding.go` 实现型号绑定的键冲突检查：查这些型号各自注册的类别链与子树内有无同 `key` 字段（复用 T005 抽出的函数）
 - [ ] T012 [US1] 在 `internal/asset/save.go`（或唯一性写入处）让型号模式字段的 `asset_unique_values.scope_id` 取 `f:<field_id>`，类别模式保持存类别 id
 - [ ] T013 [US1] 在 `internal/schema` 的 `display_key` 校验路径拒绝型号模式字段，返回 `ErrDisplayKeyNotCategoryField`
+- [ ] T013b [US1] 在 `internal/schema/model_binding.go` 实现型号模式的必填影响面统计：勾「必填」时统计范围为「该型号在其注册类别的子树下的存量资产」台数（决策 70 的口径在型号模式下的对应物），供绑定前的 dry-run 提示使用
 - [ ] T014 [US1] 在 `internal/asset/save.go` 实现换型号归档：`model_id` 变更时比较新旧型号的有效字段集，把不再适用且有值的键移入 `archived_attrs`，不阻断保存
 - [ ] T015 [US1] 在 `internal/httpapi` 加端点 `POST /api/models/:id/fields` 与 `DELETE /api/models/:id/fields/:fieldId`，权限 `need(authz.SchemaManage)`，handler 只做绑定与 error envelope 转换
 - [ ] T016 [US1] 在 `internal/httpapi/handlers_metadata.go` 让 `GET /categories/:id/schema` 的 `fields[]` 带上 `model_ids`
@@ -56,6 +57,8 @@
 - [ ] T022 [P] [US1] 在 `internal/httpapi/` 加集成测试：把型号模式字段设为类别 `display_key` 被拒（422）
 - [ ] T023 [P] [US1] 在 `internal/httpapi/` 加集成测试：资产换型号后旧字段值进 `archived_attrs`，保存本身不失败
 - [ ] T024 [P] [US1] 在 `internal/httpapi/` 加集成测试：型号模式字段绑定后，`GET /categories/:id/schema` 返回它且 `model_ids` 正确
+- [ ] T024b [P] [US1] 在 `internal/schema/` 加测试：型号模式勾必填时，dry-run 统计的台数只含该型号在其类别子树下的存量资产，不含同类别其他型号的（FR-008）
+- [ ] T024c [P] [US1] 在 `internal/schema/` 加测试：型号被移出某类别后，该类别下该型号的存量资产仍命中其型号绑定字段（绑定看型号不看类别，spec Edge Case 2）；且 `model_id` 为空的资产不命中任何型号模式字段（Edge Case 1）
 
 ### 前端
 
@@ -132,11 +135,11 @@
 ## Phase 7 · Polish 与横切事项
 
 - [ ] T054 同步合约：把新端点、新字段、新参数、三个新 error code 写进 `specs/001-asset-ledger-demo/contracts/openapi.yaml`，并 `cp` 到 `internal/httpapi/docs/openapi.yaml`（有测试盯两者一致）
-- [ ] T055 更新 `deploy/smoke.sh`：加一条「型号绑定端点在没有对应数据时的行为」检查（章程要求改了端点就要改冒烟脚本）
+- [ ] T055 更新 `deploy/smoke.sh`：加一条型号绑定端点的存在性检查（空库上验证它在无该型号时的正确拒绝行为，与既有 `refresh-source` 那条同形），章程要求改了端点就要改冒烟脚本
 - [ ] T056 在 `CLAUDE.md` 加一条硬规则：字段绑定两种模式互斥、唯一性范围各自计算、`display_key` 只认类别模式字段、换型号会归档
 - [ ] T057 更新 `docs/zenith-printer.md` 与 `.en.md`：`GET /api/rows` 的列会因型号绑定字段变宽，不匹配行留空（两份一起改）
 - [ ] T058 i18n 完整性核对：`TestCatalogsCoverTheSameKeys` 通过，`web` 端 `en.ts` 受 `typeof zh` 约束不缺键，新增文案无一遗漏
-- [ ] T059 跑完整门禁：`gofmt -l` 空、`go vet`、`golangci-lint run` 零告警、`go test ./...` 全过、`npx tsc --noEmit`、`npm run lint`、`npx vitest run` 全过、`npm run build` 通过
+- [ ] T059 跑完整门禁（章程七条，缺一不可）：`gofmt -l` 空、`go vet`、`golangci-lint run` 零告警；`go test ./...` 全过且 `internal/schema` 与 `internal/asset` 覆盖率 ≥ 80%（`go test -cover`）；`nexus verify` 对种子库对帐通过；`npx tsc --noEmit`、`npm run lint`、`npx vitest run` 全过、`npm run build` 通过；无自定义组件；文档中文代码英文
 - [ ] T060 按 `quickstart.md` 起本地服务实机走一遍 11 步（含第 11 步的既有行为回归）
 
 ---
@@ -181,6 +184,6 @@ US2/US3/US4 是在这个基础上的三个独立增量，任何一个不做也�
 
 ## 格式自检
 
-全部 60 条任务均为 `- [ ] T0NN [P?] [US?] 描述 + 文件路径` 格式：
+全部 64 条任务均为 `- [ ] T0NN [P?] [US?] 描述 + 文件路径` 格式：
 Setup（T001–T002）与 Foundational（T003–T009）无故事标签，
 US1–US4 阶段任务全部带 `[US1]`–`[US4]`，Polish（T054–T060）无故事标签。
