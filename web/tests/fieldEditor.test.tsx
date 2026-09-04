@@ -31,6 +31,7 @@ function field(type: FieldType, over: Partial<FieldDefinitionRow> = {}): FieldDe
 
 const categories = [
   { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", display_key: "" },
+  { id: "rt", code: "RT", name: "SDWAN 路由器", parent_id: "net", path: "/net/rt/", display_key: "" },
   { id: "srv", code: "SRV", name: "服务器", parent_id: null, path: "/srv/", display_key: "" },
 ]
 
@@ -391,5 +392,39 @@ describe("binding a field to models", () => {
 
     expect(await screen.findByText(/已有 3 台设备/)).toBeInTheDocument()
     await waitFor(() => expect(get).toHaveBeenCalledWith("/models/m-dell/required-impact"))
+  })
+})
+
+
+// A child inherits what its parent binds, so the same field may appear only
+// once on a chain. Ticking the parent of a category that already has it used
+// to be refused after the click, by a sentence naming a category the person
+// had not touched -- correct, and baffling.
+describe("FieldEditor chain conflicts", () => {
+  beforeEach(() => {
+    get.mockReset().mockImplementation(route)
+    post.mockReset().mockResolvedValue({})
+    patch.mockReset().mockResolvedValue({})
+    del.mockReset().mockResolvedValue({})
+  })
+
+  it("will not offer a category whose descendant already has the field", async () => {
+    renderWithProviders(
+      <FieldEditor field={field("text", { category_ids: ["rt"] })} onClose={vi.fn()} />,
+    )
+    const parent = await screen.findByLabelText("网络设备")
+    expect(parent).toBeDisabled()
+    expect(parent).toHaveAttribute("title", expect.stringContaining("SDWAN 路由器"))
+    // An unrelated tree stays available.
+    expect(screen.getByLabelText("服务器")).not.toBeDisabled()
+  })
+
+  it("will not offer a child that already inherits it", async () => {
+    renderWithProviders(
+      <FieldEditor field={field("text", { category_ids: ["net"] })} onClose={vi.fn()} />,
+    )
+    const child = await screen.findByLabelText("SDWAN 路由器")
+    expect(child).toBeDisabled()
+    expect(child).toHaveAttribute("title", expect.stringContaining("继承"))
   })
 })

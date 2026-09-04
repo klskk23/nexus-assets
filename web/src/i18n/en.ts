@@ -280,6 +280,10 @@ export const enMeta: typeof zhMeta = {
     uniqueInCategory: "Unique in its category",
     uniqueInModels: "Unique in its models",
     binding: "Bound to",
+    boundOnAncestor: (name: string) =>
+      `Inherited from ${name} above it; the same field may appear only once on a chain.`,
+    boundOnDescendant: (name: string) =>
+      `${name} below it already has this field. Unbind it there to bind it here.`,
     bindOnCreateModel: "Bind to models",
     bindOnCreateModelHint:
       "Only devices of these models get the field. Leaving this empty is fine; it can be bound later from the field editor.",

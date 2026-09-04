@@ -89,6 +89,30 @@ export function FieldForm({
     onChange({ options: { ...value.options, ...patch } })
   const creating = mode === "create"
 
+  // A child inherits what its parent binds, so the same field may appear only
+  // once on a chain -- and the server refuses the second one. Ticking a
+  // category whose parent already has the field used to produce a refusal that
+  // was correct and baffling: the box looked available, and the sentence
+  // talked about a category the person had not touched. The box is disabled
+  // instead, and says which relative already has it.
+  //
+  // Only what can be proven from here: the server also refuses a *different*
+  // field carrying the same key on that chain, which this cannot see. It stays
+  // the gate; this only stops offering what is certainly not on offer.
+  const chainOwner = (id: string) => {
+    if (value.bindMode !== "category") return null
+    const self = categories.find((c) => c.id === id)
+    if (!self) return null
+    return (
+      categories.find(
+        (c) =>
+          c.id !== id &&
+          value.bindTo.includes(c.id) &&
+          (self.path.startsWith(c.path) || c.path.startsWith(self.path)),
+      ) ?? null
+    )
+  }
+
   return (
     <FieldGroup className="sm:grid sm:grid-cols-2">
       <Field>
@@ -300,25 +324,37 @@ export function FieldForm({
           {(value.bindMode === "model"
             ? models.map((m) => ({ id: m.id, name: m.vendor ? `${m.vendor} ${m.name}` : m.name }))
             : categories.map((c) => ({ id: c.id, name: c.name }))
-          ).map((o) => (
-            <Field key={o.id} orientation="horizontal">
-              <Checkbox
-                id={`${p}-bind-${o.id}`}
-                checked={value.bindTo.includes(o.id)}
-                onCheckedChange={(v) =>
-                  onChange({
-                    bindTo:
-                      v === true
-                        ? [...value.bindTo, o.id]
-                        : value.bindTo.filter((id) => id !== o.id),
-                  })
-                }
-              />
-              <FieldLabel htmlFor={`${p}-bind-${o.id}`} className="font-normal">
-                {o.name}
-              </FieldLabel>
-            </Field>
-          ))}
+          ).map((o) => {
+            const owner = chainOwner(o.id)
+            const self = categories.find((c) => c.id === o.id)
+            const inherits = owner !== null && (self?.path ?? "").startsWith(owner.path)
+            const why = owner
+              ? inherits
+                ? tMeta.fields.boundOnAncestor(owner.name)
+                : tMeta.fields.boundOnDescendant(owner.name)
+              : undefined
+            return (
+              <Field key={o.id} orientation="horizontal" data-disabled={owner ? true : undefined}>
+                <Checkbox
+                  id={`${p}-bind-${o.id}`}
+                  checked={value.bindTo.includes(o.id)}
+                  disabled={owner !== null}
+                  title={why}
+                  onCheckedChange={(v) =>
+                    onChange({
+                      bindTo:
+                        v === true
+                          ? [...value.bindTo, o.id]
+                          : value.bindTo.filter((id) => id !== o.id),
+                    })
+                  }
+                />
+                <FieldLabel htmlFor={`${p}-bind-${o.id}`} className="font-normal" title={why}>
+                  {o.name}
+                </FieldLabel>
+              </Field>
+            )
+          })}
         </div>
         {value.bindTo.length === 0 && (
           <FieldDescription>

@@ -262,6 +262,8 @@ export const zhMeta = {
     uniqueInCategory: "类别内唯一",
     uniqueInModels: "型号内唯一",
     binding: "绑定",
+    boundOnAncestor: (name: string) => `已从上级「${name}」继承，同一条链上不必也不能再绑一次`,
+    boundOnDescendant: (name: string) => `下级「${name}」已经绑定了它，要绑在这里请先在那边解绑`,
     bindOnCreateModel: "绑定到型号",
     bindOnCreateModelHint: "只有这些型号的设备会出现这个字段。也可以先不绑，之后在字段编辑里再绑。",
     categories: "所属类别",
