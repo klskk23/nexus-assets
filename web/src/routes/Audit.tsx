@@ -190,7 +190,7 @@ export function Audit() {
 
   return (
     <div className="grid gap-6">
-      <PageHeader title={tAudit.title} description={tAudit.hint} />
+      <PageHeader title={tAudit.title} hint={tAudit.hint} />
 
       {/* One row, the same one every table page wears. Every control carries
           its own "all of them" wording, so the labels are for screen readers

@@ -76,7 +76,7 @@ export function Categories() {
     <div className="grid gap-6">
       {/* The list is what the page is for; creating a category is occasional,
           so the form waits behind a button. */}
-      <PageHeader title={tMeta.categories.title} description={tMeta.categories.selectHint}>
+      <PageHeader title={tMeta.categories.title} hint={tMeta.categories.selectHint}>
         <Dialog
           open={createOpen}
           onOpenChange={(next) => {

@@ -1,9 +1,17 @@
 import type { ReactNode } from "react"
 
+import { Hint } from "@/features/common/Hint"
+
 interface Props {
   title: ReactNode
-  /** One line under the title, when the page needs to say what it is for. */
-  description?: string
+  /**
+   * What the page is for, behind the question mark beside its title.
+   *
+   * It used to be a line of prose under the heading, which put an
+   * explanation somebody reads once above the table they came for -- and
+   * pushed that table down the screen every single visit.
+   */
+  hint?: string
   /** The page's own actions, at the end of the row. */
   children?: ReactNode
 }
@@ -18,13 +26,13 @@ interface Props {
  * the heading and the content below was 5 on three pages and 6 on the rest.
  * None of that is a decision any single page should be making.
  */
-export function PageHeader({ title, description, children }: Props) {
+export function PageHeader({ title, hint, children }: Props) {
   return (
-    <div className="flex flex-wrap items-start gap-3">
-      <div className="mr-auto grid gap-1">
-        <h1 className="flex flex-wrap items-center gap-3 text-xl font-semibold">{title}</h1>
-        {description && <p className="text-muted-foreground text-sm">{description}</p>}
-      </div>
+    <div className="flex flex-wrap items-center gap-3">
+      <h1 className="mr-auto flex flex-wrap items-center gap-2 text-xl font-semibold">
+        {title}
+        {hint && <Hint>{hint}</Hint>}
+      </h1>
       {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
     </div>
   )

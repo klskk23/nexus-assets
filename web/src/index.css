@@ -84,11 +84,12 @@
 
 /* Chart palette.
  *
- * Ink, not a hue. On the overview a coloured bar sits beside the status chips,
- * and those chips are the only thing in this application that means something
- * by being coloured -- a blue bar counting devices next to a blue chip meaning
- * "signed out" spends that meaning on nothing. The bar is the same neutral the
- * text is, one step down.
+ * A lime that belongs to no status. The status palette runs slate, green,
+ * blue, amber, red, violet, teal and rose; this sits in the gap between amber
+ * and green, so a bar counting devices is never mistaken for a chip saying
+ * something about one. That is the constraint any chart colour here has to
+ * clear -- colour in this application means status, and a chart may not borrow
+ * a meaning it does not have.
  *
  * One series, one colour: the category distribution counts the same thing for
  * every bar, and giving each its own hue would imply a difference that is not
@@ -99,10 +100,10 @@
  * defaults to.
  */
 :root {
-  --chart-1: oklch(0.62 0 0);
+  --chart-1: #aed336;
 }
 .dark {
-  --chart-1: oklch(0.52 0 0);
+  --chart-1: #aed336;
 }
 
 /* Status palette.
