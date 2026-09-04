@@ -130,6 +130,34 @@ func (s *Store) BoundCategories(ctx context.Context) (map[string][]string, error
 	return out, rows.Err()
 }
 
+// RequiredBindings lists, per field, the bindings that ask for a value: a
+// category id in category mode, a model id in model mode.
+//
+// One map for both because the two modes are exclusive (015, decision 96), so
+// a field's ids are all of one kind and the caller already knows which. The
+// list page needs it to answer "is this field required" without a query per
+// row -- and the honest answer is often "in some of them", which is why the
+// ids come back rather than a flag.
+func (s *Store) RequiredBindings(ctx context.Context) (map[string][]string, error) {
+	rows, err := s.db.ReadDB().QueryContext(ctx,
+		`SELECT field_id, category_id FROM category_fields WHERE required = 1
+		 UNION ALL
+		 SELECT field_id, model_id FROM model_fields WHERE required = 1`)
+	if err != nil {
+		return nil, fmt.Errorf("load required bindings: %w", err)
+	}
+	defer rows.Close()
+	out := map[string][]string{}
+	for rows.Next() {
+		var fieldID, ownerID string
+		if err := rows.Scan(&fieldID, &ownerID); err != nil {
+			return nil, err
+		}
+		out[fieldID] = append(out[fieldID], ownerID)
+	}
+	return out, rows.Err()
+}
+
 func (s *Store) ListFields(ctx context.Context) ([]model.FieldDefinition, error) {
 	rows, err := s.db.ReadDB().QueryContext(ctx, `SELECT `+fieldCols+` FROM field_definitions ORDER BY key`)
 	if err != nil {
@@ -168,6 +196,10 @@ type CreateFieldInput struct {
 	// can produce meant every new field needed a second trip through the edit
 	// dialog.
 	CategoryIDs []string
+	// ModelIDs binds it to models instead (015, decision 96). Passing both is
+	// refused by the same guard that refuses it later, so the two modes cannot
+	// be mixed by coming in through the door marked "create".
+	ModelIDs []string
 	// Required applies to each of those bindings. It is a write-time rule, not
 	// a data invariant: existing assets keep whatever they have, and the next
 	// edit of one is where it is asked for.
@@ -210,6 +242,11 @@ func (s *Store) CreateField(ctx context.Context, in CreateFieldInput) (model.Fie
 		// not worth keeping.
 		for i, categoryID := range in.CategoryIDs {
 			if err := bindTx(ctx, tx, categoryID, f.ID, in.Required, (i+1)*10); err != nil {
+				return err
+			}
+		}
+		for i, modelID := range in.ModelIDs {
+			if err := bindModelTx(ctx, tx, modelID, f.ID, in.Required, (i+1)*10); err != nil {
 				return err
 			}
 		}

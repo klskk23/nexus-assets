@@ -134,6 +134,11 @@ type fieldRow struct {
 	// that is on nothing yet and may still become either.
 	ModelIDs    []string `json:"model_ids"`
 	BindingMode string   `json:"binding_mode"`
+	// RequiredIn names the bindings that ask for a value, as a subset of
+	// whichever of the two lists above is populated. A field can be required
+	// on one category and optional on another, so a bare boolean here would
+	// have to pick one of those to report and be wrong about the other.
+	RequiredIn []string `json:"required_in"`
 }
 
 func (s *Server) listFields(c *gin.Context) {
@@ -160,6 +165,11 @@ func (s *Server) listFields(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
+	requiredIn, err := s.schema.RequiredBindings(c.Request.Context())
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
 
 	rows := make([]fieldRow, 0, len(page.Items))
 	for _, f := range page.Items {
@@ -178,8 +188,13 @@ func (s *Server) listFields(c *gin.Context) {
 		case len(ids) > 0:
 			mode = "category"
 		}
+		req := requiredIn[f.ID]
+		if req == nil {
+			req = []string{}
+		}
 		rows = append(rows, fieldRow{
 			FieldDefinition: f, CategoryIDs: ids, ModelIDs: models, BindingMode: mode,
+			RequiredIn: req,
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -199,7 +214,10 @@ func (s *Server) createField(c *gin.Context) {
 		// creating one without this was always the first half of a two-step
 		// job.
 		CategoryIDs []string `json:"category_ids"`
-		Required    bool     `json:"required"`
+		// Or models, which is the other mode. Sending both is refused: a field
+		// binds one way or the other (015, decision 96).
+		ModelIDs []string `json:"model_ids"`
+		Required bool     `json:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
@@ -207,7 +225,8 @@ func (s *Server) createField(c *gin.Context) {
 	}
 	out, err := s.schema.CreateField(c.Request.Context(), schema.CreateFieldInput{
 		Key: req.Key, Label: req.Label, Type: req.Type, Options: req.Options,
-		IsUnique: req.IsUnique, CategoryIDs: req.CategoryIDs, Required: req.Required,
+		IsUnique: req.IsUnique, CategoryIDs: req.CategoryIDs, ModelIDs: req.ModelIDs,
+		Required: req.Required,
 	})
 	if err != nil {
 		// A refused binding is a conflict about a pair, not a bad expression,

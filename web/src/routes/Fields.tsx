@@ -15,6 +15,7 @@ import { ExpressionHelp } from "@/features/fields/ExpressionHelp"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Input } from "@/components/ui/input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import {
@@ -53,6 +54,10 @@ export function Fields() {
   // job that had to be finished in another dialog.
   const [bindTo, setBindTo] = useState<string[]>([])
   const [bindRequired, setBindRequired] = useState(false)
+  // Which kind of thing bindTo holds. Creating a model field used to mean
+  // creating it bound to nothing and finishing the job in the edit dialog --
+  // the same two-step v6 decision 72 removed for categories.
+  const [bindMode, setBindMode] = useState<"category" | "model">("category")
 
 
 
@@ -69,8 +74,9 @@ export function Fields() {
     queryKey: ["models"],
     queryFn: () => api.get<ProductModelRow[]>("/models"),
   })
+  const modelList = Array.isArray(models.data) ? models.data : []
   const modelName = (id: string) => {
-    const m = (Array.isArray(models.data) ? models.data : []).find((x) => x.id === id)
+    const m = modelList.find((x) => x.id === id)
     if (!m) return id
     return m.vendor ? `${m.vendor} ${m.name}` : m.name
   }
@@ -79,13 +85,15 @@ export function Fields() {
   // matters, and only for the categories actually ticked -- the answer is a
   // promise about somebody's next edit, not a reason to refuse anything.
   const bound = useQuery({
-    queryKey: ["category-asset-count", bindTo],
+    queryKey: ["binding-asset-count", bindMode, bindTo],
     queryFn: async () => {
       const counts = await Promise.all(
         bindTo.map((id) =>
-          api
-            .get<{ total: number }>(`/assets?category_id=${id}&include_descendants=true&limit=1`)
-            .then((r) => r.total),
+          bindMode === "model"
+            ? api.get<{ total: number }>(`/models/${id}/required-impact`).then((r) => r.total)
+            : api
+                .get<{ total: number }>(`/assets?category_id=${id}&include_descendants=true&limit=1`)
+                .then((r) => r.total),
         ),
       )
       return counts.reduce((a, b) => a + b, 0)
@@ -157,6 +165,7 @@ export function Fields() {
         setRegexHint("")
         setBindTo([])
         setBindRequired(false)
+        setBindMode("category")
       }}
       create={() =>
         api.post("/fields", {
@@ -165,8 +174,10 @@ export function Fields() {
           type,
           is_unique: isUnique,
           // Bound in the same request, so a refused binding leaves no field
-          // behind: the pair is what was asked for.
-          category_ids: bindTo,
+          // behind: the pair is what was asked for. One list or the other,
+          // never both -- the server refuses a mix, and so does this.
+          category_ids: bindMode === "category" ? bindTo : [],
+          model_ids: bindMode === "model" ? bindTo : [],
           required: bindRequired,
           // Per type, and only what that type means: a regex on a computed
           // field would be configuration nothing reads.
@@ -230,6 +241,23 @@ export function Fields() {
                 <Badge variant="outline">{tMeta.fields.bindByCategory}</Badge>
                 {cats.map((id) => categoryName(id)).join("、")}
               </span>
+            )
+          },
+        },
+        {
+          // Required is set per binding, so the answer is often "in some of
+          // them" -- which the binding column beside this one lets somebody
+          // finish reading. A bare yes/no here would have had to pick one
+          // binding to report and be wrong about the rest.
+          header: tMeta.fields.requiredCol,
+          cell: (f) => {
+            const req = (f.required_in ?? []).length
+            if (req === 0) return null
+            const all = ((f.model_ids ?? []).length || (f.category_ids ?? []).length) === req
+            return (
+              <Badge variant={all ? "secondary" : "outline"}>
+                {all ? tMeta.fields.requiredAll : tMeta.fields.requiredSome}
+              </Badge>
             )
           },
         },
@@ -327,26 +355,77 @@ export function Fields() {
             </>
           )}
 
+          {/* The two modes are exclusive, so this is one list with a switch
+              above it rather than two lists someone could tick both of. */}
           <Field className="sm:col-span-2">
-            <FieldLabel>{tMeta.fields.bindOnCreate}</FieldLabel>
-            <FieldDescription>{tMeta.fields.bindOnCreateHint}</FieldDescription>
+            <FieldLabel htmlFor="f-bind-mode">{tMeta.fields.bindingMode}</FieldLabel>
+            <ToggleGroup
+              id="f-bind-mode"
+              type="single"
+              variant="outline"
+              className="justify-start"
+              value={bindMode}
+              onValueChange={(v) => {
+                if (v === "category" || v === "model") {
+                  setBindMode(v)
+                  // The ids meant something else a moment ago.
+                  setBindTo([])
+                }
+              }}
+            >
+              <ToggleGroupItem value="category" aria-label={tMeta.fields.bindByCategory}>
+                {tMeta.fields.bindByCategory}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="model" aria-label={tMeta.fields.bindByModel}>
+                {tMeta.fields.bindByModel}
+              </ToggleGroupItem>
+            </ToggleGroup>
+            <FieldDescription>{tMeta.fields.bindingModeHint}</FieldDescription>
+          </Field>
+
+          <Field className="sm:col-span-2">
+            <FieldLabel>
+              {bindMode === "model" ? tMeta.fields.bindOnCreateModel : tMeta.fields.bindOnCreate}
+            </FieldLabel>
+            <FieldDescription>
+              {bindMode === "model"
+                ? tMeta.fields.bindOnCreateModelHint
+                : tMeta.fields.bindOnCreateHint}
+            </FieldDescription>
             <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto">
-              {(categories.data ?? []).map((c) => (
-                <Field key={c.id} orientation="horizontal">
-                  <Checkbox
-                    id={`f-bind-${c.id}`}
-                    checked={bindTo.includes(c.id)}
-                    onCheckedChange={(v) =>
-                      setBindTo((cur) =>
-                        v === true ? [...cur, c.id] : cur.filter((id) => id !== c.id),
-                      )
-                    }
-                  />
-                  <FieldLabel htmlFor={`f-bind-${c.id}`} className="font-normal">
-                    {c.name}
-                  </FieldLabel>
-                </Field>
-              ))}
+              {bindMode === "model"
+                ? modelList.map((m) => (
+                    <Field key={m.id} orientation="horizontal">
+                      <Checkbox
+                        id={`f-bind-${m.id}`}
+                        checked={bindTo.includes(m.id)}
+                        onCheckedChange={(v) =>
+                          setBindTo((cur) =>
+                            v === true ? [...cur, m.id] : cur.filter((id) => id !== m.id),
+                          )
+                        }
+                      />
+                      <FieldLabel htmlFor={`f-bind-${m.id}`} className="font-normal">
+                        {modelName(m.id)}
+                      </FieldLabel>
+                    </Field>
+                  ))
+                : (categories.data ?? []).map((c) => (
+                    <Field key={c.id} orientation="horizontal">
+                      <Checkbox
+                        id={`f-bind-${c.id}`}
+                        checked={bindTo.includes(c.id)}
+                        onCheckedChange={(v) =>
+                          setBindTo((cur) =>
+                            v === true ? [...cur, c.id] : cur.filter((id) => id !== c.id),
+                          )
+                        }
+                      />
+                      <FieldLabel htmlFor={`f-bind-${c.id}`} className="font-normal">
+                        {c.name}
+                      </FieldLabel>
+                    </Field>
+                  ))}
             </div>
             {bindTo.length > 0 && (
               <Field orientation="horizontal">

@@ -271,9 +271,15 @@ export const enMeta: typeof zhMeta = {
     unique: "Unique",
     uniqueScopeHint:
       "The scope follows the binding: within the category's subtree for a category field, across every model it binds to for a model field.",
-    uniqueInCategory: "Unique within its category",
-    uniqueInModels: "Unique across the models it binds to",
+    uniqueInCategory: "Unique in its category",
+    uniqueInModels: "Unique in its models",
     binding: "Bound to",
+    requiredCol: "Required",
+    requiredAll: "Required",
+    requiredSome: "Required in some",
+    bindOnCreateModel: "Bind to models",
+    bindOnCreateModelHint:
+      "Only devices of these models get the field. Leaving this empty is fine; it can be bound later from the field editor.",
     categories: "Categories",
     categoryFilter: "Category",
     allCategories: "All categories",

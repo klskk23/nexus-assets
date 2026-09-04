@@ -547,3 +547,80 @@ func TestDisplayKeyRefusesModelBoundFields(t *testing.T) {
 		t.Errorf("an unbound key should still be reported as unbound, got %v", err)
 	}
 }
+
+// Creating a field and binding it to models in one transaction, the way
+// creating and binding to categories already worked. A refused binding must
+// still take the field down with it: half a result is not worth keeping.
+func TestCreateFieldBindsModelsInTheSameTransaction(t *testing.T) {
+	s, ctx := newStore(t)
+	_, child := tree(t, s, ctx)
+	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+
+	f, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "servicetag", Label: "ServiceTag", Type: model.FieldText,
+		ModelIDs: []string{dell.ID}, Required: true,
+	})
+	if err != nil {
+		t.Fatalf("create bound to a model: %v", err)
+	}
+	onModels, err := s.ModelsOfField(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := onModels[f.ID]; len(got) != 1 || got[0] != dell.ID {
+		t.Errorf("field should be bound to the model, got %v", got)
+	}
+
+	// A model that is not there refuses the binding, and the field goes with it.
+	if _, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "rack", Label: "机柜", Type: model.FieldText, ModelIDs: []string{"missing"},
+	}); err == nil {
+		t.Fatal("binding to a model that does not exist should be refused")
+	}
+	all, err := s.ListFields(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, x := range all {
+		if x.Key == "rack" {
+			t.Error("a refused binding must leave no field behind")
+		}
+	}
+}
+
+// Required is set per binding, so the answer is a set of bindings and not a
+// flag: the same field can be required on one category and optional on another.
+func TestRequiredBindingsNamesOnlyTheOnesThatAsk(t *testing.T) {
+	s, ctx := newStore(t)
+	root, _ := tree(t, s, ctx)
+	other, err := s.CreateCategory(ctx, CreateCategoryInput{Code: "PRN", Name: "打印机"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dell := modelOn(t, s, ctx, "Latitude 5420", root.ID)
+
+	rack, _ := s.CreateField(ctx, CreateFieldInput{Key: "rack", Label: "机柜", Type: model.FieldText})
+	if err := s.Bind(ctx, root.ID, rack.ID, true, 10); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Bind(ctx, other.ID, rack.ID, false, 10); err != nil {
+		t.Fatal(err)
+	}
+	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
+	if err := s.BindModel(ctx, dell.ID, tag.ID, true, 10); err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := s.RequiredBindings(ctx)
+	if err != nil {
+		t.Fatalf("required bindings: %v", err)
+	}
+	if got := req[rack.ID]; len(got) != 1 || got[0] != root.ID {
+		t.Errorf("only the binding that asks for a value should be listed, got %v", got)
+	}
+	// Model bindings come back in the same map: the two modes are exclusive, so
+	// a field's ids are all of one kind and the caller already knows which.
+	if got := req[tag.ID]; len(got) != 1 || got[0] != dell.ID {
+		t.Errorf("a required model binding should be listed too, got %v", got)
+	}
+}

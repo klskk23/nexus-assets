@@ -486,13 +486,18 @@ paths:
         - { $ref: "#/components/parameters/ListLimit" }
       responses:
         "200":
-          description: OK，items 的每一项额外带 category_ids（该字段绑定到的类别）
+          description: >
+            OK。items 的每一项额外带 category_ids（绑定到的类别）、model_ids（绑定到的型号，
+            两者互斥）、binding_mode（category | model | unbound）以及 required_in ——
+            必填是**逐条绑定**设的，一个字段可以在一个类别必填、在另一个类别选填，
+            所以这里给的是"哪几条绑定要求填"的 id 列表，不是一个布尔。
     post:
       tags: [metadata]
-      summary: 新建字段，可同时绑定类别
+      summary: 新建字段，可同时绑定类别或型号
       description: >
-        `category_ids` 在同一个事务里完成绑定：字段不绑定到类别就不会出现在任何录入表单上，
-        所以"建好再去绑"本来就是同一件事的两半。绑定被拒绝（键名已在该链上、
+        `category_ids` 或 `model_ids` 在同一个事务里完成绑定：字段不绑定就不会出现在任何
+        录入表单上，所以"建好再去绑"本来就是同一件事的两半。**两者互斥**，同时给会被拒绝
+        （决策 96），与建好之后再混绑是同一条守卫。绑定被拒绝（键名已在该链上、
         表达式的输入没绑）时**字段也不会被创建** —— 半个结果不值得留下。
         `required` 作用于这一批绑定，它是写入时的规则：存量资产不回溯校验。
       requestBody:
@@ -510,6 +515,7 @@ paths:
                 options: { type: object }
                 is_unique: { type: boolean }
                 category_ids: { type: array, items: { type: string } }
+                model_ids: { type: array, items: { type: string } }
                 required: { type: boolean }
       responses:
         "201": { description: Created }

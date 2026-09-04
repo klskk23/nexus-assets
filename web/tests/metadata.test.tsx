@@ -112,7 +112,7 @@ describe("Fields page", () => {
     expect(within(row).getByText(/Dell Latitude 5420/)).toBeInTheDocument()
     expect(within(row).queryByText("未绑定")).not.toBeInTheDocument()
     // And its uniqueness reaches those models, not a category.
-    expect(within(row).getByText("所绑型号内唯一")).toBeInTheDocument()
+    expect(within(row).getByText("型号内唯一")).toBeInTheDocument()
   })
 
   it("reveals a template input only for a computed field", async () => {
@@ -157,9 +157,64 @@ describe("Fields page", () => {
         is_unique: true,
         options: { regex: "", regex_hint: "" },
         category_ids: [],
+        model_ids: [],
         required: false,
       }),
     )
+  })
+
+  // Creating a model field meant creating it bound to nothing and finishing
+  // in the edit dialog: the create form offered only one of the two modes.
+  it("binds the new field to models when that mode is chosen", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Fields />)
+    await screen.findByRole("row", { name: /基准 MAC/ })
+
+    await openCreate(user, "新建字段")
+    await user.type(screen.getByLabelText("键名（英文）"), "servicetag")
+    await user.type(screen.getByLabelText("显示名"), "ServiceTag")
+    await user.click(screen.getByRole("radio", { name: "型号" }))
+    // The category list is gone with the mode, so the two cannot be mixed.
+    expect(screen.queryByLabelText("网络设备")).not.toBeInTheDocument()
+    await user.click(screen.getByLabelText("Dell Latitude 5420"))
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "新建字段" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/fields", {
+        key: "servicetag",
+        label: "ServiceTag",
+        type: "text",
+        is_unique: false,
+        options: { regex: "", regex_hint: "" },
+        category_ids: [],
+        model_ids: ["m1"],
+        required: false,
+      }),
+    )
+  })
+
+  // Required is per binding, so "yes" and "no" are not the only two answers.
+  it("says when a field is required in only some of its bindings", async () => {
+    get.mockImplementation((p: string) => {
+      if (p.startsWith("/fields")) {
+        return Promise.resolve({
+          items: [
+            { ...fields[0], category_ids: ["net", "rt"], model_ids: [], required_in: ["net"] },
+            { ...fields[1], category_ids: ["net"], model_ids: [], required_in: ["net"] },
+          ],
+          total: 2,
+          offset: 0,
+          limit: 20,
+        })
+      }
+      return route(p)
+    })
+    renderWithProviders(<Fields />)
+
+    const partial = await screen.findByRole("row", { name: /基准 MAC/ })
+    expect(within(partial).getByText("部分必填")).toBeInTheDocument()
+    const all = screen.getByRole("row", { name: /固件版本/ })
+    expect(within(all).getByText("必填")).toBeInTheDocument()
   })
 
   // Binding took a second trip through a second dialog, and a field bound
@@ -191,6 +246,7 @@ describe("Fields page", () => {
         is_unique: false,
         options: { regex: "", regex_hint: "" },
         category_ids: ["net"],
+        model_ids: [],
         required: true,
       }),
     )
@@ -223,6 +279,7 @@ describe("Fields page", () => {
         is_unique: false,
         options: { regex: "^R-\\d+$", regex_hint: "R- 加数字" },
         category_ids: [],
+        model_ids: [],
         required: false,
       }),
     )

@@ -279,3 +279,76 @@ func TestExportLeavesTheCellEmptyForAnotherModel(t *testing.T) {
 		t.Errorf("an archived value must not be exported as a live one: %s", body)
 	}
 }
+
+// Creating a field and binding it to models in one step, the way creating and
+// binding to categories has worked since v6 decision 72. Without it the only
+// route to a model field was create-then-edit, and the create dialog would have
+// to offer one of the two modes and hide the other.
+func TestCreateFieldBoundToModels(t *testing.T) {
+	h := newHarness(t)
+	m := decode[map[string]any](t, h.post(t, "/api/models",
+		`{"name":"Latitude 5420","vendor":"Dell","category_ids":["`+h.catID+`"]}`))
+	modelID, _ := m["id"].(string)
+
+	created := decode[map[string]any](t, h.post(t, "/api/fields",
+		`{"key":"servicetag","label":"ServiceTag","type":"text","is_unique":true,
+		  "model_ids":["`+modelID+`"],"required":true}`))
+	if created["id"] == nil {
+		t.Fatalf("create: %v", created)
+	}
+
+	body := h.get(t, "/api/fields").Body.String()
+	if !strings.Contains(body, modelID) {
+		t.Errorf("the new field should come back bound to the model: %s", body)
+	}
+	if !strings.Contains(body, `"binding_mode":"model"`) {
+		t.Errorf("and in model mode: %s", body)
+	}
+	// Required is per binding, so the row says where, not just whether.
+	if !strings.Contains(body, `"required_in":["`+modelID+`"]`) {
+		t.Errorf("the required binding should be named: %s", body)
+	}
+}
+
+// The two modes stay exclusive whichever door they arrive through: asking for
+// both on a create is the same mistake as binding both later, and the field
+// must not be left behind half-bound.
+func TestCreateFieldRefusesBothBindingModes(t *testing.T) {
+	h := newHarness(t)
+	m := decode[map[string]any](t, h.post(t, "/api/models",
+		`{"name":"Latitude 5420","vendor":"Dell","category_ids":["`+h.catID+`"]}`))
+	modelID, _ := m["id"].(string)
+
+	rec := h.post(t, "/api/fields",
+		`{"key":"servicetag","label":"ServiceTag","type":"text",
+		  "category_ids":["`+h.catID+`"],"model_ids":["`+modelID+`"]}`)
+	if rec.Code == http.StatusCreated {
+		t.Fatalf("both modes at once should be refused: %s", rec.Body.String())
+	}
+	if body := h.get(t, "/api/fields").Body.String(); strings.Contains(body, "servicetag") {
+		t.Errorf("a refused create must leave no field behind: %s", body)
+	}
+}
+
+// A field required on one category and optional on another cannot be reported
+// with a single flag, so the row names the bindings that ask for a value.
+func TestRequiredIsReportedPerBinding(t *testing.T) {
+	h := newHarness(t)
+	// A separate chain, because the same key may not be bound twice on one.
+	other := decode[map[string]any](t, h.post(t, "/api/categories",
+		`{"code":"PRN","name":"打印机"}`))
+	otherID, _ := other["id"].(string)
+
+	f := decode[map[string]any](t, h.post(t, "/api/fields",
+		`{"key":"rack","label":"机柜","type":"text","category_ids":["`+h.catID+`"],"required":true}`))
+	fieldID, _ := f["id"].(string)
+	if rec := h.post(t, "/api/categories/"+otherID+"/bindings",
+		`{"field_id":"`+fieldID+`","required":false}`); rec.Code != http.StatusNoContent {
+		t.Fatalf("bind to the other category: %s", rec.Body.String())
+	}
+
+	body := h.get(t, "/api/fields").Body.String()
+	if !strings.Contains(body, `"required_in":["`+h.catID+`"]`) {
+		t.Errorf("only the binding that asks for a value should be listed: %s", body)
+	}
+}

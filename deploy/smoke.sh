@@ -100,6 +100,17 @@ test "$(curl -s -o /dev/null -w '%{http_code}' -X POST \
   "http://127.0.0.1:$PORT/api/models/no-such-model/bindings" -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' -d '{"field_id":"no-such-field"}')" = 404
 
+# The two binding modes are exclusive, and creating a field is a door into both
+# (015, decision 96). Asking for both at once must be refused -- with no field
+# left behind, which the next line checks by key.
+say "a field cannot be created bound to a category and a model at once"
+test "$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+  "http://127.0.0.1:$PORT/api/fields" -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"key":"smoke_both","label":"both","type":"text","category_ids":["no-such-category"],"model_ids":["no-such-model"]}')" != 201
+curl -fsS "http://127.0.0.1:$PORT/api/fields" -H "Authorization: Bearer $TOKEN" \
+  | grep -qv smoke_both
+
 # Migrations ran once on a fresh directory; now they have to be a no-op against
 # a database that already has them, and the account has to still be there.
 say "restarting"

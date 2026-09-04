@@ -14,6 +14,12 @@ export interface FieldDefinitionRow {
   model_ids?: string[]
   /** Which of the two it is, or "unbound" while it is on nothing yet. */
   binding_mode?: "category" | "model" | "unbound"
+  /**
+   * The bindings that ask for a value, as a subset of whichever list above is
+   * populated. Required is per binding -- a field can be required on one
+   * category and optional on another -- so this is a list and not a flag.
+   */
+  required_in?: string[]
 }
 
 export interface ProductModelRow {
