@@ -5,7 +5,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
-import type { Asset, AssetPage, Category, CategorySchema, HolderEntity, User } from "@/lib/types"
+import type {
+  Asset,
+  AssetPage,
+  BoundField,
+  Category,
+  CategorySchema,
+  HolderEntity,
+  User,
+} from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
 import { cn } from "@/lib/utils"
 import { t, tImport, tTransfer } from "@/i18n"
@@ -102,6 +110,21 @@ export function Assets() {
   const [status, setStatus] = useState(searchParams.get("status") ?? "")
   const [ownerId, setOwnerId] = useState(searchParams.get("owner_id") ?? "")
   const [holderId, setHolderId] = useState(searchParams.get("holder_id") ?? "")
+  // Which model the list is looking at. In the address like every other filter
+  // -- filter values are never persisted across sessions; only the choice of
+  // columns is (015, decision 103). It is also what unlocks a model field's
+  // column, since that column means nothing until the rows are devices that
+  // have the field.
+  const [modelId, setModelId] = useState(searchParams.get("model_id") ?? "")
+  // Models belong to categories, so a model chosen under the old one cannot
+  // survive the change -- keeping it would filter the list down to nothing.
+  const previousCategory = useRef(categoryId)
+  useEffect(() => {
+    if (previousCategory.current !== categoryId) {
+      previousCategory.current = categoryId
+      setModelId("")
+    }
+  }, [categoryId])
   const { keys: chosenColumns, toggle } = useColumnSelection(categoryId)
   const { can, deniedReason } = usePermissions()
   // The built-ins are the same everywhere, so their selection is not per
@@ -161,6 +184,7 @@ export function Assets() {
   }
   if (status) params.set("status", status)
   if (ownerId) params.set("owner_id", ownerId)
+  if (modelId) params.set("model_id", modelId)
   if (holderId) {
     // The kind travels with the id: the server filters on the pair, and an id
     // without one would match a user and an entity that happened to share it.
@@ -214,8 +238,13 @@ export function Assets() {
     queryKey: ["models"],
     queryFn: () => api.get<ProductModelRow[]>("/models"),
   })
+  // These lists answer in two shapes by design -- an array when asked plainly,
+  // an envelope when asked with paging (decision 92) -- and this page asks
+  // plainly. Normalising once means a cache entry filled by some other caller
+  // cannot turn a filter into a crash.
+  const modelList = Array.isArray(models.data) ? models.data : []
   const modelOf = (id: string | null) =>
-    id === null ? undefined : (models.data ?? []).find((m) => m.id === id)
+    id === null ? undefined : modelList.find((m) => m.id === id)
 
   /** What one built-in column reads for one device. */
   const builtinCell = (key: (typeof BUILTIN_COLUMNS)[number], a: Asset) => {
@@ -269,11 +298,21 @@ export function Assets() {
   }, [assets.data?.exact_match_id, navigate])
 
   const available = schema.data?.fields?.filter((f) => f.type !== "computed") ?? []
-  // Only what this category actually has. The stored choice is per category
-  // already, but a field can be unbound after it was chosen, and the schema
-  // has not arrived yet on the first render after a category change -- either
-  // way a header with no field behind it is a column of empty cells.
-  const extraColumns = chosenColumns.filter((k) => available.some((f) => f.key === k))
+  // A model field's column says nothing until the rows are devices that have
+  // the field, so it unlocks only while the model filter names one of its own
+  // models (015, decision 103). Locked rather than hidden, and with the reason
+  // on it: a control that vanishes leaves nobody anything to read.
+  const unlocked = (f: BoundField) =>
+    (f.model_ids ?? []).length === 0 || (modelId !== "" && f.model_ids!.includes(modelId))
+  // Only what this category actually has, and only what applies right now.
+  // The stored choice is per category already, but a field can be unbound
+  // after it was chosen, the schema has not arrived yet on the first render
+  // after a category change, and now the model filter can move out from under
+  // a chosen column -- every one of those leaves a header with no field behind
+  // it, which is a column of empty cells.
+  const extraColumns = chosenColumns.filter((k) =>
+    available.some((f) => f.key === k && unlocked(f)),
+  )
   const total = assets.data?.total ?? 0
 
   return (
@@ -406,6 +445,34 @@ export function Assets() {
           </Select>
         </Field>
 
+        {/* Only within a category: models belong to categories, and a picker
+            listing every model in the system would offer choices that cannot
+            match the rows on screen. */}
+        {categoryId && (
+          <Field className="w-auto">
+            <FieldLabel htmlFor="model" className="sr-only">
+              {t.assets.modelFilter}
+            </FieldLabel>
+            <Select value={toNone(modelId)} onValueChange={(v) => setModelId(fromNone(v))}>
+              <SelectTrigger id="model" className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={NONE}>{t.assets.allModels}</SelectItem>
+                  {modelList
+                    .filter((m) => (m.category_ids ?? []).includes(categoryId))
+                    .map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.vendor ? `${m.vendor} ${m.name}` : m.name}
+                      </SelectItem>
+                    ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+        )}
+
         {categoryId && (
           <Field orientation="horizontal" className="w-auto">
             <Checkbox
@@ -456,6 +523,8 @@ export function Assets() {
                     <DropdownMenuCheckboxItem
                       key={f.key}
                       checked={extraColumns.includes(f.key)}
+                      disabled={!unlocked(f)}
+                      title={unlocked(f) ? undefined : t.assets.modelColumnLocked}
                       onSelect={(e) => e.preventDefault()}
                       onCheckedChange={() => toggle(f.key)}
                     >

@@ -753,3 +753,102 @@ describe("Assets filters in the address", () => {
     expect(screen.getByTestId("how")).toHaveTextContent("REPLACE")
   })
 })
+
+// A model field's column is meaningless until the rows are devices that have
+// the field, so the model filter is what unlocks it (015, decision 103).
+/** Shows the address the router is on, which is where filter state belongs. */
+function Address() {
+  const location = useLocation()
+  return <output data-testid="address">{location.search}</output>
+}
+
+describe("Assets model filter", () => {
+  const models = [
+    { id: "m1", name: "SDWAN-X100", vendor: "Acme", category_ids: ["net"], attr_defaults: {} },
+    { id: "m-dell", name: "Latitude 5420", vendor: "Dell", category_ids: ["net"], attr_defaults: {} },
+  ]
+  const withModelField = {
+    category: categories[0],
+    fields: [
+      ...schema.fields,
+      {
+        id: "f9", key: "servicetag", label: "ServiceTag", type: "text",
+        options: {}, is_unique: false, required: false, sort: 30,
+        model_ids: ["m-dell"],
+      },
+    ],
+  }
+
+  beforeEach(() => {
+    get.mockReset().mockImplementation((p: string) => {
+      if (p === "/models") return Promise.resolve(models)
+      if (p.endsWith("/schema")) return Promise.resolve(withModelField)
+      return route(p)
+    })
+  })
+
+  it("carries the chosen model into the query and the address", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <>
+        <Assets />
+        <Address />
+      </>,
+    )
+    await chooseByLabel(user, "类别", "网络设备")
+    await chooseByLabel(user, "型号", "Dell Latitude 5420")
+
+    await waitFor(() =>
+      expect(get.mock.calls.some((c) => String(c[0]).includes("model_id=m-dell"))).toBe(true),
+    )
+    // The address is where filters live, so returning from a device finds the
+    // list as it was.
+    await waitFor(() => expect(screen.getByTestId("address")).toHaveTextContent("model_id=m-dell"))
+  })
+
+  // Locked rather than hidden: a control that disappears leaves nobody
+  // anything to read about why.
+  it("locks the model field's column until that model is chosen", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await chooseByLabel(user, "类别", "网络设备")
+
+    await user.click(await screen.findByRole("button", { name: "显示列" }))
+    expect(await screen.findByRole("menuitemcheckbox", { name: "ServiceTag" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
+    // A category field beside it stays available throughout.
+    expect(screen.getByRole("menuitemcheckbox", { name: "固件版本" })).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
+
+    await user.keyboard("{Escape}")
+    await chooseByLabel(user, "型号", "Dell Latitude 5420")
+    await user.click(screen.getByRole("button", { name: "显示列" }))
+    expect(await screen.findByRole("menuitemcheckbox", { name: "ServiceTag" })).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
+  })
+
+  // Clearing the filter moves the ground out from under a chosen column; it
+  // has to go, or the table grows a header with nothing behind it.
+  it("takes the column back when the model filter is cleared", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await chooseByLabel(user, "类别", "网络设备")
+    await chooseByLabel(user, "型号", "Dell Latitude 5420")
+
+    await user.click(await screen.findByRole("button", { name: "显示列" }))
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: "ServiceTag" }))
+    await user.keyboard("{Escape}")
+    expect(await screen.findByRole("columnheader", { name: "ServiceTag" })).toBeInTheDocument()
+
+    await chooseByLabel(user, "型号", "全部型号")
+    await waitFor(() =>
+      expect(screen.queryByRole("columnheader", { name: "ServiceTag" })).not.toBeInTheDocument(),
+    )
+  })
+})
