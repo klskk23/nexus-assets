@@ -367,8 +367,10 @@ export function AssetDetail() {
                     than on the entry form: a device's home changes when it is
                     relocated for good, which is an edit, not a recording. */}
                       <FieldSet>
-                        <div className="flex items-center gap-1.5">
-                          <FieldLegend variant="label">{t.assets.home}</FieldLegend>
+                        <div className="mb-3 flex items-center gap-1.5">
+                          <FieldLegend variant="label" className="mb-0">
+                            {t.assets.home}
+                          </FieldLegend>
                           <Hint>{t.assets.homeHint}</Hint>
                         </div>
                         {/* Boxed, because the fields underneath it are not part

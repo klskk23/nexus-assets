@@ -1,4 +1,5 @@
 import { tMeta } from "@/i18n"
+import { Hint } from "@/features/common/Hint"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,8 +32,10 @@ export function AttrDefaultsEditor({ rows, onChange }: Props) {
 
   return (
     <div className="grid gap-2">
-      <Label>{tMeta.models.defaults}</Label>
-      <p className="text-xs text-muted-foreground">{tMeta.models.defaultsHint}</p>
+      <div className="flex items-center gap-1.5">
+        <Label>{tMeta.models.defaults}</Label>
+        <Hint>{tMeta.models.defaultsHint}</Hint>
+      </div>
 
       {rows.map((r, i) => (
         <div key={i} className="flex items-end gap-2">

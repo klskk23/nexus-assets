@@ -85,7 +85,11 @@ describe("Categories page", () => {
 
     const dialog = await screen.findByRole("dialog")
     expect(within(dialog).getByRole("row", { name: /机柜/ })).toBeInTheDocument()
-    expect(within(dialog).getByText(/在「字段」页面上做/)).toBeInTheDocument()
+    // Where to change it is behind the question mark: the table is the answer
+    // somebody opened this for, and the explanation is only wanted once.
+    const heading = within(dialog).getByText("本类别的字段")
+    await user.hover(within(heading.parentElement!).getByRole("button", { name: "这是什么" }))
+    expect(await screen.findByText(/在「字段」页面上做/)).toBeInTheDocument()
     // Nothing here binds or unbinds any more.
     expect(within(dialog).queryByRole("combobox", { name: "绑定字段" })).not.toBeInTheDocument()
   })

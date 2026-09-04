@@ -149,8 +149,10 @@ export function ExportDialog({
               worth offering, and the radio would sit there disabled. */}
           {selected.length > 0 && (
             <FieldSet>
-              <div className="flex items-center gap-1.5">
-                <FieldLegend variant="label">{tImport.exportScope}</FieldLegend>
+              <div className="mb-3 flex items-center gap-1.5">
+                <FieldLegend variant="label" className="mb-0">
+                  {tImport.exportScope}
+                </FieldLegend>
                 <Hint>{tImport.exportTickedHint}</Hint>
               </div>
               <RadioGroup
@@ -197,8 +199,10 @@ export function ExportDialog({
               </Field>
 
               <FieldSet>
-                <div className="flex items-center gap-1.5">
-                  <FieldLegend variant="label">{tImport.exportFields}</FieldLegend>
+                <div className="mb-3 flex items-center gap-1.5">
+                  <FieldLegend variant="label" className="mb-0">
+                    {tImport.exportFields}
+                  </FieldLegend>
                   <Hint>{tImport.exportFieldsHint}</Hint>
                 </div>
                 {chosen === "" ? null : schema.isPending ? (

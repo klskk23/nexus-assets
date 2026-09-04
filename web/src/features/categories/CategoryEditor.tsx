@@ -200,8 +200,10 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
               installation without one should not be asked about it. */}
           {printing && (
             <FieldSet>
-              <div className="flex items-center gap-1.5">
-                <FieldLegend variant="label">{tMeta.categories.printPreset}</FieldLegend>
+              <div className="mb-3 flex items-center gap-1.5">
+                <FieldLegend variant="label" className="mb-0">
+                  {tMeta.categories.printPreset}
+                </FieldLegend>
                 <Hint>{tMeta.categories.printPresetHint}</Hint>
               </div>
               <FieldGroup className="gap-2">
@@ -258,11 +260,13 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
           )}
 
           <div className="grid gap-2">
-            <p className="text-sm font-medium">{tMeta.categories.fields}</p>
             {/* Read-only: a field is bound to categories from the field
                 itself, which is where the question "where does this belong"
                 actually gets answered. */}
-            <p className="text-muted-foreground text-sm">{tMeta.categories.bindElsewhere}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium">{tMeta.categories.fields}</p>
+              <Hint>{tMeta.categories.bindElsewhere}</Hint>
+            </div>
 
             <TableFrame>
               <Table>

@@ -158,8 +158,10 @@ export function Models() {
               multi-select list box hides the choices behind a scroll -- here
               the whole set is visible at once. */}
           <FieldSet className="sm:col-span-3">
-            <div className="flex items-center gap-1.5">
-              <FieldLegend variant="label">{tMeta.models.category}</FieldLegend>
+            <div className="mb-3 flex items-center gap-1.5">
+              <FieldLegend variant="label" className="mb-0">
+                {tMeta.models.category}
+              </FieldLegend>
               <Hint>{tMeta.models.categoryHint}</Hint>
             </div>
             <FieldGroup className="flex flex-row flex-wrap items-center gap-4">
