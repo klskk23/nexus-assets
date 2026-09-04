@@ -35,7 +35,7 @@ const categories = [
 
 const fields = [
   { id: "f1", key: "mac", label: "基准 MAC", type: "mac", options: {}, is_unique: true,
-    category_ids: ["net"], model_ids: [] },
+    required: true, category_ids: ["net"], model_ids: [] },
   { id: "f2", key: "firmware", label: "固件版本", type: "text", options: {}, is_unique: false,
     category_ids: ["net"], model_ids: [] },
   // Bound the other way (015): it belongs to models, not to a category.
@@ -101,6 +101,16 @@ describe("Fields page", () => {
     const row = await screen.findByRole("row", { name: /基准 MAC/ })
     expect(within(row).getByText("MAC 地址")).toBeInTheDocument()
     expect(within(row).getByText("类别内唯一")).toBeInTheDocument()
+  })
+
+  // Required is the field's own flag since 018, so one cell can answer for it
+  // -- which is what the column could not do while it was set per binding.
+  it("marks the fields that ask for a value", async () => {
+    renderWithProviders(<Fields />)
+    const required = await screen.findByRole("row", { name: /基准 MAC/ })
+    expect(within(required).getByText("必填")).toBeInTheDocument()
+    const optional = screen.getByRole("row", { name: /固件版本/ })
+    expect(within(optional).queryByText("必填")).not.toBeInTheDocument()
   })
 
   // A model-bound field used to read "未绑定" under a column headed 所属类别 --

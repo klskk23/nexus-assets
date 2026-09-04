@@ -232,10 +232,16 @@ export function Fields() {
             )
           },
         },
-        // No 必填 column here on purpose: required is set per binding, so one
-        // cell would have to summarise a field that is required on one
-        // category and optional on another. It is shown against each binding
-        // in the edit dialog, where the two are not squeezed into one answer.
+        {
+          // One cell can answer this now. While required was set per binding
+          // it could not: a field required on one category and optional on
+          // another has no single answer, and "部分必填" only told a reader
+          // there was something to go and look at. It is the field's own flag
+          // since 018, so it reads like 唯一 beside it.
+          header: tMeta.categories.required,
+          cell: (f) =>
+            f.required ? <Badge variant="secondary">{tMeta.categories.required}</Badge> : null,
+        },
         {
           // The scope differs with the binding mode, so the badge carries it
           // and the header stays a plain noun.
