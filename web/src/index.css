@@ -84,12 +84,18 @@
 
 /* Chart palette.
  *
- * A lime that belongs to no status. The status palette runs slate, green,
- * blue, amber, red, violet, teal and rose; this sits in the gap between amber
- * and green, so a bar counting devices is never mistaken for a chip saying
- * something about one. That is the constraint any chart colour here has to
- * clear -- colour in this application means status, and a chart may not borrow
- * a meaning it does not have.
+ * A low-chroma blue-grey that belongs to no status. The status palette runs
+ * slate, green, blue, amber, red, violet, teal and rose; this sits between
+ * blue and teal and is far too grey to be read as either, so a bar counting
+ * devices is never mistaken for a chip saying something about one. That is the
+ * constraint any chart colour here has to clear -- colour in this application
+ * means status, and a chart may not borrow a meaning it does not have.
+ *
+ * The two themes get the same hue at different weights, the way the status
+ * chips do. #374C53 is a settled ink block on white; on the dark ground it
+ * would sit barely above the card it is drawn on, and a bar you have to lean
+ * in to measure is not quiet, it is unreadable. Dark keeps the hue and takes
+ * the lightness up to where the shortest bar still reads.
  *
  * One series, one colour: the category distribution counts the same thing for
  * every bar, and giving each its own hue would imply a difference that is not
@@ -100,10 +106,10 @@
  * defaults to.
  */
 :root {
-  --chart-1: #aed336;
+  --chart-1: #374c53;
 }
 .dark {
-  --chart-1: #aed336;
+  --chart-1: oklch(0.62 0.03 230);
 }
 
 /* Status palette.
