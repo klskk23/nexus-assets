@@ -1,11 +1,13 @@
 <!-- SPECKIT START -->
-当前计划：`specs/015-model-bound-fields/plan.md`
+当前计划：`specs/016-field-groups-vendors/plan.md`
 
 开工前必读，按优先级：
 
 1. `.specify/memory/constitution.md`（v1.1.0）—— 五项不可协商原则与七条合并门禁
-2. `specs/015-model-bound-fields/`（决策 96–104）—— 本轮：字段可以绑定型号
-   （与绑类别互斥）。上一轮 `specs/014-table-conventions/`（决策 89–95）：
+2. `specs/016-field-groups-vendors/`（决策 105–113）—— 本轮：字段组（绑定时展开的糖）、
+   厂商成为实体、绑定目标变三个、互斥改为「类别 vs 设备」、型号实时继承厂商字段。
+   上一轮 `specs/015-model-bound-fields/`（决策 96–104）：字段可以绑定型号
+   （与绑类别互斥）。再上一轮 `specs/014-table-conventions/`（决策 89–95）：
    九个表格页统一筛选、搜索、翻页与 dialog；
    再上一轮 `specs/013-permissions/`（决策 77–85）：角色与权限；
    再上一轮 `specs/012-sessions-keys-settings/`（决策 73–76）：会话续期、API 密钥、
