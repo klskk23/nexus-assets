@@ -9,12 +9,12 @@
 
 ## 第 1 阶段：迁移（阻塞其余一切）
 
-- [ ] T001 在 `migrations/019_field_groups_vendors.sql` 建 `vendors`、`field_groups`、`field_group_members`、`vendor_fields` 四张表，并给 `vendor_fields(field_id)` 建反向索引；注释写明为什么组的两处外键用 ON DELETE CASCADE 而绑定表不用（成员关系丢了不损失任何人填过的东西）
-- [ ] T002 在同一迁移里给 `product_models` 加 `vendor_id TEXT REFERENCES vendors(id)`，按**每个不同字符串一个厂商**回填，`vendor=''` 留 NULL；注释写明绝不归并的理由（归并会撞唯一索引，让迁移在生产库上失败）
-- [ ] T003 在同一迁移里换唯一约束：删掉既有的 `UNIQUE(vendor, name)`，建 `CREATE UNIQUE INDEX ux_models_vendor_name ON product_models(ifnull(vendor_id,''), name)`；顺序必须是先回填后建索引
-- [ ] T004 写 down 迁移：从 `vendor_id` 反填回旧的 `vendor` 文本列（该列保留不删），还原旧索引，drop 四张新表
-- [ ] T005 在 `internal/store/migrate_test.go` 的两处硬编码版本清单前面加 `"019"`（015 那轮忘了这一步，测试当场红）
-- [ ] T006 在 `internal/store/migrate_test.go` 加测试：在含 `(Dell,X1)`、`(DELL,X1)`、`('',X1)` 三行的库上跑 019，断言得到两个厂商实体、第三款 `vendor_id` 为 NULL、三款型号都在、**没有归并**；再插一款 `vendor_id=NULL, name=X1` 断言被唯一索引拒绝（这是迁移 003 那个 bug 的回归）
+- [X] T001 在 `migrations/019_field_groups_vendors.sql` 建 `vendors`、`field_groups`、`field_group_members`、`vendor_fields` 四张表，并给 `vendor_fields(field_id)` 建反向索引；注释写明为什么组的两处外键用 ON DELETE CASCADE 而绑定表不用（成员关系丢了不损失任何人填过的东西）
+- [X] T002 在同一迁移里给 `product_models` 加 `vendor_id TEXT REFERENCES vendors(id)`，按**每个不同字符串一个厂商**回填，`vendor=''` 留 NULL；注释写明绝不归并的理由（归并会撞唯一索引，让迁移在生产库上失败）
+- [X] T003 在同一迁移里换唯一约束：删掉既有的 `UNIQUE(vendor, name)`，建 `CREATE UNIQUE INDEX ux_models_vendor_name ON product_models(ifnull(vendor_id,''), name)`；顺序必须是先回填后建索引
+- [X] T004 写 down 迁移：从 `vendor_id` 反填回旧的 `vendor` 文本列（该列保留不删），还原旧索引，drop 四张新表
+- [X] T005 在 `internal/store/migrate_test.go` 的两处硬编码版本清单前面加 `"019"`（015 那轮忘了这一步，测试当场红）
+- [X] T006 在 `internal/store/migrate_test.go` 加测试：在含 `(Dell,X1)`、`(DELL,X1)`、`('',X1)` 三行的库上跑 019，断言得到两个厂商实体、第三款 `vendor_id` 为 NULL、三款型号都在、**没有归并**；再插一款 `vendor_id=NULL, name=X1` 断言被唯一索引拒绝（这是迁移 003 那个 bug 的回归）
 
 ## 第 2 阶段：地基（阻塞所有用户故事）
 
