@@ -411,3 +411,68 @@ func TestVendorBindingRefusesUnknownEnds(t *testing.T) {
 		t.Errorf("deleting what is not there is not found, got %v", err)
 	}
 }
+
+// The dry-run behind changing a model's vendor: which fields stop reaching this
+// model, and how many of its devices hold a value under one of them.
+func TestVendorChangeImpactNamesOnlyWhatIsLost(t *testing.T) {
+	s, ctx := newStore(t)
+	root, _ := tree(t, s, ctx)
+	dell := vendorNamed(t, s, ctx, "Dell")
+	lenovo := vendorNamed(t, s, ctx, "Lenovo")
+	m, err := s.CreateModel(ctx, CreateModelInput{
+		Name: "R640", VendorID: dell, CategoryIDs: []string{root.ID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lost, _ := s.CreateField(ctx, CreateFieldInput{Key: "tag", Label: "服务编码", Type: model.FieldText})
+	shared, _ := s.CreateField(ctx, CreateFieldInput{Key: "warranty", Label: "保修", Type: model.FieldText})
+	own, _ := s.CreateField(ctx, CreateFieldInput{Key: "rack", Label: "机柜", Type: model.FieldText})
+	for _, b := range []struct {
+		vendor string
+		field  string
+	}{{dell, lost.ID}, {dell, shared.ID}, {lenovo, shared.ID}} {
+		if err := s.BindVendor(ctx, b.vendor, b.field, 10); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.BindModel(ctx, m.ID, own.ID, 10); err != nil {
+		t.Fatal(err)
+	}
+
+	n, labels, err := s.VendorChangeImpact(ctx, m.ID, lenovo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(labels, []string{"服务编码"}) {
+		t.Errorf("only the field the new vendor does not also provide is lost, got %v", labels)
+	}
+	if n != 0 {
+		t.Errorf("no device holds a value yet, got %d", n)
+	}
+
+	// Moving to no vendor at all loses the shared one too.
+	_, labels, err = s.VendorChangeImpact(ctx, m.ID, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(labels) != 2 {
+		t.Errorf("moving to no vendor loses both of Dell's fields, got %v", labels)
+	}
+
+	// A model whose vendor provides nothing has nothing to lose.
+	bare, err := s.CreateModel(ctx, CreateModelInput{
+		Name: "SR650", VendorID: lenovo, CategoryIDs: []string{root.ID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, labels, err = s.VendorChangeImpact(ctx, bare.ID, dell)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 || len(labels) != 0 {
+		t.Errorf("nothing is lost, got %d %v", n, labels)
+	}
+}

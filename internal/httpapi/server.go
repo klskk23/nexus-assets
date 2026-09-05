@@ -116,6 +116,7 @@ func (s *Server) Router() *gin.Engine {
 	authed.POST("/models/:id/bindings", need(authz.SchemaManage), s.bindModelField)
 	authed.DELETE("/models/:id/bindings/:field_id", need(authz.SchemaManage), s.unbindModelField)
 	authed.GET("/models/:id/required-impact", s.modelRequiredImpact)
+	authed.GET("/models/:id/vendor-change-impact", s.vendorChangeImpact)
 
 	// Vendors (016). A separate collection rather than a shape of /models: two
 	// CrudPages behind one address would have their q and offset trample each

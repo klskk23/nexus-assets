@@ -5,8 +5,30 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/klskk23/nexus-assets/internal/asset"
 	"github.com/klskk23/nexus-assets/internal/authz"
+	"github.com/klskk23/nexus-assets/internal/i18n"
+	"github.com/klskk23/nexus-assets/internal/model"
 )
+
+// saveDevice records one device of a model with the given attributes and
+// returns its id.
+func (h *harness) saveDevice(t *testing.T, modelID string, attrs map[string]any) string {
+	t.Helper()
+	a, err := h.assets.Save(h.ctx, asset.SaveInput{
+		CategoryID: h.catID, ModelID: &modelID, Status: model.StatusInStock,
+		OwnerID: h.userID,
+		Holder:  model.Holder{Type: model.HolderTypeEntity, ID: h.locID},
+		Attrs:   attrs, ActorID: h.userID,
+	})
+	if err != nil {
+		if fe, ok := err.(asset.FieldErrors); ok {
+			t.Fatalf("save device: %v", fe.In(i18n.ZH))
+		}
+		t.Fatalf("save device: %v", err)
+	}
+	return a.ID
+}
 
 // newVendor registers a vendor through the endpoint and returns its id.
 func newVendor(t *testing.T, h *harness, name string) string {
@@ -209,5 +231,74 @@ func TestVendorEndpointsNeedSchemaManage(t *testing.T) {
 		if rec.Code != http.StatusForbidden {
 			t.Errorf("%s %s = %d, want 403", call.method, call.path, rec.Code)
 		}
+	}
+}
+
+// Changing a model's vendor takes away the fields the old vendor provided.
+// The values are not deleted -- they become archived attributes, visible and
+// read-only -- but that happens to every device of the model at once, so the
+// dry-run says how many and which fields before anyone commits.
+func TestChangingAModelsVendorArchivesWhatTheOldOneProvided(t *testing.T) {
+	h := newHarness(t)
+	dell := newVendor(t, h, "Dell")
+	lenovo := newVendor(t, h, "Lenovo")
+	m := decode[map[string]any](t, h.post(t, "/api/models",
+		`{"name":"Latitude 5420","vendor_id":"`+dell+`","category_ids":["`+h.catID+`"]}`))
+	modelID, _ := m["id"].(string)
+
+	f := decode[map[string]any](t, h.post(t, "/api/fields",
+		`{"key":"servicetag","label":"ServiceTag","type":"text"}`))
+	fieldID, _ := f["id"].(string)
+	h.post(t, "/api/vendors/"+dell+"/bindings", `{"field_id":"`+fieldID+`","sort":10}`)
+
+	// Two devices of the model, only one with the field filled in.
+	withTag := h.saveDevice(t, modelID, map[string]any{"mac": "001A2B3C0001", "servicetag": "ABC1234"})
+	h.saveDevice(t, modelID, map[string]any{"mac": "001A2B3C0002"})
+
+	// The dry-run counts the one that actually loses something, and names it.
+	impact := decode[map[string]any](t, h.get(t,
+		"/api/models/"+modelID+"/vendor-change-impact?vendor_id="+lenovo))
+	if impact["total"] != float64(1) {
+		t.Errorf("only the device holding a value is affected, got %v", impact)
+	}
+	if labels, _ := impact["fields"].([]any); len(labels) != 1 || labels[0] != "ServiceTag" {
+		t.Errorf("the dry-run should name the field, got %v", impact["fields"])
+	}
+
+	if rec := h.patch(t, "/api/models/"+modelID,
+		`{"vendor_id":"`+lenovo+`"}`); rec.Code != http.StatusOK {
+		t.Fatalf("change vendor: %d %s", rec.Code, rec.Body.String())
+	}
+
+	body := decode[map[string]any](t, h.get(t, "/api/assets/"+withTag))
+	got, _ := body["asset"].(map[string]any)
+	archived, _ := got["archived_attrs"].(map[string]any)
+	if archived["servicetag"] != "ABC1234" {
+		t.Errorf("the value should survive as an archived attribute, got %v", got["archived_attrs"])
+	}
+	if attrs, _ := got["attrs"].(map[string]any); attrs["servicetag"] != nil {
+		t.Errorf("and should no longer be a live attribute, got %v", attrs)
+	}
+}
+
+// A field the new vendor also provides, or one bound to the model itself, is
+// not lost by the move and must not be counted.
+func TestVendorChangeIgnoresFieldsThatSurviveIt(t *testing.T) {
+	h := newHarness(t)
+	dell := newVendor(t, h, "Dell")
+	lenovo := newVendor(t, h, "Lenovo")
+	m := decode[map[string]any](t, h.post(t, "/api/models",
+		`{"name":"Latitude 5420","vendor_id":"`+dell+`","category_ids":["`+h.catID+`"]}`))
+	modelID, _ := m["id"].(string)
+
+	shared := newField(t, h, "servicetag")
+	h.post(t, "/api/vendors/"+dell+"/bindings", `{"field_id":"`+shared+`","sort":10}`)
+	h.post(t, "/api/vendors/"+lenovo+"/bindings", `{"field_id":"`+shared+`","sort":10}`)
+	h.saveDevice(t, modelID, map[string]any{"mac": "001A2B3C0003", "servicetag": "ABC1234"})
+
+	impact := decode[map[string]any](t, h.get(t,
+		"/api/models/"+modelID+"/vendor-change-impact?vendor_id="+lenovo))
+	if impact["total"] != float64(0) {
+		t.Errorf("a field both vendors provide survives the move, got %v", impact)
 	}
 }

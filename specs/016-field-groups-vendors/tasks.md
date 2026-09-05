@@ -49,9 +49,9 @@
 
 ## 第 5 阶段：US4 换厂商（P3）
 
-- [ ] T028 [US4] `internal/schema/model_store.go`：`VendorChangeImpact(modelID, newVendorID)` 返回波及台数与会变成只读的字段名
-- [ ] T029 [US4] `internal/httpapi`：`GET /models/:id/vendor-change-impact`
-- [ ] T030 [P] [US4] `internal/httpapi` 加集成测试：改厂商后旧厂商字段的值出现在 `archived_attrs` 里，且 dry-run 报的台数与实际一致
+- [X] T028 [US4] `internal/schema/model_store.go`：`VendorChangeImpact(modelID, newVendorID)` 返回波及台数与会变成只读的字段名
+- [X] T029 [US4] `internal/httpapi`：`GET /models/:id/vendor-change-impact`
+- [X] T030 [P] [US4] `internal/httpapi` 加集成测试：改厂商后旧厂商字段的值出现在 `archived_attrs` 里，且 dry-run 报的台数与实际一致
 
 ## 第 6 阶段：导入导出
 

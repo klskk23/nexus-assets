@@ -152,3 +152,23 @@ func (s *Server) vendorRequiredImpact(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"total": n})
 }
+
+// vendorChangeImpact is the dry-run for moving a model to another vendor: how
+// many of its devices hold a value that is about to become read-only history,
+// and which fields those are (016, decision 112).
+//
+// Empty vendor_id means "no vendor at all", which is a real destination rather
+// than a missing parameter.
+func (s *Server) vendorChangeImpact(c *gin.Context) {
+	if _, err := s.schema.GetModel(c.Request.Context(), c.Param("id")); err != nil {
+		FailErr(c, err)
+		return
+	}
+	n, fields, err := s.schema.VendorChangeImpact(
+		c.Request.Context(), c.Param("id"), c.Query("vendor_id"))
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"total": n, "fields": fields})
+}

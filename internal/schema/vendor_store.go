@@ -368,3 +368,65 @@ func (s *Store) UnbindVendor(ctx context.Context, vendorID, fieldID string) erro
 		return nil
 	})
 }
+
+// VendorChangeImpact is the dry-run behind changing a model's vendor.
+//
+// Moving a model from Dell to Lenovo takes away every field Dell provided and
+// this model does not otherwise have. Values already recorded under those
+// fields are not deleted -- they become archived attributes, computed at read
+// time, visible and read-only (016, decision 112). That is a mild outcome, but
+// it happens to every device of the model at once, so the number and the field
+// names are shown before the change rather than discovered after it.
+//
+// The fields Lenovo also provides, and the ones bound to this model directly,
+// stay live and are not counted: they are still reachable after the move.
+func (s *Store) VendorChangeImpact(ctx context.Context, modelID, newVendorID string) (int, []string, error) {
+	rows, err := s.db.ReadDB().QueryContext(ctx, `
+		SELECT f.key, f.label
+		FROM vendor_fields vf
+		JOIN field_definitions f ON f.id = vf.field_id
+		JOIN product_models m ON m.vendor_id = vf.vendor_id
+		WHERE m.id = ?
+		  AND vf.field_id NOT IN (SELECT field_id FROM model_fields WHERE model_id = ?)
+		  AND vf.field_id NOT IN (SELECT field_id FROM vendor_fields WHERE vendor_id = ?)
+		ORDER BY vf.sort, f.label`, modelID, modelID, newVendorID)
+	if err != nil {
+		return 0, nil, fmt.Errorf("load fields lost by a vendor change: %w", err)
+	}
+	defer rows.Close()
+	var keys, labels []string
+	for rows.Next() {
+		var key, label string
+		if err := rows.Scan(&key, &label); err != nil {
+			return 0, nil, err
+		}
+		keys = append(keys, key)
+		labels = append(labels, label)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, nil, err
+	}
+	if len(keys) == 0 {
+		return 0, []string{}, nil
+	}
+
+	// Only devices that actually hold one of those values are affected. A
+	// device of this model that never had a service tag filled in loses
+	// nothing, and counting it would overstate what the change costs.
+	q := `SELECT count(*) FROM assets
+	      WHERE model_id = ? AND deleted_at IS NULL AND (`
+	args := []any{modelID}
+	for i, key := range keys {
+		if i > 0 {
+			q += " OR "
+		}
+		q += `json_extract(attrs, '$.' || ?) IS NOT NULL`
+		args = append(args, key)
+	}
+	q += ")"
+	var n int
+	if err := s.db.ReadDB().QueryRowContext(ctx, q, args...).Scan(&n); err != nil {
+		return 0, nil, fmt.Errorf("count assets affected by a vendor change: %w", err)
+	}
+	return n, labels, nil
+}
