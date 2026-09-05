@@ -26,19 +26,19 @@
 
 ## 第 3 阶段：US1 厂商继承（P1，MVP）
 
-- [ ] T012 [US1] `internal/schema/binding.go`：互斥判定从「类别 vs 型号」改为「类别 vs 设备」，`bindTx` 同时查 `model_fields` 与 `vendor_fields`
-- [ ] T013 [US1] `internal/schema/model_binding.go`：`bindModelTx` 只查 `category_fields`，**不再**与厂商互查（同属设备侧，允许并存）
-- [ ] T014 [US1] `internal/schema/vendor_store.go`：`bindVendorTx` / `UnbindVendor`，键冲突检查照搬 `modelKeyFree` 的形状，作用范围是该厂商旗下型号所在的类别链
-- [ ] T015 [US1] `internal/schema/resolve.go`：新增 `resolveVendorFields`，把厂商绑定的字段按旗下型号摊开，与型号自绑的合并去重，填进 `ModelIDs`（到达集）与 `VendorIDs`（绑在哪）
-- [ ] T016 [US1] `internal/schema/binding.go` 的 `FieldsOfPath` 并入厂商层；超 gocyclo 15 就抽函数
-- [ ] T017 [US1] `internal/schema/field_store.go`：`deleteFieldTx` 补删 `vendor_fields` —— 与 017 同一个坑，v0.8.3 的 500 就是漏了这一行
-- [ ] T018 [P] [US1] `internal/schema/store_test.go` 加测试：厂商字段出现在旗下每款型号的有效字段集里；新建型号自动获得；无厂商型号拿不到
-- [ ] T019 [P] [US1] `internal/schema/store_test.go` 加测试：类别与设备侧互斥仍成立，型号与厂商可并存
-- [ ] T020 [P] [US1] `internal/schema/store_test.go` 加测试：唯一性范围是「直绑型号 ∪ 厂商旗下型号」，两款不同 Dell 型号上同值被拒
-- [ ] T021 [US1] `internal/httpapi/handlers_vendors.go` + `server.go`：厂商 CRUD、`/vendors/:id/bindings`、`/vendors/:id/required-impact`
-- [ ] T022 [US1] `internal/httpapi/handlers_metadata.go`：`fieldRow` 加 `vendor_ids`、`group_ids`；`binding_mode` 取值改 `category|device|unbound`；`model_ids` 改为到达集
-- [ ] T053 [US1] `internal/schema/category_store.go`：display_key 的守卫第二段现在只查 `model_fields`，厂商绑定的字段会掉到最后一个分支被告知「字段未绑定」—— 而它绑着，且用户在类别 schema 里看得见它。把 `vendor_fields` 并进那一查，并让文案对两种设备绑定都成立；加测试（FR-017）
-- [ ] T023 [P] [US1] `internal/httpapi/vendors_test.go` 新建：厂商 CRUD、绑定、删除守卫、字段行形状，各一条集成测试（真 SQLite）
+- [X] T012 [US1] `internal/schema/binding.go`：互斥判定从「类别 vs 型号」改为「类别 vs 设备」，`bindTx` 同时查 `model_fields` 与 `vendor_fields`
+- [X] T013 [US1] `internal/schema/model_binding.go`：`bindModelTx` 只查 `category_fields`，**不再**与厂商互查（同属设备侧，允许并存）
+- [X] T014 [US1] `internal/schema/vendor_store.go`：`bindVendorTx` / `UnbindVendor`，键冲突检查照搬 `modelKeyFree` 的形状，作用范围是该厂商旗下型号所在的类别链
+- [X] T015 [US1] `internal/schema/resolve.go`：新增 `resolveVendorFields`，把厂商绑定的字段按旗下型号摊开，与型号自绑的合并去重，填进 `ModelIDs`（到达集）与 `VendorIDs`（绑在哪）
+- [X] T016 [US1] `internal/schema/binding.go` 的 `FieldsOfPath` 并入厂商层；超 gocyclo 15 就抽函数
+- [X] T017 [US1] `internal/schema/field_store.go`：`deleteFieldTx` 补删 `vendor_fields` —— 与 017 同一个坑，v0.8.3 的 500 就是漏了这一行
+- [X] T018 [P] [US1] `internal/schema/store_test.go` 加测试：厂商字段出现在旗下每款型号的有效字段集里；新建型号自动获得；无厂商型号拿不到
+- [X] T019 [P] [US1] `internal/schema/store_test.go` 加测试：类别与设备侧互斥仍成立，型号与厂商可并存
+- [X] T020 [P] [US1] `internal/schema/store_test.go` 加测试：唯一性范围是「直绑型号 ∪ 厂商旗下型号」，两款不同 Dell 型号上同值被拒
+- [X] T021 [US1] `internal/httpapi/handlers_vendors.go` + `server.go`：厂商 CRUD、`/vendors/:id/bindings`、`/vendors/:id/required-impact`
+- [X] T022 [US1] `internal/httpapi/handlers_metadata.go`：`fieldRow` 加 `vendor_ids`、`group_ids`；`binding_mode` 取值改 `category|device|unbound`；`model_ids` 改为到达集
+- [X] T053 [US1] `internal/schema/category_store.go`：display_key 的守卫第二段现在只查 `model_fields`，厂商绑定的字段会掉到最后一个分支被告知「字段未绑定」—— 而它绑着，且用户在类别 schema 里看得见它。把 `vendor_fields` 并进那一查，并让文案对两种设备绑定都成立；加测试（FR-017）
+- [X] T023 [P] [US1] `internal/httpapi/vendors_test.go` 新建：厂商 CRUD、绑定、删除守卫、字段行形状，各一条集成测试（真 SQLite）
 
 ## 第 4 阶段：US2 字段组（P2，与第 3 阶段并行）
 

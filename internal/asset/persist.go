@@ -104,10 +104,15 @@ func uniqueValues(fields []model.BoundField, attrs map[string]any, categoryID st
 
 // uniqueScope is where one field's uniqueness reaches.
 //
-// A model-bound field is scoped by itself, because its reach is its own set of
+// A device-bound field is scoped by itself, because its reach is its own set of
 // models. A category-bound one is scoped by the category that bound it --
 // InheritedFrom when it came from an ancestor, otherwise the category being
 // saved into.
+//
+// ModelIDs is the reach set, so a field bound to a vendor is scoped here
+// exactly like one bound to that vendor's models one at a time (016, decision
+// 111). Nothing needed changing for it, which is the point of making the reach
+// set the thing that travels.
 func uniqueScope(f model.BoundField, categoryID string) string {
 	if len(f.ModelIDs) > 0 {
 		return ModelScopePrefix + f.ID

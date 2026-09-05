@@ -12,11 +12,18 @@ import (
 
 // ErrBindingModeConflict blocks giving one field both kinds of binding.
 //
-// A field's bindings are all categories or all models, never a mix (015,
-// decision 96). Mixing them collides three ways: a model already covered by a
-// category binding gains nothing, the two bindings' required flags can disagree
-// about the same asset, and the uniqueness scope stops having a single answer.
-var ErrBindingModeConflict = errors.New("a field binds to categories or to models, not both")
+// A field's bindings are all categories or all device-side -- models, vendors,
+// or both (015 decision 96, widened by 016 decision 110). Mixing the two sides
+// collides twice: a device already covered by a category binding gains nothing,
+// and the uniqueness scope stops having a single answer, because a category
+// subtree and a set of models are not the same shape of thing.
+//
+// 015 gave a third reason -- the two bindings' required flags disagreeing about
+// one asset -- which died when 018 moved required onto the field itself.
+//
+// Models and vendors do not exclude each other. Both answer "which device",
+// and their union is still one set.
+var ErrBindingModeConflict = errors.New("a field binds to categories or to devices, not both")
 
 // ErrDisplayKeyNotCategoryField blocks numbering a category by a model field.
 //
@@ -143,7 +150,12 @@ func bindModelTx(ctx context.Context, tx *sql.Tx, modelID, fieldID string, sort 
 		return ErrNotFound
 	}
 
-	// The other table decides whether this is allowed at all.
+	// Only the category table is asked. A field already bound to this field's
+	// vendor is not a conflict -- models and vendors are the same side, and
+	// binding both is a union rather than a contradiction (016, decision 110).
+	// The interface disables the checkbox for a model whose vendor already
+	// provides the field, so the redundant case is prevented rather than
+	// refused.
 	var boundToCategory int
 	if err := tx.QueryRowContext(ctx,
 		`SELECT count(*) FROM category_fields WHERE field_id = ?`, fieldID).Scan(&boundToCategory); err != nil {

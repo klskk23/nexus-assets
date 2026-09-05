@@ -128,11 +128,21 @@ func (s *Server) categorySchema(c *gin.Context) {
 type fieldRow struct {
 	model.FieldDefinition
 	CategoryIDs []string `json:"category_ids"`
-	// ModelIDs is the other kind of binding (015, decision 96): a field hangs
-	// on categories or on models, never both, so exactly one of these two is
-	// ever non-empty. BindingMode says which, including "unbound" for a field
-	// that is on nothing yet and may still become either.
-	ModelIDs    []string `json:"model_ids"`
+	// ModelIDs and VendorIDs are the device side (015 decision 96, widened by
+	// 016 decision 110): a field hangs on categories or on devices, never both,
+	// so either CategoryIDs or these two are empty. BindingMode says which,
+	// "unbound" for a field that is on nothing yet and may still become either.
+	//
+	// Here, and only here, ModelIDs means "bound to these models" rather than
+	// the reach set the resolver produces: this list is what the binding column
+	// and the field editor show, and they have to show what somebody chose, not
+	// what it grew into. VendorIDs is the other half of that same answer.
+	ModelIDs  []string `json:"model_ids"`
+	VendorIDs []string `json:"vendor_ids"`
+	// GroupIDs is which groups the field belongs to, for the group filter. A
+	// group is expanded at bind time and leaves no trace in the bindings, so
+	// this says nothing about where the field is bound (016, decision 105).
+	GroupIDs    []string `json:"group_ids"`
 	BindingMode string   `json:"binding_mode"`
 }
 
@@ -160,26 +170,28 @@ func (s *Server) listFields(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
+	onVendors, err := s.schema.VendorsOfField(c.Request.Context())
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
 
 	rows := make([]fieldRow, 0, len(page.Items))
 	for _, f := range page.Items {
-		ids := bound[f.ID]
-		if ids == nil {
-			ids = []string{}
-		}
-		models := onModels[f.ID]
-		if models == nil {
-			models = []string{}
-		}
+		ids := orEmpty(bound[f.ID])
+		models := orEmpty(onModels[f.ID])
+		vendors := orEmpty(onVendors[f.ID])
 		mode := "unbound"
 		switch {
-		case len(models) > 0:
-			mode = "model"
+		case len(models) > 0 || len(vendors) > 0:
+			mode = "device"
 		case len(ids) > 0:
 			mode = "category"
 		}
 		rows = append(rows, fieldRow{
-			FieldDefinition: f, CategoryIDs: ids, ModelIDs: models, BindingMode: mode,
+			FieldDefinition: f, CategoryIDs: ids,
+			ModelIDs: models, VendorIDs: vendors, GroupIDs: []string{},
+			BindingMode: mode,
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{

@@ -242,8 +242,8 @@ func (s *Store) VendorsOfField(ctx context.Context) (map[string][]string, error)
 	return out, rows.Err()
 }
 
-// VendorModelCount counts the assets a required vendor binding would eventually
-// ask for: every asset of every model from this vendor.
+// VendorRequiredImpact counts the assets a required vendor binding would
+// eventually ask for: every asset of every model from this vendor.
 func (s *Store) VendorRequiredImpact(ctx context.Context, vendorID string) (int, error) {
 	var n int
 	err := s.db.ReadDB().QueryRowContext(ctx,
@@ -254,4 +254,117 @@ func (s *Store) VendorRequiredImpact(ctx context.Context, vendorID string) (int,
 		return 0, fmt.Errorf("count assets of vendor: %w", err)
 	}
 	return n, nil
+}
+
+// BindVendor hangs a field on a vendor, so every model from that vendor has it.
+//
+// Refused when the field already has a category binding: the two sides are
+// exclusive (016, decision 110). Not refused when it already has a model
+// binding -- that is the same side, and the union is what was asked for.
+func (s *Store) BindVendor(ctx context.Context, vendorID, fieldID string, sort int) error {
+	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		return bindVendorTx(ctx, tx, vendorID, fieldID, sort)
+	})
+}
+
+func bindVendorTx(ctx context.Context, tx *sql.Tx, vendorID, fieldID string, sort int) error {
+	var key string
+	if err := tx.QueryRowContext(ctx,
+		`SELECT key FROM field_definitions WHERE id = ?`, fieldID).Scan(&key); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	var exists int
+	if err := tx.QueryRowContext(ctx,
+		`SELECT count(*) FROM vendors WHERE id = ?`, vendorID).Scan(&exists); err != nil {
+		return err
+	}
+	if exists == 0 {
+		return ErrNotFound
+	}
+
+	var boundToCategory int
+	if err := tx.QueryRowContext(ctx,
+		`SELECT count(*) FROM category_fields WHERE field_id = ?`, fieldID).Scan(&boundToCategory); err != nil {
+		return err
+	}
+	if boundToCategory > 0 {
+		return i18n.Wrap(ErrBindingModeConflict, i18n.KeyBindingModeConflict)
+	}
+
+	if err := vendorKeyFree(ctx, tx, vendorID, fieldID, key); err != nil {
+		return err
+	}
+
+	_, err := tx.ExecContext(ctx,
+		`INSERT INTO vendor_fields (vendor_id, field_id, sort)
+		 VALUES (?, ?, ?)
+		 ON CONFLICT(vendor_id, field_id) DO UPDATE SET sort = excluded.sort`,
+		vendorID, fieldID, sort)
+	return err
+}
+
+// vendorKeyFree refuses a key already reachable by the assets this binding
+// would cover.
+//
+// The reach of a vendor binding is every model from that vendor, so the
+// categories those models sit in -- with their ancestors and subtrees -- are
+// where the key has to be free. Same question modelKeyFree asks, one join
+// further out.
+func vendorKeyFree(ctx context.Context, tx *sql.Tx, vendorID, fieldID, key string) error {
+	// Another field already on this vendor.
+	var owner string
+	err := tx.QueryRowContext(ctx, `
+		SELECT v.name
+		FROM vendor_fields vf
+		JOIN field_definitions f ON f.id = vf.field_id
+		JOIN vendors v ON v.id = vf.vendor_id
+		WHERE vf.vendor_id = ? AND vf.field_id <> ? AND f.key = ?
+		LIMIT 1`, vendorID, fieldID, key).Scan(&owner)
+	if err == nil {
+		return i18n.Wrap(ErrKeyConflict, i18n.KeyBindDuplicate, key, owner)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	// Anything bound on a category one of this vendor's models belongs to.
+	err = tx.QueryRowContext(ctx, `
+		SELECT c.name
+		FROM category_fields cf
+		JOIN field_definitions f ON f.id = cf.field_id
+		JOIN categories c ON c.id = cf.category_id
+		WHERE f.key = ? AND cf.field_id <> ? AND EXISTS (
+			SELECT 1 FROM product_models m
+			JOIN product_model_categories pmc ON pmc.model_id = m.id
+			JOIN categories mc ON mc.id = pmc.category_id
+			WHERE m.vendor_id = ?
+			  AND (mc.path LIKE c.path || '%' OR c.path LIKE mc.path || '%')
+		)
+		LIMIT 1`, key, fieldID, vendorID).Scan(&owner)
+	if err == nil {
+		return i18n.Wrap(ErrKeyConflict, i18n.KeyBindDuplicate, key, owner)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	return nil
+}
+
+// UnbindVendor detaches a field from a vendor. Values already stored under it
+// become archived attributes on the next read, the same as any other unbind.
+func (s *Store) UnbindVendor(ctx context.Context, vendorID, fieldID string) error {
+	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx,
+			`DELETE FROM vendor_fields WHERE vendor_id = ? AND field_id = ?`, vendorID, fieldID)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
 }

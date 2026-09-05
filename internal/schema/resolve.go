@@ -115,6 +115,7 @@ func resolveModelFields(
 	path string,
 	bindingsByModel map[string][]ModelBinding,
 	categoriesOfModel map[string][]string,
+	vendorsOfField map[string][]string,
 ) []model.BoundField {
 	chain := make(map[string]bool, 8)
 	for _, id := range AncestorIDs(path) {
@@ -154,6 +155,7 @@ func resolveModelFields(
 					Required:        b.Field.Required,
 					Sort:            b.Sort,
 					ModelIDs:        []string{modelID},
+					VendorIDs:       vendorsOfField[b.Field.ID],
 				}
 				byField[b.Field.ID] = &bf
 				order = append(order, b.Field.ID)
@@ -168,5 +170,73 @@ func resolveModelFields(
 		out = append(out, *byField[id])
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Sort < out[j].Sort })
+	return out
+}
+
+// resolveVendorFields spreads each vendor's bindings over the models that come
+// from it, so the rest of the resolver never learns that vendors exist.
+//
+// This is the whole of "a model inherits its vendor's fields" (016, decision
+// 108). It is computed on every read rather than written into model_fields once,
+// which is what makes a model registered next month arrive with its vendor's
+// fields already on it, and what makes unbinding from the vendor take them away
+// again everywhere at once.
+//
+// It returns the expansion keyed by model -- the same shape model bindings
+// arrive in, so the two merge -- and, separately, which vendors each field is
+// actually bound to. Those two answers are deliberately not the same thing:
+// ModelIDs is where a field reaches, VendorIDs is where somebody hung it. The
+// interface needs the second to show a binding, and everything else needs the
+// first (decision 112).
+func resolveVendorFields(
+	bindingsByVendor map[string][]ModelBinding,
+	modelsOfVendor map[string][]string,
+) (map[string][]ModelBinding, map[string][]string) {
+	expanded := map[string][]ModelBinding{}
+	vendorsOfField := map[string][]string{}
+
+	vendorIDs := make([]string, 0, len(bindingsByVendor))
+	for id := range bindingsByVendor {
+		vendorIDs = append(vendorIDs, id)
+	}
+	sort.Strings(vendorIDs)
+
+	for _, vendorID := range vendorIDs {
+		for _, b := range bindingsByVendor[vendorID] {
+			vendorsOfField[b.Field.ID] = append(vendorsOfField[b.Field.ID], vendorID)
+			for _, modelID := range modelsOfVendor[vendorID] {
+				b.ModelID = modelID
+				expanded[modelID] = append(expanded[modelID], b)
+			}
+		}
+	}
+	return expanded, vendorsOfField
+}
+
+// mergeDeviceBindings unions a model's own bindings with the ones it inherits.
+//
+// Deduplicated by field, because binding a field to a model and to that model's
+// vendor is allowed -- it is the same side of the exclusion, and refusing it
+// would mean refusing a binding that was correct before somebody changed the
+// model's vendor. Two rows for one field on one model would put the field in
+// ModelIDs twice and show it twice on the form.
+func mergeDeviceBindings(own, inherited map[string][]ModelBinding) map[string][]ModelBinding {
+	out := make(map[string][]ModelBinding, len(own)+len(inherited))
+	for modelID, bs := range own {
+		out[modelID] = append([]ModelBinding(nil), bs...)
+	}
+	for modelID, bs := range inherited {
+		have := make(map[string]bool, len(out[modelID]))
+		for _, b := range out[modelID] {
+			have[b.Field.ID] = true
+		}
+		for _, b := range bs {
+			if have[b.Field.ID] {
+				continue
+			}
+			have[b.Field.ID] = true
+			out[modelID] = append(out[modelID], b)
+		}
+	}
 	return out
 }

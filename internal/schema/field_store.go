@@ -373,6 +373,10 @@ func (s *Store) deleteFieldTx(ctx context.Context, tx *sql.Tx, id, key string) e
 		// orphan a row -- it makes the delete fail outright, which is what
 		// deleting a model-bound field used to do.
 		{`DELETE FROM model_fields WHERE field_id = ?`, []any{id}},
+		// And the third (016). Same shape, same missing cascade, so the same
+		// 500 waits here for anyone who forgets it. field_group_members does
+		// cascade and is deliberately absent from this list.
+		{`DELETE FROM vendor_fields WHERE field_id = ?`, []any{id}},
 		// Only ever empty residue: a non-empty value would have been refused
 		// upstream. This is what makes "delete" mean what it says.
 		{`UPDATE assets SET attrs = json_remove(attrs, '$.' || ?) WHERE json_extract(attrs, '$.' || ?) IS NOT NULL`,

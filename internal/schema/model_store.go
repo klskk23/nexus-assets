@@ -273,7 +273,9 @@ func (s *Store) CreateModel(ctx context.Context, in CreateModelInput) (model.Pro
 		}
 		return m, fmt.Errorf("create model: %w", err)
 	}
-	return m, nil
+	// Read back for the vendor's name: it lives on the vendor row now, and the
+	// form that gets this response shows the name, not the id.
+	return s.GetModel(ctx, m.ID)
 }
 
 func dedupe(in []string) []string {
@@ -359,7 +361,9 @@ func (s *Store) UpdateModel(ctx context.Context, id string, in UpdateModelInput)
 		}
 		return cur, fmt.Errorf("update model: %w", err)
 	}
-	return cur, nil
+	// Read back, for the same reason as the create -- and because cur still
+	// carries the name of the vendor this model had before the change.
+	return s.GetModel(ctx, id)
 }
 
 // vendorPtr turns the empty vendor into a NULL, which is what the nullable

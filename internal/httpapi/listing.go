@@ -92,3 +92,13 @@ func keep[T any](items []T, ok func(T) bool) []T {
 	}
 	return out
 }
+
+// orEmpty turns a missing slice into an empty one, so a field bound nowhere
+// serialises as [] rather than null. The frontend reads these with .length and
+// a null there is a crash, not an empty list.
+func orEmpty(ids []string) []string {
+	if ids == nil {
+		return []string{}
+	}
+	return ids
+}

@@ -96,18 +96,47 @@ func (s *Store) FieldsOfPath(ctx context.Context, path string) ([]model.BoundFie
 		return nil, err
 	}
 
-	modelBindings, err := s.ModelBindingsByModel(ctx)
+	device, vendorsOfField, err := s.deviceBindings(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if len(modelBindings) == 0 {
+	if len(device) == 0 {
 		return fields, nil
 	}
 	categoriesOfModel, err := s.CategoriesOfModel(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return append(fields, resolveModelFields(path, modelBindings, categoriesOfModel)...), nil
+	return append(fields, resolveModelFields(path, device, categoriesOfModel, vendorsOfField)...), nil
+}
+
+// deviceBindings is the device side of the vocabulary, keyed by model.
+//
+// A model's own bindings unioned with the ones it inherits from its vendor. The
+// union happens here so that everything downstream -- the resolver, the entry
+// form, the export, ForModel -- keeps asking one question about one map, and
+// never has to know which of the two ways a field arrived (016, decision 108).
+//
+// Four queries, whatever the number of models: bindings, vendor bindings and
+// the vendor's models are each loaded whole, the way category bindings are.
+func (s *Store) deviceBindings(ctx context.Context) (map[string][]ModelBinding, map[string][]string, error) {
+	own, err := s.ModelBindingsByModel(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	byVendor, err := s.VendorBindingsByVendor(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(byVendor) == 0 {
+		return own, nil, nil
+	}
+	modelsOfVendor, err := s.ModelsOfVendor(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	inherited, vendorsOfField := resolveVendorFields(byVendor, modelsOfVendor)
+	return mergeDeviceBindings(own, inherited), vendorsOfField, nil
 }
 
 // ForModel narrows a category's field set to the one device in front of you.
@@ -174,15 +203,24 @@ func bindTx(ctx context.Context, tx *sql.Tx, categoryID, fieldID string, sort in
 		return err
 	}
 
-	// The other half of the exclusion (015, decision 96). A field already hung
-	// on models cannot also hang on a category: the two would disagree about
-	// required, and the uniqueness scope would stop having one answer.
-	var boundToModel int
+	// The other half of the exclusion. A field already hung on the device side
+	// cannot also hang on a category (015 decision 96, widened by 016 decision
+	// 110): a category binding already covers every device in the category, so
+	// the device-side one adds nothing, and the uniqueness scope would stop
+	// having one answer -- a category subtree and a set of models are not the
+	// same shape of thing.
+	//
+	// Models and vendors are both the device side and are asked about
+	// together. They do not exclude each other: both answer "which device",
+	// and together they are still one set (decision 110).
+	var boundToDevice int
 	if err := tx.QueryRowContext(ctx,
-		`SELECT count(*) FROM model_fields WHERE field_id = ?`, fieldID).Scan(&boundToModel); err != nil {
+		`SELECT (SELECT count(*) FROM model_fields WHERE field_id = ?)
+		      + (SELECT count(*) FROM vendor_fields WHERE field_id = ?)`,
+		fieldID, fieldID).Scan(&boundToDevice); err != nil {
 		return err
 	}
-	if boundToModel > 0 {
+	if boundToDevice > 0 {
 		return i18n.Wrap(ErrBindingModeConflict, i18n.KeyBindingModeConflict)
 	}
 

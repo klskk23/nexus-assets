@@ -117,6 +117,21 @@ func (s *Server) Router() *gin.Engine {
 	authed.DELETE("/models/:id/bindings/:field_id", need(authz.SchemaManage), s.unbindModelField)
 	authed.GET("/models/:id/required-impact", s.modelRequiredImpact)
 
+	// Vendors (016). A separate collection rather than a shape of /models: two
+	// CrudPages behind one address would have their q and offset trample each
+	// other (decision 107).
+	//
+	// Schema-manage throughout, not model-manage: FR-027 keeps the switch count
+	// at eighteen, and a vendor exists here to be bound to rather than to be
+	// catalogued. Reads stay open, like every other list.
+	authed.GET("/vendors", s.listVendors)
+	authed.POST("/vendors", need(authz.SchemaManage), s.createVendor)
+	authed.PATCH("/vendors/:id", need(authz.SchemaManage), s.patchVendor)
+	authed.DELETE("/vendors/:id", need(authz.SchemaManage), s.deleteVendor)
+	authed.POST("/vendors/:id/bindings", need(authz.SchemaManage), s.bindVendorField)
+	authed.DELETE("/vendors/:id/bindings/:field_id", need(authz.SchemaManage), s.unbindVendorField)
+	authed.GET("/vendors/:id/required-impact", s.vendorRequiredImpact)
+
 	authed.GET("/statuses", s.listStatuses)
 	authed.POST("/statuses", need(authz.StatusManage), s.createStatus)
 	authed.PATCH("/statuses/:key", need(authz.StatusManage), s.patchStatus)

@@ -301,8 +301,8 @@ func TestCreateFieldBoundToModels(t *testing.T) {
 	if !strings.Contains(body, modelID) {
 		t.Errorf("the new field should come back bound to the model: %s", body)
 	}
-	if !strings.Contains(body, `"binding_mode":"model"`) {
-		t.Errorf("and in model mode: %s", body)
+	if !strings.Contains(body, `"binding_mode":"device"`) {
+		t.Errorf("and in device mode: %s", body)
 	}
 	// Required rides on the field itself (018), so it comes back on the row
 	// without anyone having to ask which binding it belongs to.
