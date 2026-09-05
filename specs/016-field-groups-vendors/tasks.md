@@ -18,11 +18,11 @@
 
 ## 第 2 阶段：地基（阻塞所有用户故事）
 
-- [ ] T007 在 `internal/model/model.go` 加 `Vendor` 结构，并给 `BoundField` 加 `VendorIDs []string`
-- [ ] T008 新建 `internal/schema/vendor_store.go`：厂商 CRUD、`VendorsOfField`、`ModelsOfVendor`、`VendorFieldsByVendor`（全量加载，禁止按行查询）
-- [ ] T009 在 `internal/schema/vendor_store.go` 加删除守卫：仍有型号引用时拒绝并给出台数（与删除类别、状态同一条规则）
-- [ ] T010 `internal/schema/model_store.go`：`vendor` 字符串换成 `vendor_id`，保持 `GET /models` 的两种形状（014 决策 92）不变
-- [ ] T011 [P] `internal/compute/eval.go` 与 `internal/asset/recompute.go`：确认 `model.vendor` 仍解析为**厂商名字符串**，并在 `internal/compute` 加测试锁住它 —— 这是 research.md 点名的暗雷，表达式静默变值不会触发「改表达式即重算」
+- [X] T007 在 `internal/model/model.go` 加 `Vendor` 结构，并给 `BoundField` 加 `VendorIDs []string`
+- [X] T008 新建 `internal/schema/vendor_store.go`：厂商 CRUD、`VendorsOfField`、`ModelsOfVendor`、`VendorFieldsByVendor`（全量加载，禁止按行查询）
+- [X] T009 在 `internal/schema/vendor_store.go` 加删除守卫：仍有型号引用时拒绝并给出台数（与删除类别、状态同一条规则）
+- [X] T010 `internal/schema/model_store.go`：`vendor` 字符串换成 `vendor_id`，保持 `GET /models` 的两种形状（014 决策 92）不变
+- [X] T011 [P] `internal/compute/eval.go` 与 `internal/asset/recompute.go`：确认 `model.vendor` 仍解析为**厂商名字符串**，并在 `internal/compute` 加测试锁住它 —— 这是 research.md 点名的暗雷，表达式静默变值不会触发「改表达式即重算」
 
 ## 第 3 阶段：US1 厂商继承（P1，MVP）
 
