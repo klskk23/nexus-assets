@@ -125,6 +125,14 @@ describe("Fields page", () => {
     expect(within(row).getByText("设备内唯一")).toBeInTheDocument()
   })
 
+  it("offers the field groups as a tab rather than a navigation entry", async () => {
+    renderWithProviders(<Fields />)
+    expect(await screen.findByRole("tab", { name: "字段组" })).toHaveAttribute(
+      "href",
+      "/fields/groups",
+    )
+  })
+
   it("reveals a template input only for a computed field", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Fields />)

@@ -16,6 +16,7 @@ import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tConfig, tMeta } from "@/i18n"
 import { CategoryFilter } from "@/features/common/CategoryFilter"
 import { CrudPage, type ListPage } from "@/features/metadata/CrudPage"
+import { MetadataTabs } from "@/features/metadata/MetadataTabs"
 import { FieldEditor } from "@/features/fields/FieldEditor"
 import { FieldForm, type FieldFormValue } from "@/features/fields/FieldForm"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -150,6 +151,7 @@ export function Fields() {
       queryKey="fields"
       list={(params) => api.get<ListPage<FieldDefinitionRow>>(`/fields?${params}`)}
       searchHint={tMeta.fields.searchHint}
+      toolbarActions={<MetadataTabs current="fields" />}
       filterKeys={{ category_id: "", type: "", vendor_id: "", group_id: "" }}
       filters={(qs) => (
         <>

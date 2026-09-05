@@ -8,6 +8,7 @@ import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
 import { Hint } from "@/features/common/Hint"
 import { CrudPage, type ListPage } from "@/features/metadata/CrudPage"
+import { MetadataTabs } from "@/features/metadata/MetadataTabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -125,6 +126,7 @@ export function FieldGroups() {
         queryKey="field-groups"
         searchHint={tMeta.fieldGroups.searchHint}
         list={(params) => api.get<ListPage<FieldGroupRow>>(`/field-groups?${params}`)}
+        toolbarActions={<MetadataTabs current="groups" />}
         createLabel={tMeta.fieldGroups.create}
         createDeniedReason={deniedReason("schema.manage")}
         createDisabled={name === ""}

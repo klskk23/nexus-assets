@@ -80,7 +80,6 @@ export const zh = {
     assets: "资产",
     categories: "类别",
     fields: "字段",
-    fieldGroups: "字段组",
     models: "型号",
     statuses: "状态",
     holders: "持有方",
@@ -333,6 +332,8 @@ export const zhMeta = {
   fieldGroups: {
     searchHint: "名称",
     title: "字段组",
+    tabFields: "字段",
+    tabGroups: "字段组",
     create: "新建字段组",
     name: "组名",
     members: "组内字段",

@@ -99,6 +99,16 @@ describe("Field groups page", () => {
     )
   })
 
+  // A group is a handful of fields, not a place of its own -- it sits behind
+  // the field library rather than on the navigation bar. Its own address all
+  // the same: two CrudPages behind one would share a search box and a page
+  // number.
+  it("sits beside the field library rather than on the navigation bar", async () => {
+    renderWithProviders(<FieldGroups />)
+    expect(await screen.findByRole("tab", { name: "字段" })).toHaveAttribute("href", "/fields")
+    expect(screen.getByRole("tab", { name: "字段组" })).toHaveAttribute("href", "/fields/groups")
+  })
+
   // Deleting a group unbinds nothing: the expansion left no trace to reverse,
   // and the confirmation has to say so rather than let somebody assume it does.
   it("says that deleting a group unbinds nothing", async () => {

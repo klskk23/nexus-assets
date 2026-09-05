@@ -95,7 +95,6 @@ export const en: typeof zh = {
     assets: "Assets",
     categories: "Categories",
     fields: "Fields",
-    fieldGroups: "Field groups",
     models: "Models",
     statuses: "Statuses",
     holders: "Holders",
@@ -353,6 +352,8 @@ export const enMeta: typeof zhMeta = {
   fieldGroups: {
     searchHint: "Name",
     title: "Field groups",
+    tabFields: "Fields",
+    tabGroups: "Groups",
     create: "New field group",
     name: "Group name",
     members: "Fields in the group",

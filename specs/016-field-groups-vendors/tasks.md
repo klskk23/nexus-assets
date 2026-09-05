@@ -64,7 +64,7 @@
 - [X] T034 [P] `web/src/lib/metaTypes.ts` / `types.ts`：`vendor_ids`、`group_ids`、`binding_mode` 取值、`ProductModelRow.vendor_id`
 - [X] T035 [US1] `web/src/routes/Vendors.tsx` 新建（`CrudPage`）；`router.tsx` 加 `/models/vendors`；型号页加页签导航，**两条独立路由**，不能一个地址两张 CrudPage 否则 `q`/`offset` 互踩
 - [X] T036 [US1] `web/src/features/fields/FieldForm.tsx`：设备模式下同时提供型号与厂商两组勾选；厂商已提供的型号勾选框禁用并说明，与同链类别置灰同一做法
-- [X] T037 [P] [US2] `web/src/routes/FieldGroups.tsx` 新建（`CrudPage`），成员用既有的复选框栅格；`router.tsx` 加 `/field-groups`
+- [X] T037 [P] [US2] `web/src/routes/FieldGroups.tsx` 新建（`CrudPage`），成员用既有的复选框栅格；`router.tsx` 加 `/fields/groups`，与字段页共用页签，**不单占导航栏一格**
 - [X] T038 [US2] 字段编辑器与新建表单支持「绑定一个组」
 - [X] T039 [US3] `web/src/routes/Fields.tsx`：绑定列认厂商（读 `vendor_ids`）；新增组与厂商两个筛选，进地址栏
 - [X] T040 [US3] `web/src/routes/Assets.tsx`：新增厂商筛选，进地址栏；**不加组筛选**

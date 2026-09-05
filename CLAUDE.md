@@ -270,7 +270,9 @@
   不同，普通的 `UNIQUE(vendor_id, name)` 会让迁移 003 修掉的那个 bug 当场复活。
   **`model.vendor` 在表达式引擎里仍然解析为厂商名字符串**，实体化不能让已有编号静默变值。
   厂商入口是 `/models` 与 `/models/vendors` **两条独立路由**加页签 —— 一个地址两张
-  `CrudPage`，`q` 与 `offset` 会互踩。
+  `CrudPage`，`q` 与 `offset` 会互踩。字段组同理：`/fields` 与 `/fields/groups`。
+  **这两对都只占导航栏一格**：厂商是型号的一个属性、组是一把字段，都不是独立的去处，
+  各给一格只会让导航更长而不是更好找。页签是 `features/metadata/MetadataTabs.tsx`。
 - **`model_ids` 有两个含义，看它从哪来。** `GET /categories/:id/schema` 里是**到达集**
   （直绑 ∪ 厂商展开）—— 列解锁、`ForModel`、`AppliesTo`、导入不匹配拒绝四处判定本来
   就该按它判，016 一行没改。`GET /fields` 的行里是**绑在哪些型号**，配 `vendor_ids`

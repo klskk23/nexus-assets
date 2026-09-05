@@ -38,7 +38,11 @@ export const router = createBrowserRouter([
       // and page number in the address, and two of them behind one address
       // would trample each other (016, decision 107).
       { path: "models/vendors", lazy: async () => ({ Component: (await import("./Vendors")).Vendors }) },
-      { path: "field-groups", lazy: async () => ({ Component: (await import("./FieldGroups")).FieldGroups }) },
+      // Beside the field library rather than on the navigation bar: a group
+      // is a handful of fields, not a place of its own. Its own address for
+      // the same reason vendors have one -- two CrudPages behind one would
+      // share a search box and a page number.
+      { path: "fields/groups", lazy: async () => ({ Component: (await import("./FieldGroups")).FieldGroups }) },
       { path: "statuses", lazy: async () => ({ Component: (await import("./Statuses")).Statuses }) },
       { path: "holders", lazy: async () => ({ Component: (await import("./Holders")).Holders }) },
       { path: "roles", lazy: async () => ({ Component: (await import("./Roles")).Roles }) },
