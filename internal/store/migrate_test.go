@@ -123,7 +123,7 @@ func TestMigrateUpAndDown(t *testing.T) {
 	// Rolling back one revision at a time must restore each earlier shape
 	// exactly, so a half-applied upgrade can be undone rather than requiring a
 	// fresh file.
-	for _, rev := range []string{"018", "017", "016", "015", "014", "013", "012", "011", "010", "009"} {
+	for _, rev := range []string{"019", "018", "017", "016", "015", "014", "013", "012", "011", "010", "009"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -186,10 +186,14 @@ func TestMigrateUpAndDown(t *testing.T) {
 	}
 }
 
-// The uniqueness of a model name is scoped to its vendor, and that only works
-// because vendor is NOT NULL: SQLite treats NULLs as distinct inside a UNIQUE
-// index, so a nullable vendor would let any number of same-named models coexist
-// while the schema still looked constrained.
+// The uniqueness of a model name is scoped to its vendor, and since 019 that
+// vendor is an entity the row points at.
+//
+// The nullable reference is why the index is on ifnull(vendor_id,'') rather
+// than on vendor_id: SQLite treats NULLs as distinct inside a UNIQUE index, so
+// the plain form would let any number of same-named vendorless models coexist
+// while the schema still looked constrained -- which is exactly the hole
+// migration 003 was written to close, reopening itself.
 func TestModelNameIsUniquePerVendorIncludingTheEmptyOne(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "pm.db")
 	s, err := Open(path)
@@ -203,21 +207,28 @@ func TestModelNameIsUniquePerVendorIncludingTheEmptyOne(t *testing.T) {
 	}
 
 	const ts = "2026-01-01T00:00:00Z"
-	ins := `INSERT INTO product_models (id, name, vendor, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
-	if _, err := s.write.ExecContext(ctx, ins, "m1", "X100", "Acme", ts, ts); err != nil {
+	for _, v := range []string{"Acme", "Beta"} {
+		if _, err := s.write.ExecContext(ctx,
+			`INSERT INTO vendors (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`,
+			"v-"+v, v, ts, ts); err != nil {
+			t.Fatalf("seed vendor %s: %v", v, err)
+		}
+	}
+	ins := `INSERT INTO product_models (id, name, vendor_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+	if _, err := s.write.ExecContext(ctx, ins, "m1", "X100", "v-Acme", ts, ts); err != nil {
 		t.Fatalf("first model: %v", err)
 	}
-	if _, err := s.write.ExecContext(ctx, ins, "m2", "X100", "Beta", ts, ts); err != nil {
+	if _, err := s.write.ExecContext(ctx, ins, "m2", "X100", "v-Beta", ts, ts); err != nil {
 		t.Fatalf("two vendors may share a product name: %v", err)
 	}
-	if _, err := s.write.ExecContext(ctx, ins, "m3", "X100", "Acme", ts, ts); err == nil {
+	if _, err := s.write.ExecContext(ctx, ins, "m3", "X100", "v-Acme", ts, ts); err == nil {
 		t.Fatal("the same vendor must not have two products with one name")
 	}
-	// The empty vendor is a namespace like any other, not an escape hatch.
-	if _, err := s.write.ExecContext(ctx, ins, "m4", "S24", "", ts, ts); err != nil {
-		t.Fatalf("an empty vendor is allowed: %v", err)
+	// Having no vendor is a namespace like any other, not an escape hatch.
+	if _, err := s.write.ExecContext(ctx, ins, "m4", "S24", nil, ts, ts); err != nil {
+		t.Fatalf("a model with no vendor is allowed: %v", err)
 	}
-	if _, err := s.write.ExecContext(ctx, ins, "m5", "S24", "", ts, ts); err == nil {
+	if _, err := s.write.ExecContext(ctx, ins, "m5", "S24", nil, ts, ts); err == nil {
 		t.Fatal("two same-named models with no vendor must still collide")
 	}
 }
@@ -320,7 +331,7 @@ func TestMigrateConvertsEnumAndReferenceFieldsToText(t *testing.T) {
 	}
 	// Back past the withdrawal, so the rows can be written in the shape that
 	// revision allowed.
-	for _, rev := range []string{"018", "017", "016", "015", "014", "013", "012", "011", "010"} {
+	for _, rev := range []string{"019", "018", "017", "016", "015", "014", "013", "012", "011", "010"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -379,9 +390,12 @@ func TestMigrateMovesRequiredOntoTheField(t *testing.T) {
 		t.Fatalf("Migrate: %v", err)
 	}
 	// Back to before the move, so the rows can be written the way that
-	// revision allowed: required on the binding.
-	if err := s.MigrateDown(ctx); err != nil {
-		t.Fatalf("MigrateDown 018: %v", err)
+	// revision allowed: required on the binding. Two steps, because 019 sits
+	// on top of it now.
+	for _, rev := range []string{"019", "018"} {
+		if err := s.MigrateDown(ctx); err != nil {
+			t.Fatalf("MigrateDown %s: %v", rev, err)
+		}
 	}
 
 	now := "2026-09-04T00:00:00Z"
@@ -420,9 +434,12 @@ func TestMigrateMovesRequiredOntoTheField(t *testing.T) {
 		}
 	}
 
-	// And going back down puts it where the older code reads it.
-	if err := s.MigrateDown(ctx); err != nil {
-		t.Fatalf("MigrateDown 018: %v", err)
+	// And going back down puts it where the older code reads it. Two steps
+	// again: the Migrate above went all the way up to 019.
+	for _, rev := range []string{"019", "018"} {
+		if err := s.MigrateDown(ctx); err != nil {
+			t.Fatalf("MigrateDown %s: %v", rev, err)
+		}
 	}
 	var n int
 	if err := s.read.QueryRowContext(ctx,
@@ -431,5 +448,86 @@ func TestMigrateMovesRequiredOntoTheField(t *testing.T) {
 	}
 	if n != 2 {
 		t.Errorf("after down, required bindings for f-partial = %d, want both", n)
+	}
+}
+
+// 019 turns a free-text vendor into an entity, and the interesting part is what
+// it refuses to do: Dell, DELL and 戴尔 stay three vendors.
+//
+// Merging them would be tidier and would break the upgrade. Two models that
+// legitimately coexist as (Dell, X1) and (DELL, X1) would land under one vendor
+// with one name, and the new unique index would refuse to build -- on somebody
+// else's database, halfway through.
+func TestMigrateVendorsBackfillVerbatim(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "vendors.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+	if err := s.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+	if err := s.MigrateDown(ctx); err != nil {
+		t.Fatalf("MigrateDown 019: %v", err)
+	}
+
+	now := "2026-09-05T00:00:00Z"
+	for _, m := range []struct{ id, vendor, name string }{
+		{"m1", "Dell", "X1"},
+		{"m2", "DELL", "X1"},
+		{"m3", "", "X1"},
+	} {
+		if _, err := s.write.ExecContext(ctx,
+			`INSERT INTO product_models (id, name, vendor, attr_defaults, created_at, updated_at)
+			 VALUES (?, ?, ?, '{}', ?, ?)`, m.id, m.name, m.vendor, now, now); err != nil {
+			t.Fatalf("seed %s: %v", m.id, err)
+		}
+	}
+
+	if err := s.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate up to 019: %v", err)
+	}
+
+	var vendors int
+	if err := s.read.QueryRowContext(ctx, `SELECT count(*) FROM vendors`).Scan(&vendors); err != nil {
+		t.Fatal(err)
+	}
+	if vendors != 2 {
+		t.Errorf("vendors = %d, want 2 (Dell and DELL, unmerged)", vendors)
+	}
+	var models int
+	if err := s.read.QueryRowContext(ctx, `SELECT count(*) FROM product_models`).Scan(&models); err != nil {
+		t.Fatal(err)
+	}
+	if models != 3 {
+		t.Errorf("models = %d, want all 3 carried over", models)
+	}
+	var nullVendor int
+	if err := s.read.QueryRowContext(ctx,
+		`SELECT count(*) FROM product_models WHERE vendor_id IS NULL`).Scan(&nullVendor); err != nil {
+		t.Fatal(err)
+	}
+	if nullVendor != 1 {
+		t.Errorf("models with no vendor = %d, want 1", nullVendor)
+	}
+
+	// The reason the index folds NULLs: without ifnull() this would be allowed,
+	// and migration 003 exists because it used to be.
+	_, err = s.write.ExecContext(ctx,
+		`INSERT INTO product_models (id, name, vendor, attr_defaults, created_at, updated_at)
+		 VALUES ('m4', 'X1', '', '{}', ?, ?)`, now, now)
+	if err == nil {
+		t.Error("a second vendorless X1 must still be refused")
+	}
+
+	// And a vendored one of the same name is fine, which is the whole point of
+	// having the vendor in the key at all.
+	if _, err := s.write.ExecContext(ctx,
+		`INSERT INTO product_models (id, name, vendor_id, attr_defaults, created_at, updated_at)
+		 SELECT 'm5', 'X1', id, '{}', ?, ? FROM vendors WHERE name = 'Dell'`, now, now); err == nil {
+		t.Error("Dell already has an X1; a second one must be refused")
 	}
 }
