@@ -405,6 +405,10 @@ paths:
   # 015：fields[] 的每一项多带一个 model_ids —— 型号模式字段列出它绑到的型号，
   # 类别模式为空数组。调用方据此判断：录入/编辑时按资产的 model_id 决定渲不渲染，
   # 列表的显示列下拉据此决定该列该不该解锁（决策 103）。这是加字段不是改形状。
+  #
+  # 016：这里的 model_ids 含义变成**到达集** = 直绑的型号 ∪ 所绑厂商旗下的全部型号，
+  # 形状不变。这是本轮唯一一处「含义变化而形状不变」的地方，且是刻意的：上面四处判定
+  # 本来就该按到达集判，一行都不用改。另外每项多带一个 vendor_ids（绑在哪些厂商）。
   /categories/{id}/schema:
     get:
       tags: [metadata]
@@ -487,17 +491,21 @@ paths:
       responses:
         "200":
           description: >
-            OK。items 的每一项额外带 category_ids（绑定到的类别）、model_ids（绑定到的型号，
-            两者互斥）与 binding_mode（category | model | unbound）。
+            OK。items 的每一项额外带 category_ids（绑定到的类别）、model_ids 与 vendor_ids
+            （绑定到的型号与厂商；类别与设备两侧互斥，型号与厂商同属设备侧可并存）、
+            group_ids（属于哪些字段组，供筛选用，与绑定无关）
+            与 binding_mode（category | device | unbound；016 起 model 改称 device）。
+            **注意**：这里的 model_ids 是「绑在哪些型号」，与 `/categories/{id}/schema`
+            里的到达集不同 —— 绑定列与编辑器要显示的是有人选了什么，不是它长成了什么。
             **必填在字段自己身上**（018 起，`required`）：勾上就是它绑到的每个类别或
             型号都要求填。以前它在每条绑定上，于是「这个字段必填吗」有不止一个答案。
     post:
       tags: [metadata]
-      summary: 新建字段，可同时绑定类别或型号
+      summary: 新建字段，可同时绑定类别，或绑定型号与厂商
       description: >
-        `category_ids` 或 `model_ids` 在同一个事务里完成绑定：字段不绑定就不会出现在任何
-        录入表单上，所以"建好再去绑"本来就是同一件事的两半。**两者互斥**，同时给会被拒绝
-        （决策 96），与建好之后再混绑是同一条守卫。绑定被拒绝（键名已在该链上、
+        `category_ids`、`model_ids` 或 `vendor_ids` 在同一个事务里完成绑定：字段不绑定就不会
+        出现在任何录入表单上，所以"建好再去绑"本来就是同一件事的两半。**类别与设备两侧互斥**，
+        同时给会被拒绝（决策 96，016 决策 110 拓宽）；型号与厂商同属设备侧，可以并给。绑定被拒绝（键名已在该链上、
         表达式的输入没绑）时**字段也不会被创建** —— 半个结果不值得留下。
         `required` 作用于这一批绑定，它是写入时的规则：存量资产不回溯校验。
       requestBody:
@@ -516,6 +524,7 @@ paths:
                 is_unique: { type: boolean }
                 category_ids: { type: array, items: { type: string } }
                 model_ids: { type: array, items: { type: string } }
+                vendor_ids: { type: array, items: { type: string } }   # 016
                 required: { type: boolean }   # 字段自己的标志，作用于它的每一条绑定
       responses:
         "201": { description: Created }
@@ -653,11 +662,15 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       tags: [metadata]
-      summary: 把一个字段绑到这个型号上（015 决策 96）
+      summary: 把一个字段或一个字段组绑到这个型号上（015 决策 96、016 决策 105/110）
       description: >
-        字段绑定有两种模式且**互斥**：要么全绑类别，要么全绑型号，一个字段只能是一种。
-        混绑会同时撞上两件事——被类别绑定已覆盖的型号再绑一次没有任何效果、
-        唯一性范围变成说不圆的并集。（原本还有第三件：两条绑定的必填开关对同一台资产
+        请求体是 `{field_id}` 或 `{group_id}`，**二选一**，都给或都不给是 400。
+        绑一个组 = 往这张表插入组内每个字段一行；组内任一成员被拒则整组回滚，
+        一行都不写，409 的 message 点名是哪个字段卡在哪里（决策 106）。
+        绑定有两侧且**互斥**：类别一侧，设备一侧（型号与厂商）。
+        跨侧混绑会同时撞上两件事——被类别绑定已覆盖的设备再绑一次没有任何效果、
+        唯一性范围变成说不圆的并集。型号与厂商都回答"哪些设备"，它们的并集仍是一个集合，
+        所以可以并存。（原本还有第三件：两条绑定的必填开关对同一台资产
         各说各话；018 起必填在字段自己身上，那一条不再成立。）
         值仍然属于每台资产（存 `attrs`），变的只是"这个字段该不该出现在这台设备上"的判断依据。
         权限沿用 `schema.manage`，不新增开关。
@@ -688,6 +701,170 @@ paths:
         - { name: id, in: path, required: true, schema: { type: string } }
       responses:
         "200": { description: "OK，形如 {total}" }
+
+  /vendors:
+    get:
+      tags: [metadata]
+      summary: 厂商清单（016 决策 107）
+      description: >
+        沿用列表的两种形状（014 决策 92）：带 `q`/`offset`/`limit` 返回信封，
+        一个都不带返回**数组**。每项带 `model_count`，让删除守卫能在点之前就说清楚。
+        厂商是实体不是字符串：改名一处生效，型号读的是那一行。
+      parameters:
+        - { $ref: "#/components/parameters/ListQ" }
+        - { $ref: "#/components/parameters/ListOffset" }
+        - { $ref: "#/components/parameters/ListLimit" }
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [metadata]
+      summary: 新建厂商。权限沿用 schema.manage，不新增开关（FR-027）
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "201": { description: Created }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /vendors/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: 改名。型号读的是这一行，所以改完不需要跟着改任何别的东西
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "200": { description: OK }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [metadata]
+      summary: 删除厂商。仍有型号来自它时拒绝（带 total）
+      responses:
+        "204": { description: Deleted }
+        "409": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /vendors/{id}/bindings:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [metadata]
+      summary: 把一个字段或一个字段组绑到这个厂商上（016 决策 108）
+      description: >
+        请求体是 `{field_id}` 或 `{group_id}`，二选一。
+        绑到厂商 = 该厂商旗下全部型号都有这个字段，**且实时继承** ——
+        以后新建的型号开箱即有，解绑则一次性从所有型号上撤走。
+        与绑类别互斥；与绑型号不互斥（同属设备侧）。
+      responses:
+        "204": { description: 已绑定 }
+        "409": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /vendors/{id}/bindings/{field_id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: field_id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [metadata]
+      summary: 从这个厂商解绑，等于从它旗下每款型号上一起撤走
+      responses:
+        "204": { description: 已解绑 }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /vendors/{id}/required-impact:
+    get:
+      tags: [metadata]
+      summary: 勾"必填"前的影响面：这个厂商旗下全部型号的设备台数
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: "OK，形如 {total}" }
+
+  /field-groups:
+    get:
+      tags: [metadata]
+      summary: 字段组清单（016 决策 105）
+      description: >
+        组是**绑定时展开的糖**，不是结构：绑一个组 = 往对应绑定表插入组内每个字段一行，
+        运行时没有组，有效字段集不因组而变。因此**没有「解绑一个组」这个端点** ——
+        展开之后不留痕迹，"解绑组"无从定义；删除组也不解除任何已展开的绑定。
+        已接受的代价：往组里加字段，已绑对象不会跟着变。
+        列表形状沿用 014 决策 92 的两种。每项带 `field_ids`。
+      parameters:
+        - { $ref: "#/components/parameters/ListQ" }
+        - { $ref: "#/components/parameters/ListOffset" }
+        - { $ref: "#/components/parameters/ListLimit" }
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [metadata]
+      summary: 新建字段组
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                field_ids: { type: array, items: { type: string } }
+      responses:
+        "201": { description: Created }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /field-groups/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [metadata]
+      summary: 改名或整体替换成员。给了 field_ids 就是整体替换，不是合并
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                field_ids: { type: array, items: { type: string } }
+      responses:
+        "200": { description: OK }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [metadata]
+      summary: 删除字段组。**已经绑出去的字段一个都不解绑**
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /models/{id}/vendor-change-impact:
+    get:
+      tags: [metadata]
+      summary: 换厂商前的 dry-run：波及多少台设备、哪些字段会变成只读（016 决策 112）
+      description: >
+        把型号从一家厂商改到另一家，会拿走旧厂商提供、而这款型号没有别的来路的字段。
+        值不删，读时算成 `archived_attrs`，只读可见。新厂商也提供的、以及直接绑在这款
+        型号上的字段不算在内 —— 它们改完仍然到得了。台数只数**确实填了值**的设备。
+        `vendor_id` 传空表示改成「没有厂商」。
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: vendor_id, in: query, required: false, schema: { type: string } }
+      responses:
+        "200": { description: "OK，形如 {total, fields:[label]}" }
+        "404": { $ref: "#/components/responses/Error" }
 
   /models/{id}/usage:
     get:

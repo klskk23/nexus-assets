@@ -72,10 +72,18 @@ same data as `export.csv` in a different shape:
   `sys_note`, `sys_created_at`;
 - **a category is required**, for the same reason: field keys are unique only
   within one category's subtree;
-- since 015 a field may bind to a **model** rather than a category. Such a field
-  still appears as a column of that category; rows whose device is not one of
-  those models leave it empty. That adds a column rather than changing one, so
-  reading by column name is unaffected.
+- since 015 a field may bind to a **model** rather than a category, and since
+  016 to a **vendor** as well -- every model that vendor makes gets it, including
+  ones registered later. Such a field still appears as a column of that category;
+  rows whose device is not one of those models leave it empty. That adds a column
+  rather than changing one, so reading by column name is unaffected.
+  **Note that the column set can grow on its own**: registering another model for
+  a vendor, or binding a field to a vendor, changes what this category has. The
+  next refresh will come back with `needsConfirmation`, which is correct -- nexus
+  does not nod that through on anyone's behalf (see section 5).
+- `sys_vendor` is the vendor entity's name (since 016 `product_models.vendor_id`
+  points at `vendors`). After a rename it changes on the **next refresh** of the
+  data source -- what zenith holds is a copy of the rows as of the last one.
 
 ## 3. Adding the data source in zenith
 

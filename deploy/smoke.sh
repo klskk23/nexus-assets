@@ -111,6 +111,35 @@ test "$(curl -s -o /dev/null -w '%{http_code}' -X POST \
 curl -fsS "http://127.0.0.1:$PORT/api/fields" -H "Authorization: Bearer $TOKEN" \
   | grep -qv smoke_both
 
+# Vendors and field groups are their own collections (016). A round trip
+# through the vendor endpoints proves those routes are in this binary, and that
+# migration 019 built the tables they read.
+say "a vendor can be created, listed and deleted"
+VENDOR=$(curl -fsS -X POST "http://127.0.0.1:$PORT/api/vendors" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"name":"Smoke Vendor"}' | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
+test -n "$VENDOR"
+curl -fsS "http://127.0.0.1:$PORT/api/vendors" -H "Authorization: Bearer $TOKEN" \
+  | grep -q 'Smoke Vendor'
+curl -fsS "http://127.0.0.1:$PORT/api/vendors/$VENDOR/required-impact" \
+  -H "Authorization: Bearer $TOKEN" | grep -q '"total"'
+curl -fsS -X DELETE "http://127.0.0.1:$PORT/api/vendors/$VENDOR" \
+  -H "Authorization: Bearer $TOKEN"
+
+# A binding endpoint takes a field or a group, never both and never neither.
+say "a binding request naming neither a field nor a group is refused"
+test "$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+  "http://127.0.0.1:$PORT/api/categories/no-such-category/bindings" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}')" = 400
+
+say "a field group can be created and deleted"
+GROUP=$(curl -fsS -X POST "http://127.0.0.1:$PORT/api/field-groups" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"name":"Smoke Group"}' | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
+test -n "$GROUP"
+curl -fsS -X DELETE "http://127.0.0.1:$PORT/api/field-groups/$GROUP" \
+  -H "Authorization: Bearer $TOKEN"
+
 # Migrations ran once on a fresh directory; now they have to be a no-op against
 # a database that already has them, and the account has to still be there.
 say "restarting"

@@ -692,7 +692,7 @@ export const enAudit: typeof zhAudit = {
     "Create or change a category, field, model, holder or account and the record appears here.",
   total: (n: number) => `${n} in total`,
   actions: { create: "Created", update: "Changed", archive: "Disabled", delete: "Deleted", recompute: "Recomputed" },
-  targets: { category: "Category", field: "Field", binding: "Binding", model: "Model", holder: "Holder", user: "Account", status: "Status" },
+  targets: { category: "Category", field: "Field", binding: "Binding", model: "Model", holder: "Holder", user: "Account", status: "Status", vendor: "Vendor", field_group: "Field group" },
 }
 
 export const enConfirm: typeof zhConfirm = {

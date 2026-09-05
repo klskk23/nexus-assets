@@ -657,7 +657,7 @@ export const zhAudit = {
   emptyHint: "新建或修改类别、字段、型号、持有方、账号后，记录会出现在这里。",
   total: (n: number) => `共 ${n} 条`,
   actions: { create: "新建", update: "修改", archive: "停用", delete: "删除", recompute: "重算" } as Record<string, string>,
-  targets: { category: "类别", field: "字段", binding: "字段绑定", model: "型号", holder: "持有方", user: "账号", status: "状态" } as Record<string, string>,
+  targets: { category: "类别", field: "字段", binding: "字段绑定", model: "型号", holder: "持有方", user: "账号", status: "状态", vendor: "厂商", field_group: "字段组" } as Record<string, string>,
 }
 
 export const zhConfirm = {

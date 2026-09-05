@@ -173,3 +173,55 @@ func TestGroupCrudAndMembership(t *testing.T) {
 		t.Errorf("binding a group that is not there is not found, got %v", err)
 	}
 }
+
+// The two ways the field page narrows a library of a hundred fields: which
+// vendor provides it, and which group it is in. Both narrow, so giving both
+// asks for the intersection.
+func TestFieldListNarrowsByVendorAndGroup(t *testing.T) {
+	s, ctx := newStore(t)
+	root, _ := tree(t, s, ctx)
+	dell := vendorNamed(t, s, ctx, "Dell")
+	if _, err := s.CreateModel(ctx, CreateModelInput{
+		Name: "R640", VendorID: dell, CategoryIDs: []string{root.ID},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "tag", Label: "编码", Type: model.FieldText})
+	fw, _ := s.CreateField(ctx, CreateFieldInput{Key: "firmware", Label: "固件", Type: model.FieldText})
+	if err := s.BindVendor(ctx, dell, tag.ID, 10); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateGroup(ctx, "网络参数", []string{tag.ID, fw.ID}); err != nil {
+		t.Fatal(err)
+	}
+	g, err := s.CreateGroup(ctx, "维保参数", []string{fw.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	page, err := s.ListFieldPage(ctx, FieldFilter{VendorID: dell, Limit: 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Items) != 1 || page.Items[0].ID != tag.ID {
+		t.Errorf("the vendor filter should keep only its own field, got %v", page.Items)
+	}
+
+	page, err = s.ListFieldPage(ctx, FieldFilter{GroupID: g.ID, Limit: 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Items) != 1 || page.Items[0].ID != fw.ID {
+		t.Errorf("the group filter should keep only its members, got %v", page.Items)
+	}
+
+	// Both at once is the intersection, and here nothing is in both.
+	page, err = s.ListFieldPage(ctx, FieldFilter{VendorID: dell, GroupID: g.ID, Limit: 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Items) != 0 {
+		t.Errorf("two filters narrow together, got %v", page.Items)
+	}
+}

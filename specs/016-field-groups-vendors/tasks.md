@@ -76,14 +76,14 @@
 
 ## 第 8 阶段：收口
 
-- [ ] T046 两份 i18n 同步：`zh.ts`/`en.ts`（`typeof zh` 约束）与 `internal/i18n/catalog.go`（parity 测试）
-- [ ] T047 合约：新端点、字段行新形状、`binding_mode` 新取值写进 `specs/001-asset-ledger-demo/contracts/openapi.yaml`，并 `cp` 到 `internal/httpapi/docs/openapi.yaml`
-- [ ] T048 `deploy/smoke.sh` 加一条厂商端点的存在性检查（章程要求改了端点就要改冒烟脚本）
-- [ ] T049 `CLAUDE.md` 加硬规则：三个绑定目标与「类别 vs 设备」互斥；组是绑定时展开的糖，解析路径不认识它；`model_ids` 是到达集不是绑定集；`model.vendor` 在表达式里仍是厂商名
-- [ ] T050 `docs/zenith-printer.md` 与 `.en.md` 一起改：`/api/rows` 的列现在也可能来自厂商绑定
-- [ ] T054 `internal/httpapi` 加权限测试：8 个新端点在缺少 `schema.manage` 时全部 403 —— 漏一个 `need(...)` 就是一条未设防的路由，而权限是「十八个全局开关」，本轮不新增第十九个（FR-027）
-- [ ] T051 跑完整门禁（章程七条）：`gofmt -l` 空、`go vet`、`golangci-lint` 零告警；`go test ./...` 全过且 `internal/schema` 与 `internal/asset` 覆盖率 ≥ 80%；`nexus verify` 通过；`npx tsc --noEmit`、`eslint`、`vitest run`、`npm run build` 全过；真镜像 `deploy/smoke.sh` 通过
-- [ ] T052 按 [quickstart.md](./quickstart.md) 起本地服务实机走完 15 步，**迁移那几步必须在含存量数据的库上做**
+- [X] T046 两份 i18n 同步：`zh.ts`/`en.ts`（`typeof zh` 约束）与 `internal/i18n/catalog.go`（parity 测试）
+- [X] T047 合约：新端点、字段行新形状、`binding_mode` 新取值写进 `specs/001-asset-ledger-demo/contracts/openapi.yaml`，并 `cp` 到 `internal/httpapi/docs/openapi.yaml`
+- [X] T048 `deploy/smoke.sh` 加一条厂商端点的存在性检查（章程要求改了端点就要改冒烟脚本）
+- [X] T049 `CLAUDE.md` 加硬规则：三个绑定目标与「类别 vs 设备」互斥；组是绑定时展开的糖，解析路径不认识它；`model_ids` 是到达集不是绑定集；`model.vendor` 在表达式里仍是厂商名
+- [X] T050 `docs/zenith-printer.md` 与 `.en.md` 一起改：`/api/rows` 的列现在也可能来自厂商绑定
+- [X] T054 `internal/httpapi` 加权限测试：8 个新端点在缺少 `schema.manage` 时全部 403 —— 漏一个 `need(...)` 就是一条未设防的路由，而权限是「十八个全局开关」，本轮不新增第十九个（FR-027）
+- [X] T051 跑完整门禁（章程七条）：`gofmt -l` 空、`go vet`、`golangci-lint` 零告警；`go test ./...` 全过且 `internal/schema` 与 `internal/asset` 覆盖率 ≥ 80%；`nexus verify` 通过；`npx tsc --noEmit`、`eslint`、`vitest run`、`npm run build` 全过；真镜像 `deploy/smoke.sh` 通过
+- [X] T052 按 [quickstart.md](./quickstart.md) 起本地服务实机走完 15 步，**迁移那几步必须在含存量数据的库上做**
 
 ---
 
