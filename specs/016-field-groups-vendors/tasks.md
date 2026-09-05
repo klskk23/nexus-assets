@@ -55,9 +55,9 @@
 
 ## 第 6 阶段：导入导出
 
-- [ ] T031 `internal/importer/resolve.go`：vendor 列从「同名型号消歧字符串」改为「按名字查厂商」，查不到则预览阶段拒绝该行且不创建厂商
-- [ ] T032 [P] `internal/importer/importer_test.go` 加测试：vendor 列指向不存在的厂商 → 该行被拒、厂商表没有新增
-- [ ] T033 确认导出与模板的列由类别完整有效字段集决定，现在含厂商字段；加一条测试锁住
+- [X] T031 `internal/importer/resolve.go`：vendor 列从「同名型号消歧字符串」改为「按名字查厂商」，查不到则预览阶段拒绝该行且不创建厂商
+- [X] T032 [P] `internal/importer/importer_test.go` 加测试：vendor 列指向不存在的厂商 → 该行被拒、厂商表没有新增
+- [X] T033 确认导出与模板的列由类别完整有效字段集决定，现在含厂商字段；加一条测试锁住
 
 ## 第 7 阶段：前端
 

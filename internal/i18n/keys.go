@@ -226,6 +226,7 @@ const (
 	KeyPermRoleManage     = "perm.role_manage"
 	KeyPermUnknown        = "perm.unknown"
 
+	KeyImportVendorMissing   = "import.vendor_missing"
 	KeyImportModelVendorMiss = "import.model_vendor_missing"
 	KeyImportModelAmbig      = "import.model_ambiguous"
 	KeyImportModelMissing    = "import.model_missing"

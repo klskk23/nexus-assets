@@ -175,6 +175,7 @@ var catalogs = map[Lang]map[string]string{
 		KeyImportNoRows:          "文件中没有数据行",
 		KeyImportRowsFailed:      "有 %d 行未通过校验，本次导入未写入任何数据",
 		KeyImportModelAmbig:      "型号「%s」有多个厂商的同名产品，请在「厂商」列写明是哪一家",
+		KeyImportVendorMissing:   "厂商「%s」不存在，请先在厂商页里建好再导入",
 		KeyImportModelVendorMiss: "找不到厂商「%s」的型号「%s」",
 
 		KeyRoleNeedsName:   "角色需要一个名称",
@@ -392,6 +393,7 @@ var catalogs = map[Lang]map[string]string{
 		KeyImportNoRows:          "The file has no data rows.",
 		KeyImportRowsFailed:      "%d row(s) failed validation; nothing was imported.",
 		KeyImportModelAmbig:      "More than one vendor has a product called %q. Name the vendor in the vendor column.",
+		KeyImportVendorMissing:   "There is no vendor called %q. Add it on the vendors page first.",
 		KeyImportModelVendorMiss: "%q has no model called %q",
 
 		KeyRoleNeedsName:   "A role needs a name",

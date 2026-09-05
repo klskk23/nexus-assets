@@ -22,8 +22,12 @@ type lookups struct {
 	// genuinely undecidable -- and picking one would attach the wrong hardware
 	// to a device without ever saying so.
 	ambiguousModels map[string]bool
-	holdersByName   map[string]model.HolderEntity
-	fieldByKey      map[string]model.BoundField
+	// vendorsByName is every vendor on file, so a name in the vendor column
+	// that belongs to nobody is told apart from one that simply does not make
+	// this model. The two need different fixes (016, decision 107).
+	vendorsByName map[string]string
+	holdersByName map[string]model.HolderEntity
+	fieldByKey    map[string]model.BoundField
 	// displayKey is the category's nominated identifier, so a preview row can
 	// show the same label the asset will carry once it exists.
 	displayKey string
@@ -34,6 +38,7 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 		modelsByName:    map[string]string{},
 		modelsByPair:    map[[2]string]string{},
 		ambiguousModels: map[string]bool{},
+		vendorsByName:   map[string]string{},
 		holdersByName:   map[string]model.HolderEntity{},
 		fieldByKey:      map[string]model.BoundField{},
 	}
@@ -59,6 +64,18 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 			continue
 		}
 		l.modelsByName[name] = m.ID
+	}
+
+	// Every vendor, not only the ones making a model in this category: the
+	// question the vendor column raises first is "is there such a vendor",
+	// and answering "no" for a real vendor that happens to make nothing here
+	// would send somebody off to create a duplicate.
+	vendors, err := s.schema.ListVendors(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range vendors {
+		l.vendorsByName[strings.TrimSpace(v.Name)] = v.ID
 	}
 
 	entities, err := s.holders.List(ctx)
@@ -97,6 +114,12 @@ func (l *lookups) resolveModel(name, vendor string) (string, error) {
 		return "", nil
 	}
 	if vendor != "" {
+		// The vendor is an entity now, and the import creates no master data
+		// -- the same rule that already applies to a holder or a model that is
+		// not on file. A typo here would otherwise become a permanent vendor.
+		if _, known := l.vendorsByName[vendor]; !known {
+			return "", i18n.M(i18n.KeyImportVendorMissing, vendor)
+		}
 		id, ok := l.modelsByPair[[2]string{name, vendor}]
 		if !ok {
 			return "", i18n.M(i18n.KeyImportModelVendorMiss, vendor, name)

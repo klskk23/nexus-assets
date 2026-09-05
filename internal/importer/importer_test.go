@@ -625,3 +625,92 @@ func vendorID(t *testing.T, s *schema.Store, ctx context.Context, name string) s
 	}
 	return v.ID
 }
+
+// The vendor column names an entity now, so a name nobody is registered under
+// is refused on the row -- and the import creates no vendor, the same rule that
+// already holds for holders and models (016, decision 107).
+func TestAnUnregisteredVendorIsRefusedAndCreatesNothing(t *testing.T) {
+	f := newFixture(t)
+
+	before, err := f.schema.ListVendors(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := f.svc.Preview(f.ctx, i18n.ZH, f.catID, f.userID, csvWithVendor(
+		"SDWAN-X100,幽灵科技,上海仓库,,001A2B3C9301,2.1.3",
+	))
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	msg := report.Rows[0].Fields[ColModel]
+	if !strings.Contains(msg, "幽灵科技") {
+		t.Errorf("the refusal should name the vendor that is not on file, got %q", msg)
+	}
+	after, err := f.schema.ListVendors(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after) != len(before) {
+		t.Errorf("the import must not create master data, vendors went from %d to %d",
+			len(before), len(after))
+	}
+}
+
+// A vendor that exists but makes no such model is a different mistake, and gets
+// a different sentence: the fix is the model column, not the vendors page.
+func TestAKnownVendorWithoutThatModelSaysSo(t *testing.T) {
+	f := newFixture(t)
+	vendorID(t, f.schema, f.ctx, "Beta") // registered, but makes nothing here
+
+	report, err := f.svc.Preview(f.ctx, i18n.ZH, f.catID, f.userID, csvWithVendor(
+		"SDWAN-X100,Beta,上海仓库,,001A2B3C9302,2.1.3",
+	))
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	msg := report.Rows[0].Fields[ColModel]
+	if !strings.Contains(msg, "SDWAN-X100") {
+		t.Errorf("the refusal should name the model, got %q", msg)
+	}
+}
+
+// Columns come from the category's whole schema, so a field the vendor
+// provides is a column like any other -- for the template and the export alike
+// (015 decision 103, unchanged by the vendor layer sitting underneath it).
+func TestTemplateAndExportCarryVendorProvidedColumns(t *testing.T) {
+	f := newFixture(t)
+	acme := vendorID(t, f.schema, f.ctx, "Acme")
+	tag, err := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
+		Key: "servicetag", Label: "ServiceTag", Type: model.FieldText,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.schema.BindVendor(f.ctx, acme, tag.ID, 10); err != nil {
+		t.Fatal(err)
+	}
+
+	tpl, err := f.svc.Template(f.ctx, i18n.ZH, f.catID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(tpl), "servicetag") {
+		t.Errorf("the template should offer the vendor's field as a column: %s", tpl)
+	}
+
+	if _, err := f.svc.Commit(f.ctx, i18n.ZH, f.catID, f.userID, strings.NewReader(
+		"型号,厂商,持有方（名称）,设备备注,基准 MAC（必填）,固件版本,ServiceTag\n"+
+			"model,vendor,holder,note,mac,firmware,servicetag\n"+
+			"SDWAN-X100,Acme,上海仓库,,001A2B3C9401,2.1.3,ABC1234\n")); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+	page, err := f.svc.Rows(f.ctx, i18n.ZH, asset.ListFilter{CategoryID: f.catID, IncludeDescendants: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range page.Rows {
+		if r["mac"] == "001A2B3C9401" && r["servicetag"] != "ABC1234" {
+			t.Errorf("the value should come back under the vendor's field, got %v", r)
+		}
+	}
+}
