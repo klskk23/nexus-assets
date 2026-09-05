@@ -178,9 +178,16 @@ const (
 	KeyVendorNeedsName = "vendor.needs_name"
 	KeyVendorDuplicate = "vendor.duplicate"
 	KeyVendorInUse     = "vendor.in_use"
-	KeyModelDuplicate  = "model.duplicate"
-	KeyModelNeedsName  = "model.needs_name"
-	KeyModelInUse      = "model.in_use"
+
+	// Field groups. A group is a shortcut, so its only refusals are about the
+	// group itself and about a member that could not be bound.
+	KeyGroupNeedsName     = "group.needs_name"
+	KeyGroupDuplicate     = "group.duplicate"
+	KeyGroupBindRefused   = "group.bind_refused"
+	KeyBindNeedsOneTarget = "bind.needs_one_target"
+	KeyModelDuplicate     = "model.duplicate"
+	KeyModelNeedsName     = "model.needs_name"
+	KeyModelInUse         = "model.in_use"
 
 	// Import and export.
 	KeyImportParseFailed  = "import.parse_failed"

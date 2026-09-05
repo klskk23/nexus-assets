@@ -42,6 +42,7 @@ const (
 	TargetRole     TargetType = "role"
 	TargetStatus   TargetType = "status"
 	TargetVendor   TargetType = "vendor"
+	TargetGroup    TargetType = "field_group"
 )
 
 // Entry is one recorded change.

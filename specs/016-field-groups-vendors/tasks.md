@@ -42,10 +42,10 @@
 
 ## 第 4 阶段：US2 字段组（P2，与第 3 阶段并行）
 
-- [ ] T024 [US2] 新建 `internal/schema/group_store.go`：组 CRUD、成员整体替换、`GroupsOfField`
-- [ ] T025 [US2] `internal/schema/group_store.go`：`BindGroup(target, groupID)` 在一个事务里逐个走既有绑定校验，任一失败整体回滚并点名该字段与冲突所在
-- [ ] T026 [US2] `internal/httpapi/handlers_groups.go` + `server.go`：组 CRUD；三个既有绑定端点接受 `group_id` 取代 `field_id`，二选一，都给或都不给是 400
-- [ ] T027 [P] [US2] `internal/httpapi/groups_test.go` 新建：绑组等价于逐个绑；整组拒绝后**一行都没写**；删除组不解除已展开的绑定；同一字段经两个组绑同一目标只产生一条
+- [X] T024 [US2] 新建 `internal/schema/group_store.go`：组 CRUD、成员整体替换、`GroupsOfField`
+- [X] T025 [US2] `internal/schema/group_store.go`：`BindGroup(target, groupID)` 在一个事务里逐个走既有绑定校验，任一失败整体回滚并点名该字段与冲突所在
+- [X] T026 [US2] `internal/httpapi/handlers_groups.go` + `server.go`：组 CRUD；三个既有绑定端点接受 `group_id` 取代 `field_id`，二选一，都给或都不给是 400
+- [X] T027 [P] [US2] `internal/httpapi/groups_test.go` 新建：绑组等价于逐个绑；整组拒绝后**一行都没写**；删除组不解除已展开的绑定；同一字段经两个组绑同一目标只产生一条
 
 ## 第 5 阶段：US4 换厂商（P3）
 

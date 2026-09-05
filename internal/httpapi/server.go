@@ -132,6 +132,16 @@ func (s *Server) Router() *gin.Engine {
 	authed.DELETE("/vendors/:id/bindings/:field_id", need(authz.SchemaManage), s.unbindVendorField)
 	authed.GET("/vendors/:id/required-impact", s.vendorRequiredImpact)
 
+	// Field groups (016). Only CRUD: binding a group is the existing binding
+	// endpoints taking group_id instead of field_id, because it is the same act
+	// on the same target and a second route would mean a second place to get
+	// the exclusion rules right. There is no "unbind a group" -- the expansion
+	// leaves no trace to reverse (decision 105).
+	authed.GET("/field-groups", s.listGroups)
+	authed.POST("/field-groups", need(authz.SchemaManage), s.createGroup)
+	authed.PATCH("/field-groups/:id", need(authz.SchemaManage), s.patchGroup)
+	authed.DELETE("/field-groups/:id", need(authz.SchemaManage), s.deleteGroup)
+
 	authed.GET("/statuses", s.listStatuses)
 	authed.POST("/statuses", need(authz.StatusManage), s.createStatus)
 	authed.PATCH("/statuses/:key", need(authz.StatusManage), s.patchStatus)

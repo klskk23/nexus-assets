@@ -175,6 +175,11 @@ func (s *Server) listFields(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
+	inGroups, err := s.schema.GroupsOfField(c.Request.Context())
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
 
 	rows := make([]fieldRow, 0, len(page.Items))
 	for _, f := range page.Items {
@@ -190,7 +195,7 @@ func (s *Server) listFields(c *gin.Context) {
 		}
 		rows = append(rows, fieldRow{
 			FieldDefinition: f, CategoryIDs: ids,
-			ModelIDs: models, VendorIDs: vendors, GroupIDs: []string{},
+			ModelIDs: models, VendorIDs: vendors, GroupIDs: orEmpty(inGroups[f.ID]),
 			BindingMode: mode,
 		})
 	}
@@ -276,16 +281,13 @@ func (s *Server) patchField(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
+// bindField hangs one field -- or every field of one group -- on a category.
 func (s *Server) bindField(c *gin.Context) {
-	var req struct {
-		FieldID string `json:"field_id" binding:"required"`
-		Sort    int    `json:"sort"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
+	req, ok := readBindRequest(c)
+	if !ok {
 		return
 	}
-	if err := s.schema.Bind(c.Request.Context(), c.Param("id"), req.FieldID, req.Sort); err != nil {
+	if err := s.bindOne(c, schema.BindToCategory, req); err != nil {
 		FailErr(c, err)
 		return
 	}
@@ -302,15 +304,11 @@ func (s *Server) bindField(c *gin.Context) {
 // under a different target would be a distinction nobody administering this
 // could act on.
 func (s *Server) bindModelField(c *gin.Context) {
-	var req struct {
-		FieldID string `json:"field_id" binding:"required"`
-		Sort    int    `json:"sort"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
+	req, ok := readBindRequest(c)
+	if !ok {
 		return
 	}
-	if err := s.schema.BindModel(c.Request.Context(), c.Param("id"), req.FieldID, req.Sort); err != nil {
+	if err := s.bindOne(c, schema.BindToModel, req); err != nil {
 		FailErr(c, err)
 		return
 	}

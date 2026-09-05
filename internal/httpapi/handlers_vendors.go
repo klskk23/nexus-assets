@@ -110,15 +110,11 @@ func (s *Server) deleteVendor(c *gin.Context) {
 // Same permission as the other two binding endpoints: all three are schema
 // edits, and the permission set is a closed eighteen.
 func (s *Server) bindVendorField(c *gin.Context) {
-	var req struct {
-		FieldID string `json:"field_id" binding:"required"`
-		Sort    int    `json:"sort"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
+	req, ok := readBindRequest(c)
+	if !ok {
 		return
 	}
-	if err := s.schema.BindVendor(c.Request.Context(), c.Param("id"), req.FieldID, req.Sort); err != nil {
+	if err := s.bindOne(c, schema.BindToVendor, req); err != nil {
 		FailErr(c, err)
 		return
 	}
