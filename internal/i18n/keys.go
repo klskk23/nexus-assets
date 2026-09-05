@@ -174,10 +174,13 @@ const (
 	KeyFnSliceRange       = "fn.slice_range"
 
 	// Product models.
-	KeyModelNoVendor  = "model.no_vendor"
-	KeyModelDuplicate = "model.duplicate"
-	KeyModelNeedsName = "model.needs_name"
-	KeyModelInUse     = "model.in_use"
+	KeyModelNoVendor   = "model.no_vendor"
+	KeyVendorNeedsName = "vendor.needs_name"
+	KeyVendorDuplicate = "vendor.duplicate"
+	KeyVendorInUse     = "vendor.in_use"
+	KeyModelDuplicate  = "model.duplicate"
+	KeyModelNeedsName  = "model.needs_name"
+	KeyModelInUse      = "model.in_use"
 
 	// Import and export.
 	KeyImportParseFailed  = "import.parse_failed"

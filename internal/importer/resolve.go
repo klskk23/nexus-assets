@@ -53,7 +53,7 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 	}
 	for _, m := range models {
 		name := strings.TrimSpace(m.Name)
-		l.modelsByPair[[2]string{name, strings.TrimSpace(m.Vendor)}] = m.ID
+		l.modelsByPair[[2]string{name, strings.TrimSpace(m.VendorName)}] = m.ID
 		if _, dup := l.modelsByName[name]; dup {
 			l.ambiguousModels[name] = true
 			continue

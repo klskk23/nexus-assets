@@ -345,7 +345,7 @@ func (s *Server) listModels(c *gin.Context) {
 		})
 	}
 	respondList(c, items, func(m model.ProductModel, q string) bool {
-		return matches(q, m.Name, m.Vendor)
+		return matches(q, m.Name, m.VendorName)
 	})
 }
 
@@ -353,7 +353,7 @@ func (s *Server) createModel(c *gin.Context) {
 	var req struct {
 		CategoryIDs  []string       `json:"category_ids"`
 		Name         string         `json:"name" binding:"required"`
-		Vendor       string         `json:"vendor"`
+		VendorID     string         `json:"vendor_id"`
 		ImageURL     string         `json:"image_url"`
 		AttrDefaults map[string]any `json:"attr_defaults"`
 	}
@@ -362,7 +362,7 @@ func (s *Server) createModel(c *gin.Context) {
 		return
 	}
 	out, err := s.schema.CreateModel(c.Request.Context(), schema.CreateModelInput{
-		CategoryIDs: req.CategoryIDs, Name: req.Name, Vendor: req.Vendor,
+		CategoryIDs: req.CategoryIDs, Name: req.Name, VendorID: req.VendorID,
 		ImageURL: req.ImageURL, AttrDefaults: req.AttrDefaults,
 	})
 	if err != nil {
@@ -378,7 +378,7 @@ func (s *Server) createModel(c *gin.Context) {
 func (s *Server) patchModel(c *gin.Context) {
 	var req struct {
 		Name         *string         `json:"name"`
-		Vendor       *string         `json:"vendor"`
+		VendorID     *string         `json:"vendor_id"`
 		ImageURL     *string         `json:"image_url"`
 		CategoryIDs  *[]string       `json:"category_ids"`
 		AttrDefaults *map[string]any `json:"attr_defaults"`
@@ -395,7 +395,7 @@ func (s *Server) patchModel(c *gin.Context) {
 	}
 
 	out, err := s.schema.UpdateModel(ctx, c.Param("id"), schema.UpdateModelInput{
-		Name: req.Name, Vendor: req.Vendor, ImageURL: req.ImageURL,
+		Name: req.Name, VendorID: req.VendorID, ImageURL: req.ImageURL,
 		CategoryIDs: req.CategoryIDs, AttrDefaults: req.AttrDefaults,
 	})
 	if err != nil {

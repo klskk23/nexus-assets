@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -14,7 +15,7 @@ func TestModelServesEveryCategoryItIsAssociatedWith(t *testing.T) {
 	root, child := tree(t, s, ctx)
 
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", Vendor: "Acme", CategoryIDs: []string{root.ID, child.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID, child.ID},
 	})
 	if err != nil {
 		t.Fatalf("create model: %v", err)
@@ -87,17 +88,17 @@ func TestModelNameIsScopedToItsVendor(t *testing.T) {
 	root, _ := tree(t, s, ctx)
 
 	if _, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", Vendor: "Acme", CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", Vendor: "Beta", CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Beta"), CategoryIDs: []string{root.ID},
 	}); err != nil {
 		t.Fatalf("two vendors may share a product name: %v", err)
 	}
 	if _, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", Vendor: "Acme", CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
 	}); err == nil {
 		t.Fatal("the same vendor must not ship two products with one name")
 	}
@@ -135,12 +136,12 @@ func TestDuplicateModelIsReportedNotCrashed(t *testing.T) {
 	root, _ := tree(t, s, ctx)
 
 	if _, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", Vendor: "Acme", CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
 	}); err != nil {
 		t.Fatal(err)
 	}
 	_, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", Vendor: "Acme", CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
 	})
 	if !errors.Is(err, ErrModelDuplicate) {
 		t.Fatalf("want ErrModelDuplicate, got %v", err)
@@ -161,4 +162,31 @@ func TestDuplicateModelIsReportedNotCrashed(t *testing.T) {
 	if !strings.Contains(err.Error(), "未填厂商") {
 		t.Errorf("the message should say the vendor is blank, got %v", err)
 	}
+}
+
+// vendorNamed creates a vendor and hands back its id.
+//
+// Since 016 a model points at a vendor row rather than carrying its name, so
+// every test that used to write VendorID: vendorNamed(t, s, ctx, "Acme") needs the row to exist first.
+// Idempotent by name, because most of these tests make two models of the same
+// vendor and neither one should have to know whether it came first.
+func vendorNamed(t *testing.T, s *Store, ctx context.Context, name string) string {
+	t.Helper()
+	if name == "" {
+		return ""
+	}
+	existing, err := s.ListVendors(ctx)
+	if err != nil {
+		t.Fatalf("list vendors: %v", err)
+	}
+	for _, v := range existing {
+		if v.Name == name {
+			return v.ID
+		}
+	}
+	v, err := s.CreateVendor(ctx, name)
+	if err != nil {
+		t.Fatalf("create vendor %s: %v", name, err)
+	}
+	return v.ID
 }

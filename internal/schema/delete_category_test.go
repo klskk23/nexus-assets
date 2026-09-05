@@ -104,7 +104,7 @@ func TestDeleteCategoryDetachesModelsRatherThanRefusing(t *testing.T) {
 	root, child := tree(t, s, ctx)
 
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", Vendor: "Acme", CategoryIDs: []string{root.ID, child.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID, child.ID},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -140,7 +140,7 @@ func TestDeleteCategoryMayLeaveAModelUnattached(t *testing.T) {
 	_, child := tree(t, s, ctx)
 
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", Vendor: "Acme", CategoryIDs: []string{child.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{child.ID},
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -45,7 +45,7 @@ func (l labels) modelVendor(id *string) string {
 	if id == nil {
 		return ""
 	}
-	return l.model[*id].Vendor
+	return l.model[*id].VendorName
 }
 
 func (s *Service) labels(ctx context.Context) (labels, error) {

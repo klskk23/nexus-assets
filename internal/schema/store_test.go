@@ -210,7 +210,7 @@ func TestModelDefaultsRoundTrip(t *testing.T) {
 	s, ctx := newStore(t)
 	_, child := tree(t, s, ctx)
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		CategoryIDs: []string{child.ID}, Name: "SDWAN-X100", Vendor: "Acme",
+		CategoryIDs: []string{child.ID}, Name: "SDWAN-X100", VendorID: vendorNamed(t, s, ctx, "Acme"),
 		AttrDefaults: map[string]any{"ports": float64(8)},
 	})
 	if err != nil {
@@ -261,7 +261,7 @@ func TestListFieldsAndModelsReturnEverything(t *testing.T) {
 func modelOn(t *testing.T, s *Store, ctx context.Context, name string, categoryIDs ...string) model.ProductModel {
 	t.Helper()
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: name, Vendor: "Dell", CategoryIDs: categoryIDs,
+		Name: name, VendorID: vendorNamed(t, s, ctx, "Dell"), CategoryIDs: categoryIDs,
 	})
 	if err != nil {
 		t.Fatalf("create model %s: %v", name, err)

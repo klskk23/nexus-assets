@@ -165,8 +165,12 @@ func seedSchema(ctx context.Context, a *app) (seeded, error) {
 		return out, err
 	}
 
+	acme, err := a.schema.CreateVendor(ctx, "Acme")
+	if err != nil {
+		return out, fmt.Errorf("create vendor: %w", err)
+	}
 	if _, err := a.schema.CreateModel(ctx, schema.CreateModelInput{
-		Name: "SDWAN-X100", Vendor: "Acme",
+		Name: "SDWAN-X100", VendorID: acme.ID,
 		CategoryIDs:  []string{root.ID, child.ID},
 		AttrDefaults: map[string]any{"firmware": "2.2.1"},
 	}); err != nil {

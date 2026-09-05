@@ -91,7 +91,7 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	if _, err := sch.CreateModel(ctx, schema.CreateModelInput{
-		CategoryIDs: []string{cat.ID}, Name: "SDWAN-X100", Vendor: "Acme",
+		CategoryIDs: []string{cat.ID}, Name: "SDWAN-X100", VendorID: vendorID(t, sch, ctx, "Acme"),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -513,7 +513,7 @@ func TestVendorColumnSettlesModelsThatShareAName(t *testing.T) {
 
 	// A second X100, from someone else, reachable from the same category.
 	if _, err := f.schema.CreateModel(f.ctx, schema.CreateModelInput{
-		Name: "SDWAN-X100", Vendor: "Beta", CategoryIDs: []string{f.catID},
+		Name: "SDWAN-X100", VendorID: vendorID(t, f.schema, f.ctx, "Beta"), CategoryIDs: []string{f.catID},
 	}); err != nil {
 		t.Fatalf("create model: %v", err)
 	}
@@ -572,7 +572,7 @@ func TestPreviewRefusesAValueThatDoesNotBelongToTheRowsModel(t *testing.T) {
 
 	// A second model in the same category, with a field of its own.
 	dell, err := f.schema.CreateModel(f.ctx, schema.CreateModelInput{
-		CategoryIDs: []string{f.catID}, Name: "Latitude 5420", Vendor: "Dell",
+		CategoryIDs: []string{f.catID}, Name: "Latitude 5420", VendorID: vendorID(t, f.schema, f.ctx, "Dell"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -604,4 +604,24 @@ func TestPreviewRefusesAValueThatDoesNotBelongToTheRowsModel(t *testing.T) {
 	if n := f.count(t); n != 0 {
 		t.Errorf("a preview writes nothing, found %d assets", n)
 	}
+}
+
+// vendorID creates a vendor and returns its id: since 016 a model points at a
+// vendor row rather than carrying its name.
+func vendorID(t *testing.T, s *schema.Store, ctx context.Context, name string) string {
+	t.Helper()
+	existing, err := s.ListVendors(ctx)
+	if err != nil {
+		t.Fatalf("list vendors: %v", err)
+	}
+	for _, v := range existing {
+		if v.Name == name {
+			return v.ID
+		}
+	}
+	v, err := s.CreateVendor(ctx, name)
+	if err != nil {
+		t.Fatalf("create vendor %s: %v", name, err)
+	}
+	return v.ID
 }

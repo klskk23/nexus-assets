@@ -320,7 +320,9 @@ func (lk recomputeLookups) modelOf(id sql.NullString) (name, vendor string) {
 	if !ok {
 		return "", ""
 	}
-	return pm.Name, pm.Vendor
+	// The vendor's name, for the same reason as in the save pipeline: this
+	// feeds `model.vendor` in expressions.
+	return pm.Name, pm.VendorName
 }
 
 // applyRecomputed folds the new values into attrs and reports whether anything

@@ -189,7 +189,7 @@ func TestMigrateUpAndDown(t *testing.T) {
 // The uniqueness of a model name is scoped to its vendor, and since 019 that
 // vendor is an entity the row points at.
 //
-// The nullable reference is why the index is on ifnull(vendor_id,'') rather
+// The nullable reference is why the index is on ifnull(vendor_id,”) rather
 // than on vendor_id: SQLite treats NULLs as distinct inside a UNIQUE index, so
 // the plain form would let any number of same-named vendorless models coexist
 // while the schema still looked constrained -- which is exactly the hole

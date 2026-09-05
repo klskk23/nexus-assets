@@ -20,15 +20,31 @@ var ErrModelAmbiguous = errors.New("model name matches more than one vendor")
 // ErrModelDuplicate reports a second product with one name under one vendor.
 var ErrModelDuplicate = errors.New("vendor already has a product with this name")
 
-const modelCols = `id, name, vendor, image_url, attr_defaults, archived_at, created_at, updated_at`
+// Every model query joins the vendor for its name. The join rather than a
+// stored copy: a renamed vendor must not leave a stale string behind on a
+// hundred model rows, and 016 exists precisely so there is one place the
+// vendor's name lives.
+const modelCols = `m.id, m.name, m.vendor_id, v.name, m.image_url, m.attr_defaults,
+	m.archived_at, m.created_at, m.updated_at`
+
+// modelFrom carries the join every scan depends on. LEFT, because a model with
+// no vendor is ordinary rather than broken.
+const modelFrom = `FROM product_models m LEFT JOIN vendors v ON v.id = m.vendor_id`
+
+// modelOrder sorts by the vendor's name, with the vendorless first rather than
+// scattered: ifnull keeps them together at one end.
+const modelOrder = `ORDER BY ifnull(v.name,''), m.name`
 
 func scanModel(row interface{ Scan(...any) error }) (model.ProductModel, error) {
 	var m model.ProductModel
-	var image, archived sql.NullString
+	var image, archived, vendorID, vendorName sql.NullString
 	var defaults, created, updated string
-	if err := row.Scan(&m.ID, &m.Name, &m.Vendor, &image, &defaults, &archived, &created, &updated); err != nil {
+	if err := row.Scan(&m.ID, &m.Name, &vendorID, &vendorName, &image, &defaults,
+		&archived, &created, &updated); err != nil {
 		return m, err
 	}
+	m.VendorID = vendorID.String
+	m.VendorName = vendorName.String
 	m.ImageURL = image.String
 	var err error
 	if m.AttrDefaults, err = store.UnmarshalJSONMap(defaults); err != nil {
@@ -71,7 +87,7 @@ func (s *Store) categoriesByModel(ctx context.Context) (map[string][]string, err
 // ListModels returns every product model with the categories it serves.
 func (s *Store) ListModels(ctx context.Context) ([]model.ProductModel, error) {
 	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT `+modelCols+` FROM product_models ORDER BY vendor, name`)
+		`SELECT `+modelCols+` `+modelFrom+` `+modelOrder)
 	if err != nil {
 		return nil, fmt.Errorf("list models: %w", err)
 	}
@@ -104,7 +120,7 @@ func (s *Store) ListModels(ctx context.Context) ([]model.ProductModel, error) {
 // GetModel loads one product model.
 func (s *Store) GetModel(ctx context.Context, id string) (model.ProductModel, error) {
 	m, err := scanModel(s.db.ReadDB().QueryRowContext(ctx,
-		`SELECT `+modelCols+` FROM product_models WHERE id = ?`, id))
+		`SELECT `+modelCols+` `+modelFrom+` WHERE m.id = ?`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return m, ErrNotFound
 	}
@@ -142,12 +158,11 @@ func (s *Store) categoriesOf(ctx context.Context, modelID string) ([]string, err
 // categories, making it available somewhere is an explicit act rather than an
 // inference -- so the rule can stay one-directional and predictable.
 func (s *Store) CandidateModels(ctx context.Context, categoryPath string) ([]model.ProductModel, error) {
-	const q = `SELECT DISTINCT ` + modelColsPrefixed + `
-	           FROM product_models m
+	const q = `SELECT DISTINCT ` + modelCols + ` ` + modelFrom + `
 	           JOIN product_model_categories pmc ON pmc.model_id = m.id
 	           JOIN categories c ON c.id = pmc.category_id
 	           WHERE ? LIKE c.path || '%' AND m.archived_at IS NULL
-	           ORDER BY m.vendor, m.name`
+	           ` + modelOrder
 	rows, err := s.db.ReadDB().QueryContext(ctx, q, categoryPath)
 	if err != nil {
 		return nil, fmt.Errorf("load candidate models: %w", err)
@@ -164,8 +179,6 @@ func (s *Store) CandidateModels(ctx context.Context, categoryPath string) ([]mod
 	return out, rows.Err()
 }
 
-const modelColsPrefixed = `m.id, m.name, m.vendor, m.image_url, m.attr_defaults, m.archived_at, m.created_at, m.updated_at`
-
 // ModelByName resolves a model by name, which is what CSV import needs: the
 // file names models rather than carrying ids.
 //
@@ -174,7 +187,7 @@ const modelColsPrefixed = `m.id, m.name, m.vendor, m.image_url, m.attr_defaults,
 // attach the wrong hardware to a device and never say so.
 func (s *Store) ModelByName(ctx context.Context, name string) (model.ProductModel, error) {
 	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT `+modelCols+` FROM product_models WHERE name = ? AND archived_at IS NULL LIMIT 2`, name)
+		`SELECT `+modelCols+` `+modelFrom+` WHERE m.name = ? AND m.archived_at IS NULL LIMIT 2`, name)
 	if err != nil {
 		return model.ProductModel{}, err
 	}
@@ -202,8 +215,9 @@ func (s *Store) ModelByName(ctx context.Context, name string) (model.ProductMode
 
 // CreateModelInput describes a new product model.
 type CreateModelInput struct {
-	Name         string
-	Vendor       string
+	Name string
+	// VendorID points at a vendor row, empty for a model that has none.
+	VendorID     string
 	ImageURL     string
 	CategoryIDs  []string
 	AttrDefaults map[string]any
@@ -226,7 +240,7 @@ func (s *Store) CreateModel(ctx context.Context, in CreateModelInput) (model.Pro
 	}
 	now := time.Now().UTC()
 	m := model.ProductModel{
-		ID: store.NewID(), Name: in.Name, Vendor: strings.TrimSpace(in.Vendor),
+		ID: store.NewID(), Name: in.Name, VendorID: strings.TrimSpace(in.VendorID),
 		ImageURL: in.ImageURL, CategoryIDs: dedupe(in.CategoryIDs),
 		AttrDefaults: in.AttrDefaults, CreatedAt: now, UpdatedAt: now,
 	}
@@ -235,9 +249,9 @@ func (s *Store) CreateModel(ctx context.Context, in CreateModelInput) (model.Pro
 	}
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO product_models (id, name, vendor, image_url, attr_defaults, created_at, updated_at)
+			`INSERT INTO product_models (id, name, vendor_id, image_url, attr_defaults, created_at, updated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			m.ID, m.Name, m.Vendor, m.ImageURL, defaults,
+			m.ID, m.Name, store.NullString(vendorPtr(m.VendorID)), m.ImageURL, defaults,
 			store.FormatTime(now), store.FormatTime(now)); err != nil {
 			return err
 		}
@@ -254,10 +268,7 @@ func (s *Store) CreateModel(ctx context.Context, in CreateModelInput) (model.Pro
 		// The unique index is the guarantee; this turns its violation into
 		// something the person filling in the form can act on.
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			var who any = m.Vendor
-			if m.Vendor == "" {
-				who = i18n.M(i18n.KeyModelNoVendor)
-			}
+			who := vendorLabel(ctx, s, m.VendorID)
 			return m, i18n.Wrap(ErrModelDuplicate, i18n.KeyModelDuplicate, who, m.Name)
 		}
 		return m, fmt.Errorf("create model: %w", err)
@@ -292,7 +303,7 @@ var ErrModelInUse = errors.New("product model is still in use")
 // empty value -- a model attached to nothing is a legitimate state.
 type UpdateModelInput struct {
 	Name         *string
-	Vendor       *string
+	VendorID     *string
 	ImageURL     *string
 	CategoryIDs  *[]string
 	AttrDefaults *map[string]any
@@ -317,9 +328,10 @@ func (s *Store) UpdateModel(ctx context.Context, id string, in UpdateModelInput)
 
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx,
-			`UPDATE product_models SET name = ?, vendor = ?, image_url = ?, attr_defaults = ?, updated_at = ?
+			`UPDATE product_models SET name = ?, vendor_id = ?, image_url = ?, attr_defaults = ?, updated_at = ?
 			 WHERE id = ?`,
-			cur.Name, cur.Vendor, cur.ImageURL, defaults, store.FormatTime(now), id); err != nil {
+			cur.Name, store.NullString(vendorPtr(cur.VendorID)), cur.ImageURL, defaults,
+			store.FormatTime(now), id); err != nil {
 			return err
 		}
 		if in.CategoryIDs == nil {
@@ -342,15 +354,36 @@ func (s *Store) UpdateModel(ctx context.Context, id string, in UpdateModelInput)
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			var who any = cur.Vendor
-			if cur.Vendor == "" {
-				who = i18n.M(i18n.KeyModelNoVendor)
-			}
+			who := vendorLabel(ctx, s, cur.VendorID)
 			return cur, i18n.Wrap(ErrModelDuplicate, i18n.KeyModelDuplicate, who, cur.Name)
 		}
 		return cur, fmt.Errorf("update model: %w", err)
 	}
 	return cur, nil
+}
+
+// vendorPtr turns the empty vendor into a NULL, which is what the nullable
+// reference means: no vendor, not a vendor named "".
+func vendorPtr(id string) *string {
+	if id == "" {
+		return nil
+	}
+	return &id
+}
+
+// vendorLabel names a vendor for a message. The id in a refusal would be no
+// help to the person reading it, and "no vendor" is a real answer rather than
+// a missing one.
+func vendorLabel(ctx context.Context, s *Store, vendorID string) any {
+	if vendorID == "" {
+		return i18n.M(i18n.KeyModelNoVendor)
+	}
+	var name string
+	if err := s.db.ReadDB().QueryRowContext(ctx,
+		`SELECT name FROM vendors WHERE id = ?`, vendorID).Scan(&name); err != nil {
+		return vendorID
+	}
+	return name
 }
 
 // ModelUsage counts the assets assigned to a model.
@@ -405,8 +438,8 @@ func applyModelPatch(cur *model.ProductModel, in UpdateModelInput) error {
 		}
 		cur.Name = strings.TrimSpace(*in.Name)
 	}
-	if in.Vendor != nil {
-		cur.Vendor = strings.TrimSpace(*in.Vendor)
+	if in.VendorID != nil {
+		cur.VendorID = strings.TrimSpace(*in.VendorID)
 	}
 	if in.ImageURL != nil {
 		cur.ImageURL = *in.ImageURL

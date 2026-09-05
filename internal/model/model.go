@@ -249,14 +249,55 @@ type BoundField struct {
 	// InheritedFrom names the ancestor category the binding comes from; it is
 	// empty when the binding lives on the category being resolved.
 	InheritedFrom string `json:"inherited_from,omitempty"`
-	// ModelIDs are the models this field is bound to, empty for a field bound
-	// to categories (015, decision 96 -- the two are exclusive).
+	// ModelIDs are the models this field reaches: the ones it is bound to
+	// directly, plus every model of a vendor it is bound to (016, decision
+	// 113). Empty for a field bound to categories -- the two modes are
+	// exclusive (015, decision 96).
 	//
-	// Carried out to the interface because "does this field apply here" stops
-	// being answerable from the category alone: the entry form renders it only
-	// when the asset's model is one of these, and the list's column picker
-	// only unlocks the column once the model filter names one of them.
+	// Reaches, not "is bound to". Since 016 those are different questions and
+	// this answers the second one, because it is the one every consumer has:
+	// the entry form renders the field when the asset's model is in here, the
+	// column picker unlocks the column when the model filter names one, the
+	// export blanks the cell when a row's model is not, and the import refuses
+	// a value a row's model cannot hold. VendorIDs answers "bound where",
+	// which only the field editor and the library's binding column ask.
 	ModelIDs []string `json:"model_ids"`
+	// VendorIDs are the vendors this field is bound to. Every model of each is
+	// in ModelIDs above; this says where the binding actually lives, so the
+	// editor can offer to remove it and the library can say "厂商 Dell"
+	// instead of listing five model names.
+	VendorIDs []string `json:"vendor_ids"`
+}
+
+// Vendor is who made the device.
+//
+// An entity rather than a string since 016, for one reason: fields bind to it.
+// "Every Dell has a ServiceTag" is a fact about the vendor, and a model created
+// next month inherits it without anybody remembering to go back -- which is
+// what a free-text column could never do.
+type Vendor struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// ModelCount is filled in on read, so the delete guard can say how many
+	// models are in the way before somebody tries.
+	ModelCount int       `json:"model_count,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+// FieldGroup is a handful of fields somebody wants to bind together.
+//
+// It is a shortcut, not a structure (016, decision 105): binding a group writes
+// the same rows as binding its members one at a time, and nothing downstream
+// ever learns it existed. The cost is deliberate -- adding a field to a group
+// does not reach what the group was already bound to -- and it buys resolution,
+// uniqueness, export and the column picker never having to know about groups.
+type FieldGroup struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	FieldIDs  []string  `json:"field_ids"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // ProductModel groups devices of the same make.
@@ -270,9 +311,17 @@ type ProductModel struct {
 	// may be empty: a model can be prepared before it is placed anywhere.
 	CategoryIDs []string `json:"category_ids"`
 	Name        string   `json:"name"`
-	// Vendor takes part in the duplicate-name check, so it is never null. An
-	// empty vendor is a namespace of its own, not an exemption.
-	Vendor       string         `json:"vendor"`
+	// VendorID is the vendor this model comes from, or empty for one that has
+	// none -- a white-box or self-built device genuinely has no vendor, so the
+	// reference is nullable.
+	//
+	// It still takes part in the duplicate-name check: two models may share a
+	// name only under different vendors, and "no vendor" is one namespace
+	// rather than an exemption. The index folds every empty one together to
+	// keep that true (019).
+	VendorID string `json:"vendor_id"`
+	// VendorName is filled in on read for display, never stored on this row.
+	VendorName   string         `json:"vendor_name,omitempty"`
 	ImageURL     string         `json:"image_url,omitempty"`
 	AttrDefaults map[string]any `json:"attr_defaults"`
 	ArchivedAt   *time.Time     `json:"archived_at,omitempty"`

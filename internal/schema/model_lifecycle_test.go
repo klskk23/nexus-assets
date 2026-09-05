@@ -15,7 +15,7 @@ func TestUpdateModelReplacesItsCategories(t *testing.T) {
 	root, child := tree(t, s, ctx)
 
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", Vendor: "Acme", CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -43,20 +43,21 @@ func TestUpdateModelLeavesUnsentFieldsAlone(t *testing.T) {
 	root, _ := tree(t, s, ctx)
 
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", Vendor: "Acme", CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
 		AttrDefaults: map[string]any{"firmware": "1.0"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	vendor := "Beta"
-	if _, err := s.UpdateModel(ctx, m.ID, UpdateModelInput{Vendor: &vendor}); err != nil {
+	vendor := vendorNamed(t, s, ctx, "Beta")
+	if _, err := s.UpdateModel(ctx, m.ID, UpdateModelInput{VendorID: &vendor}); err != nil {
 		t.Fatal(err)
 	}
 	got, _ := s.GetModel(ctx, m.ID)
-	if got.Vendor != "Beta" {
-		t.Errorf("vendor = %q", got.Vendor)
+	// The name comes back from the join, so a rename would follow it here.
+	if got.VendorName != "Beta" {
+		t.Errorf("vendor = %q", got.VendorName)
 	}
 	if got.Name != "X100" {
 		t.Errorf("name should be untouched, got %q", got.Name)
@@ -74,10 +75,10 @@ func TestUpdateModelLeavesUnsentFieldsAlone(t *testing.T) {
 func TestUpdateModelIntoADuplicateIsRefused(t *testing.T) {
 	s, ctx := newStore(t)
 
-	if _, err := s.CreateModel(ctx, CreateModelInput{Name: "X100", Vendor: "Acme"}); err != nil {
+	if _, err := s.CreateModel(ctx, CreateModelInput{Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme")}); err != nil {
 		t.Fatal(err)
 	}
-	other, err := s.CreateModel(ctx, CreateModelInput{Name: "X200", Vendor: "Acme"})
+	other, err := s.CreateModel(ctx, CreateModelInput{Name: "X200", VendorID: vendorNamed(t, s, ctx, "Acme")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +97,7 @@ func TestDeleteModelRefusedWhileAssetsUseIt(t *testing.T) {
 	s, ctx := newStore(t)
 	root, _ := tree(t, s, ctx)
 
-	m, err := s.CreateModel(ctx, CreateModelInput{Name: "X100", Vendor: "Acme"})
+	m, err := s.CreateModel(ctx, CreateModelInput{Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +128,7 @@ func TestDeleteModelTakesItsCategoryLinks(t *testing.T) {
 	root, _ := tree(t, s, ctx)
 
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", Vendor: "Acme", CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -116,3 +116,32 @@ func TestPadDoesNotTruncate(t *testing.T) {
 		t.Errorf("got %q %v", got, err)
 	}
 }
+
+// `model.vendor` is a vendor's name, and 016 must not quietly turn it into an
+// id.
+//
+// The engine hands this to any computed field, so a category's asset numbers
+// can be derived from it. Feed it an id and every existing template goes on
+// running and produces a different number -- while "changing an expression
+// recomputes" never fires, because the expression did not change. The failure
+// would be silent, in the numbers, on devices already recorded.
+func TestModelVendorIsTheVendorsName(t *testing.T) {
+	ctx := NewContext("a1", map[string]any{}, "NET", "网络设备", "EDGE620", "Dell")
+
+	got, err := Eval("sn", `model.vendor`, ctx)
+	if err != nil {
+		t.Fatalf("eval: %v", err)
+	}
+	if got != "Dell" {
+		t.Errorf("model.vendor = %q, want the vendor's name", got)
+	}
+
+	// And the shape a real numbering rule has.
+	got, err = Eval("sn", `upper(model.vendor) + "-" + model.name`, ctx)
+	if err != nil {
+		t.Fatalf("eval: %v", err)
+	}
+	if got != "DELL-EDGE620" {
+		t.Errorf("derived number = %q", got)
+	}
+}

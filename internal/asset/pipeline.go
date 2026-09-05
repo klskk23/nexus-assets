@@ -154,7 +154,12 @@ func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
 		if err != nil {
 			return prep, err
 		}
-		modelName, modelVendor = pm.Name, pm.Vendor
+		// VendorName, not the id. `model.vendor` is exposed to the expression
+		// engine, so a category's asset numbers can be derived from it -- hand
+		// it an id and every existing template silently computes something
+		// else, while "changing an expression recomputes" never fires because
+		// the expression did not change (016).
+		modelName, modelVendor = pm.Name, pm.VendorName
 		for k, v := range pm.AttrDefaults {
 			if _, present := attrs[k]; !present {
 				attrs[k] = v
