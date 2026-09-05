@@ -53,8 +53,8 @@ function route(p: string) {
   }
   if (p === "/models") {
     return Promise.resolve([
-      { id: "m1", category_ids: ["rt"], name: "X100", vendor: "Acme", attr_defaults: {} },
-      { id: "m2", category_ids: ["net"], name: "别的机", vendor: "", attr_defaults: {} },
+      { id: "m1", category_ids: ["rt"], name: "X100", vendor_name: "Acme", attr_defaults: {} },
+      { id: "m2", category_ids: ["net"], name: "别的机", vendor_name: "", attr_defaults: {} },
     ])
   }
   if (p.endsWith("/schema")) return Promise.resolve(schema)

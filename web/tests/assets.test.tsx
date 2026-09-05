@@ -124,7 +124,7 @@ function route(path: string) {
   if (path === "/users") return Promise.resolve(users)
   if (path === "/models") {
     return Promise.resolve([
-      { id: "m1", name: "SDWAN-X100", vendor: "Acme", category_ids: ["net"], attr_defaults: {} },
+      { id: "m1", name: "SDWAN-X100", vendor_name: "Acme", category_ids: ["net"], attr_defaults: {} },
     ])
   }
   if (path.endsWith("/schema")) {
@@ -764,8 +764,8 @@ function Address() {
 
 describe("Assets model filter", () => {
   const models = [
-    { id: "m1", name: "SDWAN-X100", vendor: "Acme", category_ids: ["net"], attr_defaults: {} },
-    { id: "m-dell", name: "Latitude 5420", vendor: "Dell", category_ids: ["net"], attr_defaults: {} },
+    { id: "m1", name: "SDWAN-X100", vendor_name: "Acme", category_ids: ["net"], attr_defaults: {} },
+    { id: "m-dell", name: "Latitude 5420", vendor_name: "Dell", category_ids: ["net"], attr_defaults: {} },
   ]
   const withModelField = {
     category: categories[0],
@@ -850,5 +850,59 @@ describe("Assets model filter", () => {
     await waitFor(() =>
       expect(screen.queryByRole("columnheader", { name: "ServiceTag" })).not.toBeInTheDocument(),
     )
+  })
+})
+
+// "Show me every Dell we own" used to mean picking their models off the list
+// one at a time and remembering which ones were theirs (016).
+describe("Assets vendor filter", () => {
+  const vendors = [
+    { id: "v-dell", name: "Dell", model_count: 1 },
+    { id: "v-acme", name: "Acme", model_count: 1 },
+  ]
+
+  beforeEach(() => {
+    get.mockReset().mockImplementation((p: string) => {
+      if (p === "/vendors") return Promise.resolve(vendors)
+      return route(p)
+    })
+  })
+
+  it("carries the chosen vendor into the query and the address", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <>
+        <Assets />
+        <Address />
+      </>,
+    )
+    await screen.findByText(/共 1 条/)
+    await chooseByLabel(user, "厂商", "Dell")
+
+    await waitFor(() => {
+      const asked = get.mock.calls
+        .map((args) => String(args[0]))
+        .filter((p) => p.startsWith("/assets?"))
+      expect(asked[asked.length - 1]).toContain("vendor_id=v-dell")
+    })
+    expect(screen.getByTestId("address")).toHaveTextContent("vendor_id=v-dell")
+  })
+
+  // It is not narrowed by category: which supplier made a device is not a
+  // question about a branch of the tree.
+  it("offers the vendor filter before any category is chosen", async () => {
+    renderWithProviders(<Assets />)
+    expect(await screen.findByRole("combobox", { name: "厂商" })).toBeInTheDocument()
+    // The model filter is the one that waits for a category.
+    expect(screen.queryByRole("combobox", { name: "型号" })).not.toBeInTheDocument()
+  })
+
+  // Expanding a group gives its fields to whatever was bound, and after that
+  // no edge is left between a device and the group -- so there is nothing for
+  // an asset filter to filter by (decision 105).
+  it("has no field-group filter", async () => {
+    renderWithProviders(<Assets />)
+    await screen.findByText(/共 1 条/)
+    expect(screen.queryByRole("combobox", { name: "字段组" })).not.toBeInTheDocument()
   })
 })

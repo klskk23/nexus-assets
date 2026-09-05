@@ -53,7 +53,11 @@ type ListFilter struct {
 	// ModelID narrows to one product model. It is what makes a model-bound
 	// field's column worth showing (015, decision 103): the column means
 	// something only once the list is looking at devices that have the field.
-	ModelID     string
+	ModelID string
+	// VendorID narrows to every model from one vendor (016). It is the
+	// question "show me the Dell fleet", which used to mean picking the models
+	// off a list one at a time and remembering which ones were Dell's.
+	VendorID    string
 	HolderType  string
 	HolderID    string
 	AttrFilters map[string]string
@@ -310,6 +314,43 @@ func (s *Service) DeleteMany(ctx context.Context, ids []string, confirm string) 
 	return len(ids), nil
 }
 
+// plainFilters is the half of the filter set that is one column and one value.
+//
+// Split out from filterClause, which keeps the two that are not: the category
+// filter reads a path first, and the search decides an exact match on the way
+// through.
+func plainFilters(f ListFilter) ([]string, []any) {
+	var where []string
+	var args []any
+	for _, c := range []struct {
+		sql string
+		val string
+	}{
+		{`status = ?`, f.Status},
+		{`owner_id = ?`, f.OwnerID},
+		{`model_id = ?`, f.ModelID},
+		// Every model from one vendor. "Show me the Dell fleet" used to mean
+		// picking those models off a list one at a time (016).
+		{`model_id IN (SELECT id FROM product_models WHERE vendor_id = ?)`, f.VendorID},
+	} {
+		if c.val != "" {
+			where = append(where, c.sql)
+			args = append(args, c.val)
+		}
+	}
+	// The kind travels with the id: an id alone would match a user and an
+	// entity that happened to share it.
+	if f.HolderType != "" && f.HolderID != "" {
+		where = append(where, `holder_type = ? AND holder_id = ?`)
+		args = append(args, f.HolderType, f.HolderID)
+	}
+	for k, v := range f.AttrFilters {
+		where = append(where, `json_extract(attrs, '$.' || ?) = ?`)
+		args = append(args, k, v)
+	}
+	return where, args
+}
+
 // filterClause turns the filter into WHERE fragments and their arguments.
 //
 // It also fills in ExactMatchID, which is why it takes the result: an exact hit
@@ -346,26 +387,9 @@ func (s *Service) filterClause(ctx context.Context, f ListFilter, res *ListResul
 		}
 		where = append(where, `id IN (`+strings.Join(holes, ",")+`)`)
 	}
-	if f.Status != "" {
-		where = append(where, `status = ?`)
-		args = append(args, f.Status)
-	}
-	if f.OwnerID != "" {
-		where = append(where, `owner_id = ?`)
-		args = append(args, f.OwnerID)
-	}
-	if f.ModelID != "" {
-		where = append(where, `model_id = ?`)
-		args = append(args, f.ModelID)
-	}
-	if f.HolderType != "" && f.HolderID != "" {
-		where = append(where, `holder_type = ? AND holder_id = ?`)
-		args = append(args, f.HolderType, f.HolderID)
-	}
-	for k, v := range f.AttrFilters {
-		where = append(where, `json_extract(attrs, '$.' || ?) = ?`)
-		args = append(args, k, v)
-	}
+	plainWhere, plainArgs := plainFilters(f)
+	where = append(where, plainWhere...)
+	args = append(args, plainArgs...)
 
 	q := strings.TrimSpace(f.Q)
 	if q == "" {

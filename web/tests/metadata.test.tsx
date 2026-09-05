@@ -40,11 +40,11 @@ const fields = [
     category_ids: ["net"], model_ids: [] },
   // Bound the other way (015): it belongs to models, not to a category.
   { id: "f3", key: "servicetag", label: "ServiceTag", type: "text", options: {}, is_unique: true,
-    category_ids: [], model_ids: ["m1"] },
+    category_ids: [], model_ids: ["m1"], vendor_ids: [] },
 ]
 
 const productModels = [
-  { id: "m1", category_ids: ["net"], name: "Latitude 5420", vendor: "Dell", attr_defaults: {} },
+  { id: "m1", category_ids: ["net"], name: "Latitude 5420", vendor_name: "Dell", attr_defaults: {} },
 ]
 
 const holders = [
@@ -113,16 +113,16 @@ describe("Fields page", () => {
     expect(within(optional).queryByText("必填")).not.toBeInTheDocument()
   })
 
-  // A model-bound field used to read "未绑定" under a column headed 所属类别 --
+  // A device-bound field used to read "未绑定" under a column headed 所属类别 --
   // true about categories, and a lie about the field.
   it("names the models a field binds to instead of calling it unbound", async () => {
     renderWithProviders(<Fields />)
     const row = await screen.findByRole("row", { name: /ServiceTag/ })
-    expect(within(row).getByText("型号")).toBeInTheDocument()
+    expect(within(row).getByText("设备")).toBeInTheDocument()
     expect(within(row).getByText(/Dell Latitude 5420/)).toBeInTheDocument()
     expect(within(row).queryByText("未绑定")).not.toBeInTheDocument()
-    // And its uniqueness reaches those models, not a category.
-    expect(within(row).getByText("型号内唯一")).toBeInTheDocument()
+    // And its uniqueness reaches those devices, not a category.
+    expect(within(row).getByText("设备内唯一")).toBeInTheDocument()
   })
 
   it("reveals a template input only for a computed field", async () => {
@@ -168,6 +168,7 @@ describe("Fields page", () => {
         options: { regex: "", regex_hint: "" },
         category_ids: [],
         model_ids: [],
+        vendor_ids: [],
         required: false,
       }),
     )
@@ -183,7 +184,7 @@ describe("Fields page", () => {
     await openCreate(user, "新建字段")
     await user.type(screen.getByLabelText("键名（英文）"), "servicetag")
     await user.type(screen.getByLabelText("显示名"), "ServiceTag")
-    await user.click(screen.getByRole("radio", { name: "型号" }))
+    await user.click(screen.getByRole("radio", { name: "设备" }))
     // The category list is gone with the mode, so the two cannot be mixed.
     expect(screen.queryByLabelText("网络设备")).not.toBeInTheDocument()
     await user.click(screen.getByLabelText("Dell Latitude 5420"))
@@ -198,6 +199,7 @@ describe("Fields page", () => {
         options: { regex: "", regex_hint: "" },
         category_ids: [],
         model_ids: ["m1"],
+        vendor_ids: [],
         required: false,
       }),
     )
@@ -233,6 +235,7 @@ describe("Fields page", () => {
         options: { regex: "", regex_hint: "" },
         category_ids: ["net"],
         model_ids: [],
+        vendor_ids: [],
         required: true,
       }),
     )
@@ -266,6 +269,7 @@ describe("Fields page", () => {
         options: { regex: "^R-\\d+$", regex_hint: "R- 加数字" },
         category_ids: [],
         model_ids: [],
+        vendor_ids: [],
         required: false,
       }),
     )
@@ -502,5 +506,48 @@ describe("create dialog resets", () => {
 
     const alert = await within(editor).findByRole("alert")
     expect(alert).toHaveTextContent("仍被 5 台设备使用")
+  })
+})
+
+// The field library grew two more ways to find something (016): which vendor
+// provides it, and which group it is in.
+describe("Fields page vendor and group filters", () => {
+  const vendors = [{ id: "v-dell", name: "Dell", model_count: 1 }]
+  const groups = [{ id: "g-net", name: "网络参数", field_ids: ["f1"] }]
+
+  beforeEach(() => {
+    get.mockReset().mockImplementation((p: string) => {
+      if (p === "/vendors") return Promise.resolve(vendors)
+      if (p.startsWith("/field-groups")) return Promise.resolve(groups)
+      return route(p)
+    })
+  })
+
+  it("asks the server for the fields of one vendor", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Fields />)
+    await screen.findByRole("row", { name: /基准 MAC/ })
+
+    await chooseByLabel(user, "厂商", "Dell")
+    await waitFor(() => {
+      const asked = get.mock.calls
+        .map((args) => String(args[0]))
+        .filter((p) => p.startsWith("/fields?"))
+      expect(asked[asked.length - 1]).toContain("vendor_id=v-dell")
+    })
+  })
+
+  it("asks the server for the fields of one group", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Fields />)
+    await screen.findByRole("row", { name: /基准 MAC/ })
+
+    await chooseByLabel(user, "字段组", "网络参数")
+    await waitFor(() => {
+      const asked = get.mock.calls
+        .map((args) => String(args[0]))
+        .filter((p) => p.startsWith("/fields?"))
+      expect(asked[asked.length - 1]).toContain("group_id=g-net")
+    })
   })
 })

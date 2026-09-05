@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError, blockerKey, type Blocker, type Referrer } from "@/lib/api"
 import type { AssetPage, Category, Conflict, RecomputeReport } from "@/lib/types"
-import type { FieldDefinitionRow, ProductModelRow } from "@/lib/metaTypes"
+import type { FieldDefinitionRow, ProductModelRow, VendorRow } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -46,8 +46,14 @@ export function FieldEditor({ field, onClose }: Props) {
     required: field.required ?? false,
     options: field.options ?? {},
     bindTo:
-      (field.model_ids ?? []).length > 0 ? (field.model_ids ?? []) : (field.category_ids ?? []),
-    bindMode: (field.model_ids ?? []).length > 0 ? "model" : "category",
+      (field.model_ids ?? []).length > 0 || (field.vendor_ids ?? []).length > 0
+        ? (field.model_ids ?? [])
+        : (field.category_ids ?? []),
+    bindVendors: field.vendor_ids ?? [],
+    bindMode:
+      (field.model_ids ?? []).length > 0 || (field.vendor_ids ?? []).length > 0
+        ? "device"
+        : "category",
   })
   const [banner, setBanner] = useState<string | null>(null)
   // Two kinds of thing can stand in the way, and the user does something
@@ -62,6 +68,7 @@ export function FieldEditor({ field, onClose }: Props) {
   // Unticking a binding takes a value off every device in that category or
   // model, so it asks first.
   const [unbinding, setUnbinding] = useState<string | null>(null)
+  const [unbindingVendor, setUnbindingVendor] = useState<string | null>(null)
 
   const categories = useQuery({
     queryKey: ["categories"],
@@ -70,6 +77,10 @@ export function FieldEditor({ field, onClose }: Props) {
   const models = useQuery({
     queryKey: ["models"],
     queryFn: () => api.get<ProductModelRow[]>("/models"),
+  })
+  const vendors = useQuery({
+    queryKey: ["vendors"],
+    queryFn: () => api.get<VendorRow[]>("/vendors"),
   })
 
   // How many devices marking it required would eventually ask. Required is
@@ -80,7 +91,7 @@ export function FieldEditor({ field, onClose }: Props) {
     queryFn: async () => {
       const counts = await Promise.all(
         draft.bindTo.map((id) =>
-          draft.bindMode === "model"
+          draft.bindMode === "device"
             ? api.get<{ total: number }>(`/models/${id}/required-impact`).then((r) => r.total)
             : api
                 .get<AssetPage>(`/assets?category_id=${id}&include_descendants=true&limit=1`)
@@ -102,6 +113,10 @@ export function FieldEditor({ field, onClose }: Props) {
   const tick = (id: string) => setDraft((d) => ({ ...d, bindTo: [...d.bindTo, id] }))
   const untick = (id: string) =>
     setDraft((d) => ({ ...d, bindTo: d.bindTo.filter((x) => x !== id) }))
+  const tickVendor = (id: string) =>
+    setDraft((d) => ({ ...d, bindVendors: [...d.bindVendors, id] }))
+  const untickVendor = (id: string) =>
+    setDraft((d) => ({ ...d, bindVendors: d.bindVendors.filter((x) => x !== id) }))
 
   const bindModel = useMutation({
     mutationFn: (modelID: string) =>
@@ -145,6 +160,27 @@ export function FieldEditor({ field, onClose }: Props) {
     onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
   })
 
+  const bindVendor = useMutation({
+    mutationFn: (vendorID: string) =>
+      api.post(`/vendors/${vendorID}/bindings`, { field_id: field.id }),
+    onSuccess: (_data, vendorID) => {
+      setBanner(null)
+      tickVendor(vendorID)
+      refresh()
+    },
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
+  })
+
+  const unbindVendor = useMutation({
+    mutationFn: (vendorID: string) => api.del(`/vendors/${vendorID}/bindings/${field.id}`),
+    onSuccess: (_data, vendorID) => {
+      setBanner(null)
+      untickVendor(vendorID)
+      refresh()
+    },
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
+  })
+
   const referrers = useQuery({
     queryKey: ["referrers", field.id],
     queryFn: () => api.get<Referrer[]>(`/fields/${field.id}/referrers`),
@@ -153,11 +189,24 @@ export function FieldEditor({ field, onClose }: Props) {
   // FieldForm hands back a patch. A change to the ticked bindings is the one
   // that cannot just be recorded: the field exists, so it goes to the server.
   const onFormChange = (patchIn: Partial<FieldFormValue>) => {
+    // Asked before bindTo, because ticking a vendor also drops the models it
+    // covers from the model list -- the patch carries both, and the model half
+    // is a consequence rather than something to send.
+    //
+    // Vendors are the same story one level up: ticking one reaches every
+    // model it makes, so it goes to the server immediately too.
+    if (patchIn.bindVendors !== undefined && patchIn.bindMode === undefined) {
+      const added = patchIn.bindVendors.filter((id) => !draft.bindVendors.includes(id))
+      const removed = draft.bindVendors.filter((id) => !patchIn.bindVendors!.includes(id))
+      for (const id of added) bindVendor.mutate(id)
+      if (removed.length > 0) setUnbindingVendor(removed[0])
+      return
+    }
     if (patchIn.bindTo !== undefined && patchIn.bindMode === undefined) {
       const added = patchIn.bindTo.filter((id) => !draft.bindTo.includes(id))
       const removed = draft.bindTo.filter((id) => !patchIn.bindTo!.includes(id))
       for (const id of added) {
-        if (draft.bindMode === "model") bindModel.mutate(id)
+        if (draft.bindMode === "device") bindModel.mutate(id)
         else bind.mutate(id)
       }
       // Removing takes a value off every device under it, so it asks first.
@@ -257,7 +306,8 @@ export function FieldEditor({ field, onClose }: Props) {
             onChange={onFormChange}
             categories={categories.data ?? []}
             models={Array.isArray(models.data) ? models.data : []}
-            bindModeFrozen={draft.bindTo.length > 0}
+            vendors={Array.isArray(vendors.data) ? vendors.data : []}
+            bindModeFrozen={draft.bindTo.length > 0 || draft.bindVendors.length > 0}
             impact={populated.data}
           />
 
@@ -348,10 +398,18 @@ export function FieldEditor({ field, onClose }: Props) {
           confirmLabel={tMeta.categories.unbind}
           onConfirm={() =>
             unbinding &&
-            (draft.bindMode === "model"
+            (draft.bindMode === "device"
               ? unbindModel.mutate(unbinding)
               : unbind.mutate(unbinding))
           }
+        />
+        <ConfirmDialog
+          open={unbindingVendor !== null}
+          onOpenChange={(next) => !next && setUnbindingVendor(null)}
+          title={tMeta.categories.unbindTitle}
+          description={tMeta.categories.unbindHint(field.label)}
+          confirmLabel={tMeta.categories.unbind}
+          onConfirm={() => unbindingVendor && unbindVendor.mutate(unbindingVendor)}
         />
       </DialogContent>
     </Dialog>

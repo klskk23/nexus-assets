@@ -153,6 +153,8 @@ func (s *Server) listFields(c *gin.Context) {
 		CategoryID: c.Query("category_id"),
 		Q:          c.Query("q"),
 		Type:       model.FieldType(c.Query("type")),
+		VendorID:   c.Query("vendor_id"),
+		GroupID:    c.Query("group_id"),
 		Offset:     offset,
 		Limit:      limit,
 	})
@@ -216,10 +218,13 @@ func (s *Server) createField(c *gin.Context) {
 		// creating one without this was always the first half of a two-step
 		// job.
 		CategoryIDs []string `json:"category_ids"`
-		// Or models, which is the other mode. Sending both is refused: a field
-		// binds one way or the other (015, decision 96).
-		ModelIDs []string `json:"model_ids"`
-		Required bool     `json:"required"`
+		// Or the device side, which is the other mode: models, vendors, or
+		// both. Sending one of these together with category_ids is refused by
+		// the same guard that refuses it later (015 decision 96, 016 decision
+		// 110), so the modes cannot be mixed by coming in through "create".
+		ModelIDs  []string `json:"model_ids"`
+		VendorIDs []string `json:"vendor_ids"`
+		Required  bool     `json:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
@@ -228,7 +233,7 @@ func (s *Server) createField(c *gin.Context) {
 	out, err := s.schema.CreateField(c.Request.Context(), schema.CreateFieldInput{
 		Key: req.Key, Label: req.Label, Type: req.Type, Options: req.Options,
 		IsUnique: req.IsUnique, CategoryIDs: req.CategoryIDs, ModelIDs: req.ModelIDs,
-		Required: req.Required,
+		VendorIDs: req.VendorIDs, Required: req.Required,
 	})
 	if err != nil {
 		// A refused binding is a conflict about a pair, not a bad expression,

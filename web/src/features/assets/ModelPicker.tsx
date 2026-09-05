@@ -5,6 +5,7 @@ import { api } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category } from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
+import { modelLabel } from "@/lib/metaTypes"
 import { t } from "@/i18n"
 import { Button } from "@/components/ui/button"
 import {
@@ -117,7 +118,7 @@ export function ModelPicker({ categoryID, value, onChange, values, confirmOverwr
               <SelectItem value={NONE}>{t.assets.noModel}</SelectItem>
               {candidates.map((m) => (
                 <SelectItem key={m.id} value={m.id}>
-                  {m.vendor ? `${m.vendor} ${m.name}` : m.name}
+                  {modelLabel(m)}
                 </SelectItem>
               ))}
             </SelectGroup>

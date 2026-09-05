@@ -1,11 +1,11 @@
 import { AlertCircleIcon } from "lucide-react"
 import { Hint } from "@/features/common/Hint"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
 import type { Category } from "@/lib/types"
-import type { ProductModelRow } from "@/lib/metaTypes"
+import type { ProductModelRow, VendorRow } from "@/lib/metaTypes"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
 import { CategoryFilter } from "@/features/common/CategoryFilter"
@@ -34,6 +34,17 @@ import {
   FieldSet,
 } from "@/components/ui/field"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { NONE, fromNone, toNone } from "@/lib/select"
+import { ConfirmDialog } from "@/features/common/ConfirmDialog"
+import { MetadataTabs } from "@/features/metadata/MetadataTabs"
 
 export function Models() {
   const queryClient = useQueryClient()
@@ -41,7 +52,7 @@ export function Models() {
   const [editing, setEditing] = useState<ProductModelRow | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [name, setName] = useState("")
-  const [vendor, setVendor] = useState("")
+  const [vendorId, setVendorId] = useState("")
   const [categoryIds, setCategoryIds] = useState<string[]>([])
   const [defaults, setDefaults] = useState<DefaultRow[]>([])
 
@@ -49,6 +60,11 @@ export function Models() {
     queryKey: ["categories"],
     queryFn: () => api.get<Category[]>("/categories"),
   })
+  const vendors = useQuery({
+    queryKey: ["vendors"],
+    queryFn: () => api.get<VendorRow[]>("/vendors"),
+  })
+  const vendorList = Array.isArray(vendors.data) ? vendors.data : []
   const byId = new Map((categories.data ?? []).map((c) => [c.id, c.name]))
 
   const invalidate = () => {
@@ -61,7 +77,7 @@ export function Models() {
     mutationFn: (m: ProductModelRow) =>
       api.patch(`/models/${m.id}`, {
         name: m.name,
-        vendor: m.vendor ?? "",
+        vendor_id: m.vendor_id ?? "",
         category_ids: m.category_ids ?? [],
         attr_defaults: m.attr_defaults ?? {},
       }),
@@ -84,6 +100,7 @@ export function Models() {
       title={tMeta.models.title}
       queryKey="models"
       searchHint={tMeta.models.searchHint}
+      toolbarActions={<MetadataTabs current="models" />}
       filterKeys={{ category_id: "" }}
       filters={(q) => (
         <CategoryFilter
@@ -97,7 +114,7 @@ export function Models() {
       createDisabled={name === ""}
       onCreated={() => {
         setName("")
-        setVendor("")
+        setVendorId("")
         setCategoryIds([])
         setDefaults([])
       }}
@@ -105,7 +122,7 @@ export function Models() {
         api.post("/models", {
           category_ids: categoryIds,
           name,
-          vendor,
+          vendor_id: vendorId,
           attr_defaults: toAttrDefaults(defaults),
         })
       }
@@ -135,7 +152,11 @@ export function Models() {
       emptyHint={tMeta.models.emptyHint}
       columns={[
         { header: tMeta.models.name, cell: (m) => m.name },
-        { header: tMeta.models.vendor, cell: (m) => m.vendor ?? "" },
+        {
+          header: tMeta.models.vendor,
+          cell: (m) =>
+            m.vendor_name ?? <span className="text-muted-foreground">{tMeta.vendors.none}</span>,
+        },
         {
           header: tMeta.models.category,
           cell: (m) =>
@@ -151,7 +172,21 @@ export function Models() {
           </Field>
           <Field>
             <FieldLabel htmlFor="m-vendor">{tMeta.models.vendor}</FieldLabel>
-            <Input id="m-vendor" value={vendor} onChange={(e) => setVendor(e.target.value)} />
+            <Select value={toNone(vendorId)} onValueChange={(v) => setVendorId(fromNone(v))}>
+              <SelectTrigger id="m-vendor">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={NONE}>{tMeta.vendors.none}</SelectItem>
+                  {vendorList.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </Field>
           {/* One device can genuinely be both a router and a spare, so several
               categories can be ticked. A dropdown cannot express that, and a
@@ -191,6 +226,7 @@ export function Models() {
       <ModelEditor
         model={editing}
         categories={categories.data ?? []}
+        vendors={vendorList}
         onOpenChange={(open) => !open && setEditing(null)}
         onSave={(m) => save.mutate(m)}
         saving={save.isPending}
@@ -202,15 +238,17 @@ export function Models() {
 interface EditProps {
   model: ProductModelRow | null
   categories: Category[]
+  vendors: VendorRow[]
   onOpenChange: (open: boolean) => void
   onSave: (m: ProductModelRow) => void
   saving: boolean
 }
 
 /** Edits one product model: its name, vendor, categories and defaults. */
-function ModelEditor({ model, categories, onOpenChange, onSave, saving }: EditProps) {
+function ModelEditor({ model, categories, vendors, onOpenChange, onSave, saving }: EditProps) {
   const [draft, setDraft] = useState<ProductModelRow | null>(model)
   const [rows, setRows] = useState<DefaultRow[]>([])
+  const [confirming, setConfirming] = useState(false)
 
   if (model?.id !== draft?.id) {
     setDraft(model)
@@ -224,6 +262,7 @@ function ModelEditor({ model, categories, onOpenChange, onSave, saving }: EditPr
   if (!draft) return null
 
   const ids = draft.category_ids ?? []
+  const vendorChanged = (draft.vendor_id ?? "") !== (model?.vendor_id ?? "")
 
   return (
     <Dialog open={model !== null} onOpenChange={onOpenChange}>
@@ -243,11 +282,24 @@ function ModelEditor({ model, categories, onOpenChange, onSave, saving }: EditPr
           </Field>
           <Field>
             <FieldLabel htmlFor="me-vendor">{tMeta.models.vendor}</FieldLabel>
-            <Input
-              id="me-vendor"
-              value={draft.vendor ?? ""}
-              onChange={(e) => setDraft({ ...draft, vendor: e.target.value })}
-            />
+            <Select
+              value={toNone(draft.vendor_id ?? "")}
+              onValueChange={(v) => setDraft({ ...draft, vendor_id: fromNone(v) })}
+            >
+              <SelectTrigger id="me-vendor">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={NONE}>{tMeta.vendors.none}</SelectItem>
+                  {vendors.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </Field>
 
           <FieldSet className="sm:col-span-2">
@@ -283,12 +335,77 @@ function ModelEditor({ model, categories, onOpenChange, onSave, saving }: EditPr
           </DialogClose>
           <Button
             disabled={draft.name === "" || saving}
-            onClick={() => onSave({ ...draft, attr_defaults: toAttrDefaults(rows) })}
+            onClick={() => {
+              // Changing the vendor takes away every field the old one
+              // provided, on every device of this model at once. Mild -- the
+              // values stay, read-only -- but not something to discover
+              // afterwards, so the count comes first (decision 112).
+              if (vendorChanged) setConfirming(true)
+              else onSave({ ...draft, attr_defaults: toAttrDefaults(rows) })
+            }}
           >
             {tMeta.models.save}
           </Button>
         </DialogFooter>
+        <VendorChangeConfirm
+          open={confirming}
+          modelID={draft.id}
+          vendorID={draft.vendor_id ?? ""}
+          onOpenChange={setConfirming}
+          onConfirm={() => {
+            setConfirming(false)
+            onSave({ ...draft, attr_defaults: toAttrDefaults(rows) })
+          }}
+        />
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * Says what changing a model's vendor costs, then lets it happen.
+ *
+ * The dry-run is asked while the dialog is open rather than on every keystroke
+ * of the form, and a change that loses nothing goes straight through -- an
+ * "are you sure" with nothing behind it teaches people to click past the ones
+ * that matter.
+ */
+function VendorChangeConfirm({
+  open,
+  modelID,
+  vendorID,
+  onOpenChange,
+  onConfirm,
+}: {
+  open: boolean
+  modelID: string
+  vendorID: string
+  onOpenChange: (open: boolean) => void
+  onConfirm: () => void
+}) {
+  const impact = useQuery({
+    queryKey: ["vendor-change-impact", modelID, vendorID],
+    queryFn: () =>
+      api.get<{ total: number; fields: string[] }>(
+        `/models/${modelID}/vendor-change-impact?vendor_id=${encodeURIComponent(vendorID)}`,
+      ),
+    enabled: open,
+  })
+  const lost = impact.data?.fields ?? []
+
+  useEffect(() => {
+    if (open && impact.isSuccess && lost.length === 0) onConfirm()
+  }, [open, impact.isSuccess, lost.length, onConfirm])
+
+  if (lost.length === 0) return null
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={tMeta.vendors.changeTitle}
+      description={tMeta.vendors.changeHint(impact.data?.total ?? 0, lost.join("、"))}
+      confirmLabel={tMeta.models.save}
+      onConfirm={onConfirm}
+    />
   )
 }

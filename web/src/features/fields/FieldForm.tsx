@@ -2,8 +2,8 @@ import { AlertCircleIcon } from "lucide-react"
 
 import { tConfig, tMeta } from "@/i18n"
 import type { Category, FieldOptions, FieldType } from "@/lib/types"
-import type { ProductModelRow } from "@/lib/metaTypes"
-import { EXPRESSION_FIELD_TYPES, STATIC_FIELD_TYPES } from "@/lib/metaTypes"
+import type { FieldGroupRow, ProductModelRow, VendorRow } from "@/lib/metaTypes"
+import { EXPRESSION_FIELD_TYPES, STATIC_FIELD_TYPES, modelLabel } from "@/lib/metaTypes"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select"
 import { ExpressionHelp } from "@/features/fields/ExpressionHelp"
 import { Hint } from "@/features/common/Hint"
+import { NONE, fromNone, toNone } from "@/lib/select"
 
 export interface FieldFormValue {
   key: string
@@ -29,9 +30,20 @@ export interface FieldFormValue {
   isUnique: boolean
   required: boolean
   options: FieldOptions
-  /** Category or model, whichever `bindMode` says. */
+  /** Categories or models, whichever `bindMode` says. */
   bindTo: string[]
-  bindMode: "category" | "model"
+  /**
+   * Vendors, in device mode only. Models and vendors are one side of the
+   * exclusion and may both be ticked (016, decision 110), so this is a second
+   * list rather than a third position on the switch.
+   */
+  bindVendors: string[]
+  /**
+   * A group to bind instead of picking fields one by one. Its members are
+   * bound to whatever is ticked above, all or nothing (decision 106).
+   */
+  bindGroup?: string
+  bindMode: "category" | "device"
 }
 
 interface Props {
@@ -50,6 +62,9 @@ interface Props {
   onChange: (patch: Partial<FieldFormValue>) => void
   categories: Category[]
   models: ProductModelRow[]
+  vendors: VendorRow[]
+  /** The groups on offer, when this form lets one be bound. */
+  groups?: FieldGroupRow[]
   /**
    * Whether the binding mode may still be chosen. Once a field is bound one
    * way, switching would have to drop what is there -- a decision of its own
@@ -82,6 +97,8 @@ export function FieldForm({
   onChange,
   categories,
   models,
+  vendors,
+  groups,
   bindModeFrozen,
   impact,
   idPrefix: p,
@@ -308,14 +325,16 @@ export function FieldForm({
           value={value.bindMode}
           disabled={bindModeFrozen}
           onValueChange={(v) => {
-            if (v === "category" || v === "model") onChange({ bindMode: v, bindTo: [] })
+            if (v === "category" || v === "device") {
+              onChange({ bindMode: v, bindTo: [], bindVendors: [] })
+            }
           }}
         >
           <ToggleGroupItem value="category" aria-label={tMeta.fields.bindByCategory}>
             {tMeta.fields.bindByCategory}
           </ToggleGroupItem>
-          <ToggleGroupItem value="model" aria-label={tMeta.fields.bindByModel}>
-            {tMeta.fields.bindByModel}
+          <ToggleGroupItem value="device" aria-label={tMeta.fields.bindByDevice}>
+            {tMeta.fields.bindByDevice}
           </ToggleGroupItem>
         </ToggleGroup>
         {/* Why the switch is dead is the state of the thing in front of
@@ -323,38 +342,87 @@ export function FieldForm({
         {bindModeFrozen && <FieldDescription>{tMeta.fields.bindingModeFrozen}</FieldDescription>}
       </Field>
 
+      {value.bindMode === "device" && (
+        <Field className="sm:col-span-2">
+          <div className="flex items-center gap-1.5">
+            <FieldLabel>{tMeta.fields.bindOnCreateVendor}</FieldLabel>
+            <Hint>{tMeta.fields.bindOnCreateVendorHint}</Hint>
+          </div>
+          <div className="grid max-h-32 grid-cols-2 gap-2 overflow-y-auto">
+            {vendors.map((v) => (
+              <Field key={v.id} orientation="horizontal">
+                <Checkbox
+                  id={`${p}-vendor-${v.id}`}
+                  checked={value.bindVendors.includes(v.id)}
+                  onCheckedChange={(c) =>
+                    onChange({
+                      bindVendors:
+                        c === true
+                          ? [...value.bindVendors, v.id]
+                          : value.bindVendors.filter((id) => id !== v.id),
+                      // A model this vendor makes stops being a separate
+                      // choice, so drop it rather than leave a tick nobody
+                      // can see the effect of.
+                      bindTo:
+                        c === true
+                          ? value.bindTo.filter(
+                              (id) => models.find((m) => m.id === id)?.vendor_id !== v.id,
+                            )
+                          : value.bindTo,
+                    })
+                  }
+                />
+                <FieldLabel htmlFor={`${p}-vendor-${v.id}`} className="font-normal">
+                  {v.name}
+                </FieldLabel>
+              </Field>
+            ))}
+          </div>
+        </Field>
+      )}
+
       <Field className="sm:col-span-2">
         <div className="flex items-center gap-1.5">
           <FieldLabel>
-            {value.bindMode === "model"
+            {value.bindMode === "device"
               ? tMeta.fields.bindOnCreateModel
               : tMeta.fields.bindOnCreate}
           </FieldLabel>
           <Hint>
-            {value.bindMode === "model"
+            {value.bindMode === "device"
               ? tMeta.fields.bindOnCreateModelHint
               : tMeta.fields.bindOnCreateHint}
           </Hint>
         </div>
         <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto">
-          {(value.bindMode === "model"
-            ? models.map((m) => ({ id: m.id, name: m.vendor ? `${m.vendor} ${m.name}` : m.name }))
-            : categories.map((c) => ({ id: c.id, name: c.name }))
+          {(value.bindMode === "device"
+            ? models.map((m) => ({ id: m.id, name: modelLabel(m), vendorID: m.vendor_id }))
+            : categories.map((c) => ({ id: c.id, name: c.name, vendorID: undefined }))
           ).map((o) => {
             const owner = chainOwner(o.id)
             const self = categories.find((c) => c.id === o.id)
             const inherits = owner !== null && (self?.path ?? "").startsWith(owner.path)
-            const why = owner
-              ? inherits
-                ? tMeta.fields.boundOnAncestor(owner.name)
-                : tMeta.fields.boundOnDescendant(owner.name)
-              : undefined
+            // A model whose vendor is ticked already has the field. Same
+            // treatment as a category whose parent has it: the box is dead and
+            // says why, rather than accepting a tick that changes nothing.
+            const provider =
+              o.vendorID && value.bindVendors.includes(o.vendorID)
+                ? (vendors.find((v) => v.id === o.vendorID)?.name ?? o.vendorID)
+                : null
+            const why = provider
+              ? tMeta.fields.providedByVendor(provider)
+              : owner
+                ? inherits
+                  ? tMeta.fields.boundOnAncestor(owner.name)
+                  : tMeta.fields.boundOnDescendant(owner.name)
+                : undefined
+            const dead = provider !== null || owner !== null
             return (
-              <Field key={o.id} orientation="horizontal" data-disabled={owner ? true : undefined}>
+              <Field key={o.id} orientation="horizontal" data-disabled={dead ? true : undefined}>
                 <Checkbox
                   id={`${p}-bind-${o.id}`}
-                  checked={value.bindTo.includes(o.id)}
-                  disabled={owner !== null}
+                  checked={value.bindTo.includes(o.id) || provider !== null}
+                  disabled={dead}
                   title={why}
                   onCheckedChange={(v) =>
                     onChange({
@@ -373,6 +441,36 @@ export function FieldForm({
           })}
         </div>
       </Field>
+
+      {/* Binding a whole group at once. It writes the same rows as ticking its
+          members would, so it sits beside the lists rather than replacing
+          them, and it is offered only where a group can actually be bound. */}
+      {groups !== undefined && groups.length > 0 && (
+        <Field className="sm:col-span-2">
+          <div className="flex items-center gap-1.5">
+            <FieldLabel htmlFor={`${p}-group`}>{tMeta.fields.bindGroup}</FieldLabel>
+            <Hint>{tMeta.fields.bindGroupHint}</Hint>
+          </div>
+          <Select
+            value={toNone(value.bindGroup ?? "")}
+            onValueChange={(v) => onChange({ bindGroup: fromNone(v) })}
+          >
+            <SelectTrigger id={`${p}-group`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={NONE}>{tMeta.fields.noGroup}</SelectItem>
+                {groups.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
+      )}
     </FieldGroup>
   )
 }

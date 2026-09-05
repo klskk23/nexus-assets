@@ -32,6 +32,7 @@ function navLinks(can: (p: Permission) => boolean) {
     { to: "/categories", label: t.nav.categories },
     { to: "/fields", label: t.nav.fields },
     { to: "/models", label: t.nav.models },
+    { to: "/field-groups", label: t.nav.fieldGroups },
     { to: "/statuses", label: t.nav.statuses },
     { to: "/holders", label: t.nav.holders },
     { to: "/users", label: t.nav.users },

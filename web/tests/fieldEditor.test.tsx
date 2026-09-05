@@ -344,8 +344,8 @@ describe("FieldEditor bindings", () => {
 // A field hangs on categories or on models, never both (015, decision 96).
 describe("binding a field to models", () => {
   const models = [
-    { id: "m-dell", name: "Latitude 5420", vendor: "Dell", category_ids: ["net"] },
-    { id: "m-lenovo", name: "ThinkPad T14", vendor: "Lenovo", category_ids: ["net"] },
+    { id: "m-dell", name: "Latitude 5420", vendor_name: "Dell", category_ids: ["net"] },
+    { id: "m-lenovo", name: "ThinkPad T14", vendor_name: "Lenovo", category_ids: ["net"] },
   ]
 
   function withModels(p: string) {
@@ -361,7 +361,7 @@ describe("binding a field to models", () => {
     const user = userEvent.setup()
     renderWithProviders(<FieldEditor field={field("text")} onClose={vi.fn()} />)
 
-    await user.click(screen.getByRole("radio", { name: "型号" }))
+    await user.click(screen.getByRole("radio", { name: "设备" }))
     // The picker now offers models rather than categories.
     await user.click(await screen.findByLabelText("Dell Latitude 5420"))
 
@@ -378,7 +378,7 @@ describe("binding a field to models", () => {
       <FieldEditor field={field("text", { category_ids: ["net"] })} onClose={vi.fn()} />,
     )
 
-    expect(screen.getByRole("radio", { name: "型号" })).toBeDisabled()
+    expect(screen.getByRole("radio", { name: "设备" })).toBeDisabled()
     expect(screen.getByText("要换先解除现有的全部绑定")).toBeInTheDocument()
   })
 
@@ -429,5 +429,73 @@ describe("FieldEditor chain conflicts", () => {
     const child = await screen.findByLabelText("SDWAN 路由器")
     expect(child).toBeDisabled()
     expect(child).toHaveAttribute("title", expect.stringContaining("继承"))
+  })
+})
+
+// Models and vendors are the same side of the exclusion (016, decision 110),
+// so both are on offer at once -- and a model whose vendor already provides
+// the field is not a second choice to make.
+describe("binding a field to vendors", () => {
+  const vendors = [
+    { id: "v-dell", name: "Dell", model_count: 1 },
+    { id: "v-lenovo", name: "Lenovo", model_count: 1 },
+  ]
+  const models = [
+    { id: "m-dell", name: "Latitude 5420", vendor_id: "v-dell", vendor_name: "Dell", category_ids: ["net"] },
+    { id: "m-lenovo", name: "ThinkPad T14", vendor_id: "v-lenovo", vendor_name: "Lenovo", category_ids: ["net"] },
+  ]
+
+  function withVendors(p: string) {
+    if (p === "/models") return Promise.resolve(models)
+    if (p === "/vendors") return Promise.resolve(vendors)
+    if (p.startsWith("/models/") && p.endsWith("/required-impact")) {
+      return Promise.resolve({ total: 3 })
+    }
+    return route(p)
+  }
+
+  it("binds to a vendor, which reaches every model it makes", async () => {
+    get.mockReset().mockImplementation(withVendors)
+    const user = userEvent.setup()
+    renderWithProviders(<FieldEditor field={field("text")} onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole("radio", { name: "设备" }))
+    await user.click(await screen.findByLabelText("Dell"))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/vendors/v-dell/bindings", { field_id: "f1" }),
+    )
+  })
+
+  // The same treatment a category whose parent has the field already gets: the
+  // box is dead and says why, rather than accepting a tick that does nothing.
+  it("disables a model whose vendor already provides the field, and says why", async () => {
+    get.mockReset().mockImplementation(withVendors)
+    const user = userEvent.setup()
+    renderWithProviders(
+      <FieldEditor field={field("text", { vendor_ids: ["v-dell"] })} onClose={vi.fn()} />,
+    )
+
+    const dell = await screen.findByLabelText("Dell Latitude 5420")
+    expect(dell).toBeDisabled()
+    expect(dell).toHaveAttribute("title", "厂商「Dell」已经提供了这个字段")
+    // Another vendor's model is still a choice.
+    expect(await screen.findByLabelText("Lenovo ThinkPad T14")).toBeEnabled()
+
+    // And the vendor itself is ticked, since that is where it hangs.
+    expect(screen.getByLabelText("Dell")).toBeChecked()
+    await user.click(screen.getByLabelText("Lenovo"))
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/vendors/v-lenovo/bindings", { field_id: "f1" }),
+    )
+  })
+
+  // A vendor binding is a binding: switching sides would silently drop it.
+  it("freezes the mode once the field is bound to a vendor", async () => {
+    get.mockReset().mockImplementation(withVendors)
+    renderWithProviders(
+      <FieldEditor field={field("text", { vendor_ids: ["v-dell"] })} onClose={vi.fn()} />,
+    )
+    expect(await screen.findByRole("radio", { name: "类别" })).toBeDisabled()
   })
 })

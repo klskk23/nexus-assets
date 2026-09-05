@@ -5,8 +5,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, ApiError } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category } from "@/lib/types"
-import type { FieldDefinitionRow, ProductModelRow } from "@/lib/metaTypes"
-import { EXPRESSION_FIELD_TYPES, STATIC_FIELD_TYPES } from "@/lib/metaTypes"
+import type {
+  FieldDefinitionRow,
+  FieldGroupRow,
+  ProductModelRow,
+  VendorRow,
+} from "@/lib/metaTypes"
+import { EXPRESSION_FIELD_TYPES, STATIC_FIELD_TYPES, modelLabel } from "@/lib/metaTypes"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tConfig, tMeta } from "@/i18n"
 import { CategoryFilter } from "@/features/common/CategoryFilter"
@@ -34,6 +39,8 @@ const emptyDraft: FieldFormValue = {
   required: false,
   options: {},
   bindTo: [],
+  bindVendors: [],
+  bindGroup: "",
   bindMode: "category",
 }
 
@@ -81,10 +88,27 @@ export function Fields() {
     queryFn: () => api.get<ProductModelRow[]>("/models"),
   })
   const modelList = Array.isArray(models.data) ? models.data : []
+
+  // The vendors a field can be bound to, and the names the binding column
+  // shows for them.
+  const vendors = useQuery({
+    queryKey: ["vendors"],
+    queryFn: () => api.get<VendorRow[]>("/vendors"),
+  })
+  const vendorList = Array.isArray(vendors.data) ? vendors.data : []
+  const vendorName = (id: string) => vendorList.find((v) => v.id === id)?.name ?? id
+
+  // Field groups, for the filter. They are not a binding -- a group leaves no
+  // trace once expanded -- so this only narrows which fields are listed.
+  const groups = useQuery({
+    queryKey: ["field-groups"],
+    queryFn: () => api.get<FieldGroupRow[]>("/field-groups"),
+  })
+  const groupList = Array.isArray(groups.data) ? groups.data : []
   const modelName = (id: string) => {
     const m = modelList.find((x) => x.id === id)
     if (!m) return id
-    return m.vendor ? `${m.vendor} ${m.name}` : m.name
+    return modelLabel(m)
   }
 
   // How many devices a required binding would land on. Asked only when it
@@ -95,7 +119,7 @@ export function Fields() {
     queryFn: async () => {
       const counts = await Promise.all(
         draft.bindTo.map((id) =>
-          draft.bindMode === "model"
+          draft.bindMode === "device"
             ? api.get<{ total: number }>(`/models/${id}/required-impact`).then((r) => r.total)
             : api
                 .get<{ total: number }>(`/assets?category_id=${id}&include_descendants=true&limit=1`)
@@ -126,7 +150,7 @@ export function Fields() {
       queryKey="fields"
       list={(params) => api.get<ListPage<FieldDefinitionRow>>(`/fields?${params}`)}
       searchHint={tMeta.fields.searchHint}
-      filterKeys={{ category_id: "", type: "" }}
+      filterKeys={{ category_id: "", type: "", vendor_id: "", group_id: "" }}
       filters={(qs) => (
         <>
           <CategoryFilter
@@ -156,6 +180,52 @@ export function Fields() {
               </SelectContent>
             </Select>
           </Field>
+          <Field className="w-auto">
+            <FieldLabel htmlFor="f-vendor-filter" className="sr-only">
+              {tMeta.fields.vendorFilter}
+            </FieldLabel>
+            <Select
+              value={toNone(qs.filters.vendor_id)}
+              onValueChange={(v) => qs.setFilter("vendor_id", fromNone(v))}
+            >
+              <SelectTrigger id="f-vendor-filter" className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={NONE}>{tMeta.fields.allVendors}</SelectItem>
+                  {vendorList.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field className="w-auto">
+            <FieldLabel htmlFor="f-group-filter" className="sr-only">
+              {tMeta.fields.groupFilter}
+            </FieldLabel>
+            <Select
+              value={toNone(qs.filters.group_id)}
+              onValueChange={(v) => qs.setFilter("group_id", fromNone(v))}
+            >
+              <SelectTrigger id="f-group-filter" className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={NONE}>{tMeta.fields.allGroups}</SelectItem>
+                  {groupList.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
         </>
       )}
       createLabel={tMeta.fields.create}
@@ -172,7 +242,8 @@ export function Fields() {
           // behind: the pair is what was asked for. One list or the other,
           // never both -- the server refuses a mix, and so does this.
           category_ids: draft.bindMode === "category" ? draft.bindTo : [],
-          model_ids: draft.bindMode === "model" ? draft.bindTo : [],
+          model_ids: draft.bindMode === "device" ? draft.bindTo : [],
+          vendor_ids: draft.bindMode === "device" ? draft.bindVendors : [],
           required: draft.required,
           options: optionsFor(draft),
         })
@@ -211,12 +282,18 @@ export function Fields() {
           // categories, and false about the field (015, decision 96).
           header: tMeta.fields.binding,
           cell: (f) => {
+            // Where it was hung, not where it reaches: a vendor binding shows
+            // the vendor, because that is the row somebody would go and edit.
             const models = f.model_ids ?? []
-            if (models.length > 0) {
+            const vendors = f.vendor_ids ?? []
+            if (models.length > 0 || vendors.length > 0) {
               return (
                 <span className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">{tMeta.fields.bindByModel}</Badge>
-                  {models.map((id) => modelName(id)).join("、")}
+                  <Badge variant="outline">{tMeta.fields.bindByDevice}</Badge>
+                  {[
+                    ...vendors.map((id) => vendorName(id)),
+                    ...models.map((id) => modelName(id)),
+                  ].join("、")}
                 </span>
               )
             }
@@ -249,8 +326,8 @@ export function Fields() {
           cell: (f) =>
             f.is_unique ? (
               <Badge variant="outline">
-                {(f.model_ids ?? []).length > 0
-                  ? tMeta.fields.uniqueInModels
+                {(f.model_ids ?? []).length > 0 || (f.vendor_ids ?? []).length > 0
+                  ? tMeta.fields.uniqueInDevices
                   : tMeta.fields.uniqueInCategory}
               </Badge>
             ) : null,
@@ -264,6 +341,7 @@ export function Fields() {
           onChange={patch}
           categories={categories.data ?? []}
           models={modelList}
+          vendors={vendorList}
           impact={bound.data}
         />
       }

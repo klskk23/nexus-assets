@@ -33,6 +33,7 @@ func (s *Server) listAssets(c *gin.Context) {
 		Status:             c.Query("status"),
 		OwnerID:            c.Query("owner_id"),
 		ModelID:            c.Query("model_id"),
+		VendorID:           c.Query("vendor_id"),
 		HolderType:         c.Query("holder_type"),
 		HolderID:           c.Query("holder_id"),
 		AttrFilters:        map[string]string{},

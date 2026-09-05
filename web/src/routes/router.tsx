@@ -34,6 +34,11 @@ export const router = createBrowserRouter([
       { path: "categories", lazy: async () => ({ Component: (await import("./Categories")).Categories }) },
       { path: "fields", lazy: async () => ({ Component: (await import("./Fields")).Fields }) },
       { path: "models", lazy: async () => ({ Component: (await import("./Models")).Models }) },
+      // Its own route, not a tab inside /models: a CrudPage keeps its search
+      // and page number in the address, and two of them behind one address
+      // would trample each other (016, decision 107).
+      { path: "models/vendors", lazy: async () => ({ Component: (await import("./Vendors")).Vendors }) },
+      { path: "field-groups", lazy: async () => ({ Component: (await import("./FieldGroups")).FieldGroups }) },
       { path: "statuses", lazy: async () => ({ Component: (await import("./Statuses")).Statuses }) },
       { path: "holders", lazy: async () => ({ Component: (await import("./Holders")).Holders }) },
       { path: "roles", lazy: async () => ({ Component: (await import("./Roles")).Roles }) },

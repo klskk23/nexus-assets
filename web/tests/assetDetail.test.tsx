@@ -56,7 +56,7 @@ const schema = {
 }
 
 const models = [
-  { id: "m1", category_id: "net", name: "X100", vendor: "Acme", attr_defaults: { firmware: "3.0.0" } },
+  { id: "m1", category_id: "net", name: "X100", vendor_name: "Acme", attr_defaults: { firmware: "3.0.0" } },
 ]
 
 function route(p: string) {

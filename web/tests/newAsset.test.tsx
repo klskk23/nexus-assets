@@ -238,8 +238,8 @@ describe("NewAssetDialog", () => {
 // Lenovo and it is not there to fill in wrongly.
 describe("fields that belong to a model", () => {
   const models = [
-    { id: "m-dell", name: "Latitude 5420", vendor: "Dell", category_ids: ["rt"], attr_defaults: {} },
-    { id: "m-lenovo", name: "ThinkPad T14", vendor: "Lenovo", category_ids: ["rt"], attr_defaults: {} },
+    { id: "m-dell", name: "Latitude 5420", vendor_name: "Dell", category_ids: ["rt"], attr_defaults: {} },
+    { id: "m-lenovo", name: "ThinkPad T14", vendor_name: "Lenovo", category_ids: ["rt"], attr_defaults: {} },
   ]
   const withModelField = {
     category: categories[0],

@@ -61,18 +61,18 @@
 
 ## 第 7 阶段：前端
 
-- [ ] T034 [P] `web/src/lib/metaTypes.ts` / `types.ts`：`vendor_ids`、`group_ids`、`binding_mode` 取值、`ProductModelRow.vendor_id`
-- [ ] T035 [US1] `web/src/routes/Vendors.tsx` 新建（`CrudPage`）；`router.tsx` 加 `/models/vendors`；型号页加页签导航，**两条独立路由**，不能一个地址两张 CrudPage 否则 `q`/`offset` 互踩
-- [ ] T036 [US1] `web/src/features/fields/FieldForm.tsx`：设备模式下同时提供型号与厂商两组勾选；厂商已提供的型号勾选框禁用并说明，与同链类别置灰同一做法
-- [ ] T037 [P] [US2] `web/src/routes/FieldGroups.tsx` 新建（`CrudPage`），成员用既有的复选框栅格；`router.tsx` 加 `/field-groups`
-- [ ] T038 [US2] 字段编辑器与新建表单支持「绑定一个组」
-- [ ] T039 [US3] `web/src/routes/Fields.tsx`：绑定列认厂商（读 `vendor_ids`）；新增组与厂商两个筛选，进地址栏
-- [ ] T040 [US3] `web/src/routes/Assets.tsx`：新增厂商筛选，进地址栏；**不加组筛选**
-- [ ] T041 [US4] `web/src/routes/Models.tsx`：厂商改成 `Select` 选实体；改厂商前拉 `vendor-change-impact` 并确认
-- [ ] T042 [P] `web/tests/vendors.test.tsx` 新建：厂商 CRUD 的 DOM 测试
-- [ ] T043 [P] `web/tests/fieldGroups.test.tsx` 新建：组 CRUD 与整组拒绝的 DOM 测试
-- [ ] T044 [P] `web/tests/fieldEditor.test.tsx` 加：厂商已提供的型号勾选框禁用并有说明
-- [ ] T045 [P] `web/tests/assets.test.tsx` / `metadata.test.tsx` 加：厂商筛选进地址栏；资产页没有组筛选
+- [X] T034 [P] `web/src/lib/metaTypes.ts` / `types.ts`：`vendor_ids`、`group_ids`、`binding_mode` 取值、`ProductModelRow.vendor_id`
+- [X] T035 [US1] `web/src/routes/Vendors.tsx` 新建（`CrudPage`）；`router.tsx` 加 `/models/vendors`；型号页加页签导航，**两条独立路由**，不能一个地址两张 CrudPage 否则 `q`/`offset` 互踩
+- [X] T036 [US1] `web/src/features/fields/FieldForm.tsx`：设备模式下同时提供型号与厂商两组勾选；厂商已提供的型号勾选框禁用并说明，与同链类别置灰同一做法
+- [X] T037 [P] [US2] `web/src/routes/FieldGroups.tsx` 新建（`CrudPage`），成员用既有的复选框栅格；`router.tsx` 加 `/field-groups`
+- [X] T038 [US2] 字段编辑器与新建表单支持「绑定一个组」
+- [X] T039 [US3] `web/src/routes/Fields.tsx`：绑定列认厂商（读 `vendor_ids`）；新增组与厂商两个筛选，进地址栏
+- [X] T040 [US3] `web/src/routes/Assets.tsx`：新增厂商筛选，进地址栏；**不加组筛选**
+- [X] T041 [US4] `web/src/routes/Models.tsx`：厂商改成 `Select` 选实体；改厂商前拉 `vendor-change-impact` 并确认
+- [X] T042 [P] `web/tests/vendors.test.tsx` 新建：厂商 CRUD 的 DOM 测试
+- [X] T043 [P] `web/tests/fieldGroups.test.tsx` 新建：组 CRUD 与整组拒绝的 DOM 测试
+- [X] T044 [P] `web/tests/fieldEditor.test.tsx` 加：厂商已提供的型号勾选框禁用并有说明
+- [X] T045 [P] `web/tests/assets.test.tsx` / `metadata.test.tsx` 加：厂商筛选进地址栏；资产页没有组筛选
 
 ## 第 8 阶段：收口
 

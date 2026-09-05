@@ -52,9 +52,14 @@ type FieldFilter struct {
 	Q string
 	// Type narrows to one kind, which is how somebody finds every computed
 	// field to see what the numbering rules are.
-	Type   model.FieldType
-	Offset int
-	Limit  int
+	Type model.FieldType
+	// VendorID keeps the fields bound to one vendor, and GroupID the ones in
+	// one group (016). Both are "where would I find it", which is the question
+	// a library of a hundred fields makes hard to answer any other way.
+	VendorID string
+	GroupID  string
+	Offset   int
+	Limit    int
 }
 
 // FieldPage is one page of the field library.
@@ -98,6 +103,20 @@ func (s *Store) ListFieldPage(ctx context.Context, f FieldFilter) (FieldPage, er
 		all = kept
 	}
 
+	if f.VendorID != "" || f.GroupID != "" {
+		keep, err := s.fieldsIn(ctx, f)
+		if err != nil {
+			return page, err
+		}
+		var kept []model.FieldDefinition
+		for _, fd := range all {
+			if _, ok := keep[fd.ID]; ok {
+				kept = append(kept, fd)
+			}
+		}
+		all = kept
+	}
+
 	page.Total = len(all)
 	if f.Offset < len(all) {
 		end := f.Offset + f.Limit
@@ -107,6 +126,54 @@ func (s *Store) ListFieldPage(ctx context.Context, f FieldFilter) (FieldPage, er
 		page.Items = all[f.Offset:end]
 	}
 	return page, nil
+}
+
+// fieldsIn is the id set the vendor and group filters keep.
+//
+// Both narrow, so a request naming a vendor and a group asks for the fields in
+// both -- the intersection, which is what putting two filters on one row means
+// everywhere else on these pages.
+func (s *Store) fieldsIn(ctx context.Context, f FieldFilter) (map[string]struct{}, error) {
+	out := map[string]struct{}{}
+	first := true
+	for _, q := range []struct {
+		sql string
+		arg string
+	}{
+		{`SELECT field_id FROM vendor_fields WHERE vendor_id = ?`, f.VendorID},
+		{`SELECT field_id FROM field_group_members WHERE group_id = ?`, f.GroupID},
+	} {
+		if q.arg == "" {
+			continue
+		}
+		rows, err := s.db.ReadDB().QueryContext(ctx, q.sql, q.arg)
+		if err != nil {
+			return nil, fmt.Errorf("filter fields: %w", err)
+		}
+		found := map[string]struct{}{}
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			found[id] = struct{}{}
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+		if first {
+			out, first = found, false
+			continue
+		}
+		for id := range out {
+			if _, ok := found[id]; !ok {
+				delete(out, id)
+			}
+		}
+	}
+	return out, nil
 }
 
 // BoundCategories maps each field id to the categories that bind it.
@@ -174,6 +241,10 @@ type CreateFieldInput struct {
 	// refused by the same guard that refuses it later, so the two modes cannot
 	// be mixed by coming in through the door marked "create".
 	ModelIDs []string
+	// VendorIDs binds it to vendors, which is the other half of the device
+	// side (016, decision 110). It may be given together with ModelIDs -- both
+	// answer "which device" -- and never together with CategoryIDs.
+	VendorIDs []string
 	// Required belongs to the field and reaches every binding it has (018).
 	// It is a write-time rule, not a data invariant: existing assets keep
 	// whatever they have, and the next edit of one is where it is asked for.
@@ -223,6 +294,11 @@ func (s *Store) CreateField(ctx context.Context, in CreateFieldInput) (model.Fie
 		}
 		for i, modelID := range in.ModelIDs {
 			if err := bindModelTx(ctx, tx, modelID, f.ID, (i+1)*10); err != nil {
+				return err
+			}
+		}
+		for i, vendorID := range in.VendorIDs {
+			if err := bindVendorTx(ctx, tx, vendorID, f.ID, (i+1)*10); err != nil {
 				return err
 			}
 		}

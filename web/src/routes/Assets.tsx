@@ -14,7 +14,8 @@ import type {
   HolderEntity,
   User,
 } from "@/lib/types"
-import type { ProductModelRow } from "@/lib/metaTypes"
+import type { ProductModelRow, VendorRow } from "@/lib/metaTypes"
+import { modelLabel } from "@/lib/metaTypes"
 import { cn } from "cn"
 import { t, tImport, tTransfer } from "@/i18n"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
@@ -116,6 +117,10 @@ export function Assets() {
   // column, since that column means nothing until the rows are devices that
   // have the field.
   const [modelId, setModelId] = useState(searchParams.get("model_id") ?? "")
+  // The whole fleet from one supplier, which used to mean picking their models
+  // off the list one at a time (016). Not narrowed by category: "every Dell we
+  // own" is a question about the supplier, not about a branch of the tree.
+  const [vendorId, setVendorId] = useState(searchParams.get("vendor_id") ?? "")
   // Models belong to categories, so a model chosen under the old one cannot
   // survive the change -- keeping it would filter the list down to nothing.
   const previousCategory = useRef(categoryId)
@@ -185,6 +190,7 @@ export function Assets() {
   if (status) params.set("status", status)
   if (ownerId) params.set("owner_id", ownerId)
   if (modelId) params.set("model_id", modelId)
+  if (vendorId) params.set("vendor_id", vendorId)
   if (holderId) {
     // The kind travels with the id: the server filters on the pair, and an id
     // without one would match a user and an entity that happened to share it.
@@ -243,6 +249,11 @@ export function Assets() {
   // plainly. Normalising once means a cache entry filled by some other caller
   // cannot turn a filter into a crash.
   const modelList = Array.isArray(models.data) ? models.data : []
+  const vendors = useQuery({
+    queryKey: ["vendors"],
+    queryFn: () => api.get<VendorRow[]>("/vendors"),
+  })
+  const vendorList = Array.isArray(vendors.data) ? vendors.data : []
   const modelOf = (id: string | null) =>
     id === null ? undefined : modelList.find((m) => m.id === id)
 
@@ -260,7 +271,7 @@ export function Assets() {
       case "model":
         return modelOf(a.model_id)?.name ?? ""
       case "vendor":
-        return modelOf(a.model_id)?.vendor ?? ""
+        return modelOf(a.model_id)?.vendor_name ?? ""
       case "owner":
         return a.owner?.name ?? t.common.none
       case "note":
@@ -445,6 +456,27 @@ export function Assets() {
           </Select>
         </Field>
 
+        <Field className="w-auto">
+          <FieldLabel htmlFor="vendor" className="sr-only">
+            {t.assets.vendorFilter}
+          </FieldLabel>
+          <Select value={toNone(vendorId)} onValueChange={(v) => setVendorId(fromNone(v))}>
+            <SelectTrigger id="vendor" className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={NONE}>{t.assets.allVendors}</SelectItem>
+                {vendorList.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
+
         {/* Only within a category: models belong to categories, and a picker
             listing every model in the system would offer choices that cannot
             match the rows on screen. */}
@@ -464,7 +496,7 @@ export function Assets() {
                     .filter((m) => (m.category_ids ?? []).includes(categoryId))
                     .map((m) => (
                       <SelectItem key={m.id} value={m.id}>
-                        {m.vendor ? `${m.vendor} ${m.name}` : m.name}
+                        {modelLabel(m)}
                       </SelectItem>
                     ))}
                 </SelectGroup>

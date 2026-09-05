@@ -22,13 +22,13 @@ const categories = [
 ]
 
 const models = [
-  { id: "m1", category_ids: ["rt"], name: "X100", vendor: "Acme", attr_defaults: { firmware: "3.0.0", ports: "8" } },
-  { id: "m2", category_ids: ["net"], name: "通用机", vendor: "", attr_defaults: {} },
-  { id: "m3", category_ids: ["sw"], name: "S24", vendor: "Acme", attr_defaults: {} },
-  { id: "m4", category_ids: ["rt"], name: "旧款", vendor: "", attr_defaults: {}, archived_at: "2026-01-01T00:00:00Z" },
+  { id: "m1", category_ids: ["rt"], name: "X100", vendor_name: "Acme", attr_defaults: { firmware: "3.0.0", ports: "8" } },
+  { id: "m2", category_ids: ["net"], name: "通用机", vendor_name: "", attr_defaults: {} },
+  { id: "m3", category_ids: ["sw"], name: "S24", vendor_name: "Acme", attr_defaults: {} },
+  { id: "m4", category_ids: ["rt"], name: "旧款", vendor_name: "", attr_defaults: {}, archived_at: "2026-01-01T00:00:00Z" },
   // Serves two unrelated branches at once -- the thing a single category_id
   // could not express without entering the same device twice.
-  { id: "m5", category_ids: ["rt", "sw"], name: "两用机", vendor: "Acme", attr_defaults: {} },
+  { id: "m5", category_ids: ["rt", "sw"], name: "两用机", vendor_name: "Acme", attr_defaults: {} },
 ]
 
 beforeEach(() => {
