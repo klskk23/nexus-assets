@@ -136,30 +136,30 @@ worker 集体 45 秒超时，看起来像十几个测试同时坏了。
 
 ## 第 8 阶段：US6 类别页与审计页（P3）
 
-- [ ] T052 [P] [US6] `web/src/routes/Categories.tsx`：视觉重排。
+- [x] T052 [P] [US6] `web/src/routes/Categories.tsx`：视觉重排。
       **不翻页、搜索时从树切平铺、清空恢复成树** —— 行为一字不变（FR-022）
-- [ ] T053 [P] [US6] `web/src/routes/Audit.tsx`：视觉重排；前后值用绿/橙底标出新旧。
+- [x] T053 [P] [US6] `web/src/routes/Audit.tsx`：视觉重排；前后值用绿/橙底标出新旧。
       **且区分不得只靠颜色** —— 加删除线/下划线之类的形状差异（FR-005）
-- [ ] T054 [US6] `web/tests/audit.test.tsx` 加测试：新旧值的区分在不依赖颜色时仍然成立
-- [ ] T055 [P] [US6] `web/src/routes/Import.tsx`：视觉跟上（流程页，不改流程）
+- [x] T054 [US6] `web/tests/audit.test.tsx` 加测试：新旧值的区分在不依赖颜色时仍然成立
+- [x] T055 [P] [US6] `web/src/routes/Import.tsx`：视觉跟上（流程页，不改流程）
 
 ## 第 9 阶段：收口
 
-- [ ] T056 **静态检查两条**：`grep -rn "#[0-9a-fA-F]\{6\}" web/src/routes web/src/features --include='*.tsx'`
+- [x] T056 **静态检查两条**：`grep -rn "#[0-9a-fA-F]\{6\}" web/src/routes web/src/features --include='*.tsx'`
       应为**零命中**（FR-003，改造前实测就是零，别在这一轮引入第一处）；
       且 `ListToolbar` / `useListQuery` / `Pager` / `CrudPage` **各自只有一份实现**，
       没有为某一页复制出变体（FR-011）
-- [ ] T057 两份 i18n 全量复核：新增文案两种语言齐全；`tests/i18n.test.ts` 的孤儿检查为零
-- [ ] T058 **英文界面逐页走查**：十四个路由在英文下没有文字溢出、
+- [x] T057 两份 i18n 全量复核：新增文案两种语言齐全；`tests/i18n.test.ts` 的孤儿检查为零
+- [x] T058 **英文界面逐页走查**：十四个路由在英文下没有文字溢出、
       药丸里没有换行、统计卡数字没有挤出（SC-007）
-- [ ] T059 `docs/rules/web-forms.md` 与 `web-tables.md` 更新：药丸形态、圆角两档、
+- [x] T059 `docs/rules/web-forms.md` 与 `web-tables.md` 更新：药丸形态、圆角两档、
       深色已下架、字体自托管 —— 让下一个人不必重新发现
-- [ ] T060 `CLAUDE.md` 复核：深色相关的表述清理干净
-- [ ] T061 跑完整门禁（章程七条）：`gofmt -l` 空、`go vet`、`golangci-lint` 零告警；
+- [x] T060 `CLAUDE.md` 复核：深色相关的表述清理干净
+- [x] T061 跑完整门禁（章程七条）：`gofmt -l` 空、`go vet`、`golangci-lint` 零告警；
       `go test ./...` 全过且核心包覆盖率 ≥ 80%（本轮不碰 Go，应当原样通过）；
       `nexus verify` 通过；`npx tsc --noEmit`、`eslint`、`vitest run --maxWorkers=4`、
       `npm run build` 全过；真镜像 `deploy/smoke.sh` 通过
-- [ ] T062 按 [quickstart.md](./quickstart.md) 实机走完 17 步。
+- [x] T062 按 [quickstart.md](./quickstart.md) 实机走完 17 步。
       **第 2 步必须断网做**，第 3 步必须量真实产物
 
 ---

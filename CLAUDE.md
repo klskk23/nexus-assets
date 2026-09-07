@@ -15,7 +15,7 @@
 | `docs/rules/auth.md` | 域名白名单、OIDC、会话、API 密钥 |
 | `docs/rules/expr.md` | 表达式引擎与 AST 护栏 |
 | `docs/rules/web-tables.md` | 表格页、列表两种形状、页面骨架 |
-| `docs/rules/web-forms.md` | 表单、提示文案标准、`cn`、lazy chunk |
+| `docs/rules/web-forms.md` | 表单、提示文案标准、`cn`、lazy chunk、**Organic 视觉（浅色唯一、药丸、焦点环、自托管字体）** |
 | `docs/rules/printing.md` | 打印服务对接 |
 | `docs/guides/` | zenith-printer 对接指南、表达式引擎调研 |
 

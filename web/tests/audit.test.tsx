@@ -163,6 +163,20 @@ describe("Audit page", () => {
     expect(within(dialog).getByText(/管理员/)).toBeInTheDocument()
   })
 
+  // A diff usually wears red and green. This one may not: colour in this
+  // application means status, and a green block beside chips that carry real
+  // status meaning would be borrowing it. So the two are told apart by their
+  // labels, which is what has to keep working.
+  it("tells the old value from the new without relying on colour", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Audit />)
+    await user.click(await screen.findByRole("row", { name: /管理员/ }))
+
+    const dialog = await screen.findByRole("dialog")
+    expect(within(dialog).getByText("变更前")).toBeInTheDocument()
+    expect(within(dialog).getByText("变更后")).toBeInTheDocument()
+  })
+
   it("says so, rather than opening nothing, when an entry has no values", async () => {
     serve(
       page([{ id: 3, actor_id: "u-admin", actor_name: "管理员", action: "delete", target_type: "user", target_id: "u9", created_at: "2026-08-28T09:00:00Z" }]),

@@ -37,7 +37,47 @@
   编辑时字段已经存在，勾一下就是一次绑定请求，取消勾选要先确认（那会让每台设备
   少一个值），这是两个 dialog 之间唯一剩下的差别。
 
-- **重的库要 `lazy` 到自己的 chunk 里。** `recharts` 走 `features/overview/CategoryChart.tsx`
-  + `Suspense`：入口 chunk 与概览页 chunk 都不含它（否则概览页 chunk 是 358KB 而非 4.4KB）。
-  测试环境的 `ResizeObserver` 桩会回报固定尺寸，否则图表在 jsdom 里根本不渲染，
-  断言会因为与图表无关的原因通过。
+- **重的库要 `lazy` 到自己的 chunk 里** —— 但先问它该不该在。017 把 `recharts`
+  整个拆了：那 354KB 画的是一列横条、没有值得读的坐标轴，也就是一条轨道加一段填充，
+  CSS 把比例说得一样准（`features/overview/DistributionBar.tsx`）。
+  全站 JS 从 1223KB 降到 883KB。**再要画真正的图表（多序列、坐标轴）才把它请回来。**
+  `components/ui/chart.tsx` 也随之删了，要用时 `shadcn add chart` 取回。
+  测试环境的 `ResizeObserver` 桩留着 —— Radix 的浮层定位靠它，没有它
+  `Select`、`Popover`、`DropdownMenu` 在 jsdom 里都找不到。
+
+## 视觉（017 Organic）
+
+- **只有一套浅色。** 深色在 017 下架：没有 `.dark`、没有 `dark:` 工具类、
+  没有 `next-themes`、导航里没有切换、设置里没有主题项。
+  服务端的 `users.theme` 字段**保留着**（没写迁移），但前端一行都不读。
+  **别再往组件里加 `dark:`** —— 它不会有对应的样式，只会是一句永远不生效的类名。
+
+- **圆角两档，互不派生。** `--radius-sm/md/lg` 固定为 8/16/28px（Organic 自己的三档），
+  **不再由 `--radius` 用 r−4/r−2/r/r+4 算出来** —— 那个比例在 r=10 时合理，
+  在 r=28 时四档全挤在 24–32 之间，下拉菜单项会顶着一个卡片的圆角。
+  **小控件不在这条标尺上**：按钮、输入框、页签、分段控件是**药丸**，
+  在组件里直接写 `rounded-full`。`textarea` 是例外 —— 多行框的 999px 圆角会切掉首尾行的字。
+
+- **药丸控件必须 `whitespace-nowrap`。** 英文比中文长，不加的话窄屏或英文界面下
+  药丸里的字会换行，药丸就变成了胶囊。
+
+- **焦点环是实心的，且颜色是 `accent-700` 不是主色。** WCAG 1.4.11 要 3:1：
+  陶土橙在页面底上只有 3.03、在卡片底上 2.69（不合格），而 shadcn 默认的
+  `ring-ring/50` 半透明环只有 1.6。现在 `--ring: #8c491a`、环不透明，
+  在四种底色上都是 5.1–6.2。**别把 `/50` 加回来，也别把环换成 `--primary`。**
+  验收要用真键盘走 Tab —— 程序化 `.focus()` 在按钮上不匹配 `:focus-visible`，
+  环根本不会画出来，检查会在什么都没有的情况下通过。
+
+- **颜色不许硬编码。** 全站 `src/routes` 与 `src/features` 里六位十六进制色**零命中**，
+  收口时会 grep 检查。要新颜色就去 `index.css` 加语义 token。
+  **陶土橙 = 动作，八个 `.status-*` = 状态，沙绿（`--accent-2`）= 数量与装饰。**
+  别拿状态色去画不是状态的东西 —— 审计的前后值就是因此**没有**用红绿，
+  而是靠标签与左侧竖线区分。
+
+- **字体三款自托管，走 `@fontsource`。** 产物里**不得出现任何**指向
+  `fonts.googleapis.com` / `fonts.gstatic.com` 的引用：内网取不到，而且失败是静默的。
+  中文只取 400 与 700（九个字重是 27MB），`font-synthesis-weight: none` 要求真有粗体。
+  `vite.config.ts` 的 `dropWoffFallback` 会在**产物阶段**剥掉 fontsource 的 woff 旧格式回退
+  —— 不做的话 Vite 会多发 197 个文件、6MB，全是给跑不了 React 19 的浏览器准备的。
+  它必须在 `generateBundle` 做：Tailwind 的插件自己内联 `@import`，
+  `transform` 钩子根本看不到那些字体文件（第一次就是这样静默失败还报了成功）。

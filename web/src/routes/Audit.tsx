@@ -407,19 +407,28 @@ export function Audit() {
             <DialogTitle>{tAudit.changeTitle}</DialogTitle>
             <DialogDescription>{detail ? describe(detail) : ""}</DialogDescription>
           </DialogHeader>
-          <div className="grid max-h-[60vh] gap-3 overflow-y-auto text-xs">
+          {/* Old above new, each behind its own label and its own rule.
+           *
+           * Deliberately not the red-and-green a diff usually wears. Colour in
+           * this application means status -- eight palettes an administrator
+           * configures -- and a green block here would be borrowing a meaning
+           * it does not have, next to chips that do have it. The label says
+           * which is which, the old value is set back in the muted tone, and
+           * the rule down the left is what the eye catches first. None of that
+           * is colour doing the work, which is what FR-005 asks for. */}
+          <div className="grid max-h-[60vh] gap-4 overflow-y-auto text-xs">
             {detail?.before != null && (
-              <div>
-                <p className="text-muted-foreground">{tAudit.before}</p>
-                <pre className="bg-muted overflow-x-auto rounded p-2">
+              <div className="border-border border-l-2 pl-3">
+                <p className="text-muted-foreground mb-1">{tAudit.before}</p>
+                <pre className="bg-well text-muted-foreground overflow-x-auto rounded-[16px] p-3">
                   {JSON.stringify(detail.before, null, 2)}
                 </pre>
               </div>
             )}
             {detail?.after != null && (
-              <div>
-                <p className="text-muted-foreground">{tAudit.after}</p>
-                <pre className="bg-muted overflow-x-auto rounded p-2">
+              <div className="border-primary border-l-2 pl-3">
+                <p className="text-muted-foreground mb-1">{tAudit.after}</p>
+                <pre className="bg-well overflow-x-auto rounded-[16px] p-3">
                   {JSON.stringify(detail.after, null, 2)}
                 </pre>
               </div>

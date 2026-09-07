@@ -95,13 +95,17 @@ if (typeof window !== "undefined") {
 }
 
 /**
- * jsdom lays nothing out, so every element measures 0x0 and a chart's
- * responsive container concludes there is no room to draw in. A stub that only
- * swallows the calls leaves recharts rendering an empty SVG -- the assertions
- * then pass or fail for reasons that have nothing to do with the chart.
+ * jsdom lays nothing out, so every element measures 0x0 and anything that sizes
+ * itself from its container concludes there is no room. A stub that only
+ * swallows the calls leaves those elements rendered but empty, and assertions
+ * about them then pass or fail for reasons unrelated to what they test.
  *
  * So this one reports a fixed size, once, on observe. The number is arbitrary;
  * what matters is that it is not zero.
+ *
+ * It arrived for a charting library that 017 removed. It stays because Radix
+ * positions every popover, select and dropdown through a ResizeObserver, and
+ * without one none of them can be found by the tests that open them.
  */
 if (typeof globalThis.ResizeObserver === "undefined") {
   const SIZE = { width: 640, height: 320 }
