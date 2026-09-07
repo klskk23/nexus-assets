@@ -142,6 +142,7 @@ func (s *Server) Router() *gin.Engine {
 	authed.POST("/field-groups", need(authz.SchemaManage), s.createGroup)
 	authed.PATCH("/field-groups/:id", need(authz.SchemaManage), s.patchGroup)
 	authed.DELETE("/field-groups/:id", need(authz.SchemaManage), s.deleteGroup)
+	authed.POST("/field-groups/:id/bindings", need(authz.SchemaManage), s.bindGroupTargets)
 
 	authed.GET("/statuses", s.listStatuses)
 	authed.POST("/statuses", need(authz.StatusManage), s.createStatus)

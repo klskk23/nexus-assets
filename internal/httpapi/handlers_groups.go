@@ -104,6 +104,35 @@ func (s *Server) deleteGroup(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// bindGroupTargets binds an existing group to any number of targets at once.
+//
+// The group's own door, taking the same three lists the create takes. The
+// per-target endpoints still accept a group_id for the single-target case --
+// the same pair of shapes a field has, where POST /fields takes the lists and
+// POST /categories/:id/bindings takes one field.
+func (s *Server) bindGroupTargets(c *gin.Context) {
+	var req struct {
+		CategoryIDs []string `json:"category_ids"`
+		ModelIDs    []string `json:"model_ids"`
+		VendorIDs   []string `json:"vendor_ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
+		return
+	}
+	err := s.schema.BindGroupTo(c.Request.Context(), c.Param("id"), schema.GroupTargets{
+		CategoryIDs: req.CategoryIDs, ModelIDs: req.ModelIDs, VendorIDs: req.VendorIDs,
+	})
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	if !s.record(c, audit.ActionCreate, audit.TargetBinding, c.Param("id"), nil, req) {
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 // bindRequest is what the three binding endpoints accept: one field, or one
 // group, never both and never neither.
 //

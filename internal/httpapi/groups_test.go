@@ -238,3 +238,49 @@ func TestCreatingAGroupCanBindItInTheSameAct(t *testing.T) {
 		t.Errorf("a group binds to many targets, like a field: %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+// An existing group binds to many targets in one request, so a refusal
+// anywhere writes nothing -- which is what lets the editor's ticks accumulate
+// instead of firing one request each.
+func TestBindingAnExistingGroupToManyTargetsIsOneAct(t *testing.T) {
+	h := newHarness(t)
+	firmware := newField(t, h, "firmware")
+	tunnels := newField(t, h, "tunnels")
+	group := newGroup(t, h, "网络参数", firmware, tunnels)
+
+	dell := newVendor(t, h, "Dell")
+	m := decode[map[string]any](t, h.post(t, "/api/models",
+		`{"name":"Latitude 5420","vendor_id":"`+dell+`","category_ids":["`+h.catID+`"]}`))
+	modelID, _ := m["id"].(string)
+
+	if rec := h.post(t, "/api/field-groups/"+group+"/bindings",
+		`{"model_ids":["`+modelID+`"],"vendor_ids":["`+dell+`"]}`); rec.Code != http.StatusNoContent {
+		t.Fatalf("bind to two device targets: %d %s", rec.Code, rec.Body.String())
+	}
+	list := decode[map[string]any](t, h.get(t, "/api/fields?q=firmware"))
+	items, _ := list["items"].([]any)
+	row, _ := items[0].(map[string]any)
+	if models, _ := row["model_ids"].([]any); len(models) != 1 {
+		t.Errorf("the member should be on the model, got %v", row)
+	}
+	if vendors, _ := row["vendor_ids"].([]any); len(vendors) != 1 {
+		t.Errorf("and on the vendor, got %v", row)
+	}
+
+	// Now one that cannot land: the category side, with the members already on
+	// the device side. Nothing is written, not even for the target that would
+	// have been fine on its own.
+	rack := newField(t, h, "rack")
+	free := newGroup(t, h, "维保参数", rack, firmware)
+	rec := h.post(t, "/api/field-groups/"+free+"/bindings",
+		`{"category_ids":["`+h.catID+`"]}`)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("want 409, got %d %s", rec.Code, rec.Body.String())
+	}
+	list = decode[map[string]any](t, h.get(t, "/api/fields?q=rack"))
+	items, _ = list["items"].([]any)
+	row, _ = items[0].(map[string]any)
+	if row["binding_mode"] != "unbound" {
+		t.Errorf("a refused bind writes nothing at all, got %v", row)
+	}
+}

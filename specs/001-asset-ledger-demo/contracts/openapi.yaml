@@ -859,6 +859,33 @@ paths:
         "201": { description: Created }
         "409": { $ref: "#/components/responses/Error" }
 
+  /field-groups/{id}/bindings:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [metadata]
+      summary: 把一个已有的组绑到任意多个目标上（016）
+      description: >
+        与新建组拿同样的三个列表，一个事务：每个 (成员, 目标) 对都走单条绑定的那套检查，
+        任一个被拒则**一行都不写** —— 跨目标也一样。界面上的勾选因此可以攒着一起提交，
+        而不必勾一下发一次。
+        与 `POST /categories/{id}/bindings` 里的 `group_id` 是同一件事的两个方向：
+        一个从组这边说「绑到这些」，一个从目标那边说「把这个组绑上来」，
+        与字段的 `POST /fields` 收列表、`POST /categories/{id}/bindings` 收单个同形。
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category_ids: { type: array, items: { type: string } }
+                model_ids: { type: array, items: { type: string } }
+                vendor_ids: { type: array, items: { type: string } }
+      responses:
+        "204": { description: 已绑定 }
+        "409": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
   /field-groups/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }

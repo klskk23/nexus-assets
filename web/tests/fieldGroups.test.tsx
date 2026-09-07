@@ -6,7 +6,6 @@ import { FieldGroups } from "@/routes/FieldGroups"
 import { listed } from "@/test/listing"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { chooseFromMenu } from "@/test/menu"
-import { chooseByLabel } from "@/test/choose"
 import { ApiError } from "@/lib/api"
 
 const get = vi.fn()
@@ -182,43 +181,70 @@ describe("Field groups page", () => {
   // the only control lived in the field form, which was never handed the
   // groups, so it never rendered and nothing read what it would have set.
   //
-  // It belongs here rather than there anyway -- binding a group is an act on a
-  // target, not a property of any one field.
-  it("binds a group to a category, a model or a vendor", async () => {
+  // It belongs on the group anyway -- binding a group is an act on a target,
+  // not a property of any one field -- and it is the same form the create
+  // dialog uses, so the two cannot drift apart again.
+  it("binds an existing group to as many targets as the create form takes", async () => {
     const user = userEvent.setup()
     renderWithProviders(<FieldGroups />)
     const row = await screen.findByRole("row", { name: /网络参数/ })
 
     await chooseFromMenu(user, row, "绑定到…")
     const dialog = await screen.findByRole("dialog")
+    await user.click(within(dialog).getByLabelText("网络设备"))
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
 
-    // A category by default.
-    await chooseByLabel(user, "选一个", "网络设备")
-    await user.click(within(dialog).getByRole("button", { name: "绑定" }))
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/categories/net/bindings", { group_id: "g-net" }),
-    )
-
-    // And the other two targets, through the same endpoint shape.
-    await user.click(within(dialog).getByRole("radio", { name: "厂商" }))
-    await chooseByLabel(user, "选一个", "Dell")
-    await user.click(within(dialog).getByRole("button", { name: "绑定" }))
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/vendors/v-dell/bindings", { group_id: "g-net" }),
+      expect(post).toHaveBeenCalledWith("/field-groups/g-net/bindings", {
+        category_ids: ["net"],
+        model_ids: [],
+        vendor_ids: [],
+      }),
     )
   })
 
-  // Switching the target kind drops the pick: an id from the old list would
-  // aim the request at whatever happens to share it.
-  it("clears the chosen target when the kind changes", async () => {
+  // The device side is two lists here as well, models and vendors together.
+  it("offers models and vendors together when binding an existing group", async () => {
     const user = userEvent.setup()
     renderWithProviders(<FieldGroups />)
     await chooseFromMenu(user, await screen.findByRole("row", { name: /网络参数/ }), "绑定到…")
 
     const dialog = await screen.findByRole("dialog")
-    await chooseByLabel(user, "选一个", "网络设备")
-    await user.click(within(dialog).getByRole("radio", { name: "型号" }))
-    expect(within(dialog).getByRole("button", { name: "绑定" })).toBeDisabled()
+    await user.click(within(dialog).getByRole("radio", { name: "设备" }))
+    await user.click(within(dialog).getByLabelText("Dell"))
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/field-groups/g-net/bindings", {
+        category_ids: [],
+        model_ids: [],
+        vendor_ids: ["v-dell"],
+      }),
+    )
+  })
+
+  // Ticking nothing is an ordinary edit, and must not fire a binding request.
+  it("does not bind when nothing is ticked", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<FieldGroups />)
+    await user.click(await screen.findByRole("row", { name: /网络参数/ }))
+
+    const dialog = await screen.findByRole("dialog")
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
+    await waitFor(() => expect(patch).toHaveBeenCalled())
+    expect(post).not.toHaveBeenCalled()
+  })
+
+  // A bound group leaves no trace, so the ticks are an act rather than a
+  // reading of where it is -- and the form has to say so.
+  it("says that the ticks bind rather than show where it is bound", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<FieldGroups />)
+    await user.click(await screen.findByRole("row", { name: /网络参数/ }))
+
+    const dialog = await screen.findByRole("dialog")
+    expect(within(dialog).getByText(/不留痕迹/)).toBeInTheDocument()
   })
 
   // One member refused refuses the group, and the sentence has to land where
@@ -232,10 +258,12 @@ describe("Field groups page", () => {
     await chooseFromMenu(user, await screen.findByRole("row", { name: /网络参数/ }), "绑定到…")
 
     const dialog = await screen.findByRole("dialog")
-    await chooseByLabel(user, "选一个", "网络设备")
-    await user.click(within(dialog).getByRole("button", { name: "绑定" }))
+    await user.click(within(dialog).getByLabelText("网络设备"))
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
 
-    expect(await within(dialog).findByText(/基准 MAC/)).toBeInTheDocument()
+    // The whole sentence, not the member checkbox that happens to share the
+    // name -- the refusal is what has to be on screen.
+    expect(await within(dialog).findByText(/没有绑定/)).toBeInTheDocument()
   })
 
   // Deleting a group unbinds nothing: the expansion left no trace to reverse,

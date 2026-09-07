@@ -29,6 +29,12 @@ interface Props {
   bindModeFrozen?: boolean
   /** Prefix for control ids, so two of these can never collide on a page. */
   idPrefix: string
+  /**
+   * What the side switch explains, when the default is not the right sentence.
+   * A group binds each of its members separately and all or nothing, which is
+   * a different thing to say than what one field's binding means.
+   */
+  modeHint?: string
 }
 
 /**
@@ -47,6 +53,7 @@ export function BindingPicker({
   vendors,
   bindModeFrozen,
   idPrefix: p,
+  modeHint,
 }: Props) {
   // A child inherits what its parent binds, so the same field may appear only
   // once on a chain -- and the server refuses the second one. Ticking a
@@ -79,7 +86,7 @@ export function BindingPicker({
   <Field className="sm:col-span-2">
     <div className="flex items-center gap-1.5">
       <FieldLabel htmlFor={`${p}-bind-mode`}>{tMeta.fields.bindingMode}</FieldLabel>
-      <Hint>{tMeta.fields.bindingModeHint}</Hint>
+      <Hint>{modeHint ?? tMeta.fields.bindingModeHint}</Hint>
     </div>
     <ToggleGroup
       id={`${p}-bind-mode`}

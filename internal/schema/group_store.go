@@ -313,10 +313,6 @@ func (s *Store) DeleteGroup(ctx context.Context, id string) error {
 // that lands half-way would be worse than one refused outright -- the person
 // who bound it would have to work out which half.
 func (s *Store) BindGroup(ctx context.Context, target BindTarget, targetID, groupID string) error {
-	g, err := s.GetGroup(ctx, groupID)
-	if err != nil {
-		return err
-	}
 	var t GroupTargets
 	switch target {
 	case BindToCategory:
@@ -327,6 +323,22 @@ func (s *Store) BindGroup(ctx context.Context, target BindTarget, targetID, grou
 		t.VendorIDs = []string{targetID}
 	default:
 		return fmt.Errorf("unknown bind target %q", target)
+	}
+	return s.BindGroupTo(ctx, groupID, t)
+}
+
+// BindGroupTo binds an existing group to any number of targets at once.
+//
+// One transaction over every (member, target) pair, so a refusal anywhere
+// leaves nothing written -- the same promise the create makes, and the reason
+// the ticks on the editor accumulate rather than firing one request each.
+func (s *Store) BindGroupTo(ctx context.Context, groupID string, t GroupTargets) error {
+	g, err := s.GetGroup(ctx, groupID)
+	if err != nil {
+		return err
+	}
+	if t.Empty() {
+		return nil
 	}
 	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		return bindGroupTx(ctx, tx, t, g)

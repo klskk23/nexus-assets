@@ -50,6 +50,7 @@ func TestEmbeddedContractMatchesTheSpec(t *testing.T) {
 		"/vendors/{id}/required-impact":     "get",
 		"/field-groups":                     "post",
 		"/field-groups/{id}":                "patch",
+		"/field-groups/{id}/bindings":       "post",
 		"/models/{id}/vendor-change-impact": "get",
 	} {
 		if _, ok := doc.Paths[path][method]; !ok {
