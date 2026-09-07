@@ -190,3 +190,61 @@ func vendorNamed(t *testing.T, s *Store, ctx context.Context, name string) strin
 	}
 	return v.ID
 }
+
+// A note about the model is a fact about the thing -- discontinued, a revision
+// to avoid -- and belongs on the model rather than on a text field of some
+// category, where there would be one copy per category and no way to search
+// them together.
+func TestModelNoteIsSetOnCreateAndLeftAloneByAnEditThatOmitsIt(t *testing.T) {
+	s, ctx := newStore(t)
+	root, _ := tree(t, s, ctx)
+
+	m, err := s.CreateModel(ctx, CreateModelInput{
+		Name: "Latitude 5420", VendorID: vendorNamed(t, s, ctx, "Dell"),
+		CategoryIDs: []string{root.ID}, Note: "已停产，改买 5430",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Note != "已停产，改买 5430" {
+		t.Fatalf("note = %q on create", m.Note)
+	}
+
+	// An edit that says nothing about the note keeps it. Absent is not empty:
+	// changing the categories must not wipe what somebody wrote (v2's rule for
+	// the device note, applied here).
+	name := "Latitude 5420 (EOL)"
+	got, err := s.UpdateModel(ctx, m.ID, UpdateModelInput{Name: &name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Note != "已停产，改买 5430" {
+		t.Errorf("an edit that omits the note should keep it, got %q", got.Note)
+	}
+
+	// An empty string is how it is cleared, and that is a different request.
+	blank := ""
+	got, err = s.UpdateModel(ctx, m.ID, UpdateModelInput{Note: &blank})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Note != "" {
+		t.Errorf("an empty string clears it, got %q", got.Note)
+	}
+
+	// It survives a round trip through the list, not only through Get.
+	if _, err := s.UpdateModel(ctx, m.ID, UpdateModelInput{Note: strPtrOf("风扇 40℃ 以上有异响")}); err != nil {
+		t.Fatal(err)
+	}
+	list, err := s.ListModels(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range list {
+		if l.ID == m.ID && l.Note != "风扇 40℃ 以上有异响" {
+			t.Errorf("note in the list = %q", l.Note)
+		}
+	}
+}
+
+func strPtrOf(s string) *string { return &s }

@@ -360,7 +360,10 @@ func (s *Server) listModels(c *gin.Context) {
 		})
 	}
 	respondList(c, items, func(m model.ProductModel, q string) bool {
-		return matches(q, m.Name, m.VendorName)
+		// The note is searched too: a note nobody can find again is a note
+		// nobody writes twice. Same as the holder list, which has always
+		// searched its own.
+		return matches(q, m.Name, m.VendorName, m.Note)
 	})
 }
 
@@ -369,6 +372,7 @@ func (s *Server) createModel(c *gin.Context) {
 		CategoryIDs  []string       `json:"category_ids"`
 		Name         string         `json:"name" binding:"required"`
 		VendorID     string         `json:"vendor_id"`
+		Note         string         `json:"note"`
 		ImageURL     string         `json:"image_url"`
 		AttrDefaults map[string]any `json:"attr_defaults"`
 	}
@@ -378,7 +382,7 @@ func (s *Server) createModel(c *gin.Context) {
 	}
 	out, err := s.schema.CreateModel(c.Request.Context(), schema.CreateModelInput{
 		CategoryIDs: req.CategoryIDs, Name: req.Name, VendorID: req.VendorID,
-		ImageURL: req.ImageURL, AttrDefaults: req.AttrDefaults,
+		Note: req.Note, ImageURL: req.ImageURL, AttrDefaults: req.AttrDefaults,
 	})
 	if err != nil {
 		FailErr(c, err)
@@ -392,8 +396,11 @@ func (s *Server) createModel(c *gin.Context) {
 
 func (s *Server) patchModel(c *gin.Context) {
 	var req struct {
-		Name         *string         `json:"name"`
-		VendorID     *string         `json:"vendor_id"`
+		Name     *string `json:"name"`
+		VendorID *string `json:"vendor_id"`
+		// Absent leaves the note alone; an empty string clears it. An edit that
+		// changes the categories must not wipe what somebody wrote here.
+		Note         *string         `json:"note"`
 		ImageURL     *string         `json:"image_url"`
 		CategoryIDs  *[]string       `json:"category_ids"`
 		AttrDefaults *map[string]any `json:"attr_defaults"`
@@ -410,7 +417,7 @@ func (s *Server) patchModel(c *gin.Context) {
 	}
 
 	out, err := s.schema.UpdateModel(ctx, c.Param("id"), schema.UpdateModelInput{
-		Name: req.Name, VendorID: req.VendorID, ImageURL: req.ImageURL,
+		Name: req.Name, VendorID: req.VendorID, Note: req.Note, ImageURL: req.ImageURL,
 		CategoryIDs: req.CategoryIDs, AttrDefaults: req.AttrDefaults,
 	})
 	if err != nil {

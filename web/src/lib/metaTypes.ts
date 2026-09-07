@@ -44,6 +44,12 @@ export interface ProductModelRow {
   vendor_id?: string
   /** Its name, joined on read -- renaming a vendor reaches every model. */
   vendor_name?: string
+  /**
+   * A sentence about the model itself: discontinued, a revision to avoid,
+   * which module it takes. Absent in a PATCH means "leave it alone"; an empty
+   * string clears it.
+   */
+  note?: string
   attr_defaults: Record<string, unknown>
   archived_at?: string | null
 }

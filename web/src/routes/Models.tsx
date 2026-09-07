@@ -53,6 +53,7 @@ export function Models() {
   const [notice, setNotice] = useState<string | null>(null)
   const [name, setName] = useState("")
   const [vendorId, setVendorId] = useState("")
+  const [note, setNote] = useState("")
   const [categoryIds, setCategoryIds] = useState<string[]>([])
   const [defaults, setDefaults] = useState<DefaultRow[]>([])
 
@@ -78,6 +79,7 @@ export function Models() {
       api.patch(`/models/${m.id}`, {
         name: m.name,
         vendor_id: m.vendor_id ?? "",
+        note: m.note ?? "",
         category_ids: m.category_ids ?? [],
         attr_defaults: m.attr_defaults ?? {},
       }),
@@ -115,6 +117,7 @@ export function Models() {
       onCreated={() => {
         setName("")
         setVendorId("")
+        setNote("")
         setCategoryIds([])
         setDefaults([])
       }}
@@ -123,6 +126,7 @@ export function Models() {
           category_ids: categoryIds,
           name,
           vendor_id: vendorId,
+          note,
           attr_defaults: toAttrDefaults(defaults),
         })
       }
@@ -163,6 +167,10 @@ export function Models() {
             (m.category_ids ?? []).map((id) => byId.get(id) ?? id).join("、") ||
             tMeta.models.noCategory,
         },
+        {
+          header: tMeta.models.note,
+          cell: (m) => <span className="text-muted-foreground text-sm">{m.note}</span>,
+        },
       ]}
       form={
         <div className="grid gap-4 sm:grid-cols-3">
@@ -187,6 +195,18 @@ export function Models() {
                 </SelectGroup>
               </SelectContent>
             </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="m-note">{tMeta.models.note}</FieldLabel>
+            {/* The explanation goes into the box rather than onto a line of
+                its own: it is read at the moment it is needed and costs no
+                height the rest of the time. */}
+            <Input
+              id="m-note"
+              value={note}
+              placeholder={tMeta.models.notePlaceholder}
+              onChange={(e) => setNote(e.target.value)}
+            />
           </Field>
           {/* One device can genuinely be both a router and a spare, so several
               categories can be ticked. A dropdown cannot express that, and a
@@ -300,6 +320,16 @@ function ModelEditor({ model, categories, vendors, onOpenChange, onSave, saving 
                 </SelectGroup>
               </SelectContent>
             </Select>
+          </Field>
+
+          <Field className="sm:col-span-2">
+            <FieldLabel htmlFor="me-note">{tMeta.models.note}</FieldLabel>
+            <Input
+              id="me-note"
+              value={draft.note ?? ""}
+              placeholder={tMeta.models.notePlaceholder}
+              onChange={(e) => setDraft({ ...draft, note: e.target.value })}
+            />
           </Field>
 
           <FieldSet className="sm:col-span-2">

@@ -367,6 +367,7 @@ paths:
         就是要一页，返回 `{items,total,offset,limit}`；一个都不带就是要全部，
         返回数组 —— 下拉框要的是全集，翻页会把选项截断，而 zenith-printer
         的数据源按数组解析 `/api/categories`。
+        `q` 搜名称、厂商名与 `note` —— 找不回来的备注没有人会写第二次。
       parameters:
         - { $ref: "#/components/parameters/ListQ" }
         - { $ref: "#/components/parameters/ListOffset" }
@@ -631,6 +632,7 @@ paths:
         就是要一页，返回 `{items,total,offset,limit}`；一个都不带就是要全部，
         返回数组 —— 下拉框要的是全集，翻页会把选项截断，而 zenith-printer
         的数据源按数组解析 `/api/categories`。
+        `q` 搜名称、厂商名与 `note` —— 找不回来的备注没有人会写第二次。
       parameters:
         - { $ref: "#/components/parameters/ListQ" }
         - { $ref: "#/components/parameters/ListOffset" }
@@ -638,7 +640,29 @@ paths:
         - { name: category_id, in: query, schema: { type: string } }
       responses:
         "200": { description: OK }
-    post: { tags: [metadata], summary: 新建型号, responses: { "201": { description: Created } } }
+    post:
+      tags: [metadata]
+      summary: 新建型号
+      description: >
+        `note` 是关于这款型号本身的一句话（已停产、某个版本别买、只有 -B 版能插 25G 模块）。
+        它**不是字段定义**：字段是资产要记的东西、类别要问的问题，而这句话对该型号的每台
+        设备都一样，做成字段等于在每台设备的录入表单上重复问一遍。
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                vendor_id: { type: string }
+                note: { type: string }
+                image_url: { type: string }
+                category_ids: { type: array, items: { type: string } }
+                attr_defaults: { type: object }
+      responses:
+        "201": { description: Created }
+        "409": { $ref: "#/components/responses/Error" }
 
   /models/{id}:
     parameters:
@@ -646,6 +670,9 @@ paths:
     patch:
       tags: [metadata]
       summary: 修改型号。字段可省略，省略即不动；category_ids 给了则整体替换
+      description: >
+        `note` 三态与设备备注一致（v2）：**字段缺席 = 不动**，给空串才是清空 ——
+        一次只改类别的编辑不该把别人写的那句话抹掉。
       responses:
         "200": { description: OK }
         "409": { $ref: "#/components/responses/Error" }
@@ -964,6 +991,7 @@ paths:
         就是要一页，返回 `{items,total,offset,limit}`；一个都不带就是要全部，
         返回数组 —— 下拉框要的是全集，翻页会把选项截断，而 zenith-printer
         的数据源按数组解析 `/api/categories`。
+        `q` 搜名称、厂商名与 `note` —— 找不回来的备注没有人会写第二次。
       parameters:
         - { $ref: "#/components/parameters/ListQ" }
         - { $ref: "#/components/parameters/ListOffset" }

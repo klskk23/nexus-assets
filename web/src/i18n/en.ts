@@ -370,11 +370,13 @@ export const enMeta: typeof zhMeta = {
     membersHint: "Members are bound in this order; adding one later does not reach what the group already bound",
   },
   models: {
-    searchHint: "name, vendor",
+    searchHint: "Name, vendor, note",
     title: "Models",
     create: "New model",
     name: "Model",
     vendor: "Vendor",
+    note: "Note",
+    notePlaceholder: "One line about the model itself -- discontinued, a revision to avoid",
     category: "Categories",
     noCategory: "No category",
     categoryHint:

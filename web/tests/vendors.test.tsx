@@ -42,6 +42,7 @@ const productModels = [
     name: "Latitude 5420",
     vendor_id: "v-dell",
     vendor_name: "Dell",
+    note: "已停产，改买 5430",
     attr_defaults: {},
   },
   {
@@ -149,8 +150,58 @@ describe("Models page", () => {
         category_ids: [],
         name: "R640",
         vendor_id: "v-dell",
+        note: "",
         attr_defaults: {},
       }),
+    )
+  })
+
+  // A fact about the model -- discontinued, a revision to avoid -- used to have
+  // nowhere to go but a text field on some category, one copy per category.
+  it("records a note about the model itself", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Models />)
+    await screen.findByRole("row", { name: /Latitude 5420/ })
+
+    await openCreate(user, "新建型号")
+    await user.type(screen.getByLabelText("型号名"), "R640")
+    await user.type(screen.getByLabelText("备注"), "已停产，改买 R650")
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "新建型号" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/models", {
+        category_ids: [],
+        name: "R640",
+        vendor_id: "",
+        note: "已停产，改买 R650",
+        attr_defaults: {},
+      }),
+    )
+  })
+
+  it("shows the note in the list, so it need not be opened to be read", async () => {
+    renderWithProviders(<Models />)
+    const row = await screen.findByRole("row", { name: /Latitude 5420/ })
+    expect(within(row).getByText("已停产，改买 5430")).toBeInTheDocument()
+  })
+
+  it("carries the note through an edit", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Models />)
+    await user.click(await screen.findByRole("row", { name: /Latitude 5420/ }))
+
+    const dialog = await screen.findByRole("dialog")
+    const note = within(dialog).getByLabelText("备注")
+    expect(note).toHaveValue("已停产，改买 5430")
+    await user.clear(note)
+    await user.type(note, "风扇有异响")
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith(
+        "/models/m1",
+        expect.objectContaining({ note: "风扇有异响" }),
+      ),
     )
   })
 

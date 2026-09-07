@@ -321,7 +321,12 @@ type ProductModel struct {
 	// keep that true (019).
 	VendorID string `json:"vendor_id"`
 	// VendorName is filled in on read for display, never stored on this row.
-	VendorName   string         `json:"vendor_name,omitempty"`
+	VendorName string `json:"vendor_name,omitempty"`
+	// Note is a sentence about the model itself -- discontinued, a revision to
+	// avoid, which module it takes. It belongs to no category's field set, the
+	// same way the device note does (v2): a fact about the thing rather than
+	// something an asset records.
+	Note         string         `json:"note"`
 	ImageURL     string         `json:"image_url,omitempty"`
 	AttrDefaults map[string]any `json:"attr_defaults"`
 	ArchivedAt   *time.Time     `json:"archived_at,omitempty"`

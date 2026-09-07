@@ -302,3 +302,34 @@ func TestVendorChangeIgnoresFieldsThatSurviveIt(t *testing.T) {
 		t.Errorf("a field both vendors provide survives the move, got %v", impact)
 	}
 }
+
+// The model note travels through the endpoints, and PATCH keeps the three
+// states the device note has: absent leaves it, an empty string clears it.
+func TestModelNoteSurvivesAnEditThatDoesNotMentionIt(t *testing.T) {
+	h := newHarness(t)
+	dell := newVendor(t, h, "Dell")
+	m := decode[map[string]any](t, h.post(t, "/api/models",
+		`{"name":"Latitude 5420","vendor_id":"`+dell+`","category_ids":["`+h.catID+`"],
+		  "note":"已停产，改买 5430"}`))
+	modelID, _ := m["id"].(string)
+	if m["note"] != "已停产，改买 5430" {
+		t.Fatalf("note on create = %v", m["note"])
+	}
+
+	// An edit about something else must not blank it.
+	got := decode[map[string]any](t, h.patch(t, "/api/models/"+modelID, `{"category_ids":[]}`))
+	if got["note"] != "已停产，改买 5430" {
+		t.Errorf("an edit that omits the note should keep it, got %v", got["note"])
+	}
+
+	// A note nobody can find again is a note nobody writes twice.
+	found := decode[map[string]any](t, h.get(t, "/api/models?q=停产"))
+	if items, _ := found["items"].([]any); len(items) != 1 {
+		t.Errorf("the note should be searchable, got %v", found)
+	}
+
+	got = decode[map[string]any](t, h.patch(t, "/api/models/"+modelID, `{"note":""}`))
+	if got["note"] != "" {
+		t.Errorf("an empty string clears it, got %v", got["note"])
+	}
+}

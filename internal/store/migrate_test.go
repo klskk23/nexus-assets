@@ -123,7 +123,7 @@ func TestMigrateUpAndDown(t *testing.T) {
 	// Rolling back one revision at a time must restore each earlier shape
 	// exactly, so a half-applied upgrade can be undone rather than requiring a
 	// fresh file.
-	for _, rev := range []string{"019", "018", "017", "016", "015", "014", "013", "012", "011", "010", "009"} {
+	for _, rev := range []string{"020", "019", "018", "017", "016", "015", "014", "013", "012", "011", "010", "009"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -331,7 +331,7 @@ func TestMigrateConvertsEnumAndReferenceFieldsToText(t *testing.T) {
 	}
 	// Back past the withdrawal, so the rows can be written in the shape that
 	// revision allowed.
-	for _, rev := range []string{"019", "018", "017", "016", "015", "014", "013", "012", "011", "010"} {
+	for _, rev := range []string{"020", "019", "018", "017", "016", "015", "014", "013", "012", "011", "010"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -392,7 +392,7 @@ func TestMigrateMovesRequiredOntoTheField(t *testing.T) {
 	// Back to before the move, so the rows can be written the way that
 	// revision allowed: required on the binding. Two steps, because 019 sits
 	// on top of it now.
-	for _, rev := range []string{"019", "018"} {
+	for _, rev := range []string{"020", "019", "018"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -436,7 +436,7 @@ func TestMigrateMovesRequiredOntoTheField(t *testing.T) {
 
 	// And going back down puts it where the older code reads it. Two steps
 	// again: the Migrate above went all the way up to 019.
-	for _, rev := range []string{"019", "018"} {
+	for _, rev := range []string{"020", "019", "018"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -470,8 +470,12 @@ func TestMigrateVendorsBackfillVerbatim(t *testing.T) {
 	if err := s.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}
-	if err := s.MigrateDown(ctx); err != nil {
-		t.Fatalf("MigrateDown 019: %v", err)
+	// Down to below 019, one migration at a time. Every revision added after
+	// it lengthens this walk, which is the whole reason it is a loop.
+	for _, rev := range []string{"020", "019"} {
+		if err := s.MigrateDown(ctx); err != nil {
+			t.Fatalf("MigrateDown %s: %v", rev, err)
+		}
 	}
 
 	now := "2026-09-05T00:00:00Z"

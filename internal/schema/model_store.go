@@ -24,7 +24,7 @@ var ErrModelDuplicate = errors.New("vendor already has a product with this name"
 // stored copy: a renamed vendor must not leave a stale string behind on a
 // hundred model rows, and 016 exists precisely so there is one place the
 // vendor's name lives.
-const modelCols = `m.id, m.name, m.vendor_id, v.name, m.image_url, m.attr_defaults,
+const modelCols = `m.id, m.name, m.vendor_id, v.name, m.note, m.image_url, m.attr_defaults,
 	m.archived_at, m.created_at, m.updated_at`
 
 // modelFrom carries the join every scan depends on. LEFT, because a model with
@@ -39,7 +39,7 @@ func scanModel(row interface{ Scan(...any) error }) (model.ProductModel, error) 
 	var m model.ProductModel
 	var image, archived, vendorID, vendorName sql.NullString
 	var defaults, created, updated string
-	if err := row.Scan(&m.ID, &m.Name, &vendorID, &vendorName, &image, &defaults,
+	if err := row.Scan(&m.ID, &m.Name, &vendorID, &vendorName, &m.Note, &image, &defaults,
 		&archived, &created, &updated); err != nil {
 		return m, err
 	}
@@ -217,7 +217,9 @@ func (s *Store) ModelByName(ctx context.Context, name string) (model.ProductMode
 type CreateModelInput struct {
 	Name string
 	// VendorID points at a vendor row, empty for a model that has none.
-	VendorID     string
+	VendorID string
+	// Note is a sentence about the model. Empty is the ordinary state.
+	Note         string
 	ImageURL     string
 	CategoryIDs  []string
 	AttrDefaults map[string]any
@@ -241,7 +243,7 @@ func (s *Store) CreateModel(ctx context.Context, in CreateModelInput) (model.Pro
 	now := time.Now().UTC()
 	m := model.ProductModel{
 		ID: store.NewID(), Name: in.Name, VendorID: strings.TrimSpace(in.VendorID),
-		ImageURL: in.ImageURL, CategoryIDs: dedupe(in.CategoryIDs),
+		Note: in.Note, ImageURL: in.ImageURL, CategoryIDs: dedupe(in.CategoryIDs),
 		AttrDefaults: in.AttrDefaults, CreatedAt: now, UpdatedAt: now,
 	}
 	if m.AttrDefaults == nil {
@@ -249,9 +251,9 @@ func (s *Store) CreateModel(ctx context.Context, in CreateModelInput) (model.Pro
 	}
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO product_models (id, name, vendor_id, image_url, attr_defaults, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			m.ID, m.Name, store.NullString(vendorPtr(m.VendorID)), m.ImageURL, defaults,
+			`INSERT INTO product_models (id, name, vendor_id, note, image_url, attr_defaults, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			m.ID, m.Name, store.NullString(vendorPtr(m.VendorID)), m.Note, m.ImageURL, defaults,
 			store.FormatTime(now), store.FormatTime(now)); err != nil {
 			return err
 		}
@@ -304,8 +306,12 @@ var ErrModelInUse = errors.New("product model is still in use")
 // silently blank the rest, and CategoryIDs in particular has a meaningful
 // empty value -- a model attached to nothing is a legitimate state.
 type UpdateModelInput struct {
-	Name         *string
-	VendorID     *string
+	Name     *string
+	VendorID *string
+	// Note absent means "leave it alone" and an empty string clears it -- the
+	// same three states the device note has (v2). An edit that does not mention
+	// the note must not wipe what somebody wrote there.
+	Note         *string
 	ImageURL     *string
 	CategoryIDs  *[]string
 	AttrDefaults *map[string]any
@@ -330,9 +336,9 @@ func (s *Store) UpdateModel(ctx context.Context, id string, in UpdateModelInput)
 
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx,
-			`UPDATE product_models SET name = ?, vendor_id = ?, image_url = ?, attr_defaults = ?, updated_at = ?
+			`UPDATE product_models SET name = ?, vendor_id = ?, note = ?, image_url = ?, attr_defaults = ?, updated_at = ?
 			 WHERE id = ?`,
-			cur.Name, store.NullString(vendorPtr(cur.VendorID)), cur.ImageURL, defaults,
+			cur.Name, store.NullString(vendorPtr(cur.VendorID)), cur.Note, cur.ImageURL, defaults,
 			store.FormatTime(now), id); err != nil {
 			return err
 		}
@@ -444,6 +450,9 @@ func applyModelPatch(cur *model.ProductModel, in UpdateModelInput) error {
 	}
 	if in.VendorID != nil {
 		cur.VendorID = strings.TrimSpace(*in.VendorID)
+	}
+	if in.Note != nil {
+		cur.Note = *in.Note
 	}
 	if in.ImageURL != nil {
 		cur.ImageURL = *in.ImageURL
