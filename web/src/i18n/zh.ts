@@ -148,7 +148,7 @@ export const zh = {
     vendorFilter: "厂商",
     allVendors: "全部厂商",
     modelFilter: "型号",
-    modelColumnLocked: "先选定一个型号，才能显示只属于该型号的字段列",
+    modelColumnLocked: "先按型号或厂商筛一下，才能显示只属于那些设备的字段列",
     holderFilter: "持有方",
     sn: "编号",
     category: "类别",

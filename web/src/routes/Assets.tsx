@@ -309,12 +309,28 @@ export function Assets() {
   }, [assets.data?.exact_match_id, navigate])
 
   const available = schema.data?.fields?.filter((f) => f.type !== "computed") ?? []
-  // A model field's column says nothing until the rows are devices that have
-  // the field, so it unlocks only while the model filter names one of its own
-  // models (015, decision 103). Locked rather than hidden, and with the reason
-  // on it: a control that vanishes leaves nobody anything to read.
-  const unlocked = (f: BoundField) =>
-    (f.model_ids ?? []).length === 0 || (modelId !== "" && f.model_ids!.includes(modelId))
+  // A device field's column says nothing until the rows are devices that have
+  // the field, so it unlocks only once a filter has narrowed to those (015,
+  // decision 103). Locked rather than hidden, and with the reason on it: a
+  // control that vanishes leaves nobody anything to read.
+  //
+  // The vendor filter narrows just as well as the model filter, and until 016
+  // there was nothing else to narrow by. A field bound to Dell was reachable
+  // only by picking one Dell model at a time -- with the vendor chosen, every
+  // row on screen is one of its devices, which is exactly the condition this
+  // rule is about.
+  const unlocked = (f: BoundField) => {
+    const models = f.model_ids ?? []
+    if (models.length === 0) return true
+    if (modelId !== "") return models.includes(modelId)
+    if (vendorId === "") return false
+    // Bound to this vendor: every row the filter leaves has the field. Or
+    // bound to one of its models directly, which is still a row on screen.
+    return (
+      (f.vendor_ids ?? []).includes(vendorId) ||
+      models.some((id) => modelList.find((m) => m.id === id)?.vendor_id === vendorId)
+    )
+  }
   // Only what this category actually has, and only what applies right now.
   // The stored choice is per category already, but a field can be unbound
   // after it was chosen, the schema has not arrived yet on the first render

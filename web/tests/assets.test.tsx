@@ -900,6 +900,58 @@ describe("Assets vendor filter", () => {
   // Expanding a group gives its fields to whatever was bound, and after that
   // no edge is left between a device and the group -- so there is nothing for
   // an asset filter to filter by (decision 105).
+  // The bug this covers: a field bound to a vendor had a reach set of that
+  // vendor's models, and the column only unlocked once one model was named.
+  // Filtering by the vendor leaves nothing but its devices on screen, which is
+  // exactly the condition the rule is about.
+  it("unlocks a vendor's field column once that vendor is chosen", async () => {
+    const withVendorField = {
+      category: categories[0],
+      fields: [
+        ...schema.fields,
+        {
+          id: "f9", key: "servicetag", label: "ServiceTag", type: "text",
+          options: {}, is_unique: false, required: false, sort: 30,
+          // The reach set: every Dell model. Bound to the vendor, not to them.
+          model_ids: ["m-dell"], vendor_ids: ["v-dell"],
+        },
+      ],
+    }
+    get.mockReset().mockImplementation((p: string) => {
+      if (p === "/vendors") return Promise.resolve(vendors)
+      if (p === "/models") {
+        return Promise.resolve([
+          { id: "m-dell", name: "Latitude 5420", vendor_id: "v-dell", vendor_name: "Dell", category_ids: ["net"], attr_defaults: {} },
+        ])
+      }
+      if (p.endsWith("/schema")) return Promise.resolve(withVendorField)
+      return route(p)
+    })
+
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await chooseByLabel(user, "类别", "网络设备")
+
+    await user.click(await screen.findByRole("button", { name: "显示列" }))
+    expect(await screen.findByRole("menuitemcheckbox", { name: "ServiceTag" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
+
+    await user.keyboard("{Escape}")
+    await chooseByLabel(user, "厂商", "Dell")
+    await user.click(screen.getByRole("button", { name: "显示列" }))
+    expect(await screen.findByRole("menuitemcheckbox", { name: "ServiceTag" })).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
+
+    // And it can actually be ticked, which is what was impossible.
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "ServiceTag" }))
+    await user.keyboard("{Escape}")
+    expect(await screen.findByRole("columnheader", { name: "ServiceTag" })).toBeInTheDocument()
+  })
+
   it("has no field-group filter", async () => {
     renderWithProviders(<Assets />)
     await screen.findByText(/共 1 条/)

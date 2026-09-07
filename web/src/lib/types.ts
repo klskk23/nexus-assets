@@ -71,9 +71,20 @@ export interface BoundField {
    * A category's schema is its whole vocabulary, so a model field appears in
    * it whatever device is being looked at. This is what says when it applies:
    * the entry form draws it only for a matching model, and the list only
-   * unlocks its column once the model filter names one of these.
+   * unlocks its column once the filters narrow to devices that have it.
+   *
+   * Since 016 this is the *reach* set: models bound directly, plus every model
+   * of a vendor the field is bound to. Every reader wanting "does this apply
+   * to the device in front of me" already wanted the reach set, so nothing
+   * that reads it had to change.
    */
   model_ids?: string[]
+  /**
+   * The vendors it is bound to (016). Not the same question as model_ids: this
+   * is where somebody hung it, and it is what lets a vendor-filtered list know
+   * that every row it is showing has the field.
+   */
+  vendor_ids?: string[]
 }
 
 export interface Category {
