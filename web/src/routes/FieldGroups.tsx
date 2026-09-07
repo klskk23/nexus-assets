@@ -3,7 +3,15 @@ import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
-import type { FieldDefinitionRow, FieldGroupRow } from "@/lib/metaTypes"
+import type { Category } from "@/lib/types"
+import type {
+  FieldDefinitionRow,
+  FieldGroupRow,
+  ProductModelRow,
+  VendorRow,
+} from "@/lib/metaTypes"
+import { modelLabel } from "@/lib/metaTypes"
+import { NONE, fromNone, toNone } from "@/lib/select"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
 import { Hint } from "@/features/common/Hint"
@@ -23,11 +31,29 @@ import {
 } from "@/components/ui/dialog"
 import {
   Field,
+  FieldDescription,
   FieldGroup,
   FieldLabel,
   FieldLegend,
   FieldSet,
 } from "@/components/ui/field"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+/** What a group can be bound to, and the collection each one lives under. */
+type BindKind = "category" | "model" | "vendor"
+const PATHS: Record<BindKind, string> = {
+  category: "/categories",
+  model: "/models",
+  vendor: "/vendors",
+}
 
 /** The whole library, for the member checkboxes. */
 function useFieldLibrary() {
@@ -90,6 +116,9 @@ export function FieldGroups() {
   const queryClient = useQueryClient()
   const { deniedReason } = usePermissions()
   const [editing, setEditing] = useState<FieldGroupRow | null>(null)
+  // A context menu closes as it fires, so what it starts is parked here and
+  // rendered outside the table.
+  const [binding, setBinding] = useState<FieldGroupRow | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [name, setName] = useState("")
   const [members, setMembers] = useState<string[]>([])
@@ -146,6 +175,7 @@ export function FieldGroups() {
         onRowClick={(g) => setEditing(g)}
         rowActions={[
           { label: tMeta.fieldGroups.edit, onSelect: (g) => setEditing(g) },
+          { label: tMeta.fieldGroups.bindAction, onSelect: (g) => setBinding(g) },
           {
             label: tMeta.fieldGroups.delete,
             destructive: true,
@@ -180,6 +210,8 @@ export function FieldGroups() {
           </FieldGroup>
         }
       />
+
+      <BindGroupDialog group={binding} onOpenChange={(open) => !open && setBinding(null)} />
 
       <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
@@ -218,5 +250,175 @@ export function FieldGroups() {
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+/**
+ * Binds a whole group to one category, model or vendor.
+ *
+ * The group is the subject here, which is why this lives on the group's own
+ * row rather than in the field editor: binding a group is an act on a target,
+ * not a property of any one field. It was in the field form to begin with,
+ * where nothing could reach it.
+ *
+ * The request is the ordinary binding endpoint with group_id in place of
+ * field_id -- no separate route, so the exclusion rules and the key checks
+ * have one place to be right. A refusal lands in this dialog, because the page
+ * behind it is aria-hidden and covered.
+ */
+function BindGroupDialog({
+  group,
+  onOpenChange,
+}: {
+  group: FieldGroupRow | null
+  onOpenChange: (open: boolean) => void
+}) {
+  const queryClient = useQueryClient()
+  const [kind, setKind] = useState<BindKind>("category")
+  const [targetID, setTargetID] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [done, setDone] = useState<string | null>(null)
+
+  const categories = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => api.get<Category[]>("/categories"),
+    enabled: group !== null,
+  })
+  const models = useQuery({
+    queryKey: ["models"],
+    queryFn: () => api.get<ProductModelRow[]>("/models"),
+    enabled: group !== null,
+  })
+  const vendors = useQuery({
+    queryKey: ["vendors"],
+    queryFn: () => api.get<VendorRow[]>("/vendors"),
+    enabled: group !== null,
+  })
+
+  const targets: { id: string; name: string }[] =
+    kind === "category"
+      ? (categories.data ?? []).map((c) => ({ id: c.id, name: c.name }))
+      : kind === "model"
+        ? (Array.isArray(models.data) ? models.data : []).map((m) => ({
+            id: m.id,
+            name: modelLabel(m),
+          }))
+        : (Array.isArray(vendors.data) ? vendors.data : []).map((v) => ({
+            id: v.id,
+            name: v.name,
+          }))
+
+  const bind = useMutation({
+    mutationFn: () => api.post(`${PATHS[kind]}/${targetID}/bindings`, { group_id: group!.id }),
+    onSuccess: () => {
+      setError(null)
+      setDone(targets.find((t) => t.id === targetID)?.name ?? targetID)
+      // Every field of the group just changed where it is bound.
+      queryClient.invalidateQueries({ queryKey: ["fields"] })
+      queryClient.invalidateQueries({ queryKey: ["schema"] })
+    },
+    onError: (e) => setError(e instanceof ApiError ? e.message : t.common.error),
+  })
+
+  return (
+    <Dialog
+      open={group !== null}
+      onOpenChange={(open) => {
+        if (!open) {
+          setKind("category")
+          setTargetID("")
+          setError(null)
+          setDone(null)
+        }
+        onOpenChange(open)
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{group ? tMeta.fieldGroups.bindTitle(group.name) : ""}</DialogTitle>
+        </DialogHeader>
+
+        <FieldGroup>
+          <Field>
+            <div className="flex items-center gap-1.5">
+              <FieldLabel htmlFor="gb-kind">{tMeta.fieldGroups.bindTarget}</FieldLabel>
+              <Hint>{tMeta.fieldGroups.bindHint}</Hint>
+            </div>
+            <ToggleGroup
+              id="gb-kind"
+              type="single"
+              variant="outline"
+              className="justify-start"
+              value={kind}
+              onValueChange={(v) => {
+                if (v === "category" || v === "model" || v === "vendor") {
+                  setKind(v)
+                  // The old pick belongs to the old kind, and sending it would
+                  // aim the request at whatever happens to share its id.
+                  setTargetID("")
+                  setDone(null)
+                }
+              }}
+            >
+              <ToggleGroupItem value="category">{tMeta.fieldGroups.bindToCategory}</ToggleGroupItem>
+              <ToggleGroupItem value="model">{tMeta.fieldGroups.bindToModel}</ToggleGroupItem>
+              <ToggleGroupItem value="vendor">{tMeta.fieldGroups.bindToVendor}</ToggleGroupItem>
+            </ToggleGroup>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="gb-target">{tMeta.fieldGroups.bindPick}</FieldLabel>
+            <Select
+              value={toNone(targetID)}
+              onValueChange={(v) => {
+                setTargetID(fromNone(v))
+                setDone(null)
+              }}
+            >
+              <SelectTrigger id="gb-target">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={NONE}>{tMeta.fieldGroups.bindPick}</SelectItem>
+                  {targets.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            {targets.length === 0 && (
+              <FieldDescription>{tMeta.fieldGroups.bindNoTarget}</FieldDescription>
+            )}
+          </Field>
+
+          {/* A refusal names the member that is stuck and where. It belongs
+              here rather than on the page: the page is covered. */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircleIcon />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {done && group && (
+            <Alert>
+              <AlertCircleIcon />
+              <AlertDescription>{tMeta.fieldGroups.bindDone(group.name, done)}</AlertDescription>
+            </Alert>
+          )}
+        </FieldGroup>
+
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="ghost">{t.common.cancel}</Button>
+          </DialogClose>
+          <Button disabled={targetID === "" || bind.isPending} onClick={() => bind.mutate()}>
+            {tMeta.fieldGroups.bindConfirm}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

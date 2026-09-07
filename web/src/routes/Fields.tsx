@@ -41,7 +41,6 @@ const emptyDraft: FieldFormValue = {
   options: {},
   bindTo: [],
   bindVendors: [],
-  bindGroup: "",
   bindMode: "category",
 }
 

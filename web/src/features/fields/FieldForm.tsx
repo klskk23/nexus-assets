@@ -2,7 +2,7 @@ import { AlertCircleIcon } from "lucide-react"
 
 import { tConfig, tMeta } from "@/i18n"
 import type { Category, FieldOptions, FieldType } from "@/lib/types"
-import type { FieldGroupRow, ProductModelRow, VendorRow } from "@/lib/metaTypes"
+import type { ProductModelRow, VendorRow } from "@/lib/metaTypes"
 import { EXPRESSION_FIELD_TYPES, STATIC_FIELD_TYPES, modelLabel } from "@/lib/metaTypes"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/select"
 import { ExpressionHelp } from "@/features/fields/ExpressionHelp"
 import { Hint } from "@/features/common/Hint"
-import { NONE, fromNone, toNone } from "@/lib/select"
 
 export interface FieldFormValue {
   key: string
@@ -38,11 +37,6 @@ export interface FieldFormValue {
    * list rather than a third position on the switch.
    */
   bindVendors: string[]
-  /**
-   * A group to bind instead of picking fields one by one. Its members are
-   * bound to whatever is ticked above, all or nothing (decision 106).
-   */
-  bindGroup?: string
   bindMode: "category" | "device"
 }
 
@@ -63,8 +57,6 @@ interface Props {
   categories: Category[]
   models: ProductModelRow[]
   vendors: VendorRow[]
-  /** The groups on offer, when this form lets one be bound. */
-  groups?: FieldGroupRow[]
   /**
    * Whether the binding mode may still be chosen. Once a field is bound one
    * way, switching would have to drop what is there -- a decision of its own
@@ -98,7 +90,6 @@ export function FieldForm({
   categories,
   models,
   vendors,
-  groups,
   bindModeFrozen,
   impact,
   idPrefix: p,
@@ -442,35 +433,6 @@ export function FieldForm({
         </div>
       </Field>
 
-      {/* Binding a whole group at once. It writes the same rows as ticking its
-          members would, so it sits beside the lists rather than replacing
-          them, and it is offered only where a group can actually be bound. */}
-      {groups !== undefined && groups.length > 0 && (
-        <Field className="sm:col-span-2">
-          <div className="flex items-center gap-1.5">
-            <FieldLabel htmlFor={`${p}-group`}>{tMeta.fields.bindGroup}</FieldLabel>
-            <Hint>{tMeta.fields.bindGroupHint}</Hint>
-          </div>
-          <Select
-            value={toNone(value.bindGroup ?? "")}
-            onValueChange={(v) => onChange({ bindGroup: fromNone(v) })}
-          >
-            <SelectTrigger id={`${p}-group`}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value={NONE}>{tMeta.fields.noGroup}</SelectItem>
-                {groups.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {g.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-      )}
     </FieldGroup>
   )
 }
