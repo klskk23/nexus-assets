@@ -1,4 +1,4 @@
-import { InfoIcon, MoreVerticalIcon, SearchIcon } from "lucide-react"
+import { ArrowRightLeftIcon, InfoIcon, MoreVerticalIcon, PrinterIcon, SearchIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Outlet, useNavigate, useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -44,6 +44,8 @@ import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { useSelection } from "@/features/assets/useSelection"
+import { SelectAllBanner } from "@/features/assets/SelectAllBanner"
 import {
   ContextMenu,
   ContextMenuContent,
@@ -135,7 +137,7 @@ export function Assets() {
   // The built-ins are the same everywhere, so their selection is not per
   // category the way the field columns are.
   const builtins = useBuiltinColumns()
-  const [selected, setSelected] = useState<string[]>([])
+  const selection = useSelection()
   // The row menu prints one device; the bar prints the ticked ones. Two states
   // because they are two acts, and a menu that printed the selection would be
   // a surprise for anyone who right-clicked a row they had not ticked.
@@ -170,8 +172,6 @@ export function Assets() {
     onError: (e) => setDone(e instanceof ApiError ? e.message : t.common.error),
   })
 
-  const toggleSelected = (id: string) =>
-    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
 
   // A barcode scanner types into whatever has focus. Without this the operator
   // has to click the box first, and "the scanner just works" stops being true.
@@ -302,6 +302,9 @@ export function Assets() {
   })
 
   // A unique exact hit means the operator scanned a specific device.
+  // In display order: the range gesture counts rows as they are seen, and the
+  // header checkbox means "this page", not "everything loaded".
+  const pageIds = (assets.data?.items ?? []).map((a) => a.id)
   useEffect(() => {
     if (assets.data?.exact_match_id) {
       navigate(`/assets/${assets.data.exact_match_id}`)
@@ -600,7 +603,17 @@ export function Assets() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">
-                    <span className="sr-only">{t.common.select}</span>
+                    <Checkbox
+                      aria-label={t.assets.selectPage}
+                      checked={
+                        selection.pageAllSelected(pageIds)
+                          ? true
+                          : selection.pageSomeSelected(pageIds)
+                            ? "indeterminate"
+                            : false
+                      }
+                      onCheckedChange={() => selection.togglePage(pageIds)}
+                    />
                   </TableHead>
                   {/* The number is not optional: it is what a row is read by
                       and what the click opens. */}
@@ -611,10 +624,14 @@ export function Assets() {
                   {extraColumns.map((k) => (
                     <TableHead key={k}>{available.find((f) => f.key === k)?.label ?? k}</TableHead>
                   ))}
+                  {/* The row actions. No heading text: three icon buttons that
+                      appear on hover are not a column of data, and a label over
+                      them would claim they are. */}
+                  <TableHead className="w-px" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(assets.data?.items ?? []).map((a) => (
+                {(assets.data?.items ?? []).map((a, i) => (
                   <ContextMenu key={a.id}>
                     <ContextMenuTrigger asChild>
                       {/* The whole row opens the device. It used to carry the
@@ -622,14 +639,26 @@ export function Assets() {
                           so four columns out of five looked clickable and
                           were not. */}
                       <TableRow
-                        className="cursor-pointer"
+                        className="group/row cursor-pointer"
                         onClick={() => navigate(`/assets/${a.id}`)}
                       >
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             aria-label={t.common.selectOne(a.display_name)}
-                            checked={selected.includes(a.id)}
-                            onCheckedChange={() => toggleSelected(a.id)}
+                            checked={selection.has(a.id)}
+                            // The modifier has to be read here rather than from
+                            // the cell: onCheckedChange carries no event, and a
+                            // handler on the parent runs after Radix has already
+                            // toggled, so the range and the tick cancel out.
+                            // Radix composes this before its own and skips that
+                            // one when the default is prevented, which is what
+                            // keeps a Shift-click from also toggling the row.
+                            onClick={(e) => {
+                              if (!e.shiftKey) return
+                              e.preventDefault()
+                              selection.extendTo(a.id, i, pageIds)
+                            }}
+                            onCheckedChange={() => selection.toggle(a.id, i)}
                           />
                         </TableCell>
                         <TableCell className="font-mono">{a.display_name}</TableCell>
@@ -650,6 +679,50 @@ export function Assets() {
                         {extraColumns.map((k) => (
                           <TableCell key={k}>{cellText(a.attrs[k])}</TableCell>
                         ))}
+                        {/* One device, no ticking first. The developer's own
+                            complaint was the number of clicks a single device
+                            cost, and ticking it only to untick it afterwards
+                            was two of them.
+
+                            stopPropagation on every one: these sit inside the
+                            row's own click target, and without it a print would
+                            also open the device behind the dialog. Each carries
+                            an aria-label -- an icon button with no accessible
+                            name is a button a keyboard user cannot identify.
+                            Visible on hover and on focus, so tabbing through
+                            reaches something that can be seen. */}
+                        <TableCell className="w-px" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+                            {printing && (
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={t.assets.rowPrint}
+                                disabled={!can("print")}
+                                onClick={() => setPrintingOne(a.id)}
+                              >
+                                <PrinterIcon />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={t.assets.rowTransfer}
+                              disabled={!can("transfer.create")}
+                              onClick={() => setRowTransfer({ id: a.id, action: "checkout" })}
+                            >
+                              <ArrowRightLeftIcon />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={t.assets.rowDetail}
+                              onClick={() => navigate(`/assets/${a.id}`)}
+                            >
+                              <InfoIcon />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     </ContextMenuTrigger>
                     {/* The same actions the selection bar offers, reachable on
@@ -698,6 +771,18 @@ export function Assets() {
             </Table>
           </TableFrame>
 
+          {/* Only once the whole page is ticked. Twenty rows out of six hundred
+              is a deliberate act that needs no offer; a full page is the gesture
+              that usually means "and the rest as well". */}
+          {selection.pageAllSelected(pageIds) && (
+            <SelectAllBanner
+              params={params}
+              total={assets.data?.total ?? 0}
+              selectedCount={selection.ids.length}
+              onSelectAll={selection.add}
+            />
+          )}
+
           {/* Under the table, where you land after reading it. */}
           <Pager
             page={page}
@@ -722,7 +807,7 @@ export function Assets() {
         params={params}
         categoryId={categoryId}
         includeDescendants={includeDescendants}
-        selected={selected}
+        selected={selection.ids}
       />
 
       <NewAssetDialog
@@ -732,8 +817,8 @@ export function Assets() {
       />
 
       <ActionBar
-        selected={selected}
-        onClear={() => setSelected([])}
+        selected={selection.ids}
+        onClear={selection.clear}
         onDone={setDone}
         onExport={() => setExporting(true)}
       />

@@ -958,3 +958,148 @@ describe("Assets vendor filter", () => {
     expect(screen.queryByRole("combobox", { name: "字段组" })).not.toBeInTheDocument()
   })
 })
+
+/**
+ * The selection model.
+ *
+ * All of it turns on one decision: what is ticked is a set of device ids, not
+ * a set of row positions. Filtering and paging both renumber the rows, so a
+ * position-keyed selection quietly retargets itself -- and the operation this
+ * page offers on a selection is a delete.
+ */
+describe("Assets selection", () => {
+  const threePages = {
+    ...page,
+    items: [1, 2, 3, 4, 5].map((n) => ({
+      ...page.items[0],
+      id: `a${n}`,
+      display_name: `11239452195${n}`,
+    })),
+    total: 40,
+  }
+
+  beforeEach(() => {
+    navigate.mockReset()
+    get.mockReset()
+    post.mockReset()
+    get.mockImplementation((path: string) =>
+      path.startsWith("/assets") ? Promise.resolve(threePages) : route(path),
+    )
+    localStorage.clear()
+  })
+
+  it("ticks the whole page from the header, and offers the rest", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByRole("row", { name: /112394521951/ })
+
+    await user.click(screen.getByRole("checkbox", { name: "全选本页" }))
+
+    // Every row on the page, and a strip offering the other 35.
+    for (const n of [1, 2, 3, 4, 5]) {
+      const row = screen.getByRole("row", { name: new RegExp(`11239452195${n}`) })
+      expect(within(row).getByRole("checkbox")).toBeChecked()
+    }
+    expect(
+      screen.getByRole("button", { name: "选中符合当前筛选的全部 40 条" }),
+    ).toBeInTheDocument()
+  })
+
+  // N is the total the list already reports. Selecting them needs their ids,
+  // and the server caps a page at 200, so this walks the pages -- but only
+  // when asked, never on render.
+  it("selects every matching device, not only the ones on screen", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByRole("row", { name: /112394521951/ })
+
+    await user.click(screen.getByRole("checkbox", { name: "全选本页" }))
+    await user.click(screen.getByRole("button", { name: "选中符合当前筛选的全部 40 条" }))
+
+    // The bar counts devices, not visible rows: five are on screen.
+    expect(await screen.findByText(/已选 5 台/)).toBeInTheDocument()
+    expect(get).toHaveBeenCalledWith(expect.stringContaining("limit=200"))
+  })
+
+  it("extends a range with Shift, and takes one back the same way", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByRole("row", { name: /112394521951/ })
+
+    const box = (n: number) =>
+      within(screen.getByRole("row", { name: new RegExp(`11239452195${n}`) })).getByRole("checkbox")
+
+    await user.click(box(2))
+    await user.keyboard("{Shift>}")
+    await user.click(box(5))
+    await user.keyboard("{/Shift}")
+    for (const n of [2, 3, 4, 5]) expect(box(n)).toBeChecked()
+    expect(box(1)).not.toBeChecked()
+
+    // Back down the same run: Shift-clicking a ticked row un-ticks the range,
+    // which is the half that gets forgotten.
+    await user.keyboard("{Shift>}")
+    await user.click(box(4))
+    await user.keyboard("{/Shift}")
+    for (const n of [2, 3, 4]) expect(box(n)).not.toBeChecked()
+    expect(box(5)).toBeChecked()
+  })
+
+  // The reason the set is keyed by id. Somebody gathering forty devices out of
+  // six hundred searches several times to find them.
+  it("keeps what is ticked when the filter changes", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByRole("row", { name: /112394521951/ })
+
+    const box = (n: number) =>
+      within(screen.getByRole("row", { name: new RegExp(`11239452195${n}`) })).getByRole("checkbox")
+    await user.click(box(2))
+    await user.click(box(3))
+    expect(await screen.findByText(/已选 2 台/)).toBeInTheDocument()
+
+    await chooseByLabel(user, "类别", "服务器")
+
+    // Still two, and the bar has not quietly recounted what is on screen.
+    expect(await screen.findByText(/已选 2 台/)).toBeInTheDocument()
+  })
+
+  it("shows no selection bar until something is ticked", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    const first = await screen.findByRole("row", { name: /112394521951/ })
+
+    expect(screen.queryByText(/已选/)).not.toBeInTheDocument()
+    await user.click(within(first).getByRole("checkbox"))
+    expect(await screen.findByText(/已选 1 台/)).toBeInTheDocument()
+  })
+
+  // The developer's own complaint was how many clicks one device cost. Ticking
+  // it in order to untick it afterwards was two of them.
+  it("acts on one device without ticking it, and without opening it", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    const row = await screen.findByRole("row", { name: /112394521951/ })
+
+    expect(within(row).getByRole("checkbox")).not.toBeChecked()
+    await user.click(within(row).getByRole("button", { name: "打印这一台的标签" }))
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument()
+    // The button sits inside the row's own click target: without
+    // stopPropagation this would also have opened the device behind it.
+    // (The row itself is aria-hidden by now -- the dialog covers it -- which is
+    // why what it looked like beforehand is asserted beforehand.)
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  // Icon buttons with no accessible name are buttons a keyboard user cannot
+  // tell apart, and there are three of them on every row.
+  it("names every row action", async () => {
+    renderWithProviders(<Assets />)
+    const row = await screen.findByRole("row", { name: /112394521951/ })
+
+    for (const name of ["打印这一台的标签", "变更这一台的状态", "查看这一台的详情"]) {
+      expect(within(row).getByRole("button", { name })).toBeInTheDocument()
+    }
+  })
+})
