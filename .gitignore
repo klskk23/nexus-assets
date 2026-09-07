@@ -35,3 +35,10 @@ Thumbs.db
 # Coverage
 coverage/
 c.out
+
+# design-sync 的暂存脚本与构建产物（017 之后同步设计系统时用）
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
