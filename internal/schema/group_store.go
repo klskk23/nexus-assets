@@ -146,15 +146,32 @@ func (s *Store) GetGroup(ctx context.Context, id string) (model.FieldGroup, erro
 	return g, nil
 }
 
-// CreateGroup registers a group and its members in one transaction.
-func (s *Store) CreateGroup(ctx context.Context, name string, fieldIDs []string) (model.FieldGroup, error) {
-	name = strings.TrimSpace(name)
+// CreateGroupInput describes a new group, and optionally where to bind it.
+type CreateGroupInput struct {
+	Name     string
+	FieldIDs []string
+	// GroupTargets binds the group as it is created, in the same transaction
+	// and with the same three lists creating a field uses. All empty means
+	// "just make the group", which is a perfectly good outcome: unlike a
+	// field, a group bound nowhere is still a named handful somebody can bind
+	// later.
+	GroupTargets
+}
+
+// CreateGroup registers a group, its members, and optionally its first binding,
+// all in one transaction.
+//
+// A refused binding leaves no group behind, the same as creating a field with
+// categories chosen (decision 72). The request said "make this and put it
+// there"; half of that done is a state whoever asked has to go and work out.
+func (s *Store) CreateGroup(ctx context.Context, in CreateGroupInput) (model.FieldGroup, error) {
+	name := strings.TrimSpace(in.Name)
 	if name == "" {
 		return model.FieldGroup{}, i18n.Wrap(ErrGroupInvalid, i18n.KeyGroupNeedsName)
 	}
 	now := time.Now().UTC()
 	g := model.FieldGroup{
-		ID: store.NewID(), Name: name, FieldIDs: dedupeKeepingOrder(fieldIDs),
+		ID: store.NewID(), Name: name, FieldIDs: dedupeKeepingOrder(in.FieldIDs),
 		CreatedAt: now, UpdatedAt: now,
 	}
 	err := s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
@@ -163,7 +180,13 @@ func (s *Store) CreateGroup(ctx context.Context, name string, fieldIDs []string)
 			g.ID, g.Name, store.FormatTime(now), store.FormatTime(now)); err != nil {
 			return err
 		}
-		return replaceMembers(ctx, tx, g.ID, g.FieldIDs)
+		if err := replaceMembers(ctx, tx, g.ID, g.FieldIDs); err != nil {
+			return err
+		}
+		if in.Empty() {
+			return nil
+		}
+		return bindGroupTx(ctx, tx, in.GroupTargets, g)
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -171,6 +194,12 @@ func (s *Store) CreateGroup(ctx context.Context, name string, fieldIDs []string)
 		}
 		if strings.Contains(err.Error(), "FOREIGN KEY constraint failed") {
 			return g, ErrNotFound
+		}
+		// A refused binding is written for a person and carries its own
+		// catalogue key; wrapping it would hide that behind "create field
+		// group:".
+		if i18n.HasText(err) || errors.Is(err, ErrNotFound) {
+			return g, err
 		}
 		return g, fmt.Errorf("create field group: %w", err)
 	}
@@ -288,26 +317,67 @@ func (s *Store) BindGroup(ctx context.Context, target BindTarget, targetID, grou
 	if err != nil {
 		return err
 	}
+	var t GroupTargets
+	switch target {
+	case BindToCategory:
+		t.CategoryIDs = []string{targetID}
+	case BindToModel:
+		t.ModelIDs = []string{targetID}
+	case BindToVendor:
+		t.VendorIDs = []string{targetID}
+	default:
+		return fmt.Errorf("unknown bind target %q", target)
+	}
 	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		for i, fieldID := range g.FieldIDs {
-			sort := (i + 1) * 10
-			var err error
-			switch target {
-			case BindToCategory:
-				err = bindTx(ctx, tx, targetID, fieldID, sort)
-			case BindToModel:
-				err = bindModelTx(ctx, tx, targetID, fieldID, sort)
-			case BindToVendor:
-				err = bindVendorTx(ctx, tx, targetID, fieldID, sort)
-			default:
-				return fmt.Errorf("unknown bind target %q", target)
-			}
-			if err != nil {
-				return groupBindError(ctx, tx, err, fieldID, g.Name)
+		return bindGroupTx(ctx, tx, t, g)
+	})
+}
+
+// GroupTargets is where a group is being bound: the same three lists a field
+// carries when it is created, and the same rule about them -- categories on one
+// side, devices on the other, which each member enforces for itself.
+//
+// A group binds to many targets for the same reason a field does. It is a
+// shorthand for binding its members, and binding a member to five categories
+// was always allowed; there is nothing about wrapping them in a name that makes
+// one target the limit.
+type GroupTargets struct {
+	CategoryIDs []string
+	ModelIDs    []string
+	VendorIDs   []string
+}
+
+// Empty reports whether nothing was asked for.
+func (t GroupTargets) Empty() bool {
+	return len(t.CategoryIDs)+len(t.ModelIDs)+len(t.VendorIDs) == 0
+}
+
+// bindGroupTx is BindGroup inside a transaction the caller owns, so creating a
+// group and binding it can be one act (see CreateGroup).
+//
+// Every (member, target) pair goes through the check a single binding would,
+// and one refusal rolls back the lot -- across targets as well as across
+// members. Half of a "bind these five fields to these three categories" is a
+// state whoever asked has to go and work out.
+func bindGroupTx(ctx context.Context, tx *sql.Tx, t GroupTargets, g model.FieldGroup) error {
+	for i, fieldID := range g.FieldIDs {
+		sort := (i + 1) * 10
+		for _, target := range []struct {
+			ids  []string
+			bind func(context.Context, *sql.Tx, string, string, int) error
+		}{
+			{t.CategoryIDs, bindTx},
+			{t.ModelIDs, bindModelTx},
+			{t.VendorIDs, bindVendorTx},
+		} {
+			for _, targetID := range target.ids {
+				if err := target.bind(ctx, tx, targetID, fieldID, sort); err != nil {
+					return groupBindError(ctx, tx, err, fieldID, g.Name)
+				}
 			}
 		}
-		return nil
-	})
+	}
+	return nil
 }
 
 // groupBindError says which member of the group was refused and why.

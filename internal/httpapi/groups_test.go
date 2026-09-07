@@ -194,3 +194,47 @@ func TestGroupEndpointsNeedSchemaManage(t *testing.T) {
 		}
 	}
 }
+
+// Creating a group and binding it is one request, and a refused binding leaves
+// no group behind.
+func TestCreatingAGroupCanBindItInTheSameAct(t *testing.T) {
+	h := newHarness(t)
+	firmware := newField(t, h, "firmware")
+	tunnels := newField(t, h, "tunnels")
+
+	rec := h.post(t, "/api/field-groups",
+		`{"name":"网络参数","field_ids":["`+firmware+`","`+tunnels+`"],
+		  "category_ids":["`+h.catID+`"]}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create bound: %d %s", rec.Code, rec.Body.String())
+	}
+	sch := h.get(t, "/api/categories/"+h.catID+"/schema").Body.String()
+	if !strings.Contains(sch, `"key":"firmware"`) || !strings.Contains(sch, `"key":"tunnels"`) {
+		t.Errorf("both members should be bound already: %s", sch)
+	}
+
+	// A member that cannot go where the group is aimed takes the group with it.
+	dell := newVendor(t, h, "Dell")
+	m := decode[map[string]any](t, h.post(t, "/api/models",
+		`{"name":"Latitude 5420","vendor_id":"`+dell+`","category_ids":["`+h.catID+`"]}`))
+	modelID, _ := m["id"].(string)
+	rack := newField(t, h, "rack")
+
+	rec = h.post(t, "/api/field-groups",
+		`{"name":"维保参数","field_ids":["`+firmware+`","`+rack+`"],
+		  "model_ids":["`+modelID+`"]}`)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("want 409, got %d %s", rec.Code, rec.Body.String())
+	}
+	if body := h.get(t, "/api/field-groups").Body.String(); strings.Contains(body, "维保参数") {
+		t.Errorf("a refused binding leaves no group behind: %s", body)
+	}
+
+	// Many targets at once, exactly as creating a field takes many.
+	watts := newField(t, h, "watts")
+	if rec := h.post(t, "/api/field-groups",
+		`{"name":"功耗组","field_ids":["`+watts+`"],
+		  "vendor_ids":["`+dell+`"],"model_ids":["`+modelID+`"]}`); rec.Code != http.StatusCreated {
+		t.Errorf("a group binds to many targets, like a field: %d %s", rec.Code, rec.Body.String())
+	}
+}

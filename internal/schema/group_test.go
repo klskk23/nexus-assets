@@ -17,7 +17,7 @@ func TestBindingAGroupLeavesNoTraceOfTheGroup(t *testing.T) {
 
 	fw, _ := s.CreateField(ctx, CreateFieldInput{Key: "firmware", Label: "固件", Type: model.FieldText})
 	tun, _ := s.CreateField(ctx, CreateFieldInput{Key: "tunnels", Label: "隧道数", Type: model.FieldNumber})
-	g, err := s.CreateGroup(ctx, "  网络参数  ", []string{fw.ID, tun.ID, fw.ID})
+	g, err := s.CreateGroup(ctx, CreateGroupInput{Name: "  网络参数  ", FieldIDs: []string{fw.ID, tun.ID, fw.ID}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestGroupBindingIsAllOrNothing(t *testing.T) {
 	if err := s.Bind(ctx, root.ID, fw.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	g, err := s.CreateGroup(ctx, "网络参数", []string{fw.ID, tun.ID})
+	g, err := s.CreateGroup(ctx, CreateGroupInput{Name: "网络参数", FieldIDs: []string{fw.ID, tun.ID}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,22 +105,22 @@ func TestGroupCrudAndMembership(t *testing.T) {
 	fw, _ := s.CreateField(ctx, CreateFieldInput{Key: "firmware", Label: "固件", Type: model.FieldText})
 	tun, _ := s.CreateField(ctx, CreateFieldInput{Key: "tunnels", Label: "隧道数", Type: model.FieldNumber})
 
-	if _, err := s.CreateGroup(ctx, "   ", nil); !errors.Is(err, ErrGroupInvalid) {
+	if _, err := s.CreateGroup(ctx, CreateGroupInput{Name: "   ", FieldIDs: nil}); !errors.Is(err, ErrGroupInvalid) {
 		t.Errorf("a nameless group should be refused, got %v", err)
 	}
-	if _, err := s.CreateGroup(ctx, "幽灵", []string{"missing"}); !errors.Is(err, ErrNotFound) {
+	if _, err := s.CreateGroup(ctx, CreateGroupInput{Name: "幽灵", FieldIDs: []string{"missing"}}); !errors.Is(err, ErrNotFound) {
 		t.Errorf("a member that does not exist is not found, got %v", err)
 	}
 
-	g, err := s.CreateGroup(ctx, "网络参数", []string{fw.ID})
+	g, err := s.CreateGroup(ctx, CreateGroupInput{Name: "网络参数", FieldIDs: []string{fw.ID}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.CreateGroup(ctx, "网络参数", nil); !errors.Is(err, ErrGroupInvalid) {
+	if _, err := s.CreateGroup(ctx, CreateGroupInput{Name: "网络参数", FieldIDs: nil}); !errors.Is(err, ErrGroupInvalid) {
 		t.Errorf("a duplicate name should be refused, got %v", err)
 	}
 
-	other, err := s.CreateGroup(ctx, "维保参数", []string{fw.ID})
+	other, err := s.CreateGroup(ctx, CreateGroupInput{Name: "维保参数", FieldIDs: []string{fw.ID}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,10 +192,10 @@ func TestFieldListNarrowsByVendorAndGroup(t *testing.T) {
 	if err := s.BindVendor(ctx, dell, tag.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.CreateGroup(ctx, "网络参数", []string{tag.ID, fw.ID}); err != nil {
+	if _, err := s.CreateGroup(ctx, CreateGroupInput{Name: "网络参数", FieldIDs: []string{tag.ID, fw.ID}}); err != nil {
 		t.Fatal(err)
 	}
-	g, err := s.CreateGroup(ctx, "维保参数", []string{fw.ID})
+	g, err := s.CreateGroup(ctx, CreateGroupInput{Name: "维保参数", FieldIDs: []string{fw.ID}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,5 +223,83 @@ func TestFieldListNarrowsByVendorAndGroup(t *testing.T) {
 	}
 	if len(page.Items) != 0 {
 		t.Errorf("two filters narrow together, got %v", page.Items)
+	}
+}
+
+// Making the group and putting it somewhere is one act, and a refused binding
+// leaves no group behind -- the same bargain creating a field with categories
+// chosen makes (decision 72). "Make this and put it there", half done, is a
+// state whoever asked has to go and work out.
+func TestCreatingAGroupBoundSomewhereIsOneAct(t *testing.T) {
+	s, ctx := newStore(t)
+	root, _ := tree(t, s, ctx)
+
+	fw, _ := s.CreateField(ctx, CreateFieldInput{Key: "firmware", Label: "固件", Type: model.FieldText})
+	tun, _ := s.CreateField(ctx, CreateFieldInput{Key: "tunnels", Label: "隧道数", Type: model.FieldNumber})
+
+	g, err := s.CreateGroup(ctx, CreateGroupInput{
+		Name: "网络参数", FieldIDs: []string{fw.ID, tun.ID},
+		GroupTargets: GroupTargets{CategoryIDs: []string{root.ID}},
+	})
+	if err != nil {
+		t.Fatalf("create bound: %v", err)
+	}
+	fields, err := s.EffectiveFields(ctx, root.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := boundKeys(fields); !slices.Equal(got, []string{"firmware", "tunnels"}) {
+		t.Errorf("both members should be bound as the group was created, got %v", got)
+	}
+
+	// Now a group whose member cannot go where it is aimed. Nothing survives:
+	// not the binding, and not the group.
+	dell := vendorNamed(t, s, ctx, "Dell")
+	m, err := s.CreateModel(ctx, CreateModelInput{
+		Name: "R640", VendorID: dell, CategoryIDs: []string{root.ID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rack, _ := s.CreateField(ctx, CreateFieldInput{Key: "rack", Label: "机柜", Type: model.FieldText})
+	_, err = s.CreateGroup(ctx, CreateGroupInput{
+		Name: "维保参数", FieldIDs: []string{fw.ID, rack.ID},
+		GroupTargets: GroupTargets{ModelIDs: []string{m.ID}},
+	})
+	if !errors.Is(err, ErrBindingModeConflict) {
+		t.Fatalf("the category-bound member should refuse it, got %v", err)
+	}
+	list, err := s.ListGroups(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].ID != g.ID {
+		t.Errorf("a refused binding leaves no group behind, got %v", list)
+	}
+
+	// Many targets at once, exactly as a field is created with many.
+	second, err := s.CreateCategory(ctx, CreateCategoryInput{Code: "SW", Name: "交换机"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	third, err := s.CreateCategory(ctx, CreateCategoryInput{Code: "AP", Name: "无线"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	many, _ := s.CreateField(ctx, CreateFieldInput{Key: "watts", Label: "功耗", Type: model.FieldNumber})
+	if _, err := s.CreateGroup(ctx, CreateGroupInput{
+		Name: "功耗组", FieldIDs: []string{many.ID},
+		GroupTargets: GroupTargets{CategoryIDs: []string{second.ID, third.ID}},
+	}); err != nil {
+		t.Fatalf("a group binds to many targets, like a field: %v", err)
+	}
+	for _, c := range []model.Category{second, third} {
+		fields, err := s.EffectiveFields(ctx, c.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Contains(boundKeys(fields), "watts") {
+			t.Errorf("%s should have it, got %v", c.Name, boundKeys(fields))
+		}
 	}
 }

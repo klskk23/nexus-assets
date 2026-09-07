@@ -38,7 +38,7 @@ const categories = [
   { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", display_key: "" },
 ]
 const productModels = [
-  { id: "m1", category_ids: ["net"], name: "Latitude 5420", vendor_name: "Dell", attr_defaults: {} },
+  { id: "m1", category_ids: ["net"], name: "Latitude 5420", vendor_id: "v-lenovo", vendor_name: "Dell", attr_defaults: {} },
 ]
 const vendors = [{ id: "v-dell", name: "Dell", model_count: 1 }]
 
@@ -89,6 +89,62 @@ describe("Field groups page", () => {
       expect(post).toHaveBeenCalledWith("/field-groups", {
         name: "维保参数",
         field_ids: ["f3"],
+        category_ids: [],
+        model_ids: [],
+        vendor_ids: [],
+      }),
+    )
+  })
+
+  // A group binds the way a field does, and to as many things: it is a
+  // shorthand for binding its members, and a member could always go on five
+  // categories at once. The group form used to name one target, and only after
+  // the group existed.
+  it("binds the new group to as many targets as a field takes", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<FieldGroups />)
+    await screen.findByRole("row", { name: /网络参数/ })
+
+    await openCreate(user)
+    const dialog = await screen.findByRole("dialog")
+    await user.type(within(dialog).getByLabelText("组名"), "维保参数")
+    await user.click(within(dialog).getByLabelText("隧道数"))
+    await user.click(within(dialog).getByLabelText("网络设备"))
+    await user.click(within(dialog).getByRole("button", { name: "新建字段组" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/field-groups", {
+        name: "维保参数",
+        field_ids: ["f3"],
+        category_ids: ["net"],
+        model_ids: [],
+        vendor_ids: [],
+      }),
+    )
+  })
+
+  // The device side is two lists, models and vendors, exactly as it is on a
+  // field -- both answer "which device" and both may be ticked.
+  it("offers models and vendors together on the device side", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<FieldGroups />)
+    await screen.findByRole("row", { name: /网络参数/ })
+
+    await openCreate(user)
+    const dialog = await screen.findByRole("dialog")
+    await user.type(within(dialog).getByLabelText("组名"), "维保参数")
+    await user.click(within(dialog).getByRole("radio", { name: "设备" }))
+    await user.click(within(dialog).getByLabelText("Dell"))
+    await user.click(within(dialog).getByLabelText("Dell Latitude 5420"))
+    await user.click(within(dialog).getByRole("button", { name: "新建字段组" }))
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/field-groups", {
+        name: "维保参数",
+        field_ids: [],
+        category_ids: [],
+        model_ids: ["m1"],
+        vendor_ids: ["v-dell"],
       }),
     )
   })

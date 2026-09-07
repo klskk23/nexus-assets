@@ -27,12 +27,23 @@ func (s *Server) createGroup(c *gin.Context) {
 	var req struct {
 		Name     string   `json:"name" binding:"required"`
 		FieldIDs []string `json:"field_ids"`
+		// Where to bind it as it is created -- the same three lists creating a
+		// field takes, for the same reason. A refused binding leaves no group
+		// behind (decision 72's bargain).
+		CategoryIDs []string `json:"category_ids"`
+		ModelIDs    []string `json:"model_ids"`
+		VendorIDs   []string `json:"vendor_ids"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
-	out, err := s.schema.CreateGroup(c.Request.Context(), req.Name, req.FieldIDs)
+	out, err := s.schema.CreateGroup(c.Request.Context(), schema.CreateGroupInput{
+		Name: req.Name, FieldIDs: req.FieldIDs,
+		GroupTargets: schema.GroupTargets{
+			CategoryIDs: req.CategoryIDs, ModelIDs: req.ModelIDs, VendorIDs: req.VendorIDs,
+		},
+	})
 	if err != nil {
 		FailErr(c, err)
 		return

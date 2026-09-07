@@ -848,6 +848,13 @@ paths:
               properties:
                 name: { type: string }
                 field_ids: { type: array, items: { type: string } }
+                # 建组的同时绑定，与新建字段拿同样的三个列表、同样的规矩：
+                # 一个事务，任一 (成员, 目标) 对被拒则整体回滚，**组也不创建**。
+                # 组绑多个目标与字段绑多个目标是同一件事 —— 组只是「把成员逐个绑」
+                # 的简写，而成员本来就能一次绑五个类别。
+                category_ids: { type: array, items: { type: string } }
+                model_ids: { type: array, items: { type: string } }
+                vendor_ids: { type: array, items: { type: string } }
       responses:
         "201": { description: Created }
         "409": { $ref: "#/components/responses/Error" }

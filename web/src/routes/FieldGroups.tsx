@@ -12,6 +12,10 @@ import type {
 } from "@/lib/metaTypes"
 import { modelLabel } from "@/lib/metaTypes"
 import { NONE, fromNone, toNone } from "@/lib/select"
+import { BindingPicker, type BindingValue } from "@/features/fields/BindingPicker"
+
+/** A form that has not been asked to bind anything yet. */
+const NO_BINDING: BindingValue = { bindMode: "category", bindTo: [], bindVendors: [] }
 import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
 import { Hint } from "@/features/common/Hint"
@@ -122,7 +126,21 @@ export function FieldGroups() {
   const [notice, setNotice] = useState<string | null>(null)
   const [name, setName] = useState("")
   const [members, setMembers] = useState<string[]>([])
+  // The same value a field's form carries, because a group binds the same way.
+  const [binds, setBinds] = useState<BindingValue>(NO_BINDING)
   const fields = useFieldLibrary()
+  const categories = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => api.get<Category[]>("/categories"),
+  })
+  const models = useQuery({
+    queryKey: ["models"],
+    queryFn: () => api.get<ProductModelRow[]>("/models"),
+  })
+  const vendors = useQuery({
+    queryKey: ["vendors"],
+    queryFn: () => api.get<VendorRow[]>("/vendors"),
+  })
   const labelOf = (id: string) => fields.find((f) => f.id === id)?.label ?? id
 
   const invalidate = () => {
@@ -162,8 +180,19 @@ export function FieldGroups() {
         onCreated={() => {
           setName("")
           setMembers([])
+          setBinds(NO_BINDING)
         }}
-        create={() => api.post("/field-groups", { name, field_ids: members })}
+        create={() =>
+          api.post("/field-groups", {
+            name,
+            field_ids: members,
+            // Bound in the same transaction: a refused binding leaves no group
+            // behind, the same bargain creating a field makes.
+            category_ids: binds.bindMode === "category" ? binds.bindTo : [],
+            model_ids: binds.bindMode === "device" ? binds.bindTo : [],
+            vendor_ids: binds.bindMode === "device" ? binds.bindVendors : [],
+          })
+        }
         notice={
           notice && (
             <Alert variant="destructive">
@@ -207,6 +236,14 @@ export function FieldGroups() {
               <Input id="g-name" value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
             <MemberPicker idPrefix="g-member" fields={fields} value={members} onChange={setMembers} />
+            <BindingPicker
+              idPrefix="g"
+              value={binds}
+              onChange={(patch) => setBinds((b) => ({ ...b, ...patch }))}
+              categories={categories.data ?? []}
+              models={Array.isArray(models.data) ? models.data : []}
+              vendors={Array.isArray(vendors.data) ? vendors.data : []}
+            />
           </FieldGroup>
         }
       />
