@@ -60,61 +60,74 @@ export function AppShell() {
   if (!user) return <Navigate to="/login" replace />
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-7xl items-center gap-6 px-6 py-3">
-          <span className="font-semibold">{t.appName}</span>
-          <nav className="flex gap-1" aria-label={t.nav.assets}>
-            {navLinks(can).map((l) => (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                end={l.to === "/"}
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-md px-3 py-1.5 text-sm hover:bg-accent",
-                    isActive && "bg-secondary font-medium",
-                  )
-                }
-              >
-                {l.label}
-              </NavLink>
-            ))}
-          </nav>
-          {/* Language, theme and signing out are all "about me, not about the
-              data". Three controls competing with the nav for the same bar was
-              three things to read before finding the one you wanted; behind
-              one menu they are one. */}
-          <div className="ml-auto flex items-center gap-2 text-sm">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                {/* No aria-label: it would override the name and leave a
-                    screen-reader user unable to hear whose session this is.
-                    aria-haspopup already says a menu opens. */}
-                <Button variant="ghost" size="sm">
-                  <UserIcon data-icon="inline-start" />
-                  {user.name}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
-                  <SettingsIcon />
-                  {t.settings.open}
-                </DropdownMenuItem>
+    /* Two columns that each own their scrolling, not one long page.
+     *
+     * h-screen with min-h-0 on both children is what makes that work: without
+     * min-h-0 a grid child refuses to shrink below its content, the panel never
+     * becomes a scroll container, and the whole thing scrolls as one -- taking
+     * the nav off the top of the screen, which is the one thing a fixed rail is
+     * for. The rail is a nav landmark; the panel is the document. */
+    <div className="grid h-screen grid-cols-[15rem_1fr] bg-card text-foreground max-md:grid-cols-1 max-md:grid-rows-[auto_1fr]">
+      <div className="flex min-h-0 flex-col gap-6 px-5 py-6 max-md:flex-row max-md:items-center max-md:gap-4 max-md:py-3">
+        <span className="font-heading text-xl leading-none">{t.appName}</span>
+        <nav
+          className="flex min-h-0 flex-col gap-0.5 overflow-y-auto max-md:flex-row max-md:overflow-x-auto"
+          aria-label={t.nav.assets}
+        >
+          {navLinks(can).map((l) => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              end={l.to === "/"}
+              className={({ isActive }) =>
+                cn(
+                  "rounded-full px-4 py-2 text-sm whitespace-nowrap transition-colors hover:bg-accent",
+                  isActive && "bg-primary text-primary-foreground font-medium hover:bg-primary",
+                )
+              }
+            >
+              {l.label}
+            </NavLink>
+          ))}
+        </nav>
+        {/* Language and signing out are "about me, not about the data". Two
+            controls competing with the nav for the same rail was two things to
+            read before finding the one you wanted; behind one menu they are
+            one. It sits at the foot of the rail because that is where an
+            account lives, not in the middle of the destinations. */}
+        <div className="mt-auto max-md:mt-0 max-md:ml-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              {/* No aria-label: it would override the name and leave a
+                  screen-reader user unable to hear whose session this is.
+                  aria-haspopup already says a menu opens. */}
+              <Button variant="ghost" size="sm" className="w-full justify-start max-md:w-auto">
+                <UserIcon data-icon="inline-start" />
+                {user.name}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
+                <SettingsIcon />
+                {t.settings.open}
+              </DropdownMenuItem>
 
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onSelect={signOut}>
-                  <LogOutIcon />
-                  {t.nav.signOut}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onSelect={signOut}>
+                <LogOutIcon />
+                {t.nav.signOut}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </header>
+      </div>
 
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
-      <main className="mx-auto max-w-7xl p-6">
+      {/* The panel is the page ground and the rail is the darker surface, not
+          the other way round: cards inside are bg-card, and a card on a card is
+          invisible. The corner is the only place the rail's tone shows through,
+          which is the whole of the effect. */}
+      <main className="min-h-0 overflow-y-auto rounded-tl-[28px] bg-background p-8 max-md:rounded-none max-md:p-5">
         <Outlet />
       </main>
     </div>

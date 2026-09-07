@@ -95,6 +95,8 @@ export const zh = {
     submit: "登录",
     google: "使用 Google 登录",
     submitting: "登录中…",
+    tagline: "内部资产台账",
+    domains: "首次登录须使用公司认可域名的邮箱；已有账号不受此限。",
   },
 
   perm: {

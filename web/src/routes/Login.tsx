@@ -8,7 +8,6 @@ import { useAuth } from "@/features/auth/useAuth"
 import { t } from "@/i18n"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
@@ -66,14 +65,30 @@ export function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>{t.appName}</CardTitle>
-        </CardHeader>
-        <CardContent>
+    /* Two columns: what this is on the left, the way in on the right. The left
+     * one goes away below md rather than stacking -- on a phone the way in
+     * should be the first thing on screen, not the second. */
+    <div className="grid min-h-screen md:grid-cols-2">
+      <div className="hidden flex-col justify-between gap-8 bg-card p-12 md:flex">
+        <span className="font-heading text-3xl leading-none">{t.appName}</span>
+        {/* Three discs of the palette, overlapped. The one piece of decoration
+         * on the whole product, and it is here because a sign-in page is the
+         * only screen with nothing of the user's own on it to look at. */}
+        <div aria-hidden className="flex items-center">
+          <span className="bg-primary size-28 shrink-0 rounded-full" />
+          <span className="-ml-10 size-28 shrink-0 rounded-full bg-accent-2" />
+          <span className="bg-background -ml-10 size-28 shrink-0 rounded-full" />
+        </div>
+        <p className="text-muted-foreground text-sm">{t.login.tagline}</p>
+      </div>
+
+      <div className="flex items-center justify-center p-6">
+        <div className="w-full max-w-sm">
           <form onSubmit={onSubmit} aria-label={t.login.title}>
             <FieldGroup>
+              {/* The wordmark only on narrow screens: the left column carries
+                  it everywhere else, and two of them is one too many. */}
+              <span className="font-heading text-2xl leading-none md:hidden">{t.appName}</span>
               <Field>
                 <FieldLabel htmlFor="email">{t.login.email}</FieldLabel>
                 <Input
@@ -110,16 +125,22 @@ export function Login() {
               </Button>
             </FieldGroup>
           </form>
-        </CardContent>
-        {/* The other way in, on the other side of a rule: one of these is a
-            password, the other is somebody else's sign-in page. */}
-        <CardFooter className="flex-col gap-4">
-          <Separator />
+
+          {/* The other way in, on the other side of a rule: one of these is a
+              password, the other is somebody else's sign-in page. */}
+          <Separator className="my-6" />
           <Button variant="outline" className="w-full" asChild>
             <a href="/api/auth/oidc/start">{t.login.google}</a>
           </Button>
-        </CardFooter>
-      </Card>
+          {/* Before the button, not after a rejection. The admission boundary is
+              the domain whitelist, and someone whose account does not exist yet
+              has no other way to find that out -- the failure comes back from
+              an identity provider on another origin. The domains themselves are
+              deliberately not named: they are configuration, and this page is
+              served to anyone who can reach the host. */}
+          <p className="text-muted-foreground mt-3 text-sm">{t.login.domains}</p>
+        </div>
+      </div>
     </div>
   )
 }

@@ -55,18 +55,18 @@ worker 集体 45 秒超时，看起来像十几个测试同时坏了。
 **独立验收**：打开任意页面，外壳、按钮、输入框、面板、表格都是 Organic 形态；
 断网刷新字体不变。
 
-- [ ] T020 [P] [US1] `web/tests/appShell.test.tsx` 新建或补充：导航栏**没有**深浅切换按钮；
+- [x] T020 [P] [US1] `web/tests/appShell.test.tsx` 新建或补充：导航栏**没有**深浅切换按钮；
       设置对话框**没有**主题选项（先写，此时应当已经通过 —— T015 已经拆掉）
-- [ ] T021 [US1] `web/src/routes/AppShell.tsx`：左侧栏改 Organic 形态（固定宽、主区大圆角、
+- [x] T021 [US1] `web/src/routes/AppShell.tsx`：左侧栏改 Organic 形态（固定宽、主区大圆角、
       独立滚动）。**侧栏与主区都要 `min-height: 0`**，否则主区不产生滚动容器
-- [ ] T022 [US1] `web/src/features/common/PageHeader.tsx`、`TableFrame.tsx`：Organic 形态
-- [ ] T023 [US1] `web/src/features/common/Pager.tsx`、`ListToolbar.tsx`：Organic 形态。
+- [x] T022 [US1] `web/src/features/common/PageHeader.tsx`、`TableFrame.tsx`：Organic 形态
+- [x] T023 [US1] `web/src/features/common/Pager.tsx`、`ListToolbar.tsx`：Organic 形态。
       **翻页仍是一整行放在表格下方，筛选仍是一栏** —— 形状变了，约定不变
-- [ ] T024 [US1] `web/src/routes/Login.tsx`：按稿子重排（两列、圆形色块、登录卡大圆角）。
+- [x] T024 [US1] `web/src/routes/Login.tsx`：按稿子重排（两列、圆形色块、登录卡大圆角）。
       **域名限制提示必须在提交前可见** —— 它是 v1 唯一的准入边界
-- [ ] T025 [US1] 断网走查：拦掉 `fonts.googleapis.com` 与 `fonts.gstatic.com` 后硬刷新，
+- [x] T025 [US1] 断网走查：拦掉 `fonts.googleapis.com` 与 `fonts.gstatic.com` 后硬刷新，
       确认字体不回退（quickstart 第 2 步）
-- [ ] T026 [US1] **键盘走查**：从页头 Tab 到页尾，每个可交互元素都到得了，
+- [x] T026 [US1] **键盘走查**：从页头 Tab 到页尾，每个可交互元素都到得了，
       焦点环在奶油底上始终看得见（SC-008）。陶土橙焦点环的对比度是这一步的重点
 
 ## 第 4 阶段：US2 资产页的选择与批量（P1）
@@ -91,7 +91,7 @@ worker 集体 45 秒超时，看起来像十几个测试同时坏了。
       变更状态 / 查看详情三个圆形图标按钮，`onClick` 里 `stopPropagation()`。
       **这三个按钮要有 `aria-label`** —— 图标按钮没有可读名字就等于键盘用户看不见
 - [ ] T037 [US2] 两份 i18n 补齐本阶段新增文案（批量条、横幅、三个 `aria-label`）
-- [ ] T038 [US2] `web/tests/assets.test.tsx` 加**地址栏回归**：筛选与页码仍写进地址栏，
+- [x] T038 [US2] `web/tests/assets.test.tsx` 加**地址栏回归**：筛选与页码仍写进地址栏，
       且用 `replace` 不用 `push`（FR-025）。这条在重做选择模型时**最容易碰坏且不会报错** ——
       坏掉的表现是「点进一台设备再返回，筛选全没了」，跑测试是绿的。
       比较 `useSearchParams()` 的值，不要读 `window.location`

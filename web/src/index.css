@@ -33,7 +33,18 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: color-mix(in srgb, #201e1d 16%, transparent);
   --input: color-mix(in srgb, #201e1d 16%, transparent);
-  --ring: #c67139;
+  /* Organic's accent-700, not the accent itself.
+   *
+   * The focus ring is the one colour in this palette with a number to clear:
+   * WCAG 1.4.11 wants 3:1 against what surrounds it. Terracotta on cream
+   * measures 3.03 against the page and 2.69 against a card -- it fails on the
+   * surface most controls actually sit on. accent-700 measures 5.1 to 6.2 on
+   * every ground here, and is still recognisably the same family. */
+  --ring: #8c491a;
+  /* Organic's second accent. Not an action and not a status -- it is the tone
+   * for quantity (the category bars) and for decoration that must not read as
+   * either. Named here so nothing has to write the hex twice. */
+  --accent-2: #8fa073;
   /* Sunk below the card: table headers and grouped read-only values. A
    * ledger nests two or three deep, and three identical bordered boxes is
    * what makes it read as a kit of cards rather than one document. */
@@ -83,6 +94,7 @@
   --color-well: var(--well);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-accent-2: var(--accent-2);
 }
 
 /* Chart palette.
@@ -105,7 +117,7 @@
  *
  */
 :root {
-  --chart-1: #8fa073;
+  --chart-1: var(--accent-2);
 }
 
 /* Status palette.
@@ -148,7 +160,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   body {
     @apply bg-background text-foreground font-sans;

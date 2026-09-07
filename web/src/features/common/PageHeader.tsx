@@ -28,8 +28,12 @@ interface Props {
  */
 export function PageHeader({ title, hint, children }: Props) {
   return (
+    /* No font-weight: Caprasimo has one cut, and asking for bold would have the
+     * browser synthesise it -- except font-synthesis-weight is off, so it would
+     * silently do nothing here and something in the Chinese that falls through
+     * to Noto Sans SC. Size carries the hierarchy instead. */
     <div className="flex flex-wrap items-center gap-3">
-      <h1 className="mr-auto flex flex-wrap items-center gap-2 text-xl font-semibold">
+      <h1 className="font-heading mr-auto flex flex-wrap items-center gap-2 text-2xl leading-tight">
         {title}
         {hint && <Hint>{hint}</Hint>}
       </h1>

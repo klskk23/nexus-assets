@@ -110,6 +110,8 @@ export const en: typeof zh = {
     submit: "Sign in",
     google: "Sign in with Google",
     submitting: "Signing in…",
+    tagline: "The internal asset ledger",
+    domains: "A first sign-in needs an email on one of the company's approved domains. Existing accounts are not affected.",
   },
 
   perm: {
