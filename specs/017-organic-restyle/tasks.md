@@ -112,11 +112,11 @@ worker 集体 45 秒超时，看起来像十几个测试同时坏了。
 
 ## 第 6 阶段：US4 八个元数据页（P2）
 
-- [ ] T044 [US4] `web/src/features/metadata/CrudPage.tsx`：Organic 形态。
+- [x] T044 [US4] `web/src/features/metadata/CrudPage.tsx`：Organic 形态。
       **改这一个，八个页面一起变** —— 字段、字段组、型号、厂商、状态、持有方、账号、角色
-- [ ] T045 [US4] 跑八个页面的既有测试，确认**点击行编辑、右键出菜单、对话框内显示拒绝**
+- [x] T045 [US4] 跑八个页面的既有测试，确认**点击行编辑、右键出菜单、对话框内显示拒绝**
       三条行为一字未变（FR-021/FR-023/FR-026）
-- [ ] T046 [US4] 逐页截图，**给开发者确认形态**（plan.md 的裁决权约定：
+- [x] T046 [US4] 逐页截图，**给开发者确认形态**（plan.md 的裁决权约定：
       稿子没画这四个页面，形态由实现者推导后交开发者判定）
 
 ## 第 7 阶段：US5 资产详情与全量历史（P2）
@@ -124,14 +124,15 @@ worker 集体 45 秒超时，看起来像十几个测试同时坏了。
 **独立验收**：点进一台设备是新外观，关闭后筛选与页码原样还在；
 时间线三态在灰度下仍可分。
 
-- [ ] T047 [P] [US5] `web/tests/assetDetail.test.tsx` 加测试：关闭详情对话框后
+- [x] T047 [P] [US5] `web/tests/assetDetail.test.tsx` 加测试：关闭详情对话框后
       **列表的筛选与页码没丢**（`navigate({pathname:"/assets", search})`，FR-029）
-- [ ] T048 [P] [US5] 同上加测试：时间线的已完成 / 当前 / 未来三态**不依赖颜色**也能分辨（FR-005）
-- [ ] T049 [US5] `web/src/features/assets/StatusTimeline.tsx` 新建（T038 确认后）。
+- [x] T048 [P] [US5] 同上加测试：时间线的已完成 / 当前 / 未来三态**不依赖颜色**也能分辨（FR-005）
+- [x] T049 [US5] ~~新建 `StatusTimeline.tsx`~~ **改为给既有的 `features/transfers/Timeline.tsx` 加导轨与当前态** ——
+      再造一份时间线就是 FR-011 禁止的第二套零件。
       三态靠图形区分：已完成实心圆 + 实线、当前描边圆 + 主色环、未来空心圆 + 虚线
-- [ ] T050 [US5] `web/src/features/assets/AssetDetail.tsx`：Organic 形态；接上时间线。
+- [x] T050 [US5] `web/src/features/assets/AssetDetail.tsx`：Organic 形态；接上时间线。
       **对话框里只放最近 5 条流转**，全量历史仍在另一条路由（014 决策 89，不变）
-- [ ] T051 [US5] `web/src/routes/AssetHistory.tsx`：整页历史的视觉跟上（FR-030）
+- [x] T051 [US5] `web/src/routes/AssetHistory.tsx`：整页历史的视觉跟上（FR-030）
 
 ## 第 8 阶段：US6 类别页与审计页（P3）
 

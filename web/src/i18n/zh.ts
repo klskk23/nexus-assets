@@ -507,6 +507,7 @@ export const zhMeta = {
 
 export const zhTransfer = {
   timeline: "流转历史",
+  current: "当前",
   empty: "还没有流转记录",
   emptyHint: "签出、归还或转移这台设备后，记录会出现在这里。",
   kind: {

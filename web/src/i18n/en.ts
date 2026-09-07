@@ -533,6 +533,7 @@ export const enMeta: typeof zhMeta = {
 
 export const enTransfer: typeof zhTransfer = {
   timeline: "Transfer history",
+  current: "Current",
   empty: "No transfers yet",
   emptyHint: "Check this device out, return it or move it, and the record appears here.",
   kind: {

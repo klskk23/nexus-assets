@@ -97,6 +97,35 @@ describe("Timeline", () => {
     expect(screen.getByText("已由 管理员 修改")).toBeInTheDocument()
   })
 
+  /**
+   * The newest entry is where the device is now, and it has to read differently
+   * from the ones behind it.
+   *
+   * Differently in shape, not only in colour: a timeline whose tiers differ by
+   * hue alone tells a colour-blind reader nothing, and these get printed and
+   * photographed as much as they are read on a screen. So the current entry
+   * carries a word, and its marker is a ring where the others are dots.
+   */
+  it("marks the newest entry as current, and not by colour alone", () => {
+    const { container } = renderWithProviders(
+      <Timeline events={[event({ id: "e1" }), event({ id: "e2" }), event({ id: "e3" })]} />,
+    )
+
+    const rows = screen.getAllByRole("listitem")
+    expect(within(rows[0]).getByText("当前")).toBeInTheDocument()
+    expect(within(rows[1]).queryByText("当前")).not.toBeInTheDocument()
+
+    // The markers differ in build, not in fill: a ring on the current one and a
+    // plain dot on the rest.
+    const markers = [...container.querySelectorAll("li > div > span:first-child")]
+    expect(markers[0].className).toContain("border-")
+    expect(markers[1].className).not.toContain("border-")
+
+    // And the rail stops at the last entry rather than pointing at nothing.
+    const rails = container.querySelectorAll("li > div > span:nth-child(2)")
+    expect(rails).toHaveLength(rows.length - 1)
+  })
+
   it("offers an empty state instead of a blank panel", () => {
     renderWithProviders(<Timeline events={[]} />)
     expect(screen.getByText("还没有流转记录")).toBeInTheDocument()

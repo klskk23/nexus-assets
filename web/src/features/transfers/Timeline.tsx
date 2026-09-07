@@ -1,12 +1,10 @@
-import { Fragment } from "react"
-
 import type { Transfer } from "@/lib/transferTypes"
 import { locale, t, tTransfer } from "@/i18n"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { StateBoundary } from "@/components/StateBoundary"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
+import { cn } from "cn"
 
 interface Props {
   events: Transfer[]
@@ -63,12 +61,42 @@ export function Timeline({ events, isLoading = false, error = null, editableId, 
       emptyTitle={tTransfer.empty}
       emptyHint={tTransfer.emptyHint}
     >
-      <ol className="grid gap-4" aria-label={tTransfer.timeline}>
+      {/* A rail with dots rather than rows between rules (017).
+       *
+       * The newest entry is where the device is now, and it reads differently
+       * from the ones behind it: a larger ring, and no rail continuing past it.
+       * The difference is shape, not colour -- a status timeline whose tiers
+       * differ only in hue tells a colour-blind reader nothing, and this one is
+       * printed and photographed as often as it is read on a screen.
+       *
+       * There are two tiers, not the three the prototype drew. The third would
+       * be "where this can go next", and the transition matrix that answers it
+       * lives on the server and is not exposed; 017 does not touch the server.
+       * A greyed-out future invented on the client would be a guess, and it
+       * would be wrong the moment somebody edits a status. */}
+      <ol className="grid" aria-label={tTransfer.timeline}>
         {entries.map(({ event, count }, i) => (
-          <Fragment key={event.id}>
-            {i > 0 && <Separator />}
-            <li aria-label={tTransfer.kind[event.kind] ?? event.kind} className="grid gap-1.5">
+          <li
+            key={event.id}
+            aria-label={tTransfer.kind[event.kind] ?? event.kind}
+            className="grid grid-cols-[auto_1fr] gap-x-3"
+          >
+            <div className="grid grid-rows-[auto_1fr] justify-items-center">
+              <span
+                aria-hidden
+                className={cn(
+                  "mt-1.5 rounded-full",
+                  i === 0
+                    ? "border-primary bg-background size-3.5 border-[3px]"
+                    : "bg-muted-foreground/40 size-2",
+                )}
+              />
+              {/* No rail below the last one: it would point at nothing. */}
+              {i < entries.length - 1 && <span aria-hidden className="bg-border w-px" />}
+            </div>
+            <div className={cn("grid gap-1.5", i < entries.length - 1 && "pb-5")}>
               <div className="flex flex-wrap items-center gap-2">
+                {i === 0 && <Badge variant="outline">{tTransfer.current}</Badge>}
                 <Badge>{tTransfer.kind[event.kind] ?? event.kind}</Badge>
                 {count > 1 && <Badge variant="outline">{tTransfer.batch(count)}</Badge>}
                 <span className="text-sm text-muted-foreground">
@@ -118,8 +146,8 @@ export function Timeline({ events, isLoading = false, error = null, editableId, 
                   </Button>
                 </div>
               )}
-            </li>
-          </Fragment>
+            </div>
+          </li>
         ))}
       </ol>
     </StateBoundary>

@@ -332,6 +332,27 @@ it("opens as a dialog over the list and closes back to it", async () => {
   )
 })
 
+// The one above passes on an empty search whether or not anything is carried
+// back, which is the whole of what it is meant to prove. This one arrives with
+// a filter on the address and checks that it survives the round trip: without
+// it, opening a device and closing it again drops the list back to everything
+// and the narrowing has to be done a second time.
+it("closes back to the list the device was opened from, filter intact", async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<AssetDetail />, {
+    route: "/assets/a1?status=in_stock&q=1123&offset=40",
+  })
+  await screen.findByText("112394521950")
+
+  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /关闭|Close/ }))
+  await waitFor(() =>
+    expect(navigate).toHaveBeenCalledWith({
+      pathname: "/assets",
+      search: "?status=in_stock&q=1123&offset=40",
+    }),
+  )
+})
+
 // The dialog shows the last few movements; the rest is a page, because forty
 // events in a box is a page inside a box.
 it("links to the full history whatever the length of it", async () => {
