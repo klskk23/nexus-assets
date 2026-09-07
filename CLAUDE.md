@@ -1,9 +1,9 @@
 <!-- SPECKIT START -->
-当前计划：`specs/016-field-groups-vendors/plan.md`
+当前计划：`specs/017-organic-restyle/plan.md`
 <!-- SPECKIT END -->
 
 必读：`.specify/memory/constitution.md`（五项原则、七条合并门禁）与当前 spec。
-历史决策（1–113）在 `specs/001-*` ~ `specs/016-*` 与 `docs/archive/design-baseline*.md`，
+历史决策（1–121）在 `specs/001-*` ~ `specs/017-*` 与 `docs/archive/design-baseline*.md`，
 **冲突时以最新一版为准**。001 的 `contracts/openapi.yaml` 仍是全量端点清单。
 
 **详细规则按目录分开放，不在这里。** 动某个包之前读对应的那一份：
@@ -50,6 +50,9 @@
   `user.selectOptions`；`SelectItem` 不接受空字符串值，「未选/全部」走 `lib/select.ts` 的哨兵。
 - **前端测试必须含 DOM 测试**（Vitest + React Testing Library，断言 `getByRole` 与
   `userEvent`）。只测纯函数或只做快照比对不算数。触及 UI 的 PR 必须新增或更新 DOM 测试。
+  **跑全量加 `--maxWorkers=4`。** vitest 默认吃满所有核，360 个测试在这台机器上会把
+  负载打到 80，worker 互相饿死后**集体 45 秒超时** —— 看起来像十几个测试同时坏了，
+  实际一行代码都没错。降并发后 360 全过。
 - **文档中文、代码英文；用户可见文案走目录，且必须两种语言都有。**
   前端 `web/src/i18n/{zh,en}.ts`（`en.ts` 由 `typeof zh` 约束，漏一条是编译错误），
   服务端 `internal/i18n/catalog.go`（漏一条由 `TestCatalogsCoverTheSameKeys` 抓）。
