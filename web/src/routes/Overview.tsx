@@ -1,17 +1,18 @@
 import { ChartColumnIcon } from "lucide-react"
-import { Suspense, lazy, useState } from "react"
+import { useState } from "react"
 import { useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 
-import { cn } from "cn"
 import { api } from "@/lib/api"
 import type { AssetStatus, Category } from "@/lib/types"
-import type { CategoryCount } from "@/features/overview/CategoryChart"
+import type { CategoryCount } from "@/features/overview/DistributionBar"
 import type { Transfer } from "@/lib/transferTypes"
 import { t, tOverview } from "@/i18n"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { StateBoundary } from "@/components/StateBoundary"
+import { DistributionBar } from "@/features/overview/DistributionBar"
+import { StatCard } from "@/features/overview/StatCard"
 import { PageHeader } from "@/features/common/PageHeader"
 import { Timeline } from "@/features/transfers/Timeline"
 import { Button } from "@/components/ui/button"
@@ -32,11 +33,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Field, FieldLabel } from "@/components/ui/field"
-import { Skeleton } from "@/components/ui/skeleton"
 
-// The charting library outweighs the rest of this page, and the status cards
-// and recent transfers have no reason to wait for it.
-const CategoryChart = lazy(() => import("@/features/overview/CategoryChart"))
 import {
   Select,
   SelectContent,
@@ -105,36 +102,13 @@ export function Overview() {
                 which is the point where wrapping is the lesser evil. */}
             <div className="grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-3">
               {(overview.data?.status_counts ?? []).map((s) => (
-                <Card
+                <StatCard
                   key={s.status}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${statuses.label(s.status)} ${s.count} ${tOverview.unit}`}
-                  className="cursor-pointer transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  onClick={() => navigate(`/assets?status=${s.status}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      navigate(`/assets?status=${s.status}`)
-                    }
-                  }}
-                >
-                  <CardContent className="px-4 py-3.5">
-                    <StatusBadge status={s.status} />
-                    {/* The count is the content and the chip is its label, so
-                        the count is what carries weight -- and a zero is
-                        allowed to recede. Five equally loud cards, two of them
-                        reading 0, spend the page's attention on nothing. */}
-                    <p
-                      className={cn(
-                        "mt-1.5 text-[28px] leading-none font-semibold tabular-nums",
-                        s.count === 0 && "text-muted-foreground/50",
-                      )}
-                    >
-                      {s.count}
-                    </p>
-                  </CardContent>
-                </Card>
+                  label={<StatusBadge status={s.status} />}
+                  count={s.count}
+                  ariaLabel={`${statuses.label(s.status)} ${s.count} ${tOverview.unit}`}
+                  onOpen={() => navigate(`/assets?status=${s.status}`)}
+                />
               ))}
             </div>
           </section>
@@ -156,14 +130,10 @@ export function Overview() {
                     </EmptyHeader>
                   </Empty>
                 ) : (
-                  <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-                    <CategoryChart
-                      data={distribution}
-                      onSelect={(id) =>
-                        navigate(`/assets?category_id=${id}&include_descendants=true`)
-                      }
-                    />
-                  </Suspense>
+                  <DistributionBar
+                    data={distribution}
+                    onSelect={(id) => navigate(`/assets?category_id=${id}&include_descendants=true`)}
+                  />
                 )}
               </CardContent>
             </Card>

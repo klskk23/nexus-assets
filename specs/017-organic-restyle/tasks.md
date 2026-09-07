@@ -102,12 +102,12 @@ worker 集体 45 秒超时，看起来像十几个测试同时坏了。
 - [x] T039 [P] [US3] **找开发者确认三个自定义组件：统计卡、类别分布条、状态流转时间线**
       （章程原则三：不存在的组件必须先确认，不接受事后补批）。三个一次问完 ——
       前两个属于概览页，时间线属于资产详情（第 7 阶段），但确认是一次对话不是三次
-- [ ] T040 [P] [US3] `web/tests/overview.test.tsx` 加测试：统计卡数字与对应筛选下的列表条数一致；
+- [x] T040 [P] [US3] `web/tests/overview.test.tsx` 加测试：统计卡数字与对应筛选下的列表条数一致；
       分布条的填充比例与台数占比相符；「待我处理」每条可跳转
-- [ ] T041 [US3] `web/src/features/overview/StatCard.tsx` 新建（确认后）
-- [ ] T042 [US3] `web/src/features/overview/DistributionBar.tsx` 新建（确认后）。
+- [x] T041 [US3] `web/src/features/overview/StatCard.tsx` 新建（确认后）
+- [x] T042 [US3] `web/src/features/overview/DistributionBar.tsx` 新建（确认后）。
       **填充块必须 `display: block`**，否则百分比宽度不生效；数值右对齐且 `tabular-nums`
-- [ ] T043 [US3] `web/src/routes/Overview.tsx`：按稿子重排（标题行 → 四张统计卡 →
+- [x] T043 [US3] `web/src/routes/Overview.tsx`：按稿子重排（标题行 → 四张统计卡 →
       左分布右待办的两列）。图表仍走 `lazy` + `Suspense`，**不得把 recharts 拉回入口 chunk**
 
 ## 第 6 阶段：US4 八个元数据页（P2）

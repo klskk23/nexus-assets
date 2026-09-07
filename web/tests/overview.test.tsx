@@ -102,32 +102,44 @@ describe("Overview", () => {
     expect(screen.getByText("含子类别，不含已报废")).toBeInTheDocument()
   })
 
-  // The chart replaced a list of bars and numbers, so it has to carry the same
-  // two things: which category, and how many.
-  it("draws each category as a bar labelled with its name and count", async () => {
-    const { container } = renderWithProviders(<Overview />)
+  // Whatever draws it has to carry the same two things the list it replaced
+  // did: which category, and how many.
+  it("draws each category as a track labelled with its name and count", async () => {
+    renderWithProviders(<Overview />)
     await screen.findByText("类别分布")
 
-    await waitFor(() => {
-      const texts = [...container.querySelectorAll("svg text")].map((n) => n.textContent)
-      expect(texts).toContain("网络设备")
-      expect(texts).toContain("62")
-    })
-    expect(container.querySelectorAll(".recharts-bar-rectangle")).toHaveLength(1)
+    const bar = await screen.findByRole("button", { name: "网络设备 62 台" })
+    expect(within(bar).getByText("网络设备")).toBeInTheDocument()
+    expect(within(bar).getByText("62")).toBeInTheDocument()
   })
 
-  // The list it replaced was clickable; losing that would be a step back.
-  it("navigates from a bar into the filtered asset list", async () => {
-    const user = userEvent.setup()
+  // A percentage width on an inline box is ignored, which would draw every
+  // category the same length and be wrong without ever looking broken.
+  it("fills each track in proportion to the largest category", async () => {
     const { container } = renderWithProviders(<Overview />)
     await screen.findByText("类别分布")
 
-    const bar = await waitFor(() => {
-      const el = container.querySelector(".recharts-bar-rectangle path")
+    const fill = await waitFor(() => {
+      const el = container.querySelector("[style*='width']")
       expect(el).not.toBeNull()
-      return el as Element
+      return el as HTMLElement
     })
-    await user.click(bar)
+    // The class, not the computed style: this suite runs with css disabled, so
+    // jsdom computes nothing for a Tailwind utility and the check would pass on
+    // an element that has no display at all.
+    expect(fill.className).toContain("block")
+    expect(fill.style.width).toBe("100%")
+  })
+
+  // The list it replaced was clickable; losing that would be a step back. It is
+  // a button now rather than a click handler on an SVG rectangle, so the
+  // keyboard reaches it as well.
+  it("navigates from a track into the filtered asset list", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Overview />)
+    await screen.findByText("类别分布")
+
+    await user.click(await screen.findByRole("button", { name: "网络设备 62 台" }))
 
     expect(navigate).toHaveBeenCalledWith("/assets?category_id=net&include_descendants=true")
   })
