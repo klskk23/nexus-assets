@@ -12,43 +12,43 @@ worker 集体 45 秒超时，看起来像十几个测试同时坏了。
 
 ## 第 1 阶段：字体管线（与第 2 阶段并行，但必须在第一次视觉验收前就位）
 
-- [ ] T001 取三款字体的 woff2 与许可：Caprasimo、Figtree（拉丁）、Noto Sans SC（中文）。
+- [x] T001 取三款字体的 woff2 与许可：Caprasimo、Figtree（拉丁）、Noto Sans SC（中文）。
       三款均为 SIL OFL，**许可文件必须一同落库**，放 `web/src/assets/fonts/`
-- [ ] T002 中文字体按 **unicode-range 分片**（research.md 第四节：按用字裁剪会让用户输入的
+- [x] T002 中文字体按 **unicode-range 分片**（research.md 第四节：按用字裁剪会让用户输入的
       设备名落到回退字体，同一页两种字形）。分片产物与拉丁两款一起进 `web/src/assets/fonts/`
-- [ ] T003 在 `web/src/index.css` 写 `@font-face`：三款各自的 `font-family`、`font-display: swap`、
+- [x] T003 在 `web/src/index.css` 写 `@font-face`：三款各自的 `font-family`、`font-display: swap`、
       中文的 `unicode-range` 分片声明。**不得出现任何指向 fonts.googleapis.com / fonts.gstatic.com 的 `@import`**
-- [ ] T004 `--font-heading` / `--font-body` 接进 Tailwind 的字体族；中文回退栈跟在拉丁之后。
+- [x] T004 `--font-heading` / `--font-body` 接进 Tailwind 的字体族；中文回退栈跟在拉丁之后。
       标题用 700 并设 `font-synthesis-weight: none`，避免没有中文字形的标题字体被合成加粗
-- [ ] T005 **量体积**：`npm run build` 后看 `dist/` 增量，再 `CGO_ENABLED=0 go build` 看二进制增量。
+- [x] T005 **量体积**：`npm run build` 后看 `dist/` 增量，再 `CGO_ENABLED=0 go build` 看二进制增量。
       **超过 8 MB 就停下来找开发者**（SC-009 是唯一预留的翻案点：修订规格，不是放宽验收）
 
 ## 第 2 阶段：地基（阻塞所有用户故事）
 
-- [ ] T006 `web/src/index.css`：按 research.md 第一节的映射表，把 `:root` 的十九个语义变量
+- [x] T006 `web/src/index.css`：按 research.md 第一节的映射表，把 `:root` 的十九个语义变量
       换成 Organic 的值。**只改值，不改变量名** —— 组件里的 `bg-primary` 等类名一个不动
-- [ ] T007 `web/src/index.css`：`--radius` 提到 `28px` 供盒子使用（卡片、对话框、面板）。
+- [x] T007 `web/src/index.css`：`--radius` 提到 `28px` 供盒子使用（卡片、对话框、面板）。
       药丸不走这个变量（见 T010）
-- [ ] T008 `web/src/index.css`：`--chart-1` 换成 Organic 的沙绿 `#8fa073`，**删掉深色版那行**。
+- [x] T008 `web/src/index.css`：`--chart-1` 换成 Organic 的沙绿 `#8fa073`，**删掉深色版那行**。
       沙绿与陶土橙拉得开，且不与八个状态调色板的任何色相撞
-- [ ] T009 `web/src/index.css`：八个 `.status-*` 调色板按新底色复核对比度。
+- [x] T009 `web/src/index.css`：八个 `.status-*` 调色板按新底色复核对比度。
       它们原是为白底校的，奶油底会削弱对比。**区分不得只靠颜色**（FR-005）
 - [ ] T010 `web/src/components/ui/`：把九个小控件的圆角改成药丸（`rounded-full`）——
       button、badge、input、textarea、select trigger、toggle、toggle-group、tabs trigger、input-group。
       **每改完一个立刻跑一次测试**，不攒到最后（Radix 不动就不掉 role，但顺手改了元素类型就会）
 - [ ] T011 每个改成药丸的控件加 `white-space: nowrap`。英文比中文长，
       不加的话窄屏与英文界面下药丸里的字会换行
-- [ ] T012 `web/src/components/ui/`：删除 15 个文件里的 25 处 `dark:` 工具类
-- [ ] T013 `web/src/components/ui/sonner.tsx`：摘掉 `next-themes`，固定为浅色
-- [ ] T014 `web/src/index.css`：删 `@custom-variant dark`、两组 `.dark` 块、八行 `.dark .status-*`
-- [ ] T015 删 `web/src/features/theme/useTheme.tsx`，并摘除它在 `main.tsx`、
+- [x] T012 `web/src/components/ui/`：删除 15 个文件里的 25 处 `dark:` 工具类
+- [x] T013 `web/src/components/ui/sonner.tsx`：摘掉 `next-themes`，固定为浅色
+- [x] T014 `web/src/index.css`：删 `@custom-variant dark`、两组 `.dark` 块、八行 `.dark .status-*`
+- [x] T015 删 `web/src/features/theme/useTheme.tsx`，并摘除它在 `main.tsx`、
       `routes/AppShell.tsx`（深浅切换按钮）、`features/settings/SettingsDialog.tsx`、
       `features/settings/usePreferences.ts`、`web/src/test/renderWithProviders.tsx` 里的引用
-- [ ] T016 `package.json` 移除 `next-themes`；删 `web/tests/theme.test.tsx`
-- [ ] T017 两份 i18n 移除 `nav.toLight` / `nav.toDark` 与设置里的主题项。
+- [x] T016 `package.json` 移除 `next-themes`；删 `web/tests/theme.test.tsx`
+- [x] T017 两份 i18n 移除 `nav.toLight` / `nav.toDark` 与设置里的主题项。
       `tests/i18n.test.ts` 的孤儿检查会抓到没删干净的条目
-- [ ] T018 **服务端不动**：确认 `users.theme` 字段、相关端点与迁移**一行都没改**（FR-002/FR-028）
-- [ ] T019 `grep -rn "dark:" web/src` 应命中零处；`grep -rn "next-themes" web/src package.json` 同样
+- [x] T018 **服务端不动**：确认 `users.theme` 字段、相关端点与迁移**一行都没改**（FR-002/FR-028）
+- [x] T019 `grep -rn "dark:" web/src` 应命中零处；`grep -rn "next-themes" web/src package.json` 同样
 
 ## 第 3 阶段：US1 全站视觉统一（P1，MVP）
 

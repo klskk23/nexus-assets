@@ -1,61 +1,53 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./assets/fonts/fonts.css";
 
-@custom-variant dark (&:is(.dark *));
-
+/* Organic palette (017). Nineteen semantic slots; components say bg-primary and
+ * never a hex value, which is why a whole restyle lands here rather than across
+ * thirty-five component files.
+ *
+ * --primary-foreground is the page background, not white: on terracotta, cream
+ * is what the Organic prototype puts there, and pure white vibrates against it.
+ * --destructive keeps its old red -- Organic never gave a danger colour, and a
+ * delete confirmation is the one place that may not blend into the warm ground.
+ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Boxes -- cards, dialogs, panels. Small controls are pills and do not derive
+   * from this; they say rounded-full at the component. One --radius cannot be
+   * both 28px and 999px, and splitting the difference gets neither. */
+  --radius: 28px;
+  --background: #f5ead8;
+  --foreground: #201e1d;
+  --card: #ebddc5;
+  --card-foreground: #201e1d;
+  --popover: #ebddc5;
+  --popover-foreground: #201e1d;
+  --primary: #c67139;
+  --primary-foreground: #f5ead8;
+  --secondary: #eee7db;
+  --secondary-foreground: #2e2b25;
+  --muted: #eee7db;
+  --muted-foreground: #82796a;
+  --accent: #fff2eb;
+  --accent-foreground: #8c491a;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: color-mix(in srgb, #201e1d 16%, transparent);
+  --input: color-mix(in srgb, #201e1d 16%, transparent);
+  --ring: #c67139;
   /* Sunk below the card: table headers and grouped read-only values. A
    * ledger nests two or three deep, and three identical bordered boxes is
    * what makes it read as a kit of cards rather than one document. */
-  --well: oklch(0.975 0 0);
+  --well: #f9f4ed;
   /* The rule between rows, as against the rule around things. Same colour
-   * family, a third of the weight: the eye should follow the column. */
-  --border-muted: oklch(0.945 0 0);
+   * family, half the weight: the eye should follow the column. */
+  --border-muted: color-mix(in srgb, #201e1d 8%, transparent);
 }
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --well: oklch(0.175 0 0);
-  --border-muted: oklch(1 0 0 / 5%);
-}
-
 @theme inline {
+  /* Latin first, Chinese second, system last. Order matters: Figtree has no CJK
+   * glyphs, so every Chinese character falls through to Noto Sans SC -- which is
+   * the intended path, not a fallback. */
+  --font-sans: "Figtree Variable", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Caprasimo", "Noto Sans SC", ui-serif, Georgia, serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -91,60 +83,46 @@
  * constraint any chart colour here has to clear -- colour in this application
  * means status, and a chart may not borrow a meaning it does not have.
  *
- * The two themes get the same hue at different weights, the way the status
- * chips do. #374C53 is a settled ink block on white; on the dark ground it
- * would sit barely above the card it is drawn on, and a bar you have to lean
- * in to measure is not quiet, it is unreadable. Dark keeps the hue and takes
- * the lightness up to where the shortest bar still reads.
+ * Organic\'s sage (017). The old blue-grey was picked to read on both a white
+ * and a dark ground; there is one ground now, and a cool grey on warm cream
+ * reads as a mistake rather than a choice. Sage is the prototype\'s second
+ * accent, far enough from terracotta to never be mistaken for an action.
  *
  * One series, one colour: the category distribution counts the same thing for
  * every bar, and giving each its own hue would imply a difference that is not
  * there. Extra slots go here when a chart genuinely has several series.
  *
- * Like the status palette below, it is defined per theme rather than picked
- * once -- a fill that reads on white does not read on the dark ground this app
- * defaults to.
  */
 :root {
-  --chart-1: #374c53;
-}
-.dark {
-  --chart-1: oklch(0.62 0.03 230);
+  --chart-1: #8fa073;
 }
 
 /* Status palette.
  *
- * A status stores a palette name, not a hex value. The name is a semantic
- * slot; what it resolves to is decided here, once per theme -- which is the
- * only way a colour an administrator picked in daylight still reads on the
- * dark background this app defaults to. A free colour field would have looked
- * more capable and been unreadable half the time.
+ * A status stores a palette name, not a hex value. The name is a semantic slot
+ * resolved here, once -- which is what let the whole palette be re-tuned for the
+ * cream ground in 017 without an administrator touching anything. A free colour
+ * field would have looked more capable and been unreadable half the time.
+ *
+ * Re-tuned for Organic: the old fills were pale on white and measured 1.03
+ * against cream, so the chip had no shape at all. The fill now sits just above
+ * the page and the line does the work -- it went from 1.25 to 2.2 against the
+ * page, and the text holds 6.3:1 or better on every palette. Distinguishing a
+ * status never rested on colour anyway: the chip says its name.
  *
  * Each entry sets three vars; .status-chip below is what consumes them, so a
  * new colour is one block here and one line in PaletteColors on the server.
  */
-.status-slate  { --status-bg: oklch(0.95 0.005 260); --status-fg: oklch(0.38 0.02 260); --status-line: oklch(0.87 0.01 260); }
-.status-green  { --status-bg: oklch(0.95 0.05 150);  --status-fg: oklch(0.42 0.12 150); --status-line: oklch(0.86 0.08 150); }
-.status-blue   { --status-bg: oklch(0.95 0.04 250);  --status-fg: oklch(0.45 0.15 250); --status-line: oklch(0.86 0.07 250); }
-.status-amber  { --status-bg: oklch(0.96 0.06 85);   --status-fg: oklch(0.45 0.12 65);  --status-line: oklch(0.87 0.10 85); }
-.status-red    { --status-bg: oklch(0.95 0.04 25);   --status-fg: oklch(0.47 0.17 27);  --status-line: oklch(0.86 0.08 25); }
-.status-violet { --status-bg: oklch(0.95 0.04 300);  --status-fg: oklch(0.45 0.16 300); --status-line: oklch(0.87 0.07 300); }
-.status-teal   { --status-bg: oklch(0.95 0.04 190);  --status-fg: oklch(0.43 0.10 195); --status-line: oklch(0.86 0.07 190); }
-.status-rose   { --status-bg: oklch(0.95 0.04 5);    --status-fg: oklch(0.47 0.15 8);   --status-line: oklch(0.87 0.07 5); }
+.status-slate  { --status-bg: oklch(0.965 0.0065 260); --status-fg: oklch(0.38 0.02 260); --status-line: oklch(0.7 0.019 260); }
+.status-green  { --status-bg: oklch(0.965 0.065 150); --status-fg: oklch(0.42 0.12 150); --status-line: oklch(0.7 0.152 150); }
+.status-blue   { --status-bg: oklch(0.965 0.052 250); --status-fg: oklch(0.45 0.15 250); --status-line: oklch(0.7 0.133 250); }
+.status-amber  { --status-bg: oklch(0.965 0.078 85); --status-fg: oklch(0.45 0.12 65); --status-line: oklch(0.7 0.19 85); }
+.status-red    { --status-bg: oklch(0.965 0.052 25); --status-fg: oklch(0.47 0.17 27); --status-line: oklch(0.7 0.152 25); }
+.status-violet { --status-bg: oklch(0.965 0.052 300); --status-fg: oklch(0.45 0.16 300); --status-line: oklch(0.7 0.133 300); }
+.status-teal   { --status-bg: oklch(0.965 0.052 190); --status-fg: oklch(0.43 0.1 195); --status-line: oklch(0.7 0.133 190); }
+.status-rose   { --status-bg: oklch(0.965 0.052 5); --status-fg: oklch(0.47 0.15 8); --status-line: oklch(0.7 0.133 5); }
 
-/* Dark: the tint moves to the foreground and the fill drops back, because a
- * pale chip on a dark page glares -- the same hue, inverted in weight. */
-.dark .status-slate  { --status-bg: oklch(0.30 0.01 260); --status-fg: oklch(0.82 0.02 260); --status-line: oklch(0.40 0.02 260); }
-.dark .status-green  { --status-bg: oklch(0.30 0.05 150); --status-fg: oklch(0.85 0.14 150); --status-line: oklch(0.42 0.08 150); }
-.dark .status-blue   { --status-bg: oklch(0.30 0.05 250); --status-fg: oklch(0.83 0.11 250); --status-line: oklch(0.42 0.09 250); }
-.dark .status-amber  { --status-bg: oklch(0.32 0.06 75);  --status-fg: oklch(0.88 0.13 85);  --status-line: oklch(0.44 0.09 75); }
-.dark .status-red    { --status-bg: oklch(0.31 0.07 27);  --status-fg: oklch(0.85 0.11 25);  --status-line: oklch(0.43 0.11 27); }
-.dark .status-violet { --status-bg: oklch(0.31 0.06 300); --status-fg: oklch(0.85 0.11 300); --status-line: oklch(0.43 0.10 300); }
-.dark .status-teal   { --status-bg: oklch(0.30 0.05 195); --status-fg: oklch(0.84 0.10 190); --status-line: oklch(0.42 0.08 195); }
-.dark .status-rose   { --status-bg: oklch(0.31 0.06 8);   --status-fg: oklch(0.85 0.10 5);   --status-line: oklch(0.43 0.09 8); }
-
-/* The chip itself. Colour comes entirely from the vars above, so it never needs
- * a dark: override of its own.
+/* The chip itself. Colour comes entirely from the vars above.
  *
  * Deliberately outside every @layer: Badge's own variant classes are Tailwind
  * utilities, and an unlayered rule is the only thing that outranks them without
@@ -162,7 +140,12 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    /* Caprasimo has no CJK glyphs and no bold cut at all. Left on, the browser
+     * would smear a fake bold onto the Noto Sans SC that Chinese headings fall
+     * through to, next to a Latin face that never gets one -- two weights in one
+     * heading. Both real weights are shipped, so nothing needs synthesising. */
+    font-synthesis-weight: none;
   }
 
   /* A ledger is read down a column, so the digits have to line up. Proportional

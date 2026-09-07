@@ -5,7 +5,11 @@ import type { TooltipValueType } from "recharts"
 import { cn } from "cn"
 
 // Format: { THEME_NAME: CSS_SELECTOR }
-const THEMES = { light: "", dark: ".dark" } as const
+/* One theme since 017. Upstream keys chart colours by theme and prefixes each
+ * block with a selector; with a single ground the prefix is empty and the loop
+ * runs once. Kept as a map rather than inlined so a config entry may still say
+ * `theme: { light: ... }`, and so restoring a second ground is one entry. */
+const THEMES = { light: "" } as const
 
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const
 type TooltipNameType = number | string

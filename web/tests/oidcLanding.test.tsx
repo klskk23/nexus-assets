@@ -7,7 +7,6 @@ import { AppShell } from "@/routes/AppShell"
 import { Login } from "@/routes/Login"
 import { AuthProvider } from "@/features/auth/useAuth"
 import { LanguageProvider } from "@/i18n/useLanguage"
-import { ThemeProvider } from "@/features/theme/useTheme"
 import { makeTestQueryClient } from "@/test/renderWithProviders"
 import { setToken } from "@/lib/api"
 
@@ -52,22 +51,20 @@ afterEach(() => {
 /** The two routes the callback bounces between. */
 function renderApp(at = "/login") {
   return render(
-    <ThemeProvider>
-      <QueryClientProvider client={makeTestQueryClient()}>
-        <AuthProvider>
-          <LanguageProvider>
-            <MemoryRouter initialEntries={[at]}>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/" element={<AppShell />}>
-                  <Route index element={<p>概览内容</p>} />
-                </Route>
-              </Routes>
-            </MemoryRouter>
-          </LanguageProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </ThemeProvider>,
+    <QueryClientProvider client={makeTestQueryClient()}>
+      <AuthProvider>
+        <LanguageProvider>
+          <MemoryRouter initialEntries={[at]}>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<AppShell />}>
+                <Route index element={<p>概览内容</p>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </LanguageProvider>
+      </AuthProvider>
+    </QueryClientProvider>,
   )
 }
 
@@ -104,22 +101,20 @@ describe("landing back from Google", () => {
       Promise.resolve(path === "/api/auth/refresh" ? json(401, { error: {} }) : json(200, [])),
     )
     render(
-      <ThemeProvider>
-        <QueryClientProvider client={makeTestQueryClient()}>
-          <AuthProvider>
-            <LanguageProvider>
-              <MemoryRouter initialEntries={["/"]}>
-                <Routes>
-                  <Route path="/login" element={<p>登录页</p>} />
-                  <Route path="/" element={<AppShell />}>
-                    <Route index element={<p>概览内容</p>} />
-                  </Route>
-                </Routes>
-              </MemoryRouter>
-            </LanguageProvider>
-          </AuthProvider>
-        </QueryClientProvider>
-      </ThemeProvider>,
+      <QueryClientProvider client={makeTestQueryClient()}>
+        <AuthProvider>
+          <LanguageProvider>
+            <MemoryRouter initialEntries={["/"]}>
+              <Routes>
+                <Route path="/login" element={<p>登录页</p>} />
+                <Route path="/" element={<AppShell />}>
+                  <Route index element={<p>概览内容</p>} />
+                </Route>
+              </Routes>
+            </MemoryRouter>
+          </LanguageProvider>
+        </AuthProvider>
+      </QueryClientProvider>,
     )
 
     await waitFor(() => expect(screen.getByText("登录页")).toBeInTheDocument(), { timeout: 3000 })

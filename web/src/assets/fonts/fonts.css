@@ -1,0 +1,37 @@
+/* Self-hosted faces (017).
+ *
+ * Nothing here may ever reach fonts.googleapis.com. This deploys on an internal
+ * network behind a static binary, so a remote face does not load -- and a font
+ * that fails to load fails silently, which means the bug ships looking fine on
+ * the machine that built it.
+ *
+ * The files come from @fontsource, which repackages the Google Fonts originals
+ * with their unicode-range sharding intact. Every build path already runs
+ * `npm ci`, so they arrive as ordinary dependencies and Vite emits them into
+ * dist/, where they get embedded in the binary like any other asset. Vendoring
+ * 210 woff2 files into git instead would have put 7 MB in its history forever
+ * for the same bytes in the same place.
+ *
+ * Chinese ships at 400 and 700 only. Nine weights is 27 MB; two is 6.9 MB, and
+ * headings need a real bold because font-synthesis-weight is off below -- a
+ * synthesised one smears at the weight Caprasimo sets next to it.
+ *
+ * The licences are OFL, all three, and they are copied to public/fonts/ so they
+ * travel inside the artifact rather than only in node_modules.
+ */
+
+/* Display -- latin only. Chinese headings fall through to Noto Sans SC 700,
+ * which is why that weight is shipped at all. */
+@import "@fontsource/caprasimo/400.css";
+
+/* Body -- one variable file covers 300..900, upright and italic. */
+@import "@fontsource-variable/figtree/wght.css";
+@import "@fontsource-variable/figtree/wght-italic.css";
+
+/* Chinese. ~102 unicode-range shards per weight: the browser fetches only the
+ * shards a page's characters actually fall in, so first paint pulls a handful
+ * of KB even though the whole set is megabytes. Subsetting to the characters
+ * found in our own source would be far smaller and wrong -- people type device
+ * names and notes in here, and user data is not in any scan. */
+@import "@fontsource/noto-sans-sc/400.css";
+@import "@fontsource/noto-sans-sc/700.css";

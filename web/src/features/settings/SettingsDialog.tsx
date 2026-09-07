@@ -8,7 +8,6 @@ import { copyText } from "@/lib/clipboard"
 import type { User } from "@/lib/types"
 import { LANGS, LANG_NAMES, locale, t, tConfirm, type Lang } from "@/i18n"
 import { useLanguage } from "@/i18n/useLanguage"
-import { useTheme, type Theme } from "@/features/theme/useTheme"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -76,14 +75,13 @@ const KEY_DAYS = [30, 90, 365, 0]
  * The account's own settings: how the interface looks, and what may call the
  * API on its behalf.
  *
- * Language and theme are saved to the account as well as applied here. They
+ * Language is saved to the account as well as applied here. It
  * used to live in one browser's localStorage, which meant a person who chose
  * English chose it again on every machine they touched.
  */
 export function SettingsDialog({ onClose }: Props) {
   const queryClient = useQueryClient()
   const { lang, setLang } = useLanguage()
-  const { theme, setTheme } = useTheme()
   const [banner, setBanner] = useState<string | null>(null)
 
   const [creating, setCreating] = useState(false)
@@ -101,7 +99,7 @@ export function SettingsDialog({ onClose }: Props) {
   })
 
   const savePreference = useMutation({
-    mutationFn: (patch: { lang?: string; theme?: string }) => api.patch<User>("/me", patch),
+    mutationFn: (patch: { lang?: string }) => api.patch<User>("/me", patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me"] }),
     onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
   })
@@ -137,10 +135,6 @@ export function SettingsDialog({ onClose }: Props) {
     setLang(next)
   }
 
-  const chooseTheme = (next: Theme) => {
-    setTheme(next)
-    savePreference.mutate({ theme: next })
-  }
 
   const when = (iso?: string) => (iso ? new Date(iso).toLocaleDateString(locale()) : null)
 
@@ -171,20 +165,6 @@ export function SettingsDialog({ onClose }: Props) {
                           {LANG_NAMES[l]}
                         </SelectItem>
                       ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="set-theme">{t.settings.theme}</FieldLabel>
-                <Select value={theme} onValueChange={(v) => chooseTheme(v as Theme)}>
-                  <SelectTrigger id="set-theme">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="dark">{t.settings.themeDark}</SelectItem>
-                      <SelectItem value="light">{t.settings.themeLight}</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>

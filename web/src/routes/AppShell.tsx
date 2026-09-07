@@ -1,10 +1,9 @@
-import { LogOutIcon, MoonIcon, SettingsIcon, SunIcon, UserIcon } from "lucide-react"
+import { LogOutIcon, SettingsIcon, UserIcon } from "lucide-react"
 import { useState } from "react"
 import { NavLink, Navigate, Outlet } from "react-router"
 
 import { useAuth } from "@/features/auth/useAuth"
 import { usePermissions, type Permission } from "@/features/auth/usePermissions"
-import { useTheme } from "@/features/theme/useTheme"
 import { SettingsDialog } from "@/features/settings/SettingsDialog"
 import { usePreferences } from "@/features/settings/usePreferences"
 import { t } from "@/i18n"
@@ -50,7 +49,6 @@ export function AppShell() {
   const { can } = usePermissions()
   const [settingsOpen, setSettingsOpen] = useState(false)
   usePreferences(user)
-  const { theme, toggle } = useTheme()
 
   if (isLoading) {
     return (
@@ -99,18 +97,9 @@ export function AppShell() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                {/* The one-click theme flip stays here because it is used
-                    daily; language and everything else moved into settings,
-                    where a choice that is made twice a year belongs. */}
                 <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
                   <SettingsIcon />
                   {t.settings.open}
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={toggle}>
-                  {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-                  {theme === "dark" ? t.nav.toLight : t.nav.toDark}
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />

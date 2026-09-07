@@ -8,7 +8,6 @@ import { AppShell } from "@/routes/AppShell"
 import { LanguageProvider } from "@/i18n/useLanguage"
 import { applyLang, detectLang, getLang } from "@/i18n"
 import { makeTestQueryClient } from "@/test/renderWithProviders"
-import { ThemeProvider } from "@/features/theme/useTheme"
 
 const user = { id: "u1", email: "a@example.com", name: "管理员", auth_type: "local", status: "active" }
 
@@ -23,15 +22,13 @@ function renderShell(client = makeTestQueryClient()) {
   return {
     client,
     ...render(
-      <ThemeProvider>
-        <QueryClientProvider client={client}>
-          <LanguageProvider>
-            <MemoryRouter initialEntries={["/"]}>
-              <AppShell />
-            </MemoryRouter>
-          </LanguageProvider>
-        </QueryClientProvider>
-      </ThemeProvider>,
+      <QueryClientProvider client={client}>
+        <LanguageProvider>
+          <MemoryRouter initialEntries={["/"]}>
+            <AppShell />
+          </MemoryRouter>
+        </LanguageProvider>
+      </QueryClientProvider>,
     ),
   }
 }
@@ -39,8 +36,8 @@ function renderShell(client = makeTestQueryClient()) {
 /**
  * Picks a language in the settings dialog.
  *
- * The menu behind the account name carries the settings entry, the one-click
- * theme flip and signing out; language moved into the dialog with everything
+ * The menu behind the account name carries the settings entry and signing
+ * out; language moved into the dialog with everything
  * else a person chooses about their own account.
  */
 async function pickLanguage(user: ReturnType<typeof userEvent.setup>, name: string) {
@@ -121,7 +118,7 @@ describe("detectLang", () => {
 })
 
 describe("settings menu", () => {
-  it("gathers settings, the theme flip and sign-out behind one trigger", async () => {
+  it("gathers settings and sign-out behind one trigger", async () => {
     const u = userEvent.setup()
     renderShell()
     await screen.findByRole("link", { name: "概览" })
@@ -131,9 +128,11 @@ describe("settings menu", () => {
 
     await u.click(screen.getByRole("button", { name: /管理员/ }))
     expect(await screen.findByRole("menuitem", { name: "设置" })).toBeInTheDocument()
-    // The theme flip stays in the menu: it is a daily one-click action, while
-    // everything in the dialog is chosen twice a year.
-    expect(screen.getByRole("menuitem", { name: /切换到浅色|切换到深色/ })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "退出登录" })).toBeInTheDocument()
+    // The theme flip used to live here as the menu's one daily action. 017 left
+    // a single ground, so the menu is settings and sign-out and nothing else --
+    // asserted, because a stray flip would be a control for a choice that no
+    // longer exists.
+    expect(screen.getAllByRole("menuitem")).toHaveLength(2)
   })
 })

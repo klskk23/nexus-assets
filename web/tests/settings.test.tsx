@@ -59,15 +59,18 @@ describe("SettingsDialog", () => {
     await waitFor(() => expect(patch).toHaveBeenCalledWith("/me", { lang: "en" }))
   })
 
-  it("saves the theme to the account", async () => {
-    const user = userEvent.setup()
+  // This used to save a theme to the account. 017 left one ground, so the
+  // control is gone and the assertion is inverted: the dialog offers language
+  // and nothing else about appearance. users.theme is still a column on the
+  // server and still comes back on /me -- nothing reads it, and nothing here
+  // may put a control in front of a choice the application no longer has.
+  it("offers no appearance choice", async () => {
     renderWithProviders(<SettingsDialog onClose={vi.fn()} />)
 
     const dialog = await screen.findByRole("dialog")
-    await user.click(within(dialog).getByRole("combobox", { name: "主题" }))
-    await user.click(await screen.findByRole("option", { name: "浅色" }))
-
-    await waitFor(() => expect(patch).toHaveBeenCalledWith("/me", { theme: "light" }))
+    expect(within(dialog).getByRole("combobox", { name: "语言" })).toBeInTheDocument()
+    expect(within(dialog).queryByRole("combobox", { name: "主题" })).not.toBeInTheDocument()
+    expect(within(dialog).queryByText("深色")).not.toBeInTheDocument()
   })
 
   it("lists the keys it has, without ever showing a secret", async () => {

@@ -60,10 +60,7 @@ export const en: typeof zh = {
     title: "Settings",
     appearance: "Appearance",
     language: "Language",
-    theme: "Theme",
-    themeDark: "Dark",
-    themeLight: "Light",
-    savedToAccount: "Language and theme follow your account, on any machine.",
+    savedToAccount: "Your language follows your account, on any machine.",
     keys: "API keys",
     keysHint:
       "A key lets a script call the API with the same permissions you have. It is shown once, when it is created.",
@@ -103,8 +100,6 @@ export const en: typeof zh = {
     importPage: "Import",
     audit: "Audit",
     signOut: "Sign out",
-    toLight: "Switch to light",
-    toDark: "Switch to dark",
     language: "Switch language",
   },
 

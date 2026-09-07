@@ -6,7 +6,6 @@ import { MemoryRouter } from "react-router"
 import { AuthProvider } from "@/features/auth/useAuth"
 import { PERMISSIONS as ALL_PERMISSIONS } from "@/features/auth/usePermissions"
 import { LanguageProvider } from "@/i18n/useLanguage"
-import { ThemeProvider } from "@/features/theme/useTheme"
 
 /**
  * Builds a QueryClient suited to tests.
@@ -72,20 +71,18 @@ export function renderWithProviders(
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <ThemeProvider>
-        <QueryClientProvider client={client}>
-          {/* With no token stored -- which is every test unless one puts one
-              there -- this fetches nothing and reports a signed-out user. */}
-          <AuthProvider>
-            {/* Present because the settings dialog reads it; switching
-                language remounts the subtree, which is the provider's own
-                doing and nothing a test has to arrange. */}
-            <LanguageProvider>
-              <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
-            </LanguageProvider>
-          </AuthProvider>
-        </QueryClientProvider>
-      </ThemeProvider>
+      <QueryClientProvider client={client}>
+        {/* With no token stored -- which is every test unless one puts one
+            there -- this fetches nothing and reports a signed-out user. */}
+        <AuthProvider>
+          {/* Present because the settings dialog reads it; switching
+              language remounts the subtree, which is the provider's own
+              doing and nothing a test has to arrange. */}
+          <LanguageProvider>
+            <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+          </LanguageProvider>
+        </AuthProvider>
+      </QueryClientProvider>
     )
   }
 
