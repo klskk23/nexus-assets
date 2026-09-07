@@ -519,6 +519,46 @@ describe("create dialog resets", () => {
 
 // The field library grew two more ways to find something (016): which vendor
 // provides it, and which group it is in.
+// Binding a field to a model and then to that model's vendor leaves both rows,
+// and the column used to read "Dell、Dell VEP-4600" -- two answers to one
+// question, where the vendor already covers the model.
+describe("Fields page binding column", () => {
+  const vendors = [{ id: "v-dell", name: "Dell", model_count: 2 }]
+  const models = [
+    { id: "m1", category_ids: ["net"], name: "VEP-4600", vendor_id: "v-dell", vendor_name: "Dell", attr_defaults: {} },
+    { id: "m2", category_ids: ["net"], name: "T14", vendor_id: "v-lenovo", vendor_name: "Lenovo", attr_defaults: {} },
+  ]
+  const bound = [
+    { ...fields[2], model_ids: ["m1"], vendor_ids: ["v-dell"] },
+  ]
+
+  beforeEach(() => {
+    get.mockReset().mockImplementation((p: string) => {
+      if (p === "/vendors") return Promise.resolve(vendors)
+      if (p === "/models") return Promise.resolve(models)
+      if (p.startsWith("/fields")) {
+        return Promise.resolve({ items: bound, total: 1, offset: 0, limit: 20 })
+      }
+      return route(p)
+    })
+  })
+
+  it("names the vendor once rather than the vendor and the model it covers", async () => {
+    renderWithProviders(<Fields />)
+    const row = await screen.findByRole("row", { name: /ServiceTag/ })
+    expect(within(row).getByText("Dell")).toBeInTheDocument()
+    expect(within(row).queryByText(/VEP-4600/)).not.toBeInTheDocument()
+  })
+
+  it("still names a model whose vendor is not bound", async () => {
+    bound[0] = { ...fields[2], model_ids: ["m1", "m2"], vendor_ids: ["v-dell"] }
+    renderWithProviders(<Fields />)
+    const row = await screen.findByRole("row", { name: /ServiceTag/ })
+    expect(within(row).getByText("Dell、Lenovo T14")).toBeInTheDocument()
+    bound[0] = { ...fields[2], model_ids: ["m1"], vendor_ids: ["v-dell"] }
+  })
+})
+
 describe("Fields page vendor and group filters", () => {
   const vendors = [{ id: "v-dell", name: "Dell", model_count: 1 }]
   const groups = [{ id: "g-net", name: "网络参数", field_ids: ["f1"] }]

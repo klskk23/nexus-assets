@@ -286,8 +286,15 @@ export function Fields() {
           cell: (f) => {
             // Where it was hung, not where it reaches: a vendor binding shows
             // the vendor, because that is the row somebody would go and edit.
-            const models = f.model_ids ?? []
             const vendors = f.vendor_ids ?? []
+            // A model whose vendor is listed right beside it is not a second
+            // binding to read -- the vendor already covers it, and naming both
+            // reads as two answers to one question. The row survives; it comes
+            // back into the list if the vendor binding goes away.
+            const models = (f.model_ids ?? []).filter((id) => {
+              const vendorID = modelList.find((m) => m.id === id)?.vendor_id
+              return !vendorID || !vendors.includes(vendorID)
+            })
             if (models.length > 0 || vendors.length > 0) {
               return (
                 <span className="flex flex-wrap items-center gap-2">
