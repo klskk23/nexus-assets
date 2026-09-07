@@ -3,7 +3,7 @@
 **Branch**: `001-asset-ledger-demo` 　**Created**: 2026-08-31 　**Status**: Draft
 
 **Input**: "调查一下公式引擎替换为 expr-lang/expr 的可行性，这样可以支持更多表达式" →
-调研结论见 [`docs/research-expr-engine.md`](../../docs/research-expr-engine.md) →
+调研结论见 [`docs/guides/research-expr-engine.md`](../../docs/guides/research-expr-engine.md) →
 "立即做，并为其添加一个帮助按钮，点击后侧边弹出 Drawer，简单介绍下基本使用方法。同样要支持双语"
 
 > 本规格实施调研报告的建议，**按报告给的顺序**：先建护栏，再接引擎。

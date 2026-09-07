@@ -62,7 +62,7 @@ v1.0.0 (2026-08-27) 首次批准：五项核心原则、技术栈约束、开发
 - 新增第三方依赖必须在 PR 描述中说明理由与被拒绝的替代方案。
 
 **理由**：本系统的核心复杂度集中在保存管线与元数据演化规则上（见
-`docs/design-baseline.md` 第 4、5 节）。这些逻辑一旦被埋在过长的 handler 或被吞掉的
+`docs/archive/design-baseline.md` 第 4、5 节）。这些逻辑一旦被埋在过长的 handler 或被吞掉的
 error 里，故障将表现为静默的数据损坏而非可见的崩溃。
 
 ### II. 测试标准 (Testing Standards) — NON-NEGOTIABLE
@@ -177,7 +177,7 @@ error 里，故障将表现为静默的数据损坏而非可见的崩溃。
 
 **设计基线**
 
-- `docs/design-baseline.md` 是数据模型、保存管线、元数据变更规则与 API 表面的
+- `docs/archive/design-baseline.md` 是数据模型、保存管线、元数据变更规则与 API 表面的
   唯一事实来源。实现与该文档冲突时，必须先修订文档再改代码。
 
 ## 开发工作流与质量门禁 (Development Workflow & Quality Gates)
@@ -229,6 +229,6 @@ error 里，故障将表现为静默的数据损坏而非可见的崩溃。
 - 每次 `/speckit-plan` 的 Constitution Check 必须逐条列出五项原则的符合情况，
   不得以「通过」一词概括
 - 每次 code review 必须核对上节的七条合并门禁
-- 运行时开发指引见 `CLAUDE.md` 与 `docs/design-baseline.md`
+- 运行时开发指引见 `CLAUDE.md`（跨栈硬规则）与 `docs/rules/`（按包分开的详细规则）
 
 **Version**: 1.1.0 | **Ratified**: 2026-08-27 | **Last Amended**: 2026-08-28

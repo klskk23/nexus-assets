@@ -1,11 +1,11 @@
 # Phase 1 数据模型
 
 > **本规格描述 feature 001 交付时的形态。** 编号模型与字段绑定规则随后由
-> `docs/design-baseline-v2.md` 改写，冲突处以 v2 为准。
+> `docs/archive/design-baseline-v2.md` 改写，冲突处以 v2 为准。
 
 **Feature**: 001-asset-ledger-demo | **Date**: 2026-08-28
 
-DDL 取自 `docs/design-baseline.md` 第 2 节，是 `migrations/001_init.sql` 的权威来源。
+DDL 取自 `docs/archive/design-baseline.md` 第 2 节，是 `migrations/001_init.sql` 的权威来源。
 本文在此之上补齐设计基线**未定义**的三处规则 —— 状态机的合法转换、状态与持有方的耦合、
 流转事件类型的推导 —— 这三处不定义，实现时必然要临场发明。
 
@@ -30,7 +30,7 @@ DDL 取自 `docs/design-baseline.md` 第 2 节，是 `migrations/001_init.sql` �
 
 ## 2. DDL
 
-见 `docs/design-baseline.md` 第 2 节的完整建表语句，逐字落入 `migrations/001_init.sql`，
+见 `docs/archive/design-baseline.md` 第 2 节的完整建表语句，逐字落入 `migrations/001_init.sql`，
 包裹 goose 的 `-- +goose Up` / `-- +goose Down` 注释。此处只重述**易被漏掉的两条索引**：
 
 ```sql

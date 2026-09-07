@@ -12,7 +12,7 @@
 # if it is reachable from anywhere but a LAN.
 #
 # The label printer is a separate product with its own compose file. Uncomment
-# the second service below to run both from here; see docs/zenith-printer.md.
+# the second service below to run both from here; see docs/guides/zenith-printer.md.
 
 # Fixed, so the project and its state are named the same wherever this file is
 # checked out. Compose otherwise names the project after the directory, which

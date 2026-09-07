@@ -131,7 +131,7 @@ description: "Task list for 004-configurable-statuses"
 - [X] T043 [P] Register `/statuses` in `web/src/routes/router.tsx` and the nav in `web/src/routes/AppShell.tsx`
 - [X] T044 Add `web/tests/statuses.test.tsx` — seven cases: list with kind and behaviour, palette classes, no delete on built-ins, inline recolour, create with switches, the cost stated before deletion with the key typed to arm it, and a refusal surfacing above the table
 - [X] T045 Update `specs/001-asset-ledger-demo/contracts/openapi.yaml` in place with the five new paths and the `Status` schema; diff the router against it
-- [X] T046 Write `docs/design-baseline-v4.md` (decisions 53–60) and point `CLAUDE.md` at it
+- [X] T046 Write `docs/archive/design-baseline-v4.md` (decisions 53–60) and point `CLAUDE.md` at it
 - [X] T047 Run the full gate: `go build ./... && go vet ./... && go test ./...`, `npm run typecheck && npm run lint && npm test && npm run build`
 - [X] T048 Verify live against a running binary: seed, create, transfer, overview, refuse, delete, export, `nexus verify`
 

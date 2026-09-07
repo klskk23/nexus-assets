@@ -4,7 +4,7 @@
 
 An internal asset ledger: devices, categories and fields, statuses and
 transfers, CSV import/export, and a change audit. Point it at
-[zenith-printer](./docs/zenith-printer.en.md) and ticking a few devices prints
+[zenith-printer](./docs/guides/zenith-printer.en.md) and ticking a few devices prints
 their labels.
 
 **The whole deployment artefact is one file**: a static Go binary with the
@@ -158,4 +158,4 @@ make lint
 - Project conventions and the rules most easily broken: [`CLAUDE.md`](./CLAUDE.md)
 - Design baselines and past decisions: [`docs/`](./docs)
 - Specs and the API contract: [`specs/`](./specs) (`001-.../contracts/openapi.yaml` is the full endpoint list)
-- Label printing: [`docs/zenith-printer.en.md`](./docs/zenith-printer.en.md)
+- Label printing: [`docs/guides/zenith-printer.en.md`](./docs/guides/zenith-printer.en.md)

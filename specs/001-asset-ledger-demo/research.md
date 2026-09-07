@@ -3,7 +3,7 @@
 **Feature**: 001-asset-ledger-demo | **Date**: 2026-08-28
 
 Technical Context 中没有 NEEDS CLARIFICATION —— 技术选型已由章程 v1.0.1 与
-`docs/design-baseline.md` 全部锁定。本文解决的是选型之下、实现之上的一层：
+`docs/archive/design-baseline.md` 全部锁定。本文解决的是选型之下、实现之上的一层：
 **已定决策落地时必须先想清楚、否则会在编码中途卡住或被静默做错的地方。**
 
 每条决策标注了是否需要在 Setup 阶段用一条可执行的断言验证。凭记忆写下的库用法不算数。

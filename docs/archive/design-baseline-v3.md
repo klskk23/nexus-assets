@@ -1,6 +1,6 @@
 # 设计基线 v3 —— 信息项生命周期与型号归属
 
-本文承接 `docs/design-baseline.md`（决策 1–24）与 `docs/design-baseline-v2.md`（决策 25–40），
+本文承接 `docs/archive/design-baseline.md`（决策 1–24）与 `docs/archive/design-baseline-v2.md`（决策 25–40），
 记录第三轮访谈确定的决策 **41–52**。凡与 v1/v2 冲突之处，**以本文为准**，并注明被推翻的原决策。
 
 > 适用范围：feature `003-field-lifecycle-and-models`。前两版中未被本文触及的部分继续有效。

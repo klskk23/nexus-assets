@@ -241,7 +241,7 @@ Phase 1 直接从迁移与领域模型开始。
 - [X] T094 [P] Rewrite the three fully-English domain messages in Chinese in `internal/schema/category_store.go`, `internal/schema/binding.go` and `internal/auth/store.go`
 - [X] T095 [P] Integration test that no error message carries its English sentinel, across three different sentinels, in `internal/httpapi/categories_test.go`
 - [X] T096 [P] Update `specs/001-asset-ledger-demo/contracts/openapi.yaml` in place — it remains the full API surface
-- [X] T097 [P] Add superseded banners to `docs/design-baseline.md` and the three 001 spec documents; rewrite the reading order and hard rules in `CLAUDE.md`
+- [X] T097 [P] Add superseded banners to `docs/archive/design-baseline.md` and the three 001 spec documents; rewrite the reading order and hard rules in `CLAUDE.md`
 - [X] T098 [P] Rewrite the configuration steps in `specs/001-asset-ledger-demo/quickstart.md` for dependency-ordered binding
 - [X] T099 Verify core-pipeline coverage is back over 80% after moving the gate tests into `internal/schema` — cross-package tests do not count toward a package's coverage
 - [X] T100 Run all seven merge gates and a live end-to-end pass (seed → scan → correct a MAC → transfer → change status → delete → verify)

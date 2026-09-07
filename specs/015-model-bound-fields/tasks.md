@@ -137,7 +137,7 @@
 - [X] T054 同步合约：把新端点、新字段、新参数、三个新 error code 写进 `specs/001-asset-ledger-demo/contracts/openapi.yaml`，并 `cp` 到 `internal/httpapi/docs/openapi.yaml`（有测试盯两者一致）
 - [X] T055 更新 `deploy/smoke.sh`：加一条型号绑定端点的存在性检查（空库上验证它在无该型号时的正确拒绝行为，与既有 `refresh-source` 那条同形），章程要求改了端点就要改冒烟脚本
 - [X] T056 在 `CLAUDE.md` 加一条硬规则：字段绑定两种模式互斥、唯一性范围各自计算、`display_key` 只认类别模式字段、换型号会归档
-- [X] T057 更新 `docs/zenith-printer.md` 与 `.en.md`：`GET /api/rows` 的列会因型号绑定字段变宽，不匹配行留空（两份一起改）
+- [X] T057 更新 `docs/guides/zenith-printer.md` 与 `.en.md`：`GET /api/rows` 的列会因型号绑定字段变宽，不匹配行留空（两份一起改）
 - [X] T058 i18n 完整性核对：`TestCatalogsCoverTheSameKeys` 通过，`web` 端 `en.ts` 受 `typeof zh` 约束不缺键，新增文案无一遗漏
 - [X] T059 跑完整门禁（章程七条，缺一不可）：`gofmt -l` 空、`go vet`、`golangci-lint run` 零告警；`go test ./...` 全过且 `internal/schema` 与 `internal/asset` 覆盖率 ≥ 80%（`go test -cover`）；`nexus verify` 对种子库对帐通过；`npx tsc --noEmit`、`npm run lint`、`npx vitest run` 全过、`npm run build` 通过；无自定义组件；文档中文代码英文
 - [X] T060 按 `quickstart.md` 起本地服务实机走一遍 11 步（含第 11 步的既有行为回归）

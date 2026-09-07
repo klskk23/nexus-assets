@@ -58,7 +58,7 @@
 
 - spec.md 顶部「语言规范」引用块中出现 `error.code`、API 路径等词汇。该引用块是撰写约定说明
   （来自章程原则 V），不属于需求正文，不构成实现细节泄漏。
-- Assumptions 中引用 `docs/design-baseline.md` 与章程文件，属依赖声明而非实现细节。
+- Assumptions 中引用 `docs/archive/design-baseline.md` 与章程文件，属依赖声明而非实现细节。
 
 **结论**：16/16 项通过，可进入 `/speckit-plan`。
 

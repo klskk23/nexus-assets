@@ -16,7 +16,7 @@
 > 数据库标识符。用户可见文案（UI 文本、字段 label、`error.message`）使用中文。
 
 > **与既有规格的关系**：本规格**修订**而非取代 001 与 002。设计层面的对应文档是
-> `docs/design-baseline-v3.md`（决策 41–52）。
+> `docs/archive/design-baseline-v3.md`（决策 41–52）。
 
 | 既有需求 | 本规格的处置 |
 |----------|--------------|
@@ -264,7 +264,7 @@
 
 ## Assumptions
 
-- 本规格的设计决策以 `docs/design-baseline-v3.md`（决策 41–52）为准；
+- 本规格的设计决策以 `docs/archive/design-baseline-v3.md`（决策 41–52）为准；
   未被 v3 触及的部分依次以 v2（25–40）、v1（1–24）为准；
   开发与质量约束以 `.specify/memory/constitution.md`（v1.1.0）为准
 - **不新增章程条款**。用户提出过「加一条章程要求对齐前端与 API」，

@@ -1,7 +1,7 @@
 # Implementation Plan: 资产台账与流转系统 Demo
 
 > **本规格描述 feature 001 交付时的形态。** 编号模型与字段绑定规则随后由
-> `docs/design-baseline-v2.md` 改写，冲突处以 v2 为准。
+> `docs/archive/design-baseline-v2.md` 改写，冲突处以 v2 为准。
 
 **Branch**: `001-asset-ledger-demo` | **Date**: 2026-08-28 | **Spec**: [spec.md](./spec.md)
 
@@ -14,7 +14,7 @@
 交付一套内部路由设备资产台账与流转系统的第一版 demo：资产按可自定义的类别与信息项建档、
 资产编号由类别规则自动生成、每次持有方/负责人/状态变化都留下不可变的流转记录。
 
-技术路径已由 `docs/design-baseline.md`（v0，21 项已闭合决策）与项目章程（v1.0.1）锁定，
+技术路径已由 `docs/archive/design-baseline.md`（v0，21 项已闭合决策）与项目章程（v1.0.1）锁定，
 本计划不重新论证选型，只解决三件事：**把已定决策落成可执行的代码结构**、
 **补齐设计基线未覆盖的实现级空白**（状态机合法转换、持有方与状态的耦合规则、读写连接池分离、
 类别树的组件方案）、以及**逐条核对章程门禁**。
@@ -133,7 +133,7 @@ web/
 ```
 
 **Structure Decision**: 采用后端 + 前端并列、但合并交付为单一可执行文件的结构。
-目录划分直接取自 `docs/design-baseline.md` 第 9 节，并按本计划补入 `config/`、`model/`、
+目录划分直接取自 `docs/archive/design-baseline.md` 第 9 节，并按本计划补入 `config/`、`model/`、
 `holder/` 三个包 —— 前两者是章程原则 I「分层边界」的落地位置（配置装载与领域枚举
 不应散落在 handler 或 store 中），`holder/` 承载持有方树与引用完整性检查，
 这部分逻辑在设计基线中未单独成包但体量足够独立。

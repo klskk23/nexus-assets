@@ -1,6 +1,6 @@
 # Phase 0 Research: 可配置的状态
 
-本文记录 6 项实现级决策。设计层面的决策见 `docs/design-baseline-v4.md`（53–60）。
+本文记录 6 项实现级决策。设计层面的决策见 `docs/archive/design-baseline-v4.md`（53–60）。
 
 ---
 

@@ -3,7 +3,7 @@
 *English: [`README.en.md`](./README.en.md)*
 
 内部固定资产台账：设备、类别与字段、状态与流转、导入导出、变更审计。
-配上 [zenith-printer](./docs/zenith-printer.md) 之后，还能勾几台设备一键打标签。
+配上 [zenith-printer](./docs/guides/zenith-printer.md) 之后，还能勾几台设备一键打标签。
 
 **整个部署物就是一个文件**：Go 静态二进制，前端和数据库迁移都编译在里面，
 数据是同目录下的一个 SQLite 文件。没有 Redis、没有第二个进程、不需要外部数据库。
@@ -146,4 +146,4 @@ make lint
 - 项目约定与最容易违反的硬规则：[`CLAUDE.md`](./CLAUDE.md)
 - 设计基线与历次决策：[`docs/`](./docs)
 - 规格与 API 契约：[`specs/`](./specs)（`001-.../contracts/openapi.yaml` 是全量端点清单）
-- 对接标签打印：[`docs/zenith-printer.md`](./docs/zenith-printer.md)
+- 对接标签打印：[`docs/guides/zenith-printer.md`](./docs/guides/zenith-printer.md)

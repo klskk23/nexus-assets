@@ -1,7 +1,7 @@
 # Feature Specification: 资产台账与流转系统 Demo
 
 > **本规格描述 feature 001 交付时的形态。** 编号模型与字段绑定规则随后由
-> `docs/design-baseline-v2.md` 改写，冲突处以 v2 为准。
+> `docs/archive/design-baseline-v2.md` 改写，冲突处以 v2 为准。
 
 **Feature Branch**: `001-asset-ledger-demo`
 
@@ -394,7 +394,7 @@
 
 ## Assumptions
 
-- 本规格的全部设计决策以 `docs/design-baseline.md`（v0，21 项已闭合决策）为准；
+- 本规格的全部设计决策以 `docs/archive/design-baseline.md`（v0，21 项已闭合决策）为准；
   开发与质量约束以 `.specify/memory/constitution.md`（v1.0.1）为准。
   三者若有冲突，以那两份文件为准，并须先修订它们再修订本规格
 - **本版不做权限区分**：任何通过准入的账号都可以修改任何数据。风险由企业邮箱域名白名单控制。

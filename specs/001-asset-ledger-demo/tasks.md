@@ -385,7 +385,7 @@ Excel 和记忆里」变成「设备有账可查」。
 - [X] T176 [P] Verify core pipeline package coverage ≥ 80% in the CI workflow for `internal/schema`, `internal/asset`, `internal/compute`
 - [X] T177 [P] Audit keyboard reachability and visible focus across all eleven routes in `web/tests/a11y.test.tsx` (章程原则 III)
 - [X] T178 [P] Verify every user-facing string lives in `web/src/i18n/zh.ts` or `internal/httpapi/messages.go`, none inline (章程原则 V)
-- [X] T179 Update `docs/design-baseline.md` with the three rules added during planning (status machine, holder/status coupling, transfer-kind derivation) so the design doc stays the source of truth
+- [X] T179 Update `docs/archive/design-baseline.md` with the three rules added during planning (status machine, holder/status coupling, transfer-kind derivation) so the design doc stays the source of truth
 - [X] T180 Run all seven merge gates end to end per quickstart.md and record the result in the PR
 
 ---

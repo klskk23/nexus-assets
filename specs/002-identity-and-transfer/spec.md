@@ -18,7 +18,7 @@
 
 > **与 feature 001 的关系**：本规格**修订**而非取代 001。001 的 73 条功能需求中，
 > 下表列出的若干条被本规格改写；其余全部继续有效。设计层面的对应文档是
-> `docs/design-baseline-v2.md`（决策 25–40）。
+> `docs/archive/design-baseline-v2.md`（决策 25–40）。
 
 | 001 的需求 | 本规格的处置 |
 |------------|--------------|
@@ -340,8 +340,8 @@
 
 ## Assumptions
 
-- 本规格的全部设计决策以 `docs/design-baseline-v2.md`（决策 25–40）为准；
-  未被 v2 触及的部分继续以 `docs/design-baseline.md`（决策 1–24）为准；
+- 本规格的全部设计决策以 `docs/archive/design-baseline-v2.md`（决策 25–40）为准；
+  未被 v2 触及的部分继续以 `docs/archive/design-baseline.md`（决策 1–24）为准；
   开发与质量约束以 `.specify/memory/constitution.md`（v1.1.0）为准
 - 存量 demo 数据中已生成的编号**直接丢弃**，迁移后用 `nexus seed` 重建。
   本特性不提供把旧编号搬进新模型的迁移路径

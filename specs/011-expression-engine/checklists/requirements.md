@@ -30,7 +30,7 @@
 ## Notes
 
 **没有 plan.md / research.md：调研先于规格完成，写在
-[`docs/research-expr-engine.md`](../../docs/research-expr-engine.md) 里**，
+[`docs/guides/research-expr-engine.md`](../../../docs/guides/research-expr-engine.md) 里**，
 含备选方案、原型实测数据与实施顺序。再写一遍只会有两份会分叉的同一份内容。
 
 **校验（2026-08-31）—— 16/16 通过，2 项曾未通过**
