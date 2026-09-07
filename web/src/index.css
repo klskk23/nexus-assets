@@ -43,15 +43,26 @@
   --border-muted: color-mix(in srgb, #201e1d 8%, transparent);
 }
 @theme inline {
+  /* Organic gives three radii, not one scale.
+   *
+   * Upstream derives sm/md/lg/xl from a single --radius as r-4, r-2, r, r+4,
+   * which works while r is 10px and collapses at 28: every step lands between
+   * 24 and 32, so a dropdown item would carry very nearly a card's corner.
+   * Pinned to the prototype's own three tiers instead -- 8 for things inset in
+   * something else, 16 for mid-sized surfaces, 28 for cards, dialogs and
+   * panels. xl repeats lg rather than inventing a fourth.
+   *
+   * Small controls -- buttons, inputs, tabs, toggles -- are not on this scale
+   * at all; they are pills, and say rounded-full at the component. */
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 28px;
+  --radius-xl: 28px;
   /* Latin first, Chinese second, system last. Order matters: Figtree has no CJK
    * glyphs, so every Chinese character falls through to Noto Sans SC -- which is
    * the intended path, not a fallback. */
   --font-sans: "Figtree Variable", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
   --font-heading: "Caprasimo", "Noto Sans SC", ui-serif, Georgia, serif;
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

@@ -33,10 +33,10 @@ worker 集体 45 秒超时，看起来像十几个测试同时坏了。
       沙绿与陶土橙拉得开，且不与八个状态调色板的任何色相撞
 - [x] T009 `web/src/index.css`：八个 `.status-*` 调色板按新底色复核对比度。
       它们原是为白底校的，奶油底会削弱对比。**区分不得只靠颜色**（FR-005）
-- [ ] T010 `web/src/components/ui/`：把九个小控件的圆角改成药丸（`rounded-full`）——
+- [x] T010 `web/src/components/ui/`：把九个小控件的圆角改成药丸（`rounded-full`）——
       button、badge、input、textarea、select trigger、toggle、toggle-group、tabs trigger、input-group。
       **每改完一个立刻跑一次测试**，不攒到最后（Radix 不动就不掉 role，但顺手改了元素类型就会）
-- [ ] T011 每个改成药丸的控件加 `white-space: nowrap`。英文比中文长，
+- [x] T011 每个改成药丸的控件加 `white-space: nowrap`。英文比中文长，
       不加的话窄屏与英文界面下药丸里的字会换行
 - [x] T012 `web/src/components/ui/`：删除 15 个文件里的 25 处 `dark:` 工具类
 - [x] T013 `web/src/components/ui/sonner.tsx`：摘掉 `next-themes`，固定为浅色

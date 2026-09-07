@@ -2,6 +2,10 @@ import * as React from "react"
 
 import { cn } from "cn"
 
+/* Not a pill, unlike every other control in this family: a textarea is two or
+ * more lines tall, and a 999px corner cuts into the first and last of them.
+ * It takes the mid radius instead -- the same one the popovers and small cards
+ * use, which is where a multi-line box belongs. */
 function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
     <textarea
