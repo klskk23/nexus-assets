@@ -1,6 +1,47 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.1.0 → 1.2.0
+Bump rationale: MINOR。「设计基线」一节改写为「事实来源」：原文指定
+                当时路径下的 `design-baseline.md`（v1，决策 1–24）为唯一事实来源，
+                而它早已被 v2–v6 与 001 起的历轮 spec 取代，016 轮又随 docs/ 重整
+                归档到 `docs/archive/`。这不是路径修正 —— 它改变了「实现与文档冲突时
+                该去改哪一份」这条强制义务所指向的对象，并新增了一条此前没有的
+                优先级规则。按本章程自身的版本策略，「对既有条款作实质性扩展」为 MINOR；
+                PATCH 只覆盖不改变约束语义的细化，本次不属于。
+                （先例：v1.1.0 的报告同样把预估的 PATCH 更正为 MINOR。）
+
+Modified principles: 无
+Added sections: 无
+Removed sections: 无
+
+Modified content:
+  「技术栈约束 → 设计基线」更名为「事实来源」，并改写为：
+    - 三级优先级：当前 spec > docs/rules/ > docs/archive/design-baseline*.md
+    - 明确「冲突时以最新一版为准」，并写明 v1 不再单独构成约束
+    - 说明 docs/ 三分结构（rules / guides / archive）各自的阅读时机
+
+Rationale:
+  旧条款把一份 2026-08 的 v1 基线钉成唯一事实来源。十六轮 spec 之后，
+  v1 里关于字段类型、绑定模式、状态与持有方的描述多数已被推翻。
+  照条款字面执行会要求「先把实现改回去或先修订 v1」，两者都不是本意。
+  归档动作（016 轮）使这份文档的位置也变了，正好一并把条款说清楚。
+
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md   — Constitution Check 的版本引用 v1.1.0 → v1.2.0
+  ✅ .specify/templates/spec-template.md   — 不引用设计基线，无需修改
+  ✅ .specify/templates/tasks-template.md  — 不引用设计基线，无需修改
+  ✅ CLAUDE.md                              — 016 轮已改为指向 docs/rules/ 与 docs/archive/
+  ✅ docs/README.md                         — 016 轮已写明三分结构，与本次措辞一致
+  ✅ README.md                              — 「设计基线与历次决策：docs/」仍然成立
+
+Deferred:
+  原则 I 的理由段仍引用 `docs/archive/design-baseline.md` 第 4、5 节。那是一处
+  历史出处引用而非约束，指向准确，本次不动。
+
+Follow-up TODOs: 无
+
+--- 历史 ---
 Version change: 1.0.1 → 1.1.0
 Bump rationale: MINOR。往「技术栈约束 → 前端」新增一项此前不存在的强制依赖（路由库），
                 属于对既有条款的实质性扩展，而非不改变约束语义的细化。
@@ -31,7 +72,6 @@ Templates requiring updates:
 
 Follow-up TODOs: 无
 
---- 历史 ---
 v1.0.1 (2026-08-27) 回填 SQLite 驱动：modernc.org/sqlite，CGO_ENABLED=0 与 DSN pragma 形式
 v1.0.0 (2026-08-27) 首次批准：五项核心原则、技术栈约束、开发工作流与质量门禁、治理规则
 -->
@@ -175,10 +215,19 @@ error 里，故障将表现为静默的数据损坏而非可见的崩溃。
 - 单二进制：前端构建产物经 `embed.FS` 打包，Gin 同时服务 `/api` 与静态文件
 - 部署产物 = 一个可执行文件 + 一个 `.db` 文件
 
-**设计基线**
+**事实来源**
 
-- `docs/archive/design-baseline.md` 是数据模型、保存管线、元数据变更规则与 API 表面的
-  唯一事实来源。实现与该文档冲突时，必须先修订文档再改代码。
+- 数据模型、保存管线、元数据变更规则与 API 表面的事实来源，**按以下优先级**：
+  1. 当前 spec（`specs/` 下编号最大的一轮）与它引用的合约
+  2. `docs/rules/` —— 按包分开的现行规则，每条带「为什么」与「违反了会怎样」
+  3. `docs/archive/design-baseline*.md` —— 决策 1–72 的原始记录
+
+  **冲突时以最新一版为准。** 早期基线（v1，决策 1–24）已被 v2–v6 与 001 起的历轮
+  spec 逐条取代，只作考古用，不再单独构成约束 —— 它对字段类型、
+  绑定模式、状态与持有方的描述多数已被推翻，照字面执行会要求把实现改回去。
+- 实现与上述任一**现行**来源冲突时，必须先修订文档再改代码。
+- `docs/` 分三类，读的时机不同：`rules/` 在动对应的包之前读（各包的 `CLAUDE.md`
+  薄指针会提醒），`guides/` 在接那件事时读，`archive/` 只在追溯「当初为什么这么定」时读。
 
 ## 开发工作流与质量门禁 (Development Workflow & Quality Gates)
 
@@ -231,4 +280,4 @@ error 里，故障将表现为静默的数据损坏而非可见的崩溃。
 - 每次 code review 必须核对上节的七条合并门禁
 - 运行时开发指引见 `CLAUDE.md`（跨栈硬规则）与 `docs/rules/`（按包分开的详细规则）
 
-**Version**: 1.1.0 | **Ratified**: 2026-08-27 | **Last Amended**: 2026-08-28
+**Version**: 1.2.0 | **Ratified**: 2026-08-27 | **Last Amended**: 2026-09-07

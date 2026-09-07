@@ -40,7 +40,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-依据 `.specify/memory/constitution.md` v1.1.0。**必须逐条填写符合情况，不得以「通过」一词概括。**
+依据 `.specify/memory/constitution.md` v1.2.0。**必须逐条填写符合情况，不得以「通过」一词概括。**
 
 | # | 原则 | 本特性的符合情况 |
 |---|------|------------------|
