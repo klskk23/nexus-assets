@@ -16,7 +16,7 @@
    * from this; they say rounded-full at the component. One --radius cannot be
    * both 28px and 999px, and splitting the difference gets neither. */
   --radius: 28px;
-  --background: #f5ead8;
+  --background: #f9f4ed;
   --foreground: #201e1d;
   --card: #ebddc5;
   --card-foreground: #201e1d;
@@ -49,10 +49,17 @@
    * for quantity (the category bars) and for decoration that must not read as
    * either. Named here so nothing has to write the hex twice. */
   --accent-2: #8fa073;
-  /* Sunk below the card: table headers and grouped read-only values. A
-   * ledger nests two or three deep, and three identical bordered boxes is
-   * what makes it read as a kit of cards rather than one document. */
-  --well: #f9f4ed;
+  /* Sunk below the page: table headers, grouped read-only values, hint
+   * blocks -- and the ground the whole shell sits on, which the content panel
+   * floats above.
+   *
+   * This and --background traded values. The page used to be the cream and
+   * the well the lighter tone, which made the rail the brightest thing on
+   * screen and left a selected nav item's pale bed at 1.00:1 against it --
+   * the same relative luminance, so literally invisible. Content is the
+   * lightest surface now and the chrome steps back, which is the way round
+   * everything else on the page already worked. */
+  --well: #f5ead8;
   /* The rule between rows, as against the rule around things. Same colour
    * family, half the weight: the eye should follow the column. */
   --border-muted: color-mix(in srgb, #201e1d 8%, transparent);

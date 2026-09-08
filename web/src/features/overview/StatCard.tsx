@@ -35,7 +35,7 @@ export function StatCard({ label, count, ariaLabel, onOpen }: Props) {
     <button
       type="button"
       aria-label={ariaLabel}
-      className="border-border-muted hover:border-primary hover:bg-accent flex min-w-[152px] cursor-pointer flex-col items-start gap-2 rounded-[28px] border px-6 pt-[22px] pb-5 text-left transition-colors"
+      className="bg-well border-border-muted hover:border-primary hover:bg-accent flex min-w-[152px] cursor-pointer flex-col items-start gap-2 rounded-[28px] border px-6 pt-[22px] pb-5 text-left transition-colors"
       onClick={onOpen}
     >
       {label}

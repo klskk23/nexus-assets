@@ -73,13 +73,18 @@ export function AppShell() {
      * becomes a scroll container, and the whole thing scrolls as one -- taking
      * the nav off the top of the screen, which is the one thing a fixed rail is
      * for. The rail is a nav landmark; the panel is the document. */
-    /* The rail is a block sitting on the page ground, not an area fenced off
-     * from it by a hairline. That was the prototype's own first correction
-     * against what it delivered, and it is the same rule as everywhere else on
-     * this product: a thing is separated by its shape and its ground, not by a
-     * line drawn between two areas that otherwise look identical. */
-    <div className="grid h-screen grid-cols-[236px_1fr] bg-background p-3 text-foreground max-md:grid-cols-1 max-md:grid-rows-[auto_1fr] max-md:p-0">
-      <div className="bg-well flex min-h-0 flex-col gap-6 rounded-[28px] pt-9 pr-[18px] pb-12 pl-[30px] max-md:flex-row max-md:items-center max-md:gap-4 max-md:rounded-none max-md:px-5 max-md:py-3">
+    /* The content is a panel floating on the shell's ground; the rail sits
+     * straight on that ground and draws nothing of its own.
+     *
+     * It used to be the other way round -- the rail was a rounded block and
+     * the panel was the plain area -- which stopped making sense the moment
+     * the two grounds traded places: the rail and the gutter around it are now
+     * the same cream, so a rounded block there would be framing air. The
+     * separation comes from the panel's own ground, which is the same rule as
+     * everywhere else here: a thing is told apart by its shape and its
+     * surface, never by a line drawn between two areas that look alike. */
+    <div className="grid h-screen grid-cols-[236px_1fr] bg-well p-3 text-foreground max-md:grid-cols-1 max-md:grid-rows-[auto_1fr] max-md:p-0">
+      <div className="flex min-h-0 flex-col gap-6 pt-9 pr-[18px] pb-12 pl-[30px] max-md:flex-row max-md:items-center max-md:gap-4 max-md:px-5 max-md:py-3">
         {/* Two lines, the second one carrying the product's one piece of
             colour. Split from the catalogue rather than written out here:
             the name is not translated, but it still has exactly one source,
@@ -166,7 +171,7 @@ export function AppShell() {
       </div>
 
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
-      <main className="min-h-0 overflow-y-auto bg-background pt-11 pr-10 pb-30 pl-14 max-md:p-5">
+      <main className="bg-background min-h-0 overflow-y-auto rounded-[28px] pt-11 pr-10 pb-30 pl-14 max-md:rounded-none max-md:p-5">
         {/* The content column has a ceiling and sits against the left edge.
          *
          * Not a centred column -- 017 removed the last of those, and what was
