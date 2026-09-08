@@ -12,7 +12,6 @@ import { PageHeader } from "@/features/common/PageHeader"
 import { Timeline } from "@/features/transfers/Timeline"
 import { EditEvent } from "@/features/transfers/EditEvent"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface DetailResponse {
   asset: Asset
@@ -61,11 +60,9 @@ export function AssetHistory() {
         }
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.assets.historyTitle}</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
+      <section aria-label={t.assets.historyTitle} className="grid content-start gap-3">
+        <h2 className="font-medium">{t.assets.historyTitle}</h2>
+        <div className="grid gap-4">
           {editing && <EditEvent event={editing} assetID={id} onClose={() => setEditing(null)} />}
           <Timeline
             events={events}
@@ -74,8 +71,8 @@ export function AssetHistory() {
             editableId={tailID}
             onEdit={setEditing}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   )
 }

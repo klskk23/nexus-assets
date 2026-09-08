@@ -10,7 +10,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { PageHeader } from "@/features/common/PageHeader"
@@ -127,12 +126,12 @@ export function Import() {
     <div className="grid max-w-4xl gap-6">
       <PageHeader title={tImport.title} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{tImport.step1}</CardTitle>
-          <CardDescription>{tImport.step1Hint}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
+      <section aria-label={tImport.step1} className="grid content-start gap-3">
+        <div className="grid gap-1">
+          <h2 className="font-medium">{tImport.step1}</h2>
+          <p className="text-sm text-muted-foreground">{tImport.step1Hint}</p>
+        </div>
+        <div className="grid gap-4">
           <div className="flex flex-wrap items-end gap-4">
             <Field className="w-56">
               <FieldLabel htmlFor="im-category">{tImport.category}</FieldLabel>
@@ -184,15 +183,15 @@ export function Import() {
               <AlertDescription>{templateError}</AlertDescription>
             </Alert>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{tImport.step2}</CardTitle>
-          <CardDescription>{tImport.step2Hint}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
+      <section aria-label={tImport.step2} className="grid content-start gap-3">
+        <div className="grid gap-1">
+          <h2 className="font-medium">{tImport.step2}</h2>
+          <p className="text-sm text-muted-foreground">{tImport.step2Hint}</p>
+        </div>
+        <div className="grid gap-4">
           <div className="flex flex-wrap items-end gap-4">
             <Field className="w-80">
               <FieldLabel htmlFor="im-file">{tImport.file}</FieldLabel>
@@ -232,16 +231,16 @@ export function Import() {
               <AlertDescription>{banner}</AlertDescription>
             </Alert>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {report && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{tImport.step3}</CardTitle>
-            <CardDescription>{tImport.step3Hint}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
+        <section aria-label={tImport.step3} className="grid content-start gap-3">
+          <div className="grid gap-1">
+            <h2 className="font-medium">{tImport.step3}</h2>
+            <p className="text-sm text-muted-foreground">{tImport.step3Hint}</p>
+          </div>
+          <div className="grid gap-4">
             <p role="status">
               {tImport.summary(report.ok, report.total)}
               {failing.length === 0 ? (
@@ -288,8 +287,8 @@ export function Import() {
                 {commit.isPending ? tImport.committing : tImport.commit}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       )}
     </div>
   )

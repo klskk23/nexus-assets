@@ -456,7 +456,7 @@ it("has no print button without a print service configured", async () => {
 })
 
 // What the device is, before what can be done to it (015, decision 104).
-describe("the attribute card", () => {
+describe("the attribute section", () => {
   // Its own, because this block sits outside describe("AssetDetail") and so
   // never sees that one's hooks.
   beforeEach(() => {
@@ -472,7 +472,7 @@ describe("the attribute card", () => {
     await screen.findByText("112394521950")
 
     const dialog = screen.getByRole("dialog")
-    const card = within(dialog).getByText("设备属性").closest("[data-slot=card]") as HTMLElement
+    const card = within(dialog).getByText("设备属性").closest("section") as HTMLElement
     expect(within(card).getByText("基准 MAC")).toBeInTheDocument()
     expect(within(card).getByText("001A2B3C4D5E")).toBeInTheDocument()
     expect(within(card).getByText("固件版本")).toBeInTheDocument()
@@ -497,7 +497,7 @@ describe("the attribute card", () => {
     await screen.findByText("112394521950")
 
     const dialog = screen.getByRole("dialog")
-    const card = within(dialog).getByText("设备属性").closest("[data-slot=card]") as HTMLElement
+    const card = within(dialog).getByText("设备属性").closest("section") as HTMLElement
     for (const builtin of ["当前持有方", "当前负责人", "备注", "状态"]) {
       expect(within(card).queryByText(builtin)).not.toBeInTheDocument()
     }
@@ -529,7 +529,7 @@ describe("the attribute card", () => {
 
     // The fixture asset has no model, so a field belonging to one is not its.
     const dialog = screen.getByRole("dialog")
-    const card = within(dialog).getByText("设备属性").closest("[data-slot=card]") as HTMLElement
+    const card = within(dialog).getByText("设备属性").closest("section") as HTMLElement
     expect(within(card).queryByText("ServiceTag")).not.toBeInTheDocument()
   })
 })

@@ -17,14 +17,6 @@ import { PageHeader } from "@/features/common/PageHeader"
 import { Timeline } from "@/features/transfers/Timeline"
 import { Button } from "@/components/ui/button"
 import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -33,7 +25,6 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Field, FieldLabel } from "@/components/ui/field"
-
 import {
   Select,
   SelectContent,
@@ -98,9 +89,9 @@ export function Overview() {
                 statuses on one line and the sixth on a line of its own, which
                 made a configurable list look like two unrelated groups. The
                 cards shrink instead, and only wrap once one of them would go
-                under 6rem -- narrower than that and the label stops fitting,
-                which is the point where wrapping is the lesser evil. */}
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-3">
+                under 152px -- the width the prototype gives them, and below
+                which the chip and the count stop sitting comfortably. */}
+            <div className="flex flex-wrap gap-[22px] [&>*]:flex-1">
               {(overview.data?.status_counts ?? []).map((s) => (
                 <StatCard
                   key={s.status}
@@ -114,12 +105,12 @@ export function Overview() {
           </section>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>{tOverview.categoryTitle}</CardTitle>
-                <CardDescription>{tOverview.categoryHint}</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <section aria-label={tOverview.categoryTitle} className="grid content-start gap-3">
+              <div className="grid gap-1">
+                <h2 className="font-medium">{tOverview.categoryTitle}</h2>
+                <p className="text-sm text-muted-foreground">{tOverview.categoryHint}</p>
+              </div>
+              <div>
                 {distribution.length === 0 ? (
                   <Empty>
                     <EmptyHeader>
@@ -135,17 +126,17 @@ export function Overview() {
                     onSelect={(id) => navigate(`/assets?category_id=${id}&include_descendants=true`)}
                   />
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </section>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>{tOverview.quickTitle}</CardTitle>
-                <CardDescription>
+            <section aria-label={tOverview.quickTitle} className="grid content-start gap-3">
+              <div className="grid gap-1">
+                <h2 className="font-medium">{tOverview.quickTitle}</h2>
+                <p className="text-sm text-muted-foreground">
                   {hasCategories ? tOverview.quickHint : tOverview.noCategoriesHint}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
+                </p>
+              </div>
+              <div className="grid gap-4">
                 {hasCategories ? (
                   <>
                     <Field>
@@ -174,8 +165,8 @@ export function Overview() {
                     </Button>
                   </>
                 ) : (
-                  // A fresh install has nothing configured, so the card points
-                  // at the one thing that has to happen first.
+                  // A fresh install has nothing configured, so this section
+                  // points at the one thing that has to happen first.
                   <Empty>
                     <EmptyHeader>
                       <EmptyTitle>{tOverview.noCategories}</EmptyTitle>
@@ -187,44 +178,37 @@ export function Overview() {
                     </EmptyContent>
                   </Empty>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </section>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{tOverview.recentTitle}</CardTitle>
+          <section aria-label={tOverview.recentTitle} className="grid gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-medium">{tOverview.recentTitle}</h2>
               {/* Each entry is a multi-line block, so how many belong here is a
                   matter of taste rather than a constant worth guessing at. */}
-              <CardAction>
-                <Field orientation="horizontal" className="w-auto">
-                  <FieldLabel htmlFor="recent-count" className="sr-only">
-                    {tOverview.recentCount}
-                  </FieldLabel>
-                  <Select
-                    value={String(recentCount)}
-                    onValueChange={(v) => setRecentCount(Number(v))}
-                  >
-                    <SelectTrigger id="recent-count" size="sm" className="w-24">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {RECENT_COUNTS.map((n) => (
-                          <SelectItem key={n} value={String(n)}>
-                            {tOverview.recentCountUnit(n)}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <Timeline events={overview.data?.recent_transfers ?? []} />
-            </CardContent>
-          </Card>
+              <Field orientation="horizontal" className="w-auto">
+                <FieldLabel htmlFor="recent-count" className="sr-only">
+                  {tOverview.recentCount}
+                </FieldLabel>
+                <Select value={String(recentCount)} onValueChange={(v) => setRecentCount(Number(v))}>
+                  <SelectTrigger id="recent-count" size="sm" className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {RECENT_COUNTS.map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {tOverview.recentCountUnit(n)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+            <Timeline events={overview.data?.recent_transfers ?? []} />
+          </section>
         </div>
       </StateBoundary>
     </div>

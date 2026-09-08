@@ -1,7 +1,6 @@
 import type { ReactNode } from "react"
 
 import { cn } from "cn"
-import { Card, CardContent } from "@/components/ui/card"
 
 interface Props {
   /** What the number counts -- a status chip here, so colour and name travel together. */
@@ -16,9 +15,16 @@ interface Props {
 /**
  * One number on the overview, and the way to the list behind it.
  *
+ * Not a Card. It does not float above the page -- it sits on it, and takes its
+ * shape from an outline and a corner rather than from a second ground. `--card`
+ * is reserved for things that genuinely lift off: dialogs, drawers, the sticky
+ * bulk bar.
+ *
  * The chip is the label and the number is the content, so the number is what
- * carries the weight. A zero is allowed to recede: five equally loud cards with
- * two of them reading 0 spend the page's attention on nothing.
+ * carries the weight -- Caprasimo at 34px, which it can do here because a count
+ * is digits and digits are what that face covers. A zero is allowed to recede:
+ * five equally loud cards with two of them reading 0 spend the page's attention
+ * on nothing.
  *
  * Tabular figures because these sit in a row and the eye compares them --
  * proportional numerals put 1 on a narrower body than 8, which is invisible in
@@ -26,30 +32,21 @@ interface Props {
  */
 export function StatCard({ label, count, ariaLabel, onOpen }: Props) {
   return (
-    <Card
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       aria-label={ariaLabel}
-      className="hover:bg-accent focus-visible:ring-ring cursor-pointer transition-colors focus-visible:ring-2 focus-visible:outline-none"
+      className="border-border-muted hover:border-primary hover:bg-accent flex min-w-[152px] cursor-pointer flex-col items-start gap-2 rounded-[28px] border px-6 pt-[22px] pb-5 text-left transition-colors"
       onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onOpen()
-        }
-      }}
     >
-      <CardContent className="px-5 py-4">
-        {label}
-        <p
-          className={cn(
-            "mt-2 text-[32px] leading-none tabular-nums",
-            count === 0 && "text-muted-foreground/50",
-          )}
-        >
-          {count}
-        </p>
-      </CardContent>
-    </Card>
+      {label}
+      <span
+        className={cn(
+          "font-heading text-[34px] leading-none tabular-nums",
+          count === 0 && "text-muted-foreground",
+        )}
+      >
+        {count}
+      </span>
+    </button>
   )
 }

@@ -216,15 +216,20 @@ describe("Overview recent count", () => {
   })
 })
 
-// The count of statuses is configurable, and a fixed column count split them
-// into "five, then the rest" -- which reads as two unrelated groups rather than
-// one row of numbers. jsdom lays nothing out, so what is pinned here is the
-// mechanism: one container, every card in it, sized to share the row.
-it("keeps every status card in one self-sizing row", async () => {
+// The count of statuses is configurable, and splitting them across two
+// containers would read as two unrelated groups rather than one row of
+// numbers. What is pinned here is that claim and only that claim: every
+// status lives in one container, whatever that container is made of.
+//
+// Not the classes that lay it out. jsdom measures nothing, so an assertion on
+// `grid-cols-[...]` would pass a broken row and fail a working one the moment
+// the mechanism changed -- which is exactly what happened when this row went
+// from grid to flex. Whether the cards actually share the width is a question
+// for the screenshot walkthrough, and it is answered there.
+it("keeps every status card in one row", async () => {
   renderWithProviders(<Overview />)
   const card = await screen.findByRole("button", { name: /在库 42/ })
 
   const row = card.parentElement!
-  expect(row.className).toContain("repeat(auto-fit,minmax(6rem,1fr))")
   expect(within(row).getAllByRole("button")).toHaveLength(5)
 })

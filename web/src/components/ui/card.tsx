@@ -7,6 +7,10 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
+        // The other place that keeps --card, because it is the primitive
+        // that MEANS "floating". Reach for it only when the thing really does
+        // lift off the page -- a dialog, a drawer, the sticky bulk bar. A
+        // section of a page is separated by air, not by a second ground.
         "flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm",
         className
       )}

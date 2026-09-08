@@ -28,7 +28,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty"
 import {
   Field,
@@ -227,11 +226,9 @@ export function AssetDetail() {
                   holder, owner and note each already have their own place in
                   this dialog, and repeating them here would make two places
                   to look and two to keep right. */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t.assets.attrs}</CardTitle>
-                </CardHeader>
-                <CardContent>
+              <section aria-label={t.assets.attrs} className="grid content-start gap-3">
+                <h2 className="font-medium">{t.assets.attrs}</h2>
+                <div className="bg-well rounded-[20px] p-6">
                   {shown.length === 0 ? (
                     <Empty>
                       <EmptyHeader>
@@ -264,8 +261,8 @@ export function AssetDetail() {
                       ))}
                     </dl>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
               {banner && (
                 <Alert role="status">
@@ -277,11 +274,9 @@ export function AssetDetail() {
               {/* Moving a device is what this system is for, so the form is
                   on screen rather than behind a button -- it used to be one
                   click further away than editing a field. */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>{tTransfer.actions.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4">
+              <section aria-label={tTransfer.actions.title} className="grid content-start gap-3">
+                <h2 className="font-medium">{tTransfer.actions.title}</h2>
+                <div className="grid gap-4">
                   {/* Where the device is now, and who answers for it. Stated
                       rather than editable: the form right below is how both of
                       them change, which the transfer card's own title already
@@ -309,14 +304,12 @@ export function AssetDetail() {
                       queryClient.invalidateQueries({ queryKey: ["timeline", id] })
                     }}
                   />
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t.assets.recentTransfers}</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4">
+              <section aria-label={t.assets.recentTransfers} className="grid content-start gap-3">
+                <h2 className="font-medium">{t.assets.recentTransfers}</h2>
+                <div className="grid gap-4">
                   {editing && (
                     <EditEvent event={editing} assetID={id} onClose={() => setEditing(null)} />
                   )}
@@ -336,14 +329,12 @@ export function AssetDetail() {
                   <Button variant="outline" className="w-fit" asChild>
                     <Link to={`/assets/${id}/history`}>{t.assets.fullHistory}</Link>
                   </Button>
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t.assets.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-6">
+              <section aria-label={t.assets.title} className="grid content-start gap-3">
+                <h2 className="font-medium">{t.assets.title}</h2>
+                <div className="grid gap-6">
                   {/* A sentence that belongs to the device and to no category's
                   schema: the scratch on the lid, the trial it is out on. It
                   sits with the built-ins because that is what it is. */}
@@ -482,16 +473,16 @@ export function AssetDetail() {
                       onConfirm={() => remove.mutate()}
                     />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
               {(detail.data?.value_history ?? []).length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t.assets.valueHistory}</CardTitle>
-                    <CardDescription>{t.assets.valueHistoryHint}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
+                <section aria-label={t.assets.valueHistory} className="grid content-start gap-3">
+                  <div className="grid gap-1">
+                    <h2 className="font-medium">{t.assets.valueHistory}</h2>
+                    <p className="text-sm text-muted-foreground">{t.assets.valueHistoryHint}</p>
+                  </div>
+                  <div className="bg-well rounded-[20px] p-6">
                     <ul className="grid gap-1 font-mono text-sm">
                       {(detail.data?.value_history ?? []).map((h, i) => (
                         <li key={i}>
@@ -499,8 +490,8 @@ export function AssetDetail() {
                         </li>
                       ))}
                     </ul>
-                  </CardContent>
-                </Card>
+                  </div>
+                </section>
               )}
 
               {archived.length > 0 && (
@@ -511,11 +502,9 @@ export function AssetDetail() {
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="pt-3">
-                    <Card>
-                      <CardHeader>
-                        <CardDescription>{t.assets.archivedHint}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
+                    <section className="grid content-start gap-3">
+                      <p className="text-sm text-muted-foreground">{t.assets.archivedHint}</p>
+                      <div className="bg-well rounded-[20px] p-6">
                         <dl className="grid gap-2 text-sm">
                           {archived.map(([k, v]) => (
                             <div key={k} className="flex gap-3">
@@ -524,8 +513,8 @@ export function AssetDetail() {
                             </div>
                           ))}
                         </dl>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </section>
                   </CollapsibleContent>
                 </Collapsible>
               )}

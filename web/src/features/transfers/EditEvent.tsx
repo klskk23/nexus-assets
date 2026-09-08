@@ -8,7 +8,6 @@ import type { Transfer } from "@/lib/transferTypes"
 import { t, tTransfer } from "@/i18n"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Field, FieldLabel } from "@/components/ui/field"
 import {
@@ -64,12 +63,12 @@ export function EditEvent({ event, assetID, onClose }: Props) {
   const options = holderType === "user" ? (users.data ?? []) : (holders.data ?? [])
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{tTransfer.editTail}</CardTitle>
-        <CardDescription>{tTransfer.editHint}</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
+    <section aria-label={tTransfer.editTail} className="grid content-start gap-3">
+      <div className="grid gap-1">
+        <h2 className="font-medium">{tTransfer.editTail}</h2>
+        <p className="text-sm text-muted-foreground">{tTransfer.editHint}</p>
+      </div>
+      <div className="grid gap-4">
         <div className="flex flex-wrap items-end gap-4">
           <Field>
             <FieldLabel htmlFor="ee-type">{tTransfer.actions.target}</FieldLabel>
@@ -131,7 +130,7 @@ export function EditEvent({ event, assetID, onClose }: Props) {
             {tTransfer.cancel}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }

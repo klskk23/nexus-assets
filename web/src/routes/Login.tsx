@@ -69,7 +69,7 @@ export function Login() {
      * one goes away below md rather than stacking -- on a phone the way in
      * should be the first thing on screen, not the second. */
     <div className="grid min-h-screen md:grid-cols-2">
-      <div className="hidden flex-col justify-between gap-8 bg-card p-12 md:flex">
+      <div className="hidden flex-col justify-between gap-8 p-12 md:flex">
         <span className="font-heading text-3xl leading-none">{t.appName}</span>
         {/* Three discs of the palette, overlapped. The one piece of decoration
          * on the whole product, and it is here because a sign-in page is the

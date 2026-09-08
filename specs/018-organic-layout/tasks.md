@@ -59,27 +59,27 @@
 
 判据只有一句：**它浮在页面之上吗。** 十九处逐个回答，不做全局替换。
 
-- [ ] T014 [US2] **保持不变**：`web/src/features/assets/ActionBar.tsx`（`sticky bottom-4`，
+- [X] T014 [US2] **保持不变**：`web/src/features/assets/ActionBar.tsx`（`sticky bottom-4`，
       真的浮在表格之上）与 `web/src/components/ui/card.tsx`（浮起原语本身）。
       本任务只是把这个判断写进两处的注释，防止后来者顺手「统一」掉
-- [ ] T015 [P] [US2] `web/src/features/overview/StatCard.tsx`：`<Card>` → 地面色 +
+- [X] T015 [P] [US2] `web/src/features/overview/StatCard.tsx`：`<Card>` → 地面色 +
       `border border-border-muted`，圆角 28px，内边距 22/24/20，最小宽 152px
-- [ ] T016 [P] [US2] `web/src/routes/Overview.tsx` 三处 `<Card>`（约 117/141/194 行）：
+- [X] T016 [P] [US2] `web/src/routes/Overview.tsx` 三处 `<Card>`（约 117/141/194 行）：
       分区改用留白（56px）承担分隔，不再套卡片
-- [ ] T017 [P] [US2] `web/src/routes/AssetDetail.tsx` 六处 `<Card>`（约 230/280/315/342/489/514 行）：
+- [X] T017 [P] [US2] `web/src/routes/AssetDetail.tsx` 六处 `<Card>`（约 230/280/315/342/489/514 行）：
       只读值组改坐 `--well`，其余分区改用留白
-- [ ] T018 [P] [US2] `web/src/routes/Import.tsx` 三处 `<Card>`（约 130/190/239 行）：改用留白分区
-- [ ] T019 [P] [US2] `web/src/routes/AssetHistory.tsx`（约 64 行）与
+- [X] T018 [P] [US2] `web/src/routes/Import.tsx` 三处 `<Card>`（约 130/190/239 行）：改用留白分区
+- [X] T019 [P] [US2] `web/src/routes/AssetHistory.tsx`（约 64 行）与
       `web/src/features/transfers/EditEvent.tsx`（约 67 行）的 `<Card>`：同上
-- [ ] T020 [P] [US2] `web/src/routes/Login.tsx`：去掉左列的 `bg-card` 面板 ——
+- [X] T020 [P] [US2] `web/src/routes/Login.tsx`：去掉左列的 `bg-card` 面板 ——
       稿子的 `SignIn` 没有这块面板，两列直接坐在地面上
-- [ ] T021 [US2] **找开发者确认 `web/src/components/ui/alert.tsx` 的 `bg-card`**。
+- [X] T021 [US2] **找开发者确认 `web/src/components/ui/alert.tsx` 的 `bg-card`**。
       Alert 不浮起，按规则该换；但它波及全站每一条提示，且参照稿没有画 Alert。
       **这是逐条确认项之一，不要顺手改**
-- [ ] T022 [US2] 静态检查：`grep -rn "bg-card\|<Card" web/src --include='*.tsx'` 的命中集合
+- [X] T022 [US2] 静态检查：`grep -rn "bg-card\|<Card" web/src --include='*.tsx'` 的命中集合
       必须等于白名单（`ActionBar`、`ui/card.tsx`，以及 T021 裁定后的 `ui/alert.tsx`）。
       把这条检查写进 `quickstart.md` 第 5 步
-- [ ] T023 [US2] 截图：概览、资产详情、导入三页，确认没有卡片墙
+- [X] T023 [US2] 截图：概览、资产详情、导入三页，确认没有卡片墙
 
 ## 第 4 阶段：US4 列表页可读（P1）
 
