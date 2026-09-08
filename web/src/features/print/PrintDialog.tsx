@@ -5,7 +5,6 @@ import { useMutation, useQueries } from "@tanstack/react-query"
 import { api, ApiError } from "@/lib/api"
 import { t } from "@/i18n"
 import { usePrinting } from "@/features/print/usePrinting"
-import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -25,15 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Progress } from "@/components/ui/progress"
 import { Spinner } from "@/components/ui/spinner"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 
 interface Claim {
   poolId: string
@@ -223,7 +215,7 @@ export function PrintDialog({ ids, onClose }: Props) {
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-[620px]">
         <DialogHeader>
           <DialogTitle>{t.print.title}</DialogTitle>
           {batches.length > 0 && (
@@ -247,45 +239,49 @@ export function PrintDialog({ ids, onClose }: Props) {
         )}
 
         {batches.length > 0 && (
-          <TableFrame>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t.print.category}</TableHead>
-                  <TableHead>{t.print.label}</TableHead>
-                  <TableHead>{t.print.count}</TableHead>
-                  <TableHead>{t.print.state}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {batches.map((b) => {
-                  const poll = stateOf(b)
-                  const job = poll?.data
-                  return (
-                    <TableRow key={b.category_id}>
-                      <TableCell>{b.category_name}</TableCell>
-                      <TableCell>
-                        {confirmed || (b.presets ?? []).length <= 1 ? (
-                          // Linked to the design itself when it can be: "this
-                          // one looks wrong" is only actionable if the link
-                          // lands on the label rather than on a front door.
-                          designHref(b) ? (
-                            <a
-                              href={designHref(b)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="underline underline-offset-4"
-                              onClick={() => refreshSource.mutate(b.category_id)}
-                            >
-                              {b.preset_name}
-                            </a>
-                          ) : (
-                            <span className="text-muted-foreground">{b.preset_name ?? ""}</span>
-                          )
+          /* One card per job rather than one row per job.
+           *
+           * A print run is not a ledger: there are two or three of these, each
+           * carrying a name, a label, a progress figure and a status, and a
+           * table made every one of those a column that was empty for most of
+           * the run. Cards let the parts that only exist sometimes -- the
+           * numbers being claimed, a failure message -- appear without a
+           * column standing empty when they do not. */
+          <ul className="grid gap-3">
+            {batches.map((b) => {
+              const poll = stateOf(b)
+              const job = poll?.data
+              const printed = job?.pagesPrinted ?? 0
+              return (
+                <li
+                  key={b.category_id}
+                  className="bg-well grid gap-3 rounded-[28px] px-[26px] py-[22px]"
+                >
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                    <span className="w-[190px] font-medium">{b.category_name}</span>
+
+                    <span className="flex min-w-40 flex-1 items-center gap-1">
+                      {confirmed || (b.presets ?? []).length <= 1 ? (
+                        // Linked to the design itself when it can be: "this
+                        // one looks wrong" is only actionable if the link
+                        // lands on the label rather than on a front door.
+                        designHref(b) ? (
+                          <a
+                            href={designHref(b)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline underline-offset-4"
+                            onClick={() => refreshSource.mutate(b.category_id)}
+                          >
+                            {b.preset_name}
+                          </a>
                         ) : (
-                          // More than one label on this kind of thing, so which
-                          // one is a decision, not a default to be guessed at.
-                          <span className="flex items-center gap-1">
+                          <span className="text-muted-foreground">{b.preset_name ?? ""}</span>
+                        )
+                      ) : (
+                        // More than one label on this kind of thing, so which
+                        // one is a decision, not a default to be guessed at.
+                        <>
                           <Select
                             value={chosen[b.category_id] ?? ""}
                             onValueChange={(v) =>
@@ -326,51 +322,70 @@ export function PrintDialog({ ids, onClose }: Props) {
                               </a>
                             </Button>
                           )}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="tabular-nums">{t.print.unit(b.count)}</TableCell>
-                      <TableCell className="grid gap-1">
-                        {b.error ? (
-                          <span className="text-destructive">{b.error}</span>
-                        ) : poll?.isError ? (
-                          <span className="text-destructive">{t.print.lost}</span>
-                        ) : !confirmed ? (
-                          // The numbers, not just how many: a count cannot be
-                          // checked against the devices in front of you.
-                          <span className="text-muted-foreground max-h-24 overflow-y-auto font-mono text-xs leading-5 break-all">
-                            {(b.numbers ?? []).join("  ")}
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-2">
-                            {job && !FINISHED.includes(job.status) && <Spinner aria-hidden />}
-                            <Badge variant={job?.status === "failed" ? "destructive" : "secondary"}>
-                              {label(job?.status ?? b.status)}
-                            </Badge>
-                            {job?.pagesPrinted != null && (
-                              <span className="text-muted-foreground text-xs">
-                                {t.print.pages(job.pagesPrinted, b.count)}
-                              </span>
-                            )}
-                          </span>
-                        )}
-                        {job?.failureMessage && (
-                          <span className="text-destructive text-xs">{job.failureMessage}</span>
-                        )}
-                        {/* Numbers minted in the print service are invisible
-                            here unless they are said out loud. */}
-                        {(b.claims ?? []).map((c) => (
-                          <span key={c.poolId} className="text-muted-foreground text-xs">
-                            {t.print.claims(c.variableName, c.start, c.end)}
-                          </span>
-                        ))}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </TableFrame>
+                        </>
+                      )}
+                    </span>
+
+                    <span className="flex items-center gap-2">
+                      {b.error ? (
+                        <span className="text-destructive text-sm">{b.error}</span>
+                      ) : poll?.isError ? (
+                        <span className="text-destructive text-sm">{t.print.lost}</span>
+                      ) : !confirmed ? (
+                        <span className="text-muted-foreground text-sm tabular-nums">
+                          {t.print.unit(b.count)}
+                        </span>
+                      ) : (
+                        <>
+                          {job && !FINISHED.includes(job.status) && <Spinner aria-hidden />}
+                          <Badge variant={job?.status === "failed" ? "destructive" : "secondary"}>
+                            {label(job?.status ?? b.status)}
+                          </Badge>
+                        </>
+                      )}
+                    </span>
+                  </div>
+
+                  {confirmed && !b.error && !poll?.isError && (
+                    /* Sage, not a status colour: this track is counting
+                       sheets, and how far along a run is says nothing about
+                       what state anything is in. The one row that does take a
+                       status colour is a failed one, because that genuinely
+                       is a state -- and it says so in the chip above. */
+                    <span className="flex items-center gap-3">
+                      <Progress
+                        value={b.count > 0 ? (printed / b.count) * 100 : 0}
+                        className="bg-background h-4 flex-1 [&>*]:bg-accent-2"
+                        aria-label={t.print.pages(printed, b.count)}
+                      />
+                      <span className="font-heading text-sm tabular-nums">
+                        {printed}/{b.count}
+                      </span>
+                    </span>
+                  )}
+
+                  {!confirmed && (
+                    // The numbers, not just how many: a count cannot be
+                    // checked against the devices in front of you.
+                    <span className="text-muted-foreground max-h-24 overflow-y-auto font-mono text-xs leading-5 break-all">
+                      {(b.numbers ?? []).join("  ")}
+                    </span>
+                  )}
+
+                  {job?.failureMessage && (
+                    <span className="text-destructive text-xs">{job.failureMessage}</span>
+                  )}
+                  {/* Numbers minted in the print service are invisible here
+                      unless they are said out loud. */}
+                  {(b.claims ?? []).map((c) => (
+                    <span key={c.poolId} className="text-muted-foreground text-xs">
+                      {t.print.claims(c.variableName, c.start, c.end)}
+                    </span>
+                  ))}
+                </li>
+              )
+            })}
+          </ul>
         )}
 
         {sourceNote && (

@@ -198,13 +198,13 @@
 
 ## 第 11 阶段：US8 打印对话框（P3）
 
-- [ ] T064 [US8] `web/src/features/print/PrintDialog.tsx`：620px 上限、`--card` 底
+- [X] T064 [US8] `web/src/features/print/PrintDialog.tsx`：620px 上限、`--card` 底
       （**这一处用卡片是对的** —— 它真的浮起）、圆角 28、内边距 32、阴影
-- [ ] T065 [US8] `web/src/features/print/PrintDialog.tsx`：提示块 `--well` 底、圆角 20、
+- [X] T065 [US8] `web/src/features/print/PrintDialog.tsx`：提示块 `--well` 底、圆角 20、
       `padding:18px 22px`、左侧 Lucide info 图标 `stroke-width:2.75`
-- [ ] T066 [US8] 作业列表：每行一张 `--well` 圆角 28 卡；药丸进度轨用**鼠尾草**
+- [X] T066 [US8] 作业列表：每行一张 `--well` 圆角 28 卡；药丸进度轨用**鼠尾草**
       （它数张数不数状态）；**只有「失败」那行用 `.status-red`**，因为那确实是一个状态
-- [ ] T067 [US8] 截图打印对话框，对照 `PrintLabels.dc.html`
+- [X] T067 [US8] 截图打印对话框，对照 `PrintLabels.dc.html`
 
 ## 第 12 阶段：US9 三个没画的页面（P3）
 
