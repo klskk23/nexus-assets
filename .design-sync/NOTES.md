@@ -85,6 +85,35 @@ the key unset the plugin never loads and esbuild's native tsconfig handling reso
 `@/i18n` to its `index.ts` correctly. **If a future sync "fixes" the missing tsconfig
 path, this breaks.**
 
+## Authoring previews: two things that bite
+
+- **A preview may only use Tailwind classes the application itself uses.** The
+  stylesheet a card loads is `web/.ds-css/styles.css` — the app's *compiled* CSS
+  — and Tailwind generates on demand. `grid-cols-5`, `grid-cols-3`, `max-w-lg`
+  and `max-w-md` do not exist in it and silently do nothing, which looks like a
+  broken component rather than a missing class. Write layout glue as inline
+  `style={{}}`: it always works, and it reads as scaffolding rather than as a
+  vocabulary the design agent should copy. Grep the stylesheet to check a class.
+- **`.design-sync/preview-provider.tsx` lives in the bundle, not in the
+  previews.** Editing it needs a full `package-build.mjs` run;
+  `preview-rebuild.mjs` will not pick it up, and the symptom is a change that
+  appears to do nothing. It pins the language to Chinese (headless Chrome
+  reports an English locale, which rendered English chrome beside content that
+  is necessarily Chinese) and seeds the five real statuses so `StatusBadge` and
+  `Timeline` resolve labels instead of showing raw keys.
+
+## Overlays need a card-mode override
+
+Anything that renders through a Portal — AlertDialog and its eleven parts, and
+expect the same of Dialog, Drawer, Select content, Popover, HoverCard and the
+menus — paints fixed over the whole viewport. Per-story capture isolates them so
+the grading sheets look fine, but the product's grid card would stack every
+export on top of the others. Those components carry
+`cfg.overrides.<Name>: {"cardMode": "single", "viewport": "720x520"}`
+(560 tall where the cell deliberately shows page content behind the overlay).
+The list grows as batches land; it is not a per-component judgement call, it is
+what a portal does.
+
 ## Known render warns
 
 - `[DTS_STYLE_SYSTEM] filtering @types/react props` — informational and correct.

@@ -30,6 +30,10 @@ const GROUPS = {
   // These are what make a design read as Nexus rather than as plain shadcn.
   common: { dir: 'src/features/common' },
   overview: { dir: 'src/features/overview' },
+  // The preview wrapper. Not part of the product -- it exists so components
+  // that read from context can render in a card. Published because
+  // cfg.provider.component must resolve to a bundle export.
+  preview: { files: ['../.design-sync/preview-provider.tsx'] },
   data: {
     files: [
       'src/components/StateBoundary.tsx',
@@ -52,7 +56,10 @@ for (const [group, spec] of Object.entries(GROUPS)) {
         .map((n) => join(spec.dir, n))
     : spec.files
   const body = files
-    .map((f) => `export * from ${JSON.stringify('../' + f.replace(/\.tsx$/, ''))}`)
+    .map((f) => {
+      const rel = f.startsWith('../') ? '../' + f : '../' + f
+      return `export * from ${JSON.stringify(rel.replace(/\.tsx$/, ''))}`
+    })
     .join('\n')
   writeFileSync(join(OUT, `${group}.tsx`), `${body}\n`)
   total += files.length

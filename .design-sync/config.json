@@ -5,5 +5,58 @@
   "globalName": "NexusAssets",
   "srcDir": "ds-src",
   "buildCmd": "npm --prefix web run build && node .design-sync/make-ds-src.mjs && rm -rf web/.ds-types && npx --prefix web tsc -p .design-sync/tsconfig.dts.json && rm -rf web/.ds-css && mkdir -p web/.ds-css && cp web/dist/static/*.woff2 web/.ds-css/ && cat web/dist/static/*.css | sed 's|url(/static/|url(./|g' > web/.ds-css/styles.css",
-  "cssEntry": ".ds-css/styles.css"
+  "cssEntry": ".ds-css/styles.css",
+  "provider": {
+    "component": "DsPreviewProvider"
+  },
+  "overrides": {
+    "AlertDialog": {
+      "cardMode": "single",
+      "viewport": "720x520"
+    },
+    "AlertDialogAction": {
+      "cardMode": "single",
+      "viewport": "720x520"
+    },
+    "AlertDialogCancel": {
+      "cardMode": "single",
+      "viewport": "720x520"
+    },
+    "AlertDialogContent": {
+      "cardMode": "single",
+      "viewport": "720x520"
+    },
+    "AlertDialogDescription": {
+      "cardMode": "single",
+      "viewport": "720x520"
+    },
+    "AlertDialogFooter": {
+      "cardMode": "single",
+      "viewport": "720x520"
+    },
+    "AlertDialogHeader": {
+      "cardMode": "single",
+      "viewport": "720x520"
+    },
+    "AlertDialogMedia": {
+      "cardMode": "single",
+      "viewport": "720x520"
+    },
+    "AlertDialogOverlay": {
+      "cardMode": "single",
+      "viewport": "720x560"
+    },
+    "AlertDialogPortal": {
+      "cardMode": "single",
+      "viewport": "720x560"
+    },
+    "AlertDialogTitle": {
+      "cardMode": "single",
+      "viewport": "720x520"
+    },
+    "AlertDialogTrigger": {
+      "cardMode": "single",
+      "viewport": "720x520"
+    }
+  }
 }
