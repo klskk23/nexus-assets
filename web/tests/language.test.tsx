@@ -36,13 +36,12 @@ function renderShell(client = makeTestQueryClient()) {
 /**
  * Picks a language in the settings dialog.
  *
- * The menu behind the account name carries the settings entry and signing
- * out; language moved into the dialog with everything
- * else a person chooses about their own account.
+ * The account block at the foot of the rail opens the dialog directly.
+ * Language lives in there with everything else a person chooses about their
+ * own account.
  */
 async function pickLanguage(user: ReturnType<typeof userEvent.setup>, name: string) {
   await user.click(screen.getByRole("button", { name: /管理员|Settings|设置/ }))
-  await user.click(await screen.findByRole("menuitem", { name: /设置|Settings/ }))
   const dialog = await screen.findByRole("dialog")
   await user.click(within(dialog).getByRole("combobox", { name: /语言|Language/ }))
   await user.click(await screen.findByRole("option", { name }))
@@ -117,22 +116,27 @@ describe("detectLang", () => {
   })
 })
 
-describe("settings menu", () => {
-  it("gathers settings and sign-out behind one trigger", async () => {
+describe("the account block", () => {
+  // Two controls at the foot of the rail and no menu between you and either.
+  // Signing out used to sit inside a dropdown whose only other entry was
+  // settings, which is a door in front of a door.
+  //
+  // The count is asserted, as it was when this was a menu: the theme flip
+  // used to live here, 017 left a single ground, and a stray control for a
+  // choice that no longer exists is exactly what this guards against.
+  it("opens settings from the name and signs out from its own button", async () => {
     const u = userEvent.setup()
     renderShell()
     await screen.findByRole("link", { name: "概览" })
 
-    // The bar itself carries only the nav and one control.
     expect(screen.queryByRole("menuitem")).not.toBeInTheDocument()
 
-    await u.click(screen.getByRole("button", { name: /管理员/ }))
-    expect(await screen.findByRole("menuitem", { name: "设置" })).toBeInTheDocument()
-    expect(screen.getByRole("menuitem", { name: "退出登录" })).toBeInTheDocument()
-    // The theme flip used to live here as the menu's one daily action. 017 left
-    // a single ground, so the menu is settings and sign-out and nothing else --
-    // asserted, because a stray flip would be a control for a choice that no
-    // longer exists.
-    expect(screen.getAllByRole("menuitem")).toHaveLength(2)
+    const signOut = screen.getByRole("button", { name: "退出登录" })
+    const account = screen.getByRole("button", { name: /管理员/ })
+    expect(signOut).toBeInTheDocument()
+    expect(screen.getAllByRole("button")).toHaveLength(2)
+
+    await u.click(account)
+    expect(await screen.findByRole("dialog")).toBeInTheDocument()
   })
 })
