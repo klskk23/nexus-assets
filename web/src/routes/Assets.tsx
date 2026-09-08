@@ -601,11 +601,21 @@ export function Assets() {
           onRetry={() => assets.refetch()}
         >
           <>
-            <TableFrame>
+            <TableFrame
+              footer={
+                <Pager
+                  page={page}
+                  pageSize={pageSize}
+                  total={total}
+                  onPage={setPage}
+                  onPageSize={setPageSize}
+                />
+              }
+            >
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10">
+                    <TableHead className="bg-well sticky left-0 z-[2] w-10">
                       <Checkbox
                         aria-label={t.assets.selectPage}
                         checked={
@@ -619,8 +629,13 @@ export function Assets() {
                       />
                     </TableHead>
                     {/* The number is not optional: it is what a row is read by
-                        and what the click opens. */}
-                    <TableHead>{t.assets.sn}</TableHead>
+                        and what the click opens -- so it is pinned beside the
+                        checkbox rather than allowed to scroll away, and the two
+                        of them carry the shadow that says the rest slides
+                        underneath. */}
+                    <TableHead className="bg-well sticky left-10 z-[2] shadow-[14px_0_14px_-14px_rgba(32,30,29,.22)]">
+                      {t.assets.sn}
+                    </TableHead>
                     {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
                       <TableHead key={k}>{t.assets.columnLabels[k]}</TableHead>
                     ))}
@@ -630,7 +645,7 @@ export function Assets() {
                     {/* The row actions. No heading text: three icon buttons that
                         appear on hover are not a column of data, and a label over
                         them would claim they are. */}
-                    <TableHead className="w-px" />
+                    <TableHead className="bg-well sticky right-0 z-[2] w-px shadow-[-14px_0_14px_-14px_rgba(32,30,29,.22)]" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -645,7 +660,10 @@ export function Assets() {
                           className="group/row cursor-pointer"
                           onClick={() => navigate(`/assets/${a.id}`)}
                         >
-                          <TableCell onClick={(e) => e.stopPropagation()}>
+                          <TableCell
+                            className="bg-well group-hover/row:bg-accent sticky left-0 z-[1]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <Checkbox
                               aria-label={t.common.selectOne(a.display_name)}
                               checked={selection.has(a.id)}
@@ -664,7 +682,9 @@ export function Assets() {
                               onCheckedChange={() => selection.toggle(a.id, i)}
                             />
                           </TableCell>
-                          <TableCell className="font-mono">{a.display_name}</TableCell>
+                          <TableCell className="bg-well group-hover/row:bg-accent sticky left-10 z-[1] font-mono shadow-[14px_0_14px_-14px_rgba(32,30,29,.22)]">
+                            {a.display_name}
+                          </TableCell>
                           {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
                             <TableCell
                               key={k}
@@ -694,7 +714,10 @@ export function Assets() {
                               name is a button a keyboard user cannot identify.
                               Visible on hover and on focus, so tabbing through
                               reaches something that can be seen. */}
-                          <TableCell className="w-px" onClick={(e) => e.stopPropagation()}>
+                          <TableCell
+                            className="bg-well group-hover/row:bg-accent sticky right-0 z-[1] w-px shadow-[-14px_0_14px_-14px_rgba(32,30,29,.22)]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
                               {printing && (
                                 <Button
@@ -786,14 +809,6 @@ export function Assets() {
               />
             )}
 
-            {/* Under the table, where you land after reading it. */}
-            <Pager
-              page={page}
-              pageSize={pageSize}
-              total={total}
-              onPage={setPage}
-              onPageSize={setPageSize}
-            />
           </>
         </StateBoundary>
       </div>

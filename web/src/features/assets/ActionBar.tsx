@@ -68,8 +68,12 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
     /* One of the two places in the product that keeps --card. This bar is
      * stuck to the bottom of the viewport with rows scrolling underneath it:
      * it genuinely floats, which is the whole test. Everything else that used
-     * to be a card here now sits on the page ground. */
-    <Card className="sticky bottom-4 gap-0 py-0 shadow-lg">
+     * to be a card here now sits on the page ground.
+     *
+     * z-20 because the table's pinned first and last columns carry an opaque
+     * background and a stacking order of their own -- without this the bar,
+     * which is what "floats" means here, was painted over by them. */
+    <Card className="sticky bottom-4 z-20 gap-0 py-0 shadow-lg">
       <CardContent className="flex flex-wrap items-center gap-2 px-3 py-2">
         <span className="text-sm font-medium">{tTransfer.actions.selected(selected.length)}</span>
 

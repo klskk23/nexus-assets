@@ -23,12 +23,15 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      // The header is the column's title, not the first row of data: it sits
-      // on the well and closes with a full-strength rule, while the rows below
-      // are separated by a third of that. The eye then runs down a column
-      // instead of stepping over forty equal lines.
+      // The header is the column's title, not the first row of data, and what
+      // says so is the full-strength rule under it -- the rows below are
+      // separated by a third of that, so the eye runs down a column instead of
+      // stepping over forty equal lines.
+      //
+      // No tint of its own: the frame is --well now, so a --well header was
+      // painting one tone onto the same tone. The rule carries it alone.
       className={cn(
-        "bg-well [&_tr]:border-b [&_tr]:border-border",
+        "[&_tr]:border-b [&_tr]:border-border",
         className
       )}
       {...props}

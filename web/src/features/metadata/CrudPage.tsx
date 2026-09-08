@@ -265,7 +265,17 @@ export function CrudPage<T extends { id: string }>({
           emptyHint={emptyHint}
           onRetry={() => query.refetch()}
         >
-          <TableFrame>
+          <TableFrame
+            footer={
+              <Pager
+                page={listQuery.page}
+                pageSize={listQuery.pageSize}
+                total={total}
+                onPage={listQuery.setPage}
+                onPageSize={listQuery.setPageSize}
+              />
+            }
+          >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -314,13 +324,6 @@ export function CrudPage<T extends { id: string }>({
               </TableBody>
             </Table>
           </TableFrame>
-          <Pager
-            page={listQuery.page}
-            pageSize={listQuery.pageSize}
-            total={total}
-            onPage={listQuery.setPage}
-            onPageSize={listQuery.setPageSize}
-          />
         </StateBoundary>
       </div>
 

@@ -325,7 +325,17 @@ export function Audit() {
           onRetry={() => query.refetch()}
         >
           <>
-            <TableFrame>
+            <TableFrame
+              footer={
+                <Pager
+                  page={page}
+                  pageSize={pageSize}
+                  total={query.data?.total ?? 0}
+                  onPage={setPage}
+                  onPageSize={setPageSize}
+                />
+              }
+            >
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -392,15 +402,6 @@ export function Audit() {
               </Table>
             </TableFrame>
 
-            {/* Under the table, where you land after reading it -- and where the
-                asset list keeps its own pager. */}
-            <Pager
-              page={page}
-              pageSize={pageSize}
-              total={query.data?.total ?? 0}
-              onPage={setPage}
-              onPageSize={setPageSize}
-            />
           </>
         </StateBoundary>
       </div>
