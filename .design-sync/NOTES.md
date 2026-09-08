@@ -62,6 +62,12 @@ DS_CHROMIUM_PATH=/usr/bin/google-chrome node .ds-sync/package-validate.mjs ./ds-
 - **`DS_CHROMIUM_PATH`** points the render check at the system Chrome, so no
   ~200 MB playwright browser download is needed. `.ds-sync/` has `playwright`
   installed with `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`.
+  **`export` it — do not prefix it inline — when running `resync.mjs`.** The
+  driver spawns validate as a child process, so an inline `VAR=x node
+  resync.mjs` does not reach it and validate dies with
+  `[RENDER_SKIPPED] Executable doesn't exist at …chromium_headless_shell…`,
+  which fails the whole driver run for a reason that has nothing to do with the
+  bundle.
 
 ## Two dot-directory traps
 
