@@ -20,12 +20,19 @@ import { Timeline } from "@/features/transfers/Timeline"
 import { EditEvent } from "@/features/transfers/EditEvent"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { ModelPicker } from "@/features/assets/ModelPicker"
-import { TransferForm } from "@/features/transfers/TransferForm"
 import { PrintDialog } from "@/features/print/PrintDialog"
 import { usePrinting } from "@/features/print/usePrinting"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { TransferDialog } from "@/features/transfers/TransferDialog"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty"
@@ -77,6 +84,8 @@ export function AssetDetail() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [banner, setBanner] = useState<string | null>(null)
   const [editing, setEditing] = useState<Transfer | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [transferOpen, setTransferOpen] = useState(false)
   const [note, setNote] = useState("")
   const [modelId, setModelId] = useState<string | null>(null)
   const [homeID, setHomeID] = useState(NONE)
@@ -145,6 +154,12 @@ export function AssetDetail() {
       }),
     onSuccess: (updated) => {
       setFieldErrors({})
+      // Close first, then announce. The banner lives on the page, and a modal
+      // marks everything behind it aria-hidden -- announcing into that is
+      // announcing to nobody, and the person is left looking at the form they
+      // just submitted with no sign it worked. Failures do the opposite and
+      // stay: the dialog is where the field with the error is.
+      setEditOpen(false)
       if (asset && updated.display_name !== asset.display_name) {
         setBanner(t.assets.snChanged(asset.display_name, updated.display_name))
       } else {
@@ -155,10 +170,17 @@ export function AssetDetail() {
     },
     onError: (err) => {
       if (err instanceof ApiError) {
-        setFieldErrors(err.fields ?? {})
+        const fields = err.fields ?? {}
+        setFieldErrors(fields)
         // A stale version is not something to retry silently: someone else's
         // edit would be overwritten. Say so and make the user reload.
         setBanner(err.message)
+        // Where the message can be read decides where the dialog goes. A
+        // field-level rejection is readable beside the input that caused it,
+        // so the form stays open on it. Anything about the record as a whole
+        // -- a stale version, a refused permission -- has nowhere to sit in
+        // the form, and its banner is on the page, which a modal hides.
+        if (Object.keys(fields).length === 0) setEditOpen(false)
       }
     },
   })
@@ -222,14 +244,28 @@ export function AssetDetail() {
                 <h1 className="flex flex-wrap items-center gap-3 text-[40px] leading-[1.2] font-bold">
                   <span className="font-heading tabular-nums">{asset.display_name}</span>
                   <StatusBadge status={asset.status} />
-                  {/* Printing is a property of the installation: with no
-                      print service configured there is no button, the same
-                      rule the list page's own print entries follow. */}
+                </h1>
+                {/* Data, not prose. The mock had a sentence here explaining how
+                    the number is derived -- that belongs to the entry form,
+                    where somebody is deciding whether to type one. No model, no
+                    line; model without a vendor, no separator left hanging. */}
+                {model && (
+                  <p className="text-muted-foreground text-sm">
+                    {[model.name, model.vendor_name].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+                {/* Everything you can DO to this device, in one row, ordered by
+                    how often it is done: label it, correct it, move it. The page
+                    below is what the device IS; these are the verbs, and keeping
+                    them together is what lets the reading part stay readable.
+
+                    Moving is the primary because it is why this system exists.
+                    The other two are outlines -- printing is occasional, editing
+                    happens about once in a device's life. */}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   {canPrint && (
                     <Button
-                      size="sm"
                       variant="outline"
-                      className="ml-auto"
                       disabled={deniedReason("print") !== undefined}
                       title={deniedReason("print") ?? t.print.action}
                       onClick={() => setPrinting(true)}
@@ -238,42 +274,61 @@ export function AssetDetail() {
                       {t.print.action}
                     </Button>
                   )}
-                </h1>
-                {/* Data, not prose. The mock had a sentence here explaining how
-                    the number is derived -- that sentence belongs to the entry
-                    form, where somebody is deciding whether to type one, and it
-                    says nothing to somebody reading a device that already has
-                    one. What does belong here is what the device IS, which is
-                    the two fields you would otherwise scroll to the attributes
-                    card to find.
-
-                    No model, no line at all. Model without a vendor, no
-                    trailing separator left hanging. */}
-                {model && (
-                  <p className="text-muted-foreground text-sm">
-                    {[model.name, model.vendor_name].filter(Boolean).join(" · ")}
-                  </p>
-                )}
+                  <Button variant="outline" onClick={() => setEditOpen(true)}>
+                    {t.assets.editAttrs}
+                  </Button>
+                  <Button onClick={() => setTransferOpen(true)}>
+                    {tTransfer.actions.title}
+                  </Button>
+                </div>
               </header>
 
               {printing && <PrintDialog ids={[id]} onClose={() => setPrinting(false)} />}
 
+              {/* Four facts that answer "where is it and whose is it" without
+                  opening anything. They used to sit inside the transfer card,
+                  which meant reading them cost finding the form that changes
+                  them. On --card because this band is the one raised thing on
+                  a page that is otherwise flat. */}
+              <dl className="bg-card grid gap-x-6 gap-y-5 rounded-[28px] px-8 py-6 text-sm sm:grid-cols-4">
+                <div>
+                  <dt className="text-muted-foreground text-[13px]">{t.assets.currentHolder}</dt>
+                  <dd className="mt-1">{asset.holder.name ?? asset.holder.id}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-[13px]">{t.assets.currentOwner}</dt>
+                  <dd className="mt-1">{asset.owner?.name ?? t.common.none}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-[13px]">{t.assets.home}</dt>
+                  <dd className="mt-1">{asset.home_holder?.name ?? t.assets.homeNone}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-[13px]">{t.assets.createdAt}</dt>
+                  <dd className="mt-1 tabular-nums">{asset.created_at.slice(0, 10)}</dd>
+                </div>
+              </dl>
+
               {/* What this device is, before what can be done to it (015,
-                  decision 104). Read-only and first: identity comes before
-                  action, and reading it should not cost a click on an edit
-                  form. The six built-ins are deliberately absent -- status,
-                  holder, owner and note each already have their own place in
-                  this dialog, and repeating them here would make two places
-                  to look and two to keep right. */}
+                  decision 104). Read-only: editing is a button in the header
+                  now, so this section has one job and does it without a form
+                  in the way. Two columns of rows rather than four columns of
+                  pairs -- a value belongs beside its label, and at four across
+                  a long value wrapped under a short one and stopped looking
+                  like a pair at all.
+
+                  The badge on the right says why a value is the way it is:
+                  unique, inherited from somewhere else, or computed and
+                  therefore not typed by anyone. */}
               <section aria-label={t.assets.attrs} className="grid content-start gap-3">
                 <h2 className="text-[21px] leading-tight font-bold">{t.assets.attrs}</h2>
-                <div className="bg-well rounded-[28px] p-6">
-                  {shown.length === 0 ? (
+                {shown.length === 0 ? (
+                  <div className="bg-well rounded-[28px] p-6">
                     <Empty>
                       <EmptyHeader>
-                        {/* Two different reasons for an empty card, and
-                            saying the wrong one sends someone to the category
-                            page to add a field that is already there. */}
+                        {/* Two different reasons for an empty card, and saying
+                            the wrong one sends someone to the category page to
+                            add a field that is already there. */}
                         <EmptyDescription>
                           {(schema.data?.fields ?? []).length > 0
                             ? t.assets.noAttrsForModel
@@ -281,26 +336,38 @@ export function AssetDetail() {
                         </EmptyDescription>
                       </EmptyHeader>
                     </Empty>
-                  ) : (
-                    <dl className="grid grid-cols-2 gap-x-6 gap-y-5 text-sm sm:grid-cols-4">
-                      {shown.map((f) => (
-                        <div key={f.key}>
-                          {/* The label names the row; the value is what
-                              somebody opened this to read. */}
-                          <dt className="text-muted-foreground text-[13px]">{f.label}</dt>
-                          <dd
-                            className={cn(
-                              "mt-0.5 tabular-nums",
-                              f.type === "computed" && "font-mono",
-                            )}
-                          >
-                            {attrText(asset.attrs[f.key])}
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <dl className="grid gap-x-12 text-sm sm:grid-cols-2">
+                    {shown.map((f) => (
+                      <div
+                        key={f.key}
+                        className="border-border-muted flex items-center gap-4 border-b py-4"
+                      >
+                        <dt className="text-muted-foreground w-32 shrink-0">{f.label}</dt>
+                        <dd
+                          className={cn(
+                            "min-w-0 flex-1 break-words tabular-nums",
+                            f.type === "computed" && "font-mono",
+                          )}
+                        >
+                          {attrText(asset.attrs[f.key])}
+                        </dd>
+                        {/* At most one: computed is the strongest thing to say
+                            about a value, then that it must be unique, then
+                            where it came from. Three badges on one row would
+                            be a legend, not a label. */}
+                        {f.type === "computed" ? (
+                          <Badge variant="outline">{t.common.computed}</Badge>
+                        ) : f.is_unique ? (
+                          <Badge variant="outline">{t.common.unique}</Badge>
+                        ) : f.inherited_from ? (
+                          <Badge variant="outline">{t.common.inherited}</Badge>
+                        ) : null}
+                      </div>
+                    ))}
+                  </dl>
+                )}
               </section>
 
               {banner && (
@@ -309,42 +376,6 @@ export function AssetDetail() {
                   <AlertDescription>{banner}</AlertDescription>
                 </Alert>
               )}
-
-              {/* Moving a device is what this system is for, so the form is
-                  on screen rather than behind a button -- it used to be one
-                  click further away than editing a field. */}
-              <section aria-label={tTransfer.actions.title} className="grid content-start gap-3">
-                <h2 className="text-[21px] leading-tight font-bold">{tTransfer.actions.title}</h2>
-                <div className="grid gap-4">
-                  {/* Where the device is now, and who answers for it. Stated
-                      rather than editable: the form right below is how both of
-                      them change, which the transfer card's own title already
-                      says. */}
-                  {/* A rule, not a box. This sits inside a card inside a
-                      dialog, and a third border around it made three nested
-                      frames saying the same thing -- the line is enough to
-                      separate the state from the form that changes it. */}
-                  <dl className="grid grid-cols-2 gap-3 border-b pb-4 text-sm sm:grid-cols-4">
-                    <div>
-                      <dt className="text-muted-foreground text-[13px]">{t.assets.currentHolder}</dt>
-                      <dd className="mt-0.5">{asset.holder.name ?? asset.holder.id}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground text-[13px]">{t.assets.currentOwner}</dt>
-                      <dd className="mt-0.5">{asset.owner?.name ?? t.common.none}</dd>
-                    </div>
-                  </dl>
-
-                  <TransferForm
-                    assetIDs={[id]}
-                    onDone={() => {
-                      setBanner(tTransfer.actions.done(1))
-                      queryClient.invalidateQueries({ queryKey: ["asset", id] })
-                      queryClient.invalidateQueries({ queryKey: ["timeline", id] })
-                    }}
-                  />
-                </div>
-              </section>
 
               <section aria-label={t.assets.transfers} className="grid content-start gap-3">
                 <h2 className="text-[21px] leading-tight font-bold">{t.assets.transfers}</h2>
@@ -365,9 +396,36 @@ export function AssetDetail() {
                 </div>
               </section>
 
-              <section aria-label={t.assets.title} className="grid content-start gap-3">
-                <h2 className="text-[21px] leading-tight font-bold">{t.assets.title}</h2>
-                <div className="grid gap-6">
+              {/* Moving, behind the primary button. Not a page of its own:
+                  a move is two or three fields and a note, it is done from the
+                  device you are already looking at, and when it lands the state
+                  and the new event are both on the page behind the dialog. An
+                  address would have bought nothing and cost a navigation. */}
+              <TransferDialog
+                assetIDs={[id]}
+                open={transferOpen}
+                onOpenChange={setTransferOpen}
+                onDone={(n) => {
+                  setBanner(tTransfer.actions.done(n))
+                  queryClient.invalidateQueries({ queryKey: ["asset", id] })
+                  queryClient.invalidateQueries({ queryKey: ["timeline", id] })
+                }}
+              />
+
+              {/* Editing behind a button, not a section on the page.
+                  A device's model, home and field values are set about once in
+                  its life; on the page they were taking the room that reading
+                  the device should have, and every visit paid for an edit that
+                  almost never happens. The Collapsible that used to hide half
+                  of it is gone with the section -- a dialog is already the
+                  "not now" state, and two layers of hiding is one too many. */}
+              <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>{t.assets.editAttrs}</DialogTitle>
+                    <DialogDescription>{t.assets.editAttrsHint}</DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-6">
                   {/* A sentence that belongs to the device and to no category's
                   schema: the scratch on the lid, the trial it is out on. It
                   sits with the built-ins because that is what it is. */}
@@ -382,21 +440,13 @@ export function AssetDetail() {
                     />
                   </Field>
 
-                  {/* Behind a button: the model, the category's fields and the
-                      home are edited once in a device's life, and they were
-                      taking the room a movement should have. */}
-                  <Collapsible>
-                    {/* Beside the trigger, so it is readable before opening --
-                        which is when someone is deciding whether to. */}
-                    <div className="flex items-center gap-1.5">
-                      <CollapsibleTrigger asChild>
-                      <Button variant="outline" className="w-fit">
-                        {t.assets.editAttrs}
-                      </Button>
-                      </CollapsibleTrigger>
-                      <Hint>{t.assets.editAttrsHint}</Hint>
-                    </div>
-                    <CollapsibleContent className="grid gap-6 pt-4">
+                  {/* No second layer of hiding. This used to be a
+                      Collapsible on the page, because the model, the home and
+                      the category's fields were taking the room a movement
+                      should have had. The dialog already IS the "not now"
+                      state, so folding things inside it only meant two clicks
+                      to reach what the dialog was opened for. */}
+                  <>
                       {/* Where it belongs when it is not out. Editable here rather
                     than on the entry form: a device's home changes when it is
                     relocated for good, which is an edit, not a recording. */}
@@ -478,8 +528,7 @@ export function AssetDetail() {
                           )}
                         </FieldGroup>
                       </FieldSet>
-                    </CollapsibleContent>
-                  </Collapsible>
+                  </>
 
                   <div className="flex items-center gap-2">
                     <Button onClick={() => save.mutate()} disabled={save.isPending}>
@@ -507,8 +556,9 @@ export function AssetDetail() {
                       onConfirm={() => remove.mutate()}
                     />
                   </div>
-                </div>
-              </section>
+                  </div>
+                </DialogContent>
+              </Dialog>
 
               {(detail.data?.value_history ?? []).length > 0 && (
                 <section aria-label={t.assets.valueHistory} className="grid content-start gap-3">
@@ -528,29 +578,31 @@ export function AssetDetail() {
                 </section>
               )}
 
+              {/* A card, not a fold. These values are the reason a device shows
+                  a field its category no longer has; hiding the explanation
+                  behind a click leaves the odd thing visible and the reason for
+                  it not. Chips because each is one short fact -- name and
+                  value -- and a list of two-word rows was a table pretending to
+                  be prose. */}
               {archived.length > 0 && (
-                <Collapsible>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="outline">
-                      {t.assets.archivedFields}（{archived.length}）
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-3">
-                    <section className="grid content-start gap-3">
-                      <p className="text-sm text-muted-foreground">{t.assets.archivedHint}</p>
-                      <div className="bg-well rounded-[20px] p-6">
-                        <dl className="grid gap-2 text-sm">
-                          {archived.map(([k, v]) => (
-                            <div key={k} className="flex gap-3">
-                              <dt className="font-mono text-muted-foreground">{k}</dt>
-                              <dd>{String(v)}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </div>
-                    </section>
-                  </CollapsibleContent>
-                </Collapsible>
+                <section aria-label={t.assets.archivedFields} className="bg-card grid content-start gap-3 rounded-[28px] px-8 py-6">
+                  <div className="grid gap-1">
+                    <h2 className="text-base font-bold">{t.assets.archivedFields}</h2>
+                    <p className="text-muted-foreground text-sm">{t.assets.archivedHint}</p>
+                  </div>
+                  <ul className="flex flex-wrap gap-2">
+                    {archived.map(([k, v]) => (
+                      <li
+                        key={k}
+                        className="bg-background rounded-full border px-3 py-1.5 text-sm"
+                      >
+                        <span className="text-muted-foreground">{k}</span>
+                        <span className="text-muted-foreground/60 px-1.5">·</span>
+                        <span className="tabular-nums">{String(v)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               )}
             </div>
           )}

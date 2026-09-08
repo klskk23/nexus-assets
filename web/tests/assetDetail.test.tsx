@@ -32,6 +32,20 @@ vi.mock("@/lib/api", async () => {
   }
 })
 
+/**
+ * 022 的续篇：编辑与流转都从页面上搬进了对话框，页面只剩「这台设备是什么」。
+ * 所以凡是要碰表单的测试，先得把对应的对话框打开 —— 这两个助手就是那一步，
+ * 写成函数是为了下次再搬时只改一处。
+ */
+async function openEdit(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: t.assets.editAttrs }))
+  return screen.findByRole("dialog")
+}
+async function openTransfer(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: tTransfer.actions.title }))
+  return screen.findByRole("dialog")
+}
+
 const asset = {
   id: "a1",
   display_name: "112394521950",
@@ -102,10 +116,11 @@ describe("AssetDetail", () => {
     expect(screen.getByText(/112394521949/)).toBeInTheDocument()
   })
 
+  // On the page, not behind a fold. The value is the reason the device shows
+  // a field its category no longer has -- hiding the reason while showing the
+  // oddity is the wrong way round.
   it("keeps values of fields that left the category, marked as archived", async () => {
-    const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
-    await user.click(await screen.findByRole("button", { name: /已归档字段/ }))
     expect(await screen.findByText("legacy_note")).toBeInTheDocument()
     expect(screen.getByText("旧备注")).toBeInTheDocument()
   })
@@ -115,6 +130,7 @@ describe("AssetDetail", () => {
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
+    await openEdit(user)
 
     await user.click(screen.getByRole("button", { name: "保存" }))
     await waitFor(() =>
@@ -130,6 +146,7 @@ describe("AssetDetail", () => {
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
+    await openEdit(user)
 
     const note = screen.getByLabelText("备注")
     expect(note).toHaveValue("屏幕左下角有划痕")
@@ -150,6 +167,7 @@ describe("AssetDetail", () => {
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
+    await openEdit(user)
 
     await user.click(screen.getByRole("button", { name: "保存" }))
     expect(await screen.findByRole("status")).toHaveTextContent("他人已修改这条记录，请刷新后重试")
@@ -162,8 +180,8 @@ describe("AssetDetail", () => {
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
+    await openEdit(user)
 
-    await user.click(screen.getByRole("button", { name: "编辑设备属性" }))
     await user.click(screen.getByRole("button", { name: "保存" }))
     const alerts = await screen.findAllByRole("alert")
     expect(alerts.map((a) => a.textContent)).toContain("MAC 格式非法")
@@ -174,6 +192,7 @@ describe("AssetDetail", () => {
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
+    await openEdit(user)
 
     await user.click(screen.getByRole("button", { name: "保存" }))
     expect(await screen.findByRole("status")).toHaveTextContent(
@@ -188,6 +207,7 @@ describe("AssetDetail", () => {
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
+    await openTransfer(user)
 
     for (const label of ["签出", "归还", "转移", "改负责人", "改状态"]) {
       expect(screen.getByRole("radio", { name: label })).toBeInTheDocument()
@@ -208,6 +228,7 @@ describe("AssetDetail", () => {
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
+    await openTransfer(user)
 
 
     await user.click(screen.getByRole("radio", { name: "签出" }))
@@ -232,6 +253,7 @@ describe("AssetDetail", () => {
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
+    await openTransfer(user)
 
     await user.click(screen.getByRole("radio", { name: "改状态" }))
     await choose(user, screen.getByRole("combobox", { name: "状态" }), "维修中")
@@ -248,22 +270,19 @@ describe("AssetDetail", () => {
 
   // The form stays on screen after a move, so a submitted choice left selected
   // would be one stray click away from recording the same move twice.
-  it("clears the chosen operation once the move is recorded", async () => {
+  // The form used to sit on the page and reset itself after a move. It is a
+  // dialog now, so the equivalent -- and the better answer -- is that it goes
+  // away: the device behind it already shows the new state and the new event.
+  it("closes once the move is recorded", async () => {
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
+    await openTransfer(user)
 
     await user.click(screen.getByRole("radio", { name: "改状态" }))
     await user.click(screen.getByRole("button", { name: "提交" }))
 
-    await waitFor(() =>
-      expect(screen.getByRole("radio", { name: "改状态" })).toHaveAttribute(
-        "data-state",
-        "off",
-      ),
-    )
-    // And with nothing chosen, submitting again is not possible.
-    expect(screen.getByRole("button", { name: "提交" })).toBeDisabled()
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
   })
 
   // Deleting is irreversible, so it goes through a dialog that stays inert
@@ -273,6 +292,7 @@ describe("AssetDetail", () => {
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
+    await openEdit(user)
 
     await user.click(screen.getByRole("button", { name: "删除" }))
     await screen.findByRole("alertdialog")
@@ -296,6 +316,8 @@ describe("AssetDetail", () => {
 // now, and where it goes when it is returned. Read one for the other and Save
 // looks like it reassigns a colleague.
 it("keeps where it is now apart from where it belongs", async () => {
+  // Explicit: this sits outside the describe that resets the api mock.
+  get.mockReset().mockImplementation(route)
   renderWithProviders(<AssetDetail />)
   await screen.findByText("112394521950")
 
@@ -309,7 +331,8 @@ it("keeps where it is now apart from where it belongs", async () => {
   // in its own label once opened.
   const user = userEvent.setup()
   await user.click(screen.getByRole("button", { name: "编辑设备属性" }))
-  expect(screen.getByLabelText("默认持有方")).toBeInTheDocument()
+  await screen.findByRole("dialog")
+  expect(await screen.findByLabelText("默认持有方")).toBeInTheDocument()
   expect(screen.getByLabelText("默认负责人")).toBeInTheDocument()
 })
 
@@ -418,20 +441,19 @@ describe("标题下面那一行", () => {
 // Deleting used to be a section of its own at the bottom of the dialog, which
 // gave the rarest thing on the screen a heading of its own.
 it("keeps delete beside save rather than in a section of its own", async () => {
+  const user = userEvent.setup()
   renderWithProviders(<AssetDetail />)
   await screen.findByText("112394521950")
+  await openEdit(user)
 
   // A page now, not a dialog: queries run against the document.
   expect(screen.getByRole("button", { name: "删除" })).toBeInTheDocument()
   // The card the two of them share is the device's own, not a delete card.
   expect(screen.queryByText("删除资产")).not.toBeInTheDocument()
 
-  // And the timeline sits above the details, since it is read far more often
-  // than the details are edited.
-  const recent = screen.getByText(t.assets.transfers)
-  // By role, not by text: the back link is called 资产 too now.
-  const details = screen.getByRole("heading", { name: t.assets.title })
-  expect(recent.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  // Both live in the editor, so Save is reachable from the same place --
+  // which is the whole of what "beside" was protecting.
+  expect(screen.getByRole("button", { name: t.assets.save })).toBeInTheDocument()
 })
 
 // A label for the one device on screen used to be two clicks and a page away
@@ -505,6 +527,9 @@ describe("the attribute section", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
+    // The schema is a second request; wait for a field rather than for the
+    // device, or the section is still showing its empty state.
+    await screen.findByText("基准 MAC")
     const card = screen.getByText("设备属性").closest("section") as HTMLElement
     expect(within(card).getByText("基准 MAC")).toBeInTheDocument()
     expect(within(card).getByText("001A2B3C4D5E")).toBeInTheDocument()
@@ -519,6 +544,7 @@ describe("the attribute section", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
+    await screen.findByText("基准 MAC")
     const section = screen.getByText("设备属性").closest("section") as HTMLElement
     const keys = [...section.querySelectorAll("dt")].map((e) => e.textContent)
 
@@ -526,14 +552,15 @@ describe("the attribute section", () => {
     expect(section.querySelectorAll("dd")).toHaveLength(keys.length)
   })
 
-  // Identity comes before action: the card sits above the transfer form.
-  it("sits above the transfer card", async () => {
+  // Identity comes before history: what the device IS reads before what has
+  // happened to it. The transfer form it used to sit above is a dialog now.
+  it("sits above the movement history", async () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
-    const attrs = screen.getByText("设备属性")
-    const transfer = screen.getByText("流转")
-    expect(attrs.compareDocumentPosition(transfer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const attrs = screen.getByRole("heading", { name: t.assets.attrs })
+    const history = screen.getByRole("heading", { name: t.assets.transfers })
+    expect(attrs.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   // The six built-ins each already have their own place in this dialog;
