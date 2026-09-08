@@ -84,7 +84,7 @@ export function AppShell() {
      * everywhere else here: a thing is told apart by its shape and its
      * surface, never by a line drawn between two areas that look alike. */
     <div className="grid h-screen grid-cols-[236px_1fr] bg-well p-3 text-foreground max-md:grid-cols-1 max-md:grid-rows-[auto_1fr] max-md:p-0">
-      <div className="flex min-h-0 flex-col gap-6 pt-9 pr-[18px] pb-12 pl-[30px] max-md:flex-row max-md:items-center max-md:gap-4 max-md:px-5 max-md:py-3">
+      <div className="flex min-h-0 flex-col gap-6 px-5 pt-9 pb-10 max-md:flex-row max-md:items-center max-md:gap-4 max-md:py-3">
         {/* Two lines, the second one carrying the product's one piece of
             colour. Split from the catalogue rather than written out here:
             the name is not translated, but it still has exactly one source,

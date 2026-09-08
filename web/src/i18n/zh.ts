@@ -689,13 +689,7 @@ export const zhOverview = {
   recentTitle: "最近流转",
   recentCount: "显示条数",
   recentCountUnit: (n: number) => `${n} 条`,
-  quickTitle: "快速录入",
-  quickHint: "选择类别后直接进入录入表单",
-  quickCategory: "类别",
-  quickStart: "开始录入",
-  noCategories: "还没有配置任何类别",
   noCategoriesHint: "类别决定设备要记录哪些信息。先建一个类别才能录入设备。",
-  goConfigure: "去配置类别",
   emptyDistribution: "还没有任何设备",
 }
 

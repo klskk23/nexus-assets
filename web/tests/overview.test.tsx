@@ -166,28 +166,31 @@ describe("Overview", () => {
     expect(within(rows[0]).getByText("XX 集团", { exact: false })).toBeInTheDocument()
   })
 
-  it("starts a new asset in the chosen category", async () => {
+  // Entering a device is the page's action, not a section of it. It used to
+  // be a whole column holding a category select and a button; the entry
+  // dialog asks for the category itself, so the column was a step in front of
+  // a step.
+  it("starts a new asset from the page's own action", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Overview />)
+    await screen.findByText(/共 70 台/)
 
-    await user.click(await screen.findByRole("combobox", { name: "类别" }))
-    await user.click(await screen.findByRole("option", { name: "网络设备" }))
-    await user.click(screen.getByRole("button", { name: "开始录入" }))
-    expect(navigate).toHaveBeenCalledWith("/assets?new=1&category_id=net")
+    await user.click(screen.getByRole("button", { name: "录入设备" }))
+    expect(navigate).toHaveBeenCalledWith("/assets?new=1")
   })
 
-  // A fresh install has nothing configured; the card has to point at the one
-  // thing that must happen first rather than offering an empty dropdown.
-  it("asks for a category first when none exists", async () => {
+  // A fresh install has nothing configured, and a category is what says which
+  // fields a device even has. Disabled and saying what is missing, per the
+  // product's own rule -- not hidden, which would leave someone looking for a
+  // button that is not there.
+  it("disables entry until a category exists, and says why", async () => {
     get.mockImplementation((p: string) => route(p, []))
-    const user = userEvent.setup()
     renderWithProviders(<Overview />)
+    await screen.findByText(/共 70 台/)
 
-    expect(await screen.findByText("还没有配置任何类别")).toBeInTheDocument()
-    expect(screen.queryByLabelText("类别")).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "去配置类别" }))
-    expect(navigate).toHaveBeenCalledWith("/categories")
+    const enter = screen.getByRole("button", { name: "录入设备" })
+    expect(enter).toBeDisabled()
+    expect(enter).toHaveAttribute("title", expect.stringContaining("类别"))
   })
 
   it("shows an error state with a retry", async () => {
@@ -230,19 +233,19 @@ describe("Overview recent count", () => {
 })
 
 // The count of statuses is configurable, and splitting them across two
-// containers would read as two unrelated groups rather than one row of
-// numbers. What is pinned here is that claim and only that claim: every
-// status lives in one container, whatever that container is made of.
+// containers would read as two unrelated groups rather than one list. What is
+// pinned here is that claim and only that claim: every status lives in one
+// list, whatever that list is made of.
 //
 // Not the classes that lay it out. jsdom measures nothing, so an assertion on
 // `grid-cols-[...]` would pass a broken row and fail a working one the moment
-// the mechanism changed -- which is exactly what happened when this row went
-// from grid to flex. Whether the cards actually share the width is a question
-// for the screenshot walkthrough, and it is answered there.
-it("keeps every status card in one row", async () => {
+// the mechanism changed -- which is what happened twice, when this went from
+// grid to flex and then from cards to bars. How it looks is a question for
+// the screenshot walkthrough, and it is answered there.
+it("keeps every status in one list", async () => {
   renderWithProviders(<Overview />)
-  const card = await screen.findByRole("button", { name: /在库 42/ })
+  const row = await screen.findByRole("button", { name: /在库 42/ })
 
-  const row = card.parentElement!
-  expect(within(row).getAllByRole("button")).toHaveLength(5)
+  const list = row.closest("ul")!
+  expect(within(list).getAllByRole("button")).toHaveLength(5)
 })

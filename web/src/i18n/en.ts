@@ -724,14 +724,8 @@ export const enOverview: typeof zhOverview = {
   recentTitle: "Recent transfers",
   recentCount: "Show",
   recentCountUnit: (n: number) => `${n}`,
-  quickTitle: "Quick entry",
-  quickHint: "Pick a category to go straight to the entry form",
-  quickCategory: "Category",
-  quickStart: "Start",
-  noCategories: "No categories configured yet",
   noCategoriesHint:
     "A category decides what a device records. Create one before recording a device.",
-  goConfigure: "Configure categories",
   emptyDistribution: "No devices yet",
 }
 
