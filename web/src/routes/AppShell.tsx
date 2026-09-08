@@ -94,7 +94,12 @@ export function AppShell() {
             not a button -- there is nowhere for it to go that the nav below
             does not already offer, and a logo that navigates is a second, less
             discoverable way to do what "Overview" does. */}
-        <div className="flex items-center justify-center gap-3 max-md:justify-start">
+        {/* pl-3 is the nav pill's own left padding, so the mark's left edge
+            lands on the same line the eleven nav icons start from. Centring it
+            put it 32px to the right of that line -- close enough to read as a
+            near-miss rather than as a choice, which is the one thing an
+            alignment must never look like. */}
+        <div className="flex items-center gap-3 pl-3">
           <Logo className="size-10 shrink-0" />
           <span className="font-heading grid text-[21px] leading-[1.15]">
             <span>{t.appName.split(" ")[0]}</span>
