@@ -1,4 +1,4 @@
-import { CheckIcon, CopyIcon } from "lucide-react"
+import { CheckIcon, CopyIcon, Trash2Icon } from "lucide-react"
 import { useRef, useState, type ReactNode } from "react"
 
 import {
@@ -38,6 +38,22 @@ interface Props {
    */
   requirePhrase?: string
   phraseLabel?: string
+  /**
+   * How much alarm this confirmation is entitled to. **Neutral by default.**
+   *
+   * The design only ever drew the delete case -- clay button, a bin in a
+   * circle -- and it is tempting to make that the shape of every confirmation,
+   * since AlertDialog is where confirmations live. But four of the thirteen
+   * confirmations in this product are not destructive at all: saving a model,
+   * recomputing a field, unbinding a field twice over, resetting a password.
+   * Handing those a bin icon says the wrong thing about what is about to
+   * happen, and a warning that appears on ordinary actions is a warning people
+   * learn to click through.
+   *
+   * So the alarming shape is opt-in. `CrudPage` derives it from the
+   * `RowAction.destructive` flag it already carries.
+   */
+  tone?: "danger" | "neutral"
   onConfirm: () => void
 }
 
@@ -50,8 +66,10 @@ export function ConfirmDialog({
   confirmLabel,
   requirePhrase,
   phraseLabel,
+  tone = "neutral",
   onConfirm,
 }: Props) {
+  const danger = tone === "danger"
   const [typed, setTyped] = useState("")
   // null = not tried, true = on the clipboard, false = the browser would not,
   // and the text is selected so it can be copied by hand.
@@ -80,8 +98,19 @@ export function ConfirmDialog({
       }}
     >
       {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
-      <AlertDialogContent>
+      <AlertDialogContent tone={tone}>
         <AlertDialogHeader>
+          {/* The mark comes before the sentence: at a glance the shape says
+              what kind of answer is being asked for, before anyone has read a
+              word of it. Only on the destructive path -- see `tone`. */}
+          {danger && (
+            <span
+              aria-hidden
+              className="bg-destructive/12 text-destructive grid size-13 place-items-center rounded-full"
+            >
+              <Trash2Icon className="size-[23px]" />
+            </span>
+          )}
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
@@ -133,6 +162,11 @@ export function ConfirmDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>{tConfirm.cancel}</AlertDialogCancel>
           <AlertDialogAction
+            // AlertDialogAction defaults to the primary variant, so before
+            // 022 the delete button was terracotta -- the same colour as
+            // Save. Passing the variant is what actually makes a destructive
+            // confirmation look destructive.
+            variant={danger ? "destructive" : "default"}
             disabled={!armed}
             onClick={() => {
               if (armed) onConfirm()

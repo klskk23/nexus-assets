@@ -34,7 +34,22 @@
   --muted-foreground: #82796a;
   --accent: #fff2eb;
   --accent-foreground: #8c491a;
-  --destructive: oklch(0.577 0.245 27.325);
+  /* Clay, not red. Deeper and redder than the terracotta primary, and still in
+   * the warm family -- upstream's oklch red is the one colour in the sheet that
+   * did not belong to this palette, and beside cream it read as an alarm
+   * borrowed from another product.
+   *
+   * It is also the better colour on every ground we actually use: 6.00:1 on the
+   * page, 5.52 on --well, 4.90 on --card, against the red's 4.36 / 4.01 / 3.56.
+   * The button's own text is --destructive-foreground at 6.11:1 -- warm white,
+   * not #fff, which beside cream reads as a hole.
+   *
+   * The cost, accepted: clay against --primary is 1.82:1. Delete and Save side
+   * by side are no longer told apart by colour, so they are told apart by shape
+   * and position. The one place this is not enough is the bulk bar -- see
+   * ActionBar, which deliberately does not use this token. */
+  --destructive: #8f4a35;
+  --destructive-foreground: #fdf6ea;
   --border: color-mix(in srgb, #201e1d 16%, transparent);
   --input: color-mix(in srgb, #201e1d 16%, transparent);
   /* Organic's accent-700, not the accent itself.
@@ -86,6 +101,15 @@
   --radius-md: 20px;
   --radius-lg: 28px;
   --radius-xl: 28px;
+  /* A fourth step, and the only one -- 022 added it, so the sentence above
+   * about three names now has an exception and this is it.
+   *
+   * It exists for exactly one surface: the dialog panel. A dialog is the
+   * largest thing that ever floats on this product, and at 28 it wore the same
+   * corner as the card sitting still underneath it. The radius is what says
+   * which one is on top. Nothing else may use it; a second user would make this
+   * a scale again, and a scale is what the three names were avoiding. */
+  --radius-2xl: 32px;
   /* Latin first, Chinese second, system last. Order matters: Figtree has no CJK
    * glyphs, so every Chinese character falls through to Noto Sans SC -- which is
    * the intended path, not a fallback. */

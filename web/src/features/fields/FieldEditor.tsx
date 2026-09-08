@@ -366,6 +366,7 @@ export function FieldEditor({ field, onClose }: Props) {
             title={tConfig.field.deleteTitle}
             description={tConfig.field.deleteHint(field.label)}
             confirmLabel={tConfig.field.delete}
+            tone="danger"
             requirePhrase={field.key}
             onConfirm={() => remove.mutate()}
           />

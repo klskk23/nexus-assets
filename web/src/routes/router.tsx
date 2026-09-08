@@ -15,21 +15,19 @@ export const router = createBrowserRouter([
     children: [
       { index: true, lazy: async () => ({ Component: (await import("./Overview")).Overview }) },
       {
-        // The detail is a child so it renders as a dialog over the list rather
-        // than instead of it -- one address, two things on screen (decision 89).
         path: "assets",
         lazy: async () => ({ Component: (await import("./Assets")).Assets }),
-        children: [
-          {
-            path: ":id",
-            lazy: async () => ({ Component: (await import("./AssetDetail")).AssetDetail }),
-          },
-        ],
       },
       {
-        // The full timeline is its own page, so it is not nested here.
-        path: "assets/:id/history",
-        lazy: async () => ({ Component: (await import("./AssetHistory")).AssetHistory }),
+        // A page, not a child rendering as a dialog over the list (022 replaces
+        // decision 89). The dialog existed to keep the list -- and therefore
+        // its filters -- alive behind it; the filters live in the address bar
+        // instead, and the detail carries them so it can hand them back. What
+        // the dialog cost was the whole timeline: forty events do not fit in a
+        // box, so they needed a second page. A page has room, so that page is
+        // gone too.
+        path: "assets/:id",
+        lazy: async () => ({ Component: (await import("./AssetDetail")).AssetDetail }),
       },
       { path: "categories", lazy: async () => ({ Component: (await import("./Categories")).Categories }) },
       { path: "fields", lazy: async () => ({ Component: (await import("./Fields")).Fields }) },

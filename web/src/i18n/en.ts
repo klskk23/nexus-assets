@@ -228,10 +228,7 @@ export const en: typeof zh = {
     editAttrs: "Edit device details",
     editAttrsHint: "The model, this category's fields and where it belongs. Changing these records no movement.",
     transfer: "Transfer",
-    recentTransfers: "Recent movements",
-    fullHistory: "See the full history",
-    historyTitle: "Movement history",
-    backToAsset: "Back to this device",
+    transfers: "Movement history",
   },
 
   common: {

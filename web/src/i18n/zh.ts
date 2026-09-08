@@ -214,10 +214,7 @@ export const zh = {
     editAttrs: "编辑设备属性",
     editAttrsHint: "型号、类别字段与默认归属。改这些不产生流转记录。",
     transfer: "流转",
-    recentTransfers: "最近流转",
-    fullHistory: "查看全部流转",
-    historyTitle: "流转历史",
-    backToAsset: "返回该设备",
+    transfers: "流转历史",
   },
 
   common: {

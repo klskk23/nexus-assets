@@ -183,6 +183,7 @@ export function UserEditor({ user, roles, onClose }: Props) {
                 title={tMeta.users.disableTitle}
                 description={tMeta.users.disableHint(user.name)}
                 confirmLabel={tMeta.users.disable}
+                tone="danger"
                 requirePhrase={user.email}
                 onConfirm={() => setEnabled.mutate(false)}
               />

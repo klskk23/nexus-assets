@@ -111,13 +111,28 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
           {tImport.exportSelection}
         </Button>
 
-        {/* Destructive, and the only one that cannot be undone, so it wears
-            the danger colour rather than sitting quietly among the others. */}
+        {/* Destructive, and the only one here that cannot be undone -- but it
+            does NOT wear --destructive, and that is deliberate.
+
+            This bar's ground is --foreground. Clay measures 2.53:1 on it and
+            the red it replaced measured 3.48 -- neither clears 4.5, so the old
+            button was already failing and switching the token would only have
+            made it worse. The design covers light grounds; this pill is the one
+            dark surface in the product and it was never drawn.
+
+            So the button follows the rule the rest of this bar already
+            follows -- invert against the ground -- and gets its danger from the
+            bin and the word, which is where the meaning was anyway. Inverted it
+            measures 15.17:1.
+
+            **This is the only destructive action in the product that is not
+            destructive-coloured.** It looks like an oversight. It is not: see
+            022 FR-020 and docs/rules/web-tables.md. */}
         <ConfirmDialog
           trigger={
             <Button
               size="sm"
-              className="text-destructive border-destructive/40 hover:bg-destructive/15 rounded-full border bg-transparent"
+              className={PILL}
               disabled={deniedReason("asset.delete") !== undefined}
               title={deniedReason("asset.delete")}
             >
@@ -128,6 +143,7 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
           title={t.assets.deleteTitle}
           description={t.assets.deleteManyHint(selected.length)}
           confirmLabel={t.assets.delete}
+          tone="danger"
           // A batch cannot ask for every number to be typed out, so it asks
           // for its size: you cannot confirm without having looked at it.
           requirePhrase={String(selected.length)}

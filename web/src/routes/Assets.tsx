@@ -1,6 +1,6 @@
 import { ArrowRightLeftIcon, InfoIcon, MoreVerticalIcon, PrinterIcon, SearchIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
-import { Outlet, useNavigate, useSearchParams } from "react-router"
+import { useNavigate, useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
@@ -665,7 +665,7 @@ export function Assets() {
                             were not. */}
                         <TableRow
                           className="group/row cursor-pointer"
-                          onClick={() => navigate(`/assets/${a.id}`)}
+                          onClick={() => navigate({ pathname: `/assets/${a.id}`, search: searchParams.toString() })}
                         >
                           <TableCell
                             className="bg-well group-hover/row:bg-accent sticky left-0 z-[1]"
@@ -750,7 +750,7 @@ export function Assets() {
                                 variant="ghost"
                                 size="icon-sm"
                                 aria-label={t.assets.rowDetail}
-                                onClick={() => navigate(`/assets/${a.id}`)}
+                                onClick={() => navigate({ pathname: `/assets/${a.id}`, search: searchParams.toString() })}
                               >
                                 <InfoIcon />
                               </Button>
@@ -761,13 +761,6 @@ export function Assets() {
                       {/* The same actions the selection bar offers, reachable on
                           one device without ticking it first. */}
                       <ContextMenuContent>
-                        {/* Reading before doing: the dialog a click opens shows
-                            the last five movements, and this is the way to the
-                            rest of them without opening it first. */}
-                        <ContextMenuItem onSelect={() => navigate(`/assets/${a.id}/history`)}>
-                          {t.assets.fullHistory}
-                        </ContextMenuItem>
-                        <ContextMenuSeparator />
                         {transferActions().map(([action, label]) => (
                           <ContextMenuItem
                             key={action}
@@ -871,13 +864,13 @@ export function Assets() {
           title={t.assets.deleteTitle}
           description={t.assets.deleteHint(deleting.display_name)}
           confirmLabel={t.assets.delete}
+          tone="danger"
           requirePhrase={deleting.display_name}
           onConfirm={() => removeOne.mutate(deleting)}
         />
       )}
 
       {/* /assets/:id renders here: one device, in a dialog over this list. */}
-      <Outlet />
     </div>
   )
 }

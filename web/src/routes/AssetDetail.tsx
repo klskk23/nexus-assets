@@ -1,4 +1,4 @@
-import { InfoIcon, PrinterIcon } from "lucide-react"
+import { ArrowLeftIcon, InfoIcon, PrinterIcon } from "lucide-react"
 import { Hint } from "@/features/common/Hint"
 import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router"
@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { cn } from "cn"
 import { api, ApiError, type FieldErrors } from "@/lib/api"
 import type { Asset, CategorySchema, HolderEntity, User } from "@/lib/types"
+import type { ProductModelRow } from "@/lib/metaTypes"
 import { NONE } from "@/lib/select"
 import type { Transfer } from "@/lib/transferTypes"
 import { t, tTransfer } from "@/i18n"
@@ -22,7 +23,6 @@ import { ModelPicker } from "@/features/assets/ModelPicker"
 import { TransferForm } from "@/features/transfers/TransferForm"
 import { PrintDialog } from "@/features/print/PrintDialog"
 import { usePrinting } from "@/features/print/usePrinting"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -71,7 +71,6 @@ export function AssetDetail() {
   const { id = "" } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const close = () => navigate({ pathname: "/assets", search: location.search })
   const queryClient = useQueryClient()
 
   const [values, setValues] = useState<Record<string, unknown>>({})
@@ -178,13 +177,32 @@ export function AssetDetail() {
   // Everything this device's category and model give it, in schema order --
   // including the derived number, which is as much a property of the device as
   // anything typed in.
+  // Same query key ModelPicker uses, so opening the edit form does not refetch.
+  const models = useQuery({
+    queryKey: ["models"],
+    queryFn: () => api.get<ProductModelRow[]>("/models"),
+  })
+  const model = (models.data ?? []).find((m) => m.id === asset?.model_id)
+
   const shown = fieldsForModel(schema.data?.fields ?? [], asset?.model_id ?? null)
   const events = timeline.data ?? []
-  const recent = events.slice(-5)
 
   return (
-    <Dialog open onOpenChange={(next) => !next && close()}>
-      <DialogContent className="max-h-[85vh] gap-0 overflow-y-auto sm:max-w-3xl">
+    <div className="grid gap-14">
+      {/* Back, and it always goes to the list -- not wherever the browser
+          happened to come from. Someone who arrived from a scan, from
+          finishing a form, or from the audit's "just this object" is on this
+          page to read a device, and the list is the place that answers "which
+          other ones". The list's filters ride along in this page's own query
+          string, so handing them back is handing back what we were given.
+          Nothing to restore, nothing to remember, and it survives a refresh. */}
+      <Button variant="outline" size="sm" className="w-fit" asChild>
+        <Link to={{ pathname: "/assets", search: location.search }}>
+          <ArrowLeftIcon />
+          {t.assets.title}
+        </Link>
+      </Button>
+      <div>
         <StateBoundary
           isLoading={detail.isLoading}
           error={detail.error as Error | null}
@@ -192,7 +210,7 @@ export function AssetDetail() {
         >
           {asset && (
             <div className="grid gap-14">
-              <DialogHeader>
+              <header className="grid gap-2">
                 {/* pe-10 leaves room for the print button and, past it, the
                     dialog's own close button. */}
                 {/* The one heading on this product that IS Latin: a device
@@ -201,7 +219,7 @@ export function AssetDetail() {
                     renders all of them, so this is where it belongs.
                     Tabular figures because the number beside it in the list
                     was set the same way. */}
-                <DialogTitle className="flex flex-wrap items-center gap-3 pe-10 text-[40px] leading-[1.2]">
+                <h1 className="flex flex-wrap items-center gap-3 text-[40px] leading-[1.2] font-bold">
                   <span className="font-heading tabular-nums">{asset.display_name}</span>
                   <StatusBadge status={asset.status} />
                   {/* Printing is a property of the installation: with no
@@ -220,8 +238,23 @@ export function AssetDetail() {
                       {t.print.action}
                     </Button>
                   )}
-                </DialogTitle>
-              </DialogHeader>
+                </h1>
+                {/* Data, not prose. The mock had a sentence here explaining how
+                    the number is derived -- that sentence belongs to the entry
+                    form, where somebody is deciding whether to type one, and it
+                    says nothing to somebody reading a device that already has
+                    one. What does belong here is what the device IS, which is
+                    the two fields you would otherwise scroll to the attributes
+                    card to find.
+
+                    No model, no line at all. Model without a vendor, no
+                    trailing separator left hanging. */}
+                {model && (
+                  <p className="text-muted-foreground text-sm">
+                    {[model.name, model.vendor_name].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+              </header>
 
               {printing && <PrintDialog ids={[id]} onClose={() => setPrinting(false)} />}
 
@@ -313,8 +346,8 @@ export function AssetDetail() {
                 </div>
               </section>
 
-              <section aria-label={t.assets.recentTransfers} className="grid content-start gap-3">
-                <h2 className="text-[21px] leading-tight font-bold">{t.assets.recentTransfers}</h2>
+              <section aria-label={t.assets.transfers} className="grid content-start gap-3">
+                <h2 className="text-[21px] leading-tight font-bold">{t.assets.transfers}</h2>
                 <div className="grid gap-4">
                   {editing && (
                     <EditEvent event={editing} assetID={id} onClose={() => setEditing(null)} />
@@ -323,18 +356,12 @@ export function AssetDetail() {
                   for. Forty events in a dialog is a page inside a box, with
                   one scrollbar inside another. */}
                   <Timeline
-                    events={recent}
+                    events={events}
                     isLoading={timeline.isLoading}
                     error={timeline.error as Error | null}
                     editableId={tailID}
                     onEdit={setEditing}
                   />
-                  {/* Offered whatever the length: somebody who came to read
-                      the history should not have to notice that this card is
-                      the short version of it. */}
-                  <Button variant="outline" className="w-fit" asChild>
-                    <Link to={`/assets/${id}/history`}>{t.assets.fullHistory}</Link>
-                  </Button>
                 </div>
               </section>
 
@@ -475,6 +502,7 @@ export function AssetDetail() {
                       title={t.assets.deleteTitle}
                       description={t.assets.deleteHint(asset.display_name)}
                       confirmLabel={t.assets.delete}
+                      tone="danger"
                       requirePhrase={asset.display_name}
                       onConfirm={() => remove.mutate()}
                     />
@@ -527,7 +555,7 @@ export function AssetDetail() {
             </div>
           )}
         </StateBoundary>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   )
 }

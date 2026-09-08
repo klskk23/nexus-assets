@@ -338,6 +338,7 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
                 : "")
             }
             confirmLabel={tMeta.categories.delete}
+            tone="danger"
             requirePhrase={category.name}
             onConfirm={() => remove.mutate()}
           />

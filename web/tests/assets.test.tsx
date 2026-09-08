@@ -262,6 +262,8 @@ describe("Assets list", () => {
       p.startsWith("/assets") ? Promise.resolve({ ...page, exact_match_id: "a1" }) : route(p),
     )
     renderWithProviders(<Assets />)
+    // A bare address, deliberately: a scan did not come from a filter, so
+    // there is none to hand back when the detail page's Back is pressed.
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/assets/a1"))
   })
 
@@ -489,7 +491,7 @@ describe("Assets row gestures", () => {
     for (const cell of ["在库", "上海仓库", "管理员"]) {
       navigate.mockReset()
       await user.click(within(row).getByText(cell))
-      expect(navigate).toHaveBeenCalledWith("/assets/a1")
+      expect(navigate).toHaveBeenCalledWith({ pathname: "/assets/a1", search: "" })
     }
   })
 
@@ -518,16 +520,6 @@ describe("Assets row gestures", () => {
     }
   })
 
-  // The dialog a click opens carries the last five movements; the rest of them
-  // are a page, and it should not take opening the dialog to get there.
-  it("goes to the full history from the row menu", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Assets />)
-    const row = await screen.findByRole("row", { name: /112394521950/ })
-
-    await chooseFromMenu(user, row, "查看全部流转")
-    expect(navigate).toHaveBeenCalledWith("/assets/a1/history")
-  })
 
   it("starts a transfer for the row it was opened on", async () => {
     const user = userEvent.setup()

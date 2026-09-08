@@ -7,6 +7,7 @@ import { renderWithProviders } from "@/test/renderWithProviders"
 import { statusRoute } from "./fixtures/statuses"
 import { choose } from "@/test/choose"
 import { ApiError } from "@/lib/api"
+import { t, tTransfer } from "@/i18n"
 
 const navigate = vi.fn()
 vi.mock("react-router", async () => {
@@ -180,7 +181,7 @@ describe("AssetDetail", () => {
     )
   })
 
-  // The five operations are the point of the dialog, so they are a row of
+  // The five operations are the point of this card, so they are a row of
   // toggles rather than a dropdown: all of them readable at a glance, and one
   // click to choose instead of two.
   it("shows every transfer operation without opening anything", async () => {
@@ -188,14 +189,13 @@ describe("AssetDetail", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
-    const dialog = screen.getByRole("dialog")
     for (const label of ["签出", "归还", "转移", "改负责人", "改状态"]) {
-      expect(within(dialog).getByRole("radio", { name: label })).toBeInTheDocument()
+      expect(screen.getByRole("radio", { name: label })).toBeInTheDocument()
     }
 
     // Choosing one marks it pressed, so the current choice is visible too.
-    await user.click(within(dialog).getByRole("radio", { name: "转移" }))
-    expect(within(dialog).getByRole("radio", { name: "转移" })).toHaveAttribute(
+    await user.click(screen.getByRole("radio", { name: "转移" }))
+    expect(screen.getByRole("radio", { name: "转移" })).toHaveAttribute(
       "data-state",
       "on",
     )
@@ -209,12 +209,11 @@ describe("AssetDetail", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
-    const dialog = screen.getByRole("dialog")
 
-    await user.click(within(dialog).getByRole("radio", { name: "签出" }))
-    await choose(user, await within(dialog).findByRole("combobox", { name: "账号" }), "张三")
-    await user.type(within(dialog).getByLabelText("本次流转的备注"), "借给张三")
-    await user.click(within(dialog).getByRole("button", { name: "提交" }))
+    await user.click(screen.getByRole("radio", { name: "签出" }))
+    await choose(user, await screen.findByRole("combobox", { name: "账号" }), "张三")
+    await user.type(screen.getByLabelText("本次流转的备注"), "借给张三")
+    await user.click(screen.getByRole("button", { name: "提交" }))
 
     // A single device is just a one-element batch, through the same endpoint
     // the list page uses.
@@ -234,10 +233,9 @@ describe("AssetDetail", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
-    const dialog = screen.getByRole("dialog")
-    await user.click(within(dialog).getByRole("radio", { name: "改状态" }))
-    await choose(user, within(dialog).getByRole("combobox", { name: "状态" }), "维修中")
-    await user.click(within(dialog).getByRole("button", { name: "提交" }))
+    await user.click(screen.getByRole("radio", { name: "改状态" }))
+    await choose(user, screen.getByRole("combobox", { name: "状态" }), "维修中")
+    await user.click(screen.getByRole("button", { name: "提交" }))
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/transfers", {
@@ -255,18 +253,17 @@ describe("AssetDetail", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
-    const dialog = screen.getByRole("dialog")
-    await user.click(within(dialog).getByRole("radio", { name: "改状态" }))
-    await user.click(within(dialog).getByRole("button", { name: "提交" }))
+    await user.click(screen.getByRole("radio", { name: "改状态" }))
+    await user.click(screen.getByRole("button", { name: "提交" }))
 
     await waitFor(() =>
-      expect(within(dialog).getByRole("radio", { name: "改状态" })).toHaveAttribute(
+      expect(screen.getByRole("radio", { name: "改状态" })).toHaveAttribute(
         "data-state",
         "off",
       ),
     )
     // And with nothing chosen, submitting again is not possible.
-    expect(within(dialog).getByRole("button", { name: "提交" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "提交" })).toBeDisabled()
   })
 
   // Deleting is irreversible, so it goes through a dialog that stays inert
@@ -278,8 +275,8 @@ describe("AssetDetail", () => {
     await screen.findByText("112394521950")
 
     await user.click(screen.getByRole("button", { name: "删除" }))
-    const dialog = await screen.findByRole("alertdialog")
-    const confirm = within(dialog).getByRole("button", { name: "删除" })
+    await screen.findByRole("alertdialog")
+    const confirm = screen.getByRole("button", { name: "删除" })
     expect(confirm).toBeDisabled()
 
     const input = screen.getByLabelText(/请输入/)
@@ -302,60 +299,54 @@ it("keeps where it is now apart from where it belongs", async () => {
   renderWithProviders(<AssetDetail />)
   await screen.findByText("112394521950")
 
-  const dialog = screen.getByRole("dialog")
+  // A page now, not a dialog: queries run against the document.
   // The current pair is stated, not editable: it moves through the form
   // below, which is what the card it sits in is for.
-  expect(within(dialog).getByText("当前持有方")).toBeInTheDocument()
-  expect(within(dialog).queryByLabelText("持有方")).not.toBeInTheDocument()
+  expect(screen.getByText("当前持有方")).toBeInTheDocument()
+  expect(screen.queryByLabelText("持有方")).not.toBeInTheDocument()
 
   // The editable pair is behind the details button, and says which one it is
   // in its own label once opened.
   const user = userEvent.setup()
-  await user.click(within(dialog).getByRole("button", { name: "编辑设备属性" }))
-  expect(within(dialog).getByLabelText("默认持有方")).toBeInTheDocument()
-  expect(within(dialog).getByLabelText("默认负责人")).toBeInTheDocument()
+  await user.click(screen.getByRole("button", { name: "编辑设备属性" }))
+  expect(screen.getByLabelText("默认持有方")).toBeInTheDocument()
+  expect(screen.getByLabelText("默认负责人")).toBeInTheDocument()
 })
 
 // A device opens over the list rather than instead of it, and closing puts it
 // away without losing where the list was (decision 89).
-it("opens as a dialog over the list and closes back to it", async () => {
-  const user = userEvent.setup()
-  renderWithProviders(<AssetDetail />)
-  await screen.findByText("112394521950")
-
-  const dialog = screen.getByRole("dialog")
-  expect(within(dialog).getByText("112394521950")).toBeInTheDocument()
-
-  await user.click(within(dialog).getByRole("button", { name: /关闭|Close/ }))
-  await waitFor(() =>
-    expect(navigate).toHaveBeenCalledWith({ pathname: "/assets", search: "" }),
-  )
-})
-
-// The one above passes on an empty search whether or not anything is carried
-// back, which is the whole of what it is meant to prove. This one arrives with
-// a filter on the address and checks that it survives the round trip: without
-// it, opening a device and closing it again drops the list back to everything
-// and the narrowing has to be done a second time.
-it("closes back to the list the device was opened from, filter intact", async () => {
-  const user = userEvent.setup()
+// 022 replaced the dialog with a page. What has to survive that is the list's
+// filter: the dialog kept it because the list stayed mounted behind it, and a
+// page cannot rely on that. It rides on this page's own query string instead,
+// which is why the back link is asserted as an href rather than a call --
+// an href survives a refresh, and a remembered value would not.
+it("goes back to the list, carrying the filter it arrived with", async () => {
   renderWithProviders(<AssetDetail />, {
     route: "/assets/a1?status=in_stock&q=1123&offset=40",
   })
   await screen.findByText("112394521950")
 
-  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /关闭|Close/ }))
-  await waitFor(() =>
-    expect(navigate).toHaveBeenCalledWith({
-      pathname: "/assets",
-      search: "?status=in_stock&q=1123&offset=40",
-    }),
+  const back = screen.getByRole("link", { name: t.assets.title })
+  expect(back).toHaveAttribute("href", "/assets?status=in_stock&q=1123&offset=40")
+})
+
+// The three entrances that carry nothing -- a scan that hit exactly one device,
+// finishing the entry form, the audit's "just this object" -- land on a bare
+// address. Back then goes to the unfiltered list, which is right: they did not
+// come from a filter, so there is none to hand back.
+it("goes back to the plain list when it was opened without one", async () => {
+  renderWithProviders(<AssetDetail />, { route: "/assets/a1" })
+  await screen.findByText("112394521950")
+
+  expect(screen.getByRole("link", { name: t.assets.title })).toHaveAttribute(
+    "href",
+    "/assets",
   )
 })
 
-// The dialog shows the last few movements; the rest is a page, because forty
-// events in a box is a page inside a box.
-it("links to the full history whatever the length of it", async () => {
+// The dialog showed the last five and sent you to another page for the rest.
+// A page has room, so it shows all of them and that second page is gone.
+it("shows every movement, with nowhere else to go for the rest", async () => {
   const events = Array.from({ length: 6 }, (_, i) => ({
     id: `t${i}`,
     asset_id: "a1",
@@ -378,8 +369,50 @@ it("links to the full history whatever the length of it", async () => {
   renderWithProviders(<AssetDetail />)
   await screen.findByText("112394521950")
 
-  const link = await screen.findByRole("link", { name: /查看全部流转/ })
-  expect(link).toHaveAttribute("href", "/assets/a1/history")
+  // Six events, six rows -- the slice to five is what this asserts is gone.
+  const timeline = await screen.findByRole("list", { name: tTransfer.timeline })
+  expect(within(timeline).getAllByRole("listitem")).toHaveLength(6)
+
+  // And no way out to a longer version of the same thing.
+  expect(
+    screen.queryByRole("link", { name: /全部流转|full history/i }),
+  ).not.toBeInTheDocument()
+})
+
+// The mock put a sentence under the title explaining how the number is
+// derived. That sentence belongs to the entry form -- it tells somebody
+// deciding whether to type one -- and says nothing to somebody reading a
+// device that already has one. What replaced it is the two fields you would
+// otherwise scroll to the attributes card to find.
+describe("标题下面那一行", () => {
+  it("有型号有厂商时，写型号 · 厂商", async () => {
+    get.mockImplementation((p: string) =>
+      p === "/assets/a1"
+        ? Promise.resolve({ asset: { ...asset, model_id: "m1" }, value_history: [] })
+        : route(p),
+    )
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+    expect(await screen.findByText("X100 · Acme")).toBeInTheDocument()
+  })
+
+  // The fixture device has no model, so the line has nothing to say and does
+  // not appear -- rather than appearing with a separator and nothing round it.
+  it("没有型号时整行不出现", async () => {
+    // Set explicitly: this describe sits outside the beforeEach that resets
+    // the api mock, so without this it inherits the previous test's device.
+    get.mockReset().mockImplementation(route)
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+    expect(screen.queryByText(/X100|Acme/)).not.toBeInTheDocument()
+  })
+
+  it("不解释编号是怎么来的", async () => {
+    get.mockReset().mockImplementation(route)
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+    expect(screen.queryByText(/推导/)).not.toBeInTheDocument()
+  })
 })
 
 // Deleting used to be a section of its own at the bottom of the dialog, which
@@ -388,15 +421,16 @@ it("keeps delete beside save rather than in a section of its own", async () => {
   renderWithProviders(<AssetDetail />)
   await screen.findByText("112394521950")
 
-  const dialog = screen.getByRole("dialog")
-  expect(within(dialog).getByRole("button", { name: "删除" })).toBeInTheDocument()
+  // A page now, not a dialog: queries run against the document.
+  expect(screen.getByRole("button", { name: "删除" })).toBeInTheDocument()
   // The card the two of them share is the device's own, not a delete card.
-  expect(within(dialog).queryByText("删除资产")).not.toBeInTheDocument()
+  expect(screen.queryByText("删除资产")).not.toBeInTheDocument()
 
   // And the timeline sits above the details, since it is read far more often
   // than the details are edited.
-  const recent = within(dialog).getByText("最近流转")
-  const details = within(dialog).getByText("资产")
+  const recent = screen.getByText(t.assets.transfers)
+  // By role, not by text: the back link is called 资产 too now.
+  const details = screen.getByRole("heading", { name: t.assets.title })
   expect(recent.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
@@ -431,8 +465,8 @@ it("prints this device from the header", async () => {
   renderWithProviders(<AssetDetail />)
   await screen.findByText("112394521950")
 
-  const dialog = screen.getByRole("dialog")
-  await user.click(within(dialog).getByRole("button", { name: "打印标签" }))
+  // A page now, not a dialog: queries run against the document.
+  await user.click(screen.getByRole("button", { name: "打印标签" }))
 
   // Its own overlay -- a dry run for just this one asset, not the whole list.
   await screen.findByText("1 台设备，1 个类别，将产生 1 个打印作业。")
@@ -451,7 +485,7 @@ it("has no print button without a print service configured", async () => {
   await screen.findByText("112394521950")
 
   expect(
-    within(screen.getByRole("dialog")).queryByRole("button", { name: "打印标签" }),
+    screen.queryByRole("button", { name: "打印标签" }),
   ).not.toBeInTheDocument()
 })
 
@@ -471,8 +505,7 @@ describe("the attribute section", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
-    const dialog = screen.getByRole("dialog")
-    const card = within(dialog).getByText("设备属性").closest("section") as HTMLElement
+    const card = screen.getByText("设备属性").closest("section") as HTMLElement
     expect(within(card).getByText("基准 MAC")).toBeInTheDocument()
     expect(within(card).getByText("001A2B3C4D5E")).toBeInTheDocument()
     expect(within(card).getByText("固件版本")).toBeInTheDocument()
@@ -486,8 +519,7 @@ describe("the attribute section", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
-    const dialog = screen.getByRole("dialog")
-    const section = within(dialog).getByText("设备属性").closest("section") as HTMLElement
+    const section = screen.getByText("设备属性").closest("section") as HTMLElement
     const keys = [...section.querySelectorAll("dt")].map((e) => e.textContent)
 
     expect(keys).toEqual(["基准 MAC", "固件版本"])
@@ -499,9 +531,8 @@ describe("the attribute section", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
-    const dialog = screen.getByRole("dialog")
-    const attrs = within(dialog).getByText("设备属性")
-    const transfer = within(dialog).getByText("流转")
+    const attrs = screen.getByText("设备属性")
+    const transfer = screen.getByText("流转")
     expect(attrs.compareDocumentPosition(transfer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
@@ -511,13 +542,12 @@ describe("the attribute section", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
-    const dialog = screen.getByRole("dialog")
-    const card = within(dialog).getByText("设备属性").closest("section") as HTMLElement
+    const card = screen.getByText("设备属性").closest("section") as HTMLElement
     for (const builtin of ["当前持有方", "当前负责人", "备注", "状态"]) {
       expect(within(card).queryByText(builtin)).not.toBeInTheDocument()
     }
     // And the editable panel below is untouched.
-    expect(within(dialog).getByRole("button", { name: "编辑设备属性" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "编辑设备属性" })).toBeInTheDocument()
   })
 
   // A model field belongs to the card only when the device is one of its
@@ -543,8 +573,7 @@ describe("the attribute section", () => {
     await screen.findByText("112394521950")
 
     // The fixture asset has no model, so a field belonging to one is not its.
-    const dialog = screen.getByRole("dialog")
-    const card = within(dialog).getByText("设备属性").closest("section") as HTMLElement
+    const card = screen.getByText("设备属性").closest("section") as HTMLElement
     expect(within(card).queryByText("ServiceTag")).not.toBeInTheDocument()
   })
 })

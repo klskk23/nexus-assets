@@ -334,6 +334,9 @@ export function CrudPage<T extends { id: string }>({
           title={pending.action.confirm(pending.row).title}
           description={pending.action.confirm(pending.row).description}
           confirmLabel={pending.action.label}
+          // The flag is already on the action -- it is what colours the menu
+          // item -- so the dialog reads it rather than being told twice.
+          tone={pending.action.destructive ? "danger" : "neutral"}
           requirePhrase={pending.action.confirm(pending.row).phrase}
           onConfirm={() => {
             pending.action.onSelect(pending.row)

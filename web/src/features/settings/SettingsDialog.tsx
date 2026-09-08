@@ -367,6 +367,7 @@ export function SettingsDialog({ onClose }: Props) {
           title={t.settings.keyRevokeTitle}
           description={revoking ? t.settings.keyRevokeHint(revoking.name) : ""}
           confirmLabel={t.settings.keyRevoke}
+          tone="danger"
           onConfirm={() => revoking && revoke.mutate(revoking.id)}
         />
       </DialogContent>
