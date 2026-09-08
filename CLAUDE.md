@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
-当前计划：`specs/018-organic-layout/spec.md`
+当前计划：`specs/018-organic-layout/plan.md`
 <!-- SPECKIT END -->
 
 必读：`.specify/memory/constitution.md`（五项原则、七条合并门禁）与当前 spec。
