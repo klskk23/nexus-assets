@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 // Relative, not the app's "@/" alias: this file lives outside web/, so esbuild
 // walks up from here and finds no tsconfig to resolve the alias with.
-import { applyLang } from "../web/src/i18n"
+import { applyLang } from "@/i18n"
 import { MemoryRouter } from "react-router"
 import type { ReactNode } from "react"
 

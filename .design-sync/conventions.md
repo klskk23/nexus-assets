@@ -8,10 +8,11 @@ for actions, generous corners on boxes and pills on everything small.
 ### Two components need a wrapper; the rest do not
 
 `StatusBadge`, `Timeline` and `CrudPage` resolve status keys through a React
-Query cache, and `MetadataTabs` renders router links. Outside a provider each of
-those throws. Everything else — every `components/ui` primitive, `PageHeader`,
-`StatCard`, `DistributionBar`, `Pager`, `ListToolbar` — is pure props and needs
-nothing.
+Query cache; `MetadataTabs` renders router links and `StateBoundary` reads the
+current path to pick its icon. Outside a provider each of those throws.
+Everything else — every `components/ui` primitive, `PageHeader`, `StatCard`,
+`DistributionBar`, `Pager`, `ListToolbar`, `TableFrame` — is pure props and
+needs nothing.
 
 ```jsx
 const client = new QueryClient()
@@ -33,7 +34,7 @@ renders as its raw key.
 Components already carry their own look. For your own layout glue, use the
 **semantic** classes — never a hex value, never a palette shade:
 
-| Ground | `bg-background` (page) · `bg-card` (raised) · `bg-well` (sunk, e.g. table headers) · `bg-muted` |
+| Ground | `bg-background` (page) · `bg-well` (any block of content: tables, panels, the overview's paired blocks) · `bg-card` (the deepest tone — reserved for things that genuinely float: dialogs, drawers) · `bg-muted` |
 | Text | `text-foreground` · `text-muted-foreground` (secondary) · `text-primary-foreground` (on terracotta) |
 | Action | `bg-primary` · `text-primary` · `bg-accent` + `text-accent-foreground` (hover) |
 | Danger | `bg-destructive` · `text-destructive` |
@@ -49,8 +50,14 @@ administrator configures, so never reach for green or red to mean "good" or
 a meaning it does not have. Use `bg-accent-2` for quantity, and text plus shape
 for everything else.
 
+All four grounds sit within 1.22:1 of each other — this palette separates by
+tone, not by contrast, and no ground can carry emphasis on its own. The one
+colour with real separation is `--primary`. When something must be found
+instantly over a scrolling page, the product reaches for `bg-foreground` with
+`text-background` (the bulk-action bar), not for a ground.
+
 Radii come in two kinds and are not on one scale. Boxes — cards, dialogs,
-panels — use `rounded-lg` (28px), with `rounded-md` (16px) for
+panels — use `rounded-lg` (28px), with `rounded-md` (20px) for
 mid-sized surfaces and `rounded-sm` (8px) for things inset in something else.
 **Small controls are pills**: buttons, inputs, selects, tabs, toggles and badges
 all say `rounded-full`. A textarea is the exception — a 999px corner cuts into
@@ -75,13 +82,21 @@ in a column get `tabular-nums`.
   A control inside a cell fires with the row and one click gives two results.
   Row actions belong in a right-click `ContextMenu` or a hover strip at the
   row's end that stops propagation.
-- **The pager is one row below the table** — range, pages, per-page.
+- **The pager goes in `TableFrame`'s `footer`, not below the frame.** Inside the
+  frame it belongs to the table it pages; below it, it was the first thing the
+  floating bulk bar covered, and it scrolled sideways with wide columns. The
+  footer row reads left to right: range, then pages, then per-page.
 - **Unavailable actions are disabled, never hidden.** Someone who cannot see an
   action cannot learn it exists.
 - **Empty is a state, not a blank rectangle.** Say what would fill it, and if a
   filter emptied it, offer to clear the filter.
 - **Every icon-only button carries an `aria-label`.**
-- **Icons are inline `<svg>`, never a glyph in a `<span>`.** Several components
+- **Icons are inline `<svg>`, never a glyph in a `<span>`.** No icon set is
+  exported from the bundle, so write the `<svg>` yourself — and give it
+  `class="lucide"` with a 24×24 viewBox, which is what the product's own icons
+  are. A global rule sets `.lucide { stroke-width: 2.75px }`; an svg without
+  that class draws at hairline weight beside every real icon on the page.
+  Several components
   lay themselves out with `has-[>svg]` — `Alert` starts at `grid-cols-[0_1fr]`
   and only opens its first column for a real `svg`, so a `<span>` icon lands in
   a zero-width column and is clipped away.
@@ -92,8 +107,9 @@ in a column get `tabular-nums`.
 `styles.css` and its imports carry every token; `components/<group>/<Name>/<Name>.d.ts`
 is the real prop contract, and `<Name>.prompt.md` sits beside it. Read those
 before guessing at an API. Note the contracts are incomplete in one direction
-only: event handlers are absent, and so are some behaviour props (`Calendar`'s
-`mode` and `selected`, for instance). Those pass through to the Radix or
+only: event handlers are absent (no `Button` contract names `onClick`), and so
+are some behaviour props (`Calendar` declares `mode` but not `selected`, for
+instance). Those pass through to the Radix or
 react-day-picker component underneath and work. A prop missing from a contract
 is not evidence against it; a prop present in one is real.
 
@@ -106,7 +122,11 @@ is not evidence against it; a prop present in one is real.
     <Button>录入设备</Button>
   </PageHeader>
   <ListToolbar q={q} onQ={setQ} searchHint="搜索资产" />
-  <TableFrame>
+  <TableFrame
+    footer={
+      <Pager page={0} pageSize={10} total={137} onPage={setPage} onPageSize={setSize} />
+    }
+  >
     <Table>
       <TableHeader>
         <TableRow><TableHead>资产编号</TableHead><TableHead>状态</TableHead></TableRow>
@@ -119,6 +139,5 @@ is not evidence against it; a prop present in one is real.
       </TableBody>
     </Table>
   </TableFrame>
-  <Pager page={0} pageSize={20} total={137} onPage={setPage} onPageSize={setSize} />
 </div>
 ```

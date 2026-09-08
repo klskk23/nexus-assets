@@ -9,6 +9,9 @@
   "provider": {
     "component": "DsPreviewProvider"
   },
+  "componentSrcMap": {
+    "DsPreviewProvider": null
+  },
   "overrides": {
     "AlertDialog": {
       "cardMode": "single"

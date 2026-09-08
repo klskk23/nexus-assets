@@ -69,6 +69,30 @@ DS_CHROMIUM_PATH=/usr/bin/google-chrome node .ds-sync/package-validate.mjs ./ds-
   which fails the whole driver run for a reason that has nothing to do with the
   bundle.
 
+## `.design-sync/node_modules` must be a symlink to `web/node_modules`
+
+```sh
+ln -sfn ../web/node_modules .design-sync/node_modules   # gitignored; once per clone
+```
+
+**Without it `cfg.buildCmd`'s tsc step dies**, and the errors point at the wrong thing:
+
+```
+preview-provider.tsx(1,50): TS2307: Cannot find module '@tanstack/react-query'
+preview-provider.tsx(6,32): TS2307: Cannot find module 'react'
+```
+
+The cause is location, not a missing install. `preview-provider.tsx` lives in
+`.design-sync/`, so node resolution walks `.design-sync/node_modules` -> repo-root
+`node_modules` -> up. **The repo root has a `node_modules` directory but it is EMPTY**
+(0 entries), and every real dependency lives in `web/node_modules`. So resolution
+finds nothing and reports it as absent packages.
+
+It is gitignored, so it vanishes on a fresh clone and on any `node_modules` cleanup --
+and the failure looks like a broken dependency tree rather than a missing link.
+This is NOT the `ln -sfn ../.ds-sync/node_modules` line from the skill: that one is for
+`.design-sync/overrides/` forks with bare imports, and this repo has no forks.
+
 ## Two dot-directory traps
 
 Both cost a debugging cycle; both have the same cause and neither reports the real
@@ -81,6 +105,42 @@ problem.
   through `web/index.d.ts`'s re-exports, so the build logs `[DTS] parsed 1 .d.ts
   files` — cosmetic. ts-morph follows the re-exports and the emitted contracts are
   correct; verify by reading any `<Name>.d.ts` rather than trusting that line.
+
+## Every tsc input must live under `web/`, and `rootDir` is what enforces it
+
+The 2026-09-08 sync produced 178 components whose props had all collapsed to
+`[key: string]: unknown`. Nothing failed: the build exited 0, `package-validate`
+exited 0 with its usual four warnings, the render check reported one known `bad`,
+and the driver's verdict was `ok: true`. Only reading a `.d.ts` showed it.
+
+The mechanism is worth knowing because nothing about it is local to this repo:
+
+- `web/ds-src/preview.tsx` was a one-line re-export of
+  `../../.design-sync/preview-provider.tsx` — a file outside `web/`.
+- tsc lays `declarationDir` out relative to the **program's common root**, which
+  it computes from the inputs it actually loaded, not from `include`. One input
+  outside `web/` moved that root up to the repo root.
+- So the whole tree sank one level: `.ds-types/web/ds-src/ui.d.ts` where
+  `web/index.d.ts` names `./.ds-types/ds-src/ui`. Not a missing file that errors
+  — a *different* file that simply isn't there, and the converter's answer to
+  finding no declarations is the empty contract, silently.
+
+Two changes make a repeat loud instead of silent:
+
+- **`preview-provider.tsx` is COPIED into `web/ds-src/preview.tsx`**, not
+  re-exported (`make-ds-src.mjs`, the `copy:` spec). It imports through `@/i18n`
+  rather than a relative path so it resolves identically from either location.
+- **`"rootDir": "../web"` is pinned in `tsconfig.dts.json`.** Now an input
+  outside `web/` is a tsc error naming the offending file.
+
+**The check that catches it regardless: read one `<Name>.d.ts` from the fresh
+bundle and confirm it names real props** (`Button` must carry `variant`, `size`,
+`asChild`). Do this on every sync, before upload — it is the only signal, and
+`[DTS] parsed 1 .d.ts files` looks identical in both the working and broken case.
+A useful second tell: when contracts are healthy the re-sync's
+`upload.components` is small, because the `.d.ts` files match the remote. A run
+that suddenly wants to upload *every* component has changed all 178 contracts,
+which is either a real API-wide change or this bug.
 
 ## `cfg.tsconfig` is deliberately unset
 
@@ -107,6 +167,15 @@ path, this breaks.**
   reports an English locale, which rendered English chrome beside content that
   is necessarily Chinese) and seeds the five real statuses so `StatusBadge` and
   `Timeline` resolve labels instead of showing raw keys.
+- **It is a bundle export but NOT a component.** `cfg.provider.component` has to
+  resolve to something the bundle exports, so it ships; but the moment the
+  declaration tree started emitting correctly it was also *discovered*, and a
+  card for the preview harness appeared in the component list. That card is
+  actively harmful — the design agent would read it as a part it can build with
+  and wrap a design in scaffolding that seeds fake statuses and pins the
+  language. `cfg.componentSrcMap: {"DsPreviewProvider": null}` is what excludes
+  it from the list while leaving the export in place. If the build ever logs
+  `[PROVIDER_UNEXPORTED]`, the exclusion went too far.
 
 ## Two things about the preview card frame
 
@@ -194,6 +263,11 @@ string. The repo has already fixed this exact class of bug once, in 014, when
 
 ## Re-sync risks
 
+- **Check one `.d.ts` before every upload.** `ds-bundle/components/general/Button/Button.d.ts`
+  must name `variant`, `size` and `asChild`. If it is bare `[key: string]: unknown`,
+  the declaration tree did not resolve and you are about to overwrite 178 good
+  contracts with empty ones — nothing else in the pipeline reports it (see "Every
+  tsc input must live under `web/`"). This is the single highest-value check here.
 - **The surface is defined in `make-ds-src.mjs`, not discovered.** A component added
   to `src/components/ui/` is picked up automatically (the barrel takes the whole
   directory), but a new *directory* of app components is invisible until someone adds
@@ -203,7 +277,7 @@ string. The repo has already fixed this exact class of bug once, in 014, when
   or `base` silently breaks `buildCmd`'s CSS rewrite — the sheet would still be
   produced, just with unresolvable font URLs, and the only symptom is designs
   rendering in a fallback font.
-- **Fonts are 201 files / ~4.8 MB** (Noto Sans SC sharded by unicode-range at two
+- **Fonts are 201 woff2 + `fonts.css` = 202 files / ~4.8 MB** (Noto Sans SC sharded by unicode-range at two
   weights). They must ship or every design containing Chinese renders in a fallback.
   If the app ever drops a weight or changes sharding, the count changes with it.
 - **`components/ui/*` is shadcn source this repo owns and 017 edited heavily**
