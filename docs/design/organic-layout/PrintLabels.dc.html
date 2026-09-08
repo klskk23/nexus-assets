@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./ds-base.js"></script>
+<style>*{box-sizing:border-box}html,body{margin:0}body{padding:clamp(22px,4vw,56px);background:var(--background);color:var(--foreground);font-family:"Figtree Variable","Noto Sans SC",ui-sans-serif,sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--accent-foreground);text-decoration:none}a:hover{color:var(--primary)}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ring,var(--primary));outline-offset:2px}</style>
+</helmet>
+<div style="max-width:960px">
+<div>
+<span style="display:block;font-family:Caprasimo,serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--primary)">06 · Labels</span>
+<h1 style="margin:10px 0 0;font-size:40px;line-height:1.2;font-weight:700">打印标签</h1>
+<p style="margin:14px 0 0;max-width:640px;font-size:16px;line-height:1.7;color:var(--secondary-foreground)">勾选的设备跨多个类别时，一个类别一个作业 —— 标签版式属于类别，一张版子印不了两种。所以数量在提交前就要说清楚。</p>
+</div>
+
+<div style="margin-top:36px;max-width:620px;border-radius:28px;background:var(--card);padding:32px;box-shadow:0 18px 44px -20px rgba(32,30,29,.35)">
+<h2 style="margin:0;font-size:24px;font-weight:700">打印标签</h2>
+<div style="margin-top:24px;display:flex;flex-direction:column;gap:22px">
+<label style="display:flex;flex-direction:column;gap:9px"><span style="font-size:14px;font-weight:600">类别</span>
+<select style="font:inherit;font-size:15px;height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--input);background:var(--background);color:var(--foreground)"><option>交换机</option><option>无线 AP</option></select></label>
+<label style="display:flex;flex-direction:column;gap:9px"><span style="font-size:14px;font-weight:600">标签</span>
+<select style="font:inherit;font-size:15px;height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--input);background:var(--background);color:var(--foreground)"><option>机柜条 · 60×15mm</option><option>资产铭牌 · 40×20mm</option></select>
+<a href="#" style="font-size:13.5px">在打印服务里打开这张标签 →</a></label>
+<label style="display:flex;flex-direction:column;gap:9px;max-width:200px"><span style="font-size:14px;font-weight:600">每台的份数</span>
+<input type="number" value="1" min="1" style="font:inherit;font-size:15px;height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--input);background:var(--background);color:var(--foreground);font-variant-numeric:tabular-nums"></label>
+</div>
+<div style="margin-top:24px;display:flex;gap:18px;padding:18px 22px;border-radius:20px;background:var(--well)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" style="flex:none;margin-top:2px;color:var(--accent-foreground)"><circle cx="12" cy="12" r="9"></circle><path d="M12 8h.01M11 12h1v4h1"></path></svg>
+<p style="margin:0;font-size:14px;line-height:1.7;color:var(--secondary-foreground)">42 台设备，2 个类别，将产生 2 个打印作业。消耗序号 <code style="font-family:var(--font-mono)">rack_seq</code>：1084–1125。</p>
+</div>
+<div style="margin-top:26px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:15px;padding:13px 26px;border-radius:999px;background:var(--primary);color:var(--primary-foreground)" style-hover="background:#b3632f">确认打印 42 张</button>
+<button type="button" style="cursor:pointer;font:inherit;font-size:15px;padding:13px 26px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">取消</button>
+</div>
+</div>
+
+<section style="margin-top:60px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:20px;flex-wrap:wrap">
+<h2 style="margin:0;font-size:21px;font-weight:700">作业</h2>
+<a href="#" style="font-size:14px">去打印服务看队列 →</a>
+</div>
+<div style="margin-top:22px;display:flex;flex-direction:column;gap:14px">
+
+<div style="border-radius:28px;background:var(--well);padding:22px 26px;display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+<div style="min-width:190px"><span style="display:block;font-size:15px;font-weight:600">交换机 · 机柜条</span><span style="display:block;margin-top:5px;font-size:13px;color:var(--muted-foreground)">消耗序号 rack_seq：1084–1109</span></div>
+<div style="flex:1;min-width:200px;display:flex;align-items:center;gap:14px">
+<span style="flex:1;height:16px;border-radius:999px;background:var(--background);overflow:hidden"><span style="display:block;width:69%;height:100%;border-radius:999px;background:var(--accent-2)"></span></span>
+<span style="font-family:Caprasimo,serif;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap">18/26</span>
+</div>
+<span style="font-size:13px;padding:5px 14px;border-radius:999px;background:var(--background);border:1px solid var(--primary);color:var(--accent-foreground)">打印中</span>
+</div>
+
+<div style="border-radius:28px;background:var(--well);padding:22px 26px;display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+<div style="min-width:190px"><span style="display:block;font-size:15px;font-weight:600">无线 AP · 资产铭牌</span><span style="display:block;margin-top:5px;font-size:13px;color:var(--muted-foreground)">消耗序号 rack_seq：1110–1125</span></div>
+<div style="flex:1;min-width:200px;display:flex;align-items:center;gap:14px">
+<span style="flex:1;height:16px;border-radius:999px;background:var(--background);overflow:hidden"><span style="display:block;width:0%;height:100%;border-radius:999px;background:var(--accent-2)"></span></span>
+<span style="font-family:Caprasimo,serif;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted-foreground)">0/16</span>
+</div>
+<span style="font-size:13px;padding:5px 14px;border-radius:999px;background:var(--background);border:1px solid var(--border-muted);color:var(--secondary-foreground)">排队中</span>
+</div>
+
+<div style="border-radius:28px;background:var(--well);padding:22px 26px;display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+<div style="min-width:190px"><span style="display:block;font-size:15px;font-weight:600">笔记本 · 资产铭牌</span><span style="display:block;margin-top:5px;font-size:13px;color:var(--muted-foreground)">2026-09-07 10:14</span></div>
+<div style="flex:1;min-width:200px;display:flex;align-items:center;gap:14px">
+<span style="flex:1;height:16px;border-radius:999px;background:var(--background);overflow:hidden"><span style="display:block;width:100%;height:100%;border-radius:999px;background:var(--accent-2)"></span></span>
+<span style="font-family:Caprasimo,serif;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap">31/31</span>
+</div>
+<span style="font-size:13px;padding:5px 14px;border-radius:999px;background:var(--background);border:1px solid var(--border-muted);color:var(--secondary-foreground)">已完成</span>
+</div>
+
+<div style="border-radius:28px;background:var(--well);padding:22px 26px;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+<div style="min-width:190px"><span style="display:block;font-size:15px;font-weight:600">机柜 PDU · 机柜条</span><span style="display:block;margin-top:5px;font-size:13px;color:var(--muted-foreground)">2026-09-06 16:40</span></div>
+<div style="flex:1;min-width:200px;display:flex;align-items:center;gap:14px">
+<span style="flex:1;height:16px;border-radius:999px;background:var(--background);overflow:hidden"><span style="display:block;width:33%;height:100%;border-radius:999px;background:var(--accent-2)"></span></span>
+<span style="font-family:Caprasimo,serif;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap">4/12</span>
+</div>
+<span class="status-red status-chip" style="font-size:13px;padding:5px 14px;border-radius:999px;border:1px solid">失败</span>
+</div>
+<p style="margin:0;font-size:14px;line-height:1.7;color:var(--secondary-foreground);padding-left:2px">打印服务里没有连接这个类别的数据源，那边看到的仍是它自己的表格。<a href="#">去打印服务管理标签 →</a></p>
+</div>
+
+</div>
+<p style="margin:22px 0 0;max-width:680px;font-size:14px;line-height:1.7;color:var(--muted-foreground)">进度用鼠尾草的药丸轨道 —— 它数的是张数，不是状态。只有「失败」这一行用了状态色槽，因为它确实是一个状态。</p>
+</section>
+</div>
+</x-dc>
+</body>
+</html>

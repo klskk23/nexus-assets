@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./ds-base.js"></script>
+<style>*{box-sizing:border-box}html,body{margin:0}body{padding:clamp(22px,4vw,56px);background:var(--background);color:var(--foreground);font-family:"Figtree Variable","Noto Sans SC",ui-sans-serif,sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--accent-foreground);text-decoration:none}a:hover{color:var(--primary)}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ring,var(--primary));outline-offset:2px}</style>
+</helmet>
+<div style="max-width:960px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
+<div>
+<span style="display:block;font-family:Caprasimo,serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--primary)">02 · Assets</span>
+<h1 style="margin:10px 0 0;font-size:40px;line-height:1.2;font-weight:700">资产</h1>
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap">
+<button type="button" style="cursor:pointer;font:inherit;font-size:14px;padding:11px 22px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">导出 CSV</button>
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:11px 22px;border-radius:999px;background:var(--primary);color:var(--primary-foreground)" style-hover="background:#b3632f">录入设备</button>
+</div>
+</div>
+
+<div style="margin-top:44px;display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+<label style="display:flex;align-items:center;gap:9px;width:268px;padding:0 18px;height:44px;border-radius:999px;border:1px solid var(--input);background:var(--background)">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" style="flex:none;color:var(--muted-foreground)"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+<input type="search" placeholder="搜索资产" style="font:inherit;font-size:14px;border:0;outline:none;background:transparent;color:var(--foreground);width:100%">
+</label>
+<select style="font:inherit;font-size:14px;height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--input);background:var(--background);color:var(--foreground)"><option>网络设备</option><option>全部类别</option><option>办公终端</option></select>
+<label style="display:flex;align-items:center;gap:9px;height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--primary);background:var(--accent);color:var(--accent-foreground);font-size:14px;cursor:pointer"><input type="checkbox" checked="checked" style="accent-color:var(--primary);width:16px;height:16px">含子类别</label>
+<select style="font:inherit;font-size:14px;height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--input);background:var(--background);color:var(--foreground)"><option>全部状态</option><option>在库</option><option>已签出</option></select>
+<select style="font:inherit;font-size:14px;height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--input);background:var(--background);color:var(--foreground)"><option>全部持有方</option><option>上海办公室 / 仓库 A</option></select>
+<button type="button" style="margin-left:auto;cursor:pointer;font:inherit;font-size:14px;height:44px;padding:0 20px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">显示列</button>
+</div>
+
+<div style="margin-top:24px;border:1px solid var(--border);border-radius:28px;overflow:hidden;background:var(--background)">
+<table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums">
+<thead><tr style="background:var(--well)">
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">编号</th>
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">类别</th>
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">状态</th>
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">持有方</th>
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">型号</th>
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">负责人</th>
+</tr></thead>
+<tbody>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">2199023255611</td>
+<td style="padding:15px 20px;font-size:14px">交换机</td>
+<td style="padding:15px 20px"><span class="status-green status-chip" style="font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid">在库</span></td>
+<td style="padding:15px 20px;font-size:14px">上海办公室 / 仓库 A</td>
+<td style="padding:15px 20px;font-size:14px">CRS310-1G-5S</td>
+<td style="padding:15px 20px;font-size:14px">周敏</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">2199023255742</td>
+<td style="padding:15px 20px;font-size:14px">交换机</td>
+<td style="padding:15px 20px"><span class="status-blue status-chip" style="font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid">已签出</span></td>
+<td style="padding:15px 20px;font-size:14px">研发部 / 王倩</td>
+<td style="padding:15px 20px;font-size:14px">CRS310-1G-5S</td>
+<td style="padding:15px 20px;font-size:14px">王倩</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">2199023256013</td>
+<td style="padding:15px 20px;font-size:14px">无线 AP</td>
+<td style="padding:15px 20px"><span class="status-amber status-chip" style="font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid">维修中</span></td>
+<td style="padding:15px 20px;font-size:14px">机房 B / 机柜 12</td>
+<td style="padding:15px 20px;font-size:14px">cAP ax</td>
+<td style="padding:15px 20px;font-size:14px">周敏</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">2199023256188</td>
+<td style="padding:15px 20px;font-size:14px">路由器</td>
+<td style="padding:15px 20px"><span class="status-green status-chip" style="font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid">在库</span></td>
+<td style="padding:15px 20px;font-size:14px">上海办公室 / 仓库 A</td>
+<td style="padding:15px 20px;font-size:14px">RB5009UG</td>
+<td style="padding:15px 20px;font-size:14px">李文</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">2199023256204</td>
+<td style="padding:15px 20px;font-size:14px">路由器</td>
+<td style="padding:15px 20px"><span class="status-slate status-chip" style="font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid">已报废</span></td>
+<td style="padding:15px 20px;font-size:14px">回收间</td>
+<td style="padding:15px 20px;font-size:14px">RB4011</td>
+<td style="padding:15px 20px;font-size:14px">李文</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">2199023256377</td>
+<td style="padding:15px 20px;font-size:14px">无线 AP</td>
+<td style="padding:15px 20px"><span class="status-blue status-chip" style="font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid">已签出</span></td>
+<td style="padding:15px 20px;font-size:14px">深圳办公室 / 前台</td>
+<td style="padding:15px 20px;font-size:14px">cAP ax</td>
+<td style="padding:15px 20px;font-size:14px">周敏</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">2199023256512</td>
+<td style="padding:15px 20px;font-size:14px">交换机</td>
+<td style="padding:15px 20px"><span class="status-green status-chip" style="font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid">在库</span></td>
+<td style="padding:15px 20px;font-size:14px">上海办公室 / 仓库 A</td>
+<td style="padding:15px 20px;font-size:14px">CSS610-8G</td>
+<td style="padding:15px 20px;font-size:14px">王倩</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">2199023256690</td>
+<td style="padding:15px 20px;font-size:14px">机柜 PDU</td>
+<td style="padding:15px 20px"><span class="status-green status-chip" style="font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid">在库</span></td>
+<td style="padding:15px 20px;font-size:14px">机房 B / 机柜 07</td>
+<td style="padding:15px 20px;font-size:14px">PDU-16C13</td>
+<td style="padding:15px 20px;font-size:14px">李文</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<div style="margin-top:20px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px">
+<p style="margin:0;font-size:14px;color:var(--secondary-foreground);font-variant-numeric:tabular-nums">第 1–20 条，共 739 条</p>
+<div style="display:flex;align-items:center;gap:6px">
+<button type="button" disabled="disabled" style="cursor:not-allowed;font:inherit;font-size:14px;height:38px;padding:0 16px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground);opacity:.45">上一页</button>
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;min-width:38px;height:38px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-variant-numeric:tabular-nums">1</button>
+<button type="button" style="cursor:pointer;font:inherit;font-size:14px;min-width:38px;height:38px;border-radius:999px;background:transparent;border:1px solid var(--border-muted);color:var(--foreground);font-variant-numeric:tabular-nums" style-hover="background:var(--accent)">2</button>
+<button type="button" style="cursor:pointer;font:inherit;font-size:14px;min-width:38px;height:38px;border-radius:999px;background:transparent;border:1px solid var(--border-muted);color:var(--foreground);font-variant-numeric:tabular-nums" style-hover="background:var(--accent)">3</button>
+<span style="padding:0 6px;color:var(--muted-foreground)">…</span>
+<button type="button" style="cursor:pointer;font:inherit;font-size:14px;min-width:38px;height:38px;border-radius:999px;background:transparent;border:1px solid var(--border-muted);color:var(--foreground);font-variant-numeric:tabular-nums" style-hover="background:var(--accent)">37</button>
+<button type="button" style="cursor:pointer;font:inherit;font-size:14px;height:38px;padding:0 16px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">下一页</button>
+</div>
+<label style="display:flex;align-items:center;gap:9px;font-size:14px;color:var(--secondary-foreground)">每页
+<select style="font:inherit;font-size:14px;height:38px;padding:0 14px;border-radius:999px;border:1px solid var(--input);background:var(--background);color:var(--foreground)"><option>20 条</option><option>50 条</option><option>100 条</option></select></label>
+</div>
+
+<p style="margin:22px 0 0;font-size:14px;line-height:1.7;color:var(--muted-foreground);max-width:640px">行本身是点击目标，单元格里不放任何控件。行内操作在右键菜单里：编辑、流转、打印标签、导出、删除。备注列默认关着，在「显示列」里打开。</p>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./ds-base.js"></script>
+<style>*{box-sizing:border-box}html,body{margin:0}body{padding:clamp(22px,4vw,56px);background:var(--background);color:var(--foreground);font-family:"Figtree Variable","Noto Sans SC",ui-sans-serif,sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--accent-foreground);text-decoration:none}a:hover{color:var(--primary)}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ring,var(--primary));outline-offset:2px}</style>
+</helmet>
+<div style="max-width:960px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
+<div>
+<span style="display:block;font-family:Caprasimo,serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--primary)">05 · Metadata</span>
+<h1 style="margin:10px 0 0;font-size:40px;line-height:1.2;font-weight:700">类别</h1>
+</div>
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:11px 22px;border-radius:999px;background:var(--primary);color:var(--primary-foreground)" style-hover="background:#b3632f">新建类别</button>
+</div>
+
+<div style="margin-top:32px;display:inline-flex;padding:4px;border-radius:999px;background:var(--well);gap:2px;flex-wrap:wrap">
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 20px;border-radius:999px;background:var(--primary);color:var(--primary-foreground)">类别</button>
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 20px;border-radius:999px;background:transparent;color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">字段</button>
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 20px;border-radius:999px;background:transparent;color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">型号</button>
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 20px;border-radius:999px;background:transparent;color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">状态</button>
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 20px;border-radius:999px;background:transparent;color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">持有方</button>
+</div>
+
+<div style="margin-top:24px;display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+<label style="display:flex;align-items:center;gap:9px;width:268px;padding:0 18px;height:44px;border-radius:999px;border:1px solid var(--input);background:var(--background)">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" style="flex:none;color:var(--muted-foreground)"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+<input type="search" placeholder="搜索名称、编码" style="font:inherit;font-size:14px;border:0;outline:none;background:transparent;color:var(--foreground);width:100%">
+</label>
+<p style="margin:0 0 0 auto;font-size:14px;color:var(--secondary-foreground)">点击一行编辑该类别：名称、上级、编号字段与字段绑定。</p>
+</div>
+
+<div style="margin-top:20px;border:1px solid var(--border);border-radius:28px;overflow:hidden;background:var(--background)">
+<table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums">
+<thead><tr style="background:var(--well)">
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">名称</th>
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">代号</th>
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">编号字段</th>
+<th style="text-align:right;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">字段数</th>
+<th style="text-align:right;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">资产数</th>
+</tr></thead>
+<tbody>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px;font-size:14px;font-weight:600">网络设备</td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">NET</td>
+<td style="padding:15px 20px;font-size:14px;color:var(--muted-foreground)">未设置</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">4</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">318</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px 15px 44px;font-size:14px">交换机</td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">SW</td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">sn</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">7</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">164</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px 15px 44px;font-size:14px">路由器</td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">RT</td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">sn</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">7</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">61</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px 15px 44px;font-size:14px">无线 AP</td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">AP</td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">sn</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">6</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">93</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px;font-size:14px;font-weight:600">办公终端</td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">PC</td>
+<td style="padding:15px 20px;font-size:14px;color:var(--muted-foreground)">未设置</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">3</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">227</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px 15px 44px;font-size:14px">笔记本</td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">NB</td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">asset_tag</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">9</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">181</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px;font-size:14px;font-weight:600">机房动力</td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">PWR</td>
+<td style="padding:15px 20px;font-size:14px;color:var(--muted-foreground)">未设置</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">2</td>
+<td style="padding:15px 20px;font-size:14px;text-align:right">112</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p style="margin:18px 0 0;max-width:680px;font-size:14px;line-height:1.7;color:var(--muted-foreground)">层级用缩进表达，不放行内箭头 —— 名称格里的箭头会连同行点击一起触发，一次点击出两个结果。展开与折叠在行右键菜单里，和「新建子类别」放在一起。</p>
+
+<section style="margin-top:64px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
+<div>
+<span style="display:block;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-foreground)">同一页的另一个标签</span>
+<h2 style="margin:8px 0 0;font-size:28px;font-weight:700">状态</h2>
+</div>
+<button type="button" style="cursor:pointer;font:inherit;font-size:14px;padding:11px 22px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">新建状态</button>
+</div>
+<div style="margin-top:22px;border:1px solid var(--border);border-radius:28px;overflow:hidden;background:var(--background)">
+<table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums">
+<thead><tr style="background:var(--well)">
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">显示名</th>
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">键名</th>
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">颜色</th>
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">行为</th>
+<th style="text-align:left;font-size:13px;font-weight:600;color:var(--secondary-foreground);padding:15px 20px">使用情况</th>
+</tr></thead>
+<tbody>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px"><span class="status-green status-chip" style="font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid">在库</span></td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">in_stock</td>
+<td style="padding:15px 20px;font-size:14px"><span class="status-green" style="display:inline-block;width:14px;height:14px;border-radius:999px;background:var(--status-fg);vertical-align:-2px;margin-right:8px"></span>绿</td>
+<td style="padding:15px 20px;font-size:13.5px;color:var(--secondary-foreground)">内置 · 持有方必须是位置</td>
+<td style="padding:15px 20px;font-size:13.5px;color:var(--secondary-foreground)">436 台 · 历史 1204 条</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px"><span class="status-blue status-chip" style="font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid">已签出</span></td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">checked_out</td>
+<td style="padding:15px 20px;font-size:14px"><span class="status-blue" style="display:inline-block;width:14px;height:14px;border-radius:999px;background:var(--status-fg);vertical-align:-2px;margin-right:8px"></span>蓝</td>
+<td style="padding:15px 20px;font-size:13.5px;color:var(--secondary-foreground)">内置</td>
+<td style="padding:15px 20px;font-size:13.5px;color:var(--secondary-foreground)">248 台 · 历史 987 条</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px"><span class="status-amber status-chip" style="font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid">维修中</span></td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">repairing</td>
+<td style="padding:15px 20px;font-size:14px"><span class="status-amber" style="display:inline-block;width:14px;height:14px;border-radius:999px;background:var(--status-fg);vertical-align:-2px;margin-right:8px"></span>琥珀</td>
+<td style="padding:15px 20px;font-size:13.5px;color:var(--secondary-foreground)">不计入类别分布</td>
+<td style="padding:15px 20px;font-size:13.5px;color:var(--secondary-foreground)">31 台 · 历史 216 条</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px"><span class="status-red status-chip" style="font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid">丢失</span></td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">lost</td>
+<td style="padding:15px 20px;font-size:14px"><span class="status-red" style="display:inline-block;width:14px;height:14px;border-radius:999px;background:var(--status-fg);vertical-align:-2px;margin-right:8px"></span>红</td>
+<td style="padding:15px 20px;font-size:13.5px;color:var(--secondary-foreground)">终态 · 不计入类别分布</td>
+<td style="padding:15px 20px;font-size:13.5px;color:var(--secondary-foreground)">无设备使用 · 历史 8 条</td>
+</tr>
+<tr style="cursor:pointer;border-top:1px solid var(--border-muted)" style-hover="background:var(--accent)">
+<td style="padding:15px 20px"><span class="status-slate status-chip" style="font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid">已报废</span></td>
+<td style="padding:15px 20px;font-family:var(--font-mono);font-size:14px">retired</td>
+<td style="padding:15px 20px;font-size:14px"><span class="status-slate" style="display:inline-block;width:14px;height:14px;border-radius:999px;background:var(--status-fg);vertical-align:-2px;margin-right:8px"></span>石墨</td>
+<td style="padding:15px 20px;font-size:13.5px;color:var(--secondary-foreground)">终态 · 不计入类别分布</td>
+<td style="padding:15px 20px;font-size:13.5px;color:var(--secondary-foreground)">24 台 · 历史 24 条</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="margin-top:20px;display:flex;gap:18px;max-width:680px;padding:20px 24px;border-radius:20px;background:var(--well)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" style="flex:none;margin-top:2px;color:var(--accent-foreground)"><circle cx="12" cy="12" r="9"></circle><path d="M12 8h.01M11 12h1v4h1"></path></svg>
+<p style="margin:0;font-size:14px;line-height:1.7;color:var(--secondary-foreground)">状态存的是色槽名而不是色值，八个槽的实际颜色在样式表里定。这也是全产品唯一可以自由用颜色的地方 —— 别处的绿和红都不许借用「好」与「坏」的含义。</p>
+</div>
+</section>
+</div>
+</x-dc>
+</body>
+</html>

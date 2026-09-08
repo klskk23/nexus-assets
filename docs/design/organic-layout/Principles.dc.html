@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./ds-base.js"></script>
+<style>*{box-sizing:border-box}html,body{margin:0}body{padding:clamp(22px,4vw,56px);background:var(--background);color:var(--foreground);font-family:"Figtree Variable","Noto Sans SC",ui-sans-serif,sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--accent-foreground);text-decoration:none}a:hover{color:var(--primary)}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ring,var(--primary));outline-offset:2px}</style>
+</helmet>
+<div style="max-width:900px">
+<span style="display:block;font-family:Caprasimo,serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--primary)">Rules</span>
+<h1 style="margin:12px 0 0;font-size:40px;line-height:1.2;font-weight:700;letter-spacing:-.01em">把 Organic 翻成这个产品的规则</h1>
+<p style="margin:24px 0 0;max-width:760px;font-size:17px;line-height:1.75;color:var(--secondary-foreground);text-wrap:pretty">Organic 的说明写给一个有照片、有大标题、有呼吸的品牌页；这里是一个中文的、按列读的资产账本。下面八条是它在这个产品里的具体形态 —— 每一条都能照着量。</p>
+
+<div style="margin-top:56px;display:flex;flex-direction:column;gap:52px">
+
+<section>
+<h2 style="margin:0;font-size:21px;font-weight:700">一 · 版面贴左，右边空着</h2>
+<p style="margin:10px 0 0;max-width:760px;font-size:16px;line-height:1.75;color:var(--secondary-foreground)">236px 竖排导航 + 内容列上限 960px + 剩下的全部留白。不居中，不左右对称。表格宽了就往右长，短表格不被拉宽。</p>
+<div style="margin-top:20px;display:flex;gap:10px;height:132px;align-items:stretch">
+<div style="flex:none;width:78px;border-radius:16px;background:var(--well);display:flex;align-items:flex-end;padding:10px;font-size:11px;color:var(--muted-foreground)">236</div>
+<div style="flex:none;width:320px;border-radius:16px;background:var(--card);display:flex;align-items:flex-end;padding:10px;font-size:11px;color:var(--secondary-foreground)">内容列 ≤960</div>
+<div style="flex:1;border-radius:16px;border:1px dashed var(--border);display:flex;align-items:flex-end;padding:10px;font-size:11px;color:var(--muted-foreground)">留白</div>
+</div>
+</section>
+
+<section>
+<h2 style="margin:0;font-size:21px;font-weight:700">二 · 三档地面，各归各位</h2>
+<p style="margin:10px 0 0;max-width:760px;font-size:16px;line-height:1.75;color:var(--secondary-foreground)">页面分区靠留白，不靠第四种底色。<code style="font-family:var(--font-mono);font-size:14px">--card</code> 只给真正浮起来的东西。</p>
+<div style="margin-top:20px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+<div style="border-radius:28px;padding:24px;background:var(--background);border:1px solid var(--border-muted)">
+<span style="font-family:Caprasimo,serif;font-size:13px">#f5ead8</span>
+<p style="margin:8px 0 0;font-size:14px;line-height:1.6;color:var(--secondary-foreground)"><strong style="font-weight:700">background</strong><br>页面本身，也是绝大多数区块的底</p>
+</div>
+<div style="border-radius:28px;padding:24px;background:var(--well)">
+<span style="font-family:Caprasimo,serif;font-size:13px">#f9f4ed</span>
+<p style="margin:8px 0 0;font-size:14px;line-height:1.6;color:var(--secondary-foreground)"><strong style="font-weight:700">well</strong><br>下沉：表头、只读值组、轨槽</p>
+</div>
+<div style="border-radius:28px;padding:24px;background:var(--card);box-shadow:0 10px 28px -12px rgba(32,30,29,.28)">
+<span style="font-family:Caprasimo,serif;font-size:13px">#ebddc5</span>
+<p style="margin:8px 0 0;font-size:14px;line-height:1.6;color:var(--secondary-foreground)"><strong style="font-weight:700">card</strong><br>抬起：对话框、抽屉、悬浮卡</p>
+</div>
+</div>
+</section>
+
+<section>
+<h2 style="margin:0;font-size:21px;font-weight:700">三 · 圆角三档，小控件全是药丸</h2>
+<p style="margin:10px 0 0;max-width:760px;font-size:16px;line-height:1.75;color:var(--secondary-foreground)">28 给盒子，16 给中等表面，8 给嵌在别的东西里的小块。按钮、输入框、选择器、标签页、开关、徽章一律 999px。文本域例外：药丸角会切到首末行，所以用 20px。</p>
+<div style="margin-top:20px;display:flex;flex-wrap:wrap;gap:14px;align-items:center">
+<div style="width:112px;height:72px;border-radius:28px;background:var(--well);display:flex;align-items:center;justify-content:center;font-family:Caprasimo,serif;font-size:14px">28</div>
+<div style="width:96px;height:72px;border-radius:16px;background:var(--well);display:flex;align-items:center;justify-content:center;font-family:Caprasimo,serif;font-size:14px">16</div>
+<div style="width:72px;height:72px;border-radius:8px;background:var(--well);display:flex;align-items:center;justify-content:center;font-family:Caprasimo,serif;font-size:14px">8</div>
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:11px 22px;border-radius:999px;background:var(--primary);color:var(--primary-foreground)" style-hover="background:#b3632f">主操作</button>
+<button type="button" style="cursor:pointer;font:inherit;font-size:14px;padding:11px 22px;border-radius:999px;background:transparent;color:var(--foreground);border:1px solid var(--border)" style-hover="background:var(--accent)">次操作</button>
+<span style="font-size:13px;padding:6px 14px;border-radius:999px;background:var(--well);border:1px solid var(--border-muted);color:var(--secondary-foreground)">徽章</span>
+</div>
+</section>
+
+<section>
+<h2 style="margin:0;font-size:21px;font-weight:700">四 · 拉丁与数字给 Caprasimo，中文靠字号</h2>
+<p style="margin:10px 0 0;max-width:760px;font-size:16px;line-height:1.75;color:var(--secondary-foreground)">Caprasimo 只有 latin 子集。它管产品名、页码、计数、资产编号、字段键名；中文标题用 Noto Sans SC 700。列里的数字一律 <code style="font-family:var(--font-mono);font-size:14px">tabular-nums</code>。</p>
+<div style="margin-top:20px;border-radius:28px;background:var(--well);padding:28px;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="width:110px;flex:none;font-size:12px;color:var(--muted-foreground)">页标题 40/700</span><span style="font-size:40px;line-height:1.2;font-weight:700">资产</span></div>
+<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="width:110px;flex:none;font-size:12px;color:var(--muted-foreground)">区标题 21/700</span><span style="font-size:21px;font-weight:700">设备状态</span></div>
+<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="width:110px;flex:none;font-size:12px;color:var(--muted-foreground)">正文 16/1.75</span><span style="font-size:16px;color:var(--secondary-foreground)">含子类别，不含已报废</span></div>
+<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="width:110px;flex:none;font-size:12px;color:var(--muted-foreground)">计数 Caprasimo</span><span style="font-family:Caprasimo,serif;font-size:38px;line-height:1;font-variant-numeric:tabular-nums">1284</span></div>
+<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="width:110px;flex:none;font-size:12px;color:var(--muted-foreground)">编号 mono</span><span style="font-family:var(--font-mono);font-size:16px;font-variant-numeric:tabular-nums">2199023255611</span></div>
+</div>
+</section>
+
+<section>
+<h2 style="margin:0;font-size:21px;font-weight:700">五 · 颜色的分工是硬规矩</h2>
+<div style="margin-top:20px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:16px;padding:16px 22px;border-radius:999px;background:var(--well)"><span style="flex:none;width:26px;height:26px;border-radius:999px;background:var(--primary)"></span><span style="font-size:15px;color:var(--secondary-foreground)"><strong style="font-weight:700">陶土 = 动作。</strong>主按钮、链接、焦点环，一页上只有一个主操作。</span></div>
+<div style="display:flex;align-items:center;gap:16px;padding:16px 22px;border-radius:999px;background:var(--well)"><span style="flex:none;width:26px;height:26px;border-radius:999px;background:var(--accent-2)"></span><span style="font-size:15px;color:var(--secondary-foreground)"><strong style="font-weight:700">鼠尾草 = 数量。</strong>分布轨道、计数圆盘、进度。永远不表示状态或动作。</span></div>
+<div style="display:flex;align-items:center;gap:16px;padding:16px 22px;border-radius:999px;background:var(--well)"><span style="flex:none;display:flex;gap:4px"><span class="status-green" style="width:26px;height:26px;border-radius:999px;background:var(--status-fg)"></span><span class="status-blue" style="width:26px;height:26px;border-radius:999px;background:var(--status-fg)"></span><span class="status-amber" style="width:26px;height:26px;border-radius:999px;background:var(--status-fg)"></span></span><span style="font-size:15px;color:var(--secondary-foreground)"><strong style="font-weight:700">八个色槽 = 状态。</strong>管理员配的，只出现在 status-chip 上。自己的标记不许借绿色说"好"、红色说"坏"。</span></div>
+</div>
+</section>
+
+<section>
+<h2 style="margin:0;font-size:21px;font-weight:700">六 · 间距</h2>
+<p style="margin:10px 0 0;max-width:760px;font-size:16px;line-height:1.75;color:var(--secondary-foreground)">分区之间 56px；区内成组 24px；圆角容器内边距 ≥24px；表格行高 48px；触点不小于 44px。密度可以再高的地方只有表格内部 —— 那是这个产品的本职。</p>
+</section>
+
+<section>
+<h2 style="margin:0;font-size:21px;font-weight:700">七 · 数量画成轨道和圆盘</h2>
+<p style="margin:10px 0 0;max-width:760px;font-size:16px;line-height:1.75;color:var(--secondary-foreground)">不用直角条。轨槽 <code style="font-family:var(--font-mono);font-size:14px">--well</code>，填充鼠尾草，两端 999px；数字压在轨道右侧外面，用 tabular-nums 才能对齐。</p>
+<div style="margin-top:20px;border-radius:28px;background:var(--background);border:1px solid var(--border-muted);padding:26px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:14px"><span style="width:96px;flex:none;font-size:14px">网络设备</span><span style="flex:1;height:16px;border-radius:999px;background:var(--well);overflow:hidden"><span style="display:block;width:82%;height:100%;border-radius:999px;background:var(--accent-2)"></span></span><span style="width:44px;flex:none;text-align:right;font-family:Caprasimo,serif;font-size:14px;font-variant-numeric:tabular-nums">412</span></div>
+<div style="display:flex;align-items:center;gap:14px"><span style="width:96px;flex:none;font-size:14px">办公终端</span><span style="flex:1;height:16px;border-radius:999px;background:var(--well);overflow:hidden"><span style="display:block;width:47%;height:100%;border-radius:999px;background:var(--accent-2)"></span></span><span style="width:44px;flex:none;text-align:right;font-family:Caprasimo,serif;font-size:14px;font-variant-numeric:tabular-nums">236</span></div>
+<div style="display:flex;align-items:center;gap:14px"><span style="width:96px;flex:none;font-size:14px">外设</span><span style="flex:1;height:16px;border-radius:999px;background:var(--well);overflow:hidden"><span style="display:block;width:18%;height:100%;border-radius:999px;background:var(--accent-2)"></span></span><span style="width:44px;flex:none;text-align:right;font-family:Caprasimo,serif;font-size:14px;font-variant-numeric:tabular-nums">91</span></div>
+</div>
+</section>
+
+<section>
+<h2 style="margin:0;font-size:21px;font-weight:700">八 · 状态与焦点不用浏览器默认</h2>
+<p style="margin:10px 0 0;max-width:760px;font-size:16px;line-height:1.75;color:var(--secondary-foreground)">hover 用 <code style="font-family:var(--font-mono);font-size:14px">--accent</code> #fff2eb 那层浅陶土；按下再深一档；键盘焦点是 2px 的 <code style="font-family:var(--font-mono);font-size:14px">--ring</code> #8c491a 描边、offset 2px；禁用降到 45% 不透明度并保留在原位。</p>
+<div style="margin-top:20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:11px 22px;border-radius:999px;background:var(--primary);color:var(--primary-foreground)" style-hover="background:#b3632f">录入设备</button>
+<button type="button" style="cursor:pointer;font:inherit;font-size:14px;padding:11px 22px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">导出 CSV</button>
+<button type="button" disabled="disabled" style="cursor:not-allowed;font:inherit;font-size:14px;padding:11px 22px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground);opacity:.45">打印标签</button>
+<span style="font-size:13px;color:var(--muted-foreground)">禁用的按钮留在原位，旁边说明缺哪项权限</span>
+</div>
+</section>
+
+</div>
+</div>
+</x-dc>
+</body>
+</html>

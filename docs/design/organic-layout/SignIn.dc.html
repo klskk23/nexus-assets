@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./ds-base.js"></script>
+<style>*{box-sizing:border-box}html,body{margin:0}body{padding:clamp(22px,4vw,56px);background:var(--background);color:var(--foreground);font-family:"Figtree Variable","Noto Sans SC",ui-sans-serif,sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--accent-foreground);text-decoration:none}a:hover{color:var(--primary)}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ring,var(--primary));outline-offset:2px}</style>
+</helmet>
+<div style="max-width:1040px">
+<span style="display:block;font-family:Caprasimo,serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--primary)">07 · Sign in</span>
+<div style="margin-top:22px;display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:64px;align-items:center;min-height:560px">
+<div>
+<h1 style="margin:0;font-family:Caprasimo,serif;font-size:52px;line-height:1.05;font-weight:400">Nexus<br>Assets</h1>
+<p style="margin:20px 0 0;font-size:16px;line-height:1.7;color:var(--secondary-foreground)">公司设备的账本：谁拿着、在哪、经过谁的手。</p>
+<form style="margin-top:40px;display:flex;flex-direction:column;gap:20px">
+<label style="display:flex;flex-direction:column;gap:9px"><span style="font-size:14px;font-weight:600">邮箱</span>
+<input type="email" autocomplete="username" placeholder="you@company.com" style="font:inherit;font-size:15px;height:50px;padding:0 20px;border-radius:999px;border:1px solid var(--input);background:var(--background);color:var(--foreground)"></label>
+<label style="display:flex;flex-direction:column;gap:9px"><span style="font-size:14px;font-weight:600">密码</span>
+<input type="password" autocomplete="current-password" style="font:inherit;font-size:15px;height:50px;padding:0 20px;border-radius:999px;border:1px solid var(--input);background:var(--background);color:var(--foreground)"></label>
+<button type="button" style="margin-top:4px;border:0;cursor:pointer;font:inherit;font-size:15px;height:50px;border-radius:999px;background:var(--primary);color:var(--primary-foreground)" style-hover="background:#b3632f">登录</button>
+</form>
+<div style="margin-top:28px;display:flex;align-items:center;gap:14px"><span style="flex:1;height:1px;background:var(--border-muted)"></span><span style="font-size:12.5px;color:var(--muted-foreground)">或</span><span style="flex:1;height:1px;background:var(--border-muted)"></span></div>
+<button type="button" style="margin-top:22px;width:100%;cursor:pointer;font:inherit;font-size:15px;height:50px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">使用 Google 登录</button>
+<p style="margin:18px 0 0;font-size:13.5px;line-height:1.7;color:var(--muted-foreground)">一边是密码，一边是别人家的登录页 —— 中间那条线是有意义的。</p>
+</div>
+<div style="position:relative;height:440px;min-width:0" aria-hidden="true">
+<span style="position:absolute;right:6%;top:4%;width:300px;height:300px;border-radius:999px;background:var(--card)"></span>
+<span style="position:absolute;right:34%;top:34%;width:190px;height:190px;border-radius:999px;background:var(--accent-2);opacity:.62"></span>
+<span style="position:absolute;right:2%;bottom:6%;width:132px;height:132px;border-radius:999px;background:var(--primary);opacity:.9"></span>
+<span style="position:absolute;right:46%;bottom:2%;width:84px;height:84px;border-radius:999px;border:1px solid var(--border)"></span>
+</div>
+</div>
+<p style="margin:8px 0 0;max-width:680px;font-size:14px;line-height:1.7;color:var(--muted-foreground)">这一屏在产品里没有左侧导航 —— 这里保留它只是为了在同一份稿子里翻页。右侧的柔形是纯装饰，用的是地面色、鼠尾草与陶土，没有借用任何状态色槽。</p>
+</div>
+</x-dc>
+</body>
+</html>

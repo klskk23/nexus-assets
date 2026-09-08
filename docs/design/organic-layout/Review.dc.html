@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./ds-base.js"></script>
+<style>*{box-sizing:border-box}html,body{margin:0}body{padding:clamp(22px,4vw,56px);background:var(--background);color:var(--foreground);font-family:"Figtree Variable","Noto Sans SC",ui-sans-serif,sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--accent-foreground);text-decoration:none}a:hover{color:var(--primary)}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ring,var(--primary));outline-offset:2px}</style>
+</helmet>
+<div style="max-width:760px">
+<span style="display:block;font-family:Caprasimo,serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--primary)">Review</span>
+<h1 style="margin:12px 0 0;font-size:40px;line-height:1.2;font-weight:700;letter-spacing:-.01em">主题已经是 Organic 了，版面还不是</h1>
+<p style="margin:24px 0 0;font-size:17px;line-height:1.75;color:var(--secondary-foreground);text-wrap:pretty">令牌层换得很彻底：底色 #f5ead8、陶土 #c67139、鼠尾草 #8fa073、28px 圆角、Caprasimo 配 Figtree，都在 <code style="font-family:var(--font-mono);font-size:15px">styles.css</code> 里。但页面骨架仍是 shadcn 的默认形态 —— 居中的 <code style="font-family:var(--font-mono);font-size:15px">max-w-7xl</code>、一条横向导航、每块内容各自一张 Card。换了颜色的卡片墙还是卡片墙。下面七条是差距所在，右侧导航里的七个界面是按这些结论重排的。</p>
+<div style="margin-top:56px;display:flex;flex-direction:column;gap:40px">
+
+<section style="display:flex;gap:22px;align-items:flex-start">
+<span style="flex:none;width:46px;height:46px;border-radius:999px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:Caprasimo,serif;font-size:17px">01</span>
+<div style="min-width:0">
+<h2 style="margin:9px 0 0;font-size:21px;line-height:1.35;font-weight:700">居中的内容列不是这个系统的排版方式</h2>
+<p style="margin:12px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground);text-wrap:pretty">Organic 的方向是左对齐、不对称，内容贴左边，留白留在右边。<code style="font-family:var(--font-mono);font-size:14px">AppShell</code> 把主内容放在 <code style="font-family:var(--font-mono);font-size:14px">mx-auto max-w-7xl</code> 里，两侧对称留白，导航横在顶上 —— 一个中性后台的标准姿势，和这套令牌的性格相反。</p>
+<p style="margin:10px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground)"><strong style="font-weight:700">改法：</strong>左侧一条 236px 的竖排导航，内容列贴左 960px 上限，右侧空着。表格宽了自然往右长，短表格不必被强行拉到屏幕中间。</p>
+</div>
+</section>
+
+<section style="display:flex;gap:22px;align-items:flex-start">
+<span style="flex:none;width:46px;height:46px;border-radius:999px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:Caprasimo,serif;font-size:17px">02</span>
+<div style="min-width:0">
+<h2 style="margin:9px 0 0;font-size:21px;line-height:1.35;font-weight:700">卡片比页面深，于是"卡片墙"更刺眼</h2>
+<p style="margin:12px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground);text-wrap:pretty">中性主题里 <code style="font-family:var(--font-mono);font-size:14px">--card</code> 是白色，卡片=抬起。这里 <code style="font-family:var(--font-mono);font-size:14px">--card</code> 是 #ebddc5，比 <code style="font-family:var(--font-mono);font-size:14px">--background</code> #f5ead8 深；而 <code style="font-family:var(--font-mono);font-size:14px">--well</code> #f9f4ed 比两者都浅。也就是说卡片在压下、井在抬起，与它们的名字相反。概览页六张卡片并排时，读到的是六块补丁。</p>
+<p style="margin:10px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground)"><strong style="font-weight:700">改法：</strong>三档地面各归各位 —— 页面 <code style="font-family:var(--font-mono);font-size:14px">--background</code>，下沉的表头与只读值组 <code style="font-family:var(--font-mono);font-size:14px">--well</code>，<code style="font-family:var(--font-mono);font-size:14px">--card</code> 只留给真正浮在页面之上的东西：对话框、抽屉、悬浮卡。页面分区改用留白，不用第四种底色。</p>
+</div>
+</section>
+
+<section style="display:flex;gap:22px;align-items:flex-start">
+<span style="flex:none;width:46px;height:46px;border-radius:999px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:Caprasimo,serif;font-size:17px">03</span>
+<div style="min-width:0">
+<h2 style="margin:9px 0 0;font-size:21px;line-height:1.35;font-weight:700">Caprasimo 只带拉丁字形，所以它的存在感要落在数字上</h2>
+<p style="margin:12px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground);text-wrap:pretty">这是审视中最实际的一条。<code style="font-family:var(--font-mono);font-size:14px">fonts/</code> 里的 Caprasimo 只有一个 latin 子集，中文标题必然落到 Noto Sans SC —— 把 <code style="font-family:var(--font-mono);font-size:14px">font-heading</code> 挂到「资产」两个字上，什么也不会发生。而 <code style="font-family:var(--font-mono);font-size:14px">PageHeader</code> 的 h1 是 20px semibold，即使换成拉丁文本也用不出一款展示体。</p>
+<p style="margin:10px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground)"><strong style="font-weight:700">改法：</strong>Caprasimo 交给它真正管得住的字符 —— 产品名、页码、计数、资产编号、字段键名、状态键。中文标题靠字号与字重建立层级：页标题 36–40px / 700，区标题 21px / 700。一个资产账本里数字本来就是主角，这不是妥协。</p>
+</div>
+</section>
+
+<section style="display:flex;gap:22px;align-items:flex-start">
+<span style="flex:none;width:46px;height:46px;border-radius:999px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:Caprasimo,serif;font-size:17px">04</span>
+<div style="min-width:0">
+<h2 style="margin:9px 0 0;font-size:21px;line-height:1.35;font-weight:700">深色主题和 Organic 的判断互相取消</h2>
+<p style="margin:12px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground);text-wrap:pretty">仓库里 <code style="font-family:var(--font-mono);font-size:14px">index.css</code> 有完整的 <code style="font-family:var(--font-mono);font-size:14px">.dark</code> 分支，AppShell 的账号菜单里有一键切换，状态色板为深浅两套各调了一遍权重。但同步进来的这套 DS 只有一组浅色令牌，README 也已经写明「只有一个浅色主题，<code style="font-family:var(--font-mono);font-size:14px">dark:</code> 解析为空」。Organic 的整套推理 —— 暖底、洗白照片、陶土在浅底上刚好 3:1 —— 都建立在浅底之上。</p>
+<p style="margin:10px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground)"><strong style="font-weight:700">要决定的事：</strong>要么承认只有一套浅色，把切换项与 <code style="font-family:var(--font-mono);font-size:14px">.dark</code> 分支一并撤掉；要么为深色单独调一组暖色令牌（深棕底 + 提亮的陶土），而不是让灰阶的深色版顶着 Organic 的名字。现在两边都不成立。这条不在重做稿里，因为它不是版面问题。</p>
+</div>
+</section>
+
+<section style="display:flex;gap:22px;align-items:flex-start">
+<span style="flex:none;width:46px;height:46px;border-radius:999px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:Caprasimo,serif;font-size:17px">05</span>
+<div style="min-width:0">
+<h2 style="margin:9px 0 0;font-size:21px;line-height:1.35;font-weight:700">数量图形是直角的，而颜色又不能用</h2>
+<p style="margin:12px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground);text-wrap:pretty">这个产品有一条硬规矩：颜色表示状态，图表不许借用状态色 —— 所以 <code style="font-family:var(--font-mono);font-size:14px">--chart-1</code> 被定成 <code style="font-family:var(--font-mono);font-size:14px">var(--accent-2)</code> 那支鼠尾草。规矩是对的，但它同时意味着<strong style="font-weight:700">形状是数量唯一还能自由使用的维度</strong>，而 CategoryChart 用的是 recharts 的直角条、圆角 4px。整套系统在讲圆，图表在讲方。</p>
+<p style="margin:10px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground)"><strong style="font-weight:700">改法：</strong>数量画成 999px 的药丸轨道，轨槽 <code style="font-family:var(--font-mono);font-size:14px">--well</code>、填充鼠尾草；状态计数画成圆盘。状态仍然只由 <code style="font-family:var(--font-mono);font-size:14px">status-chip</code> 那八个色槽表达，一处不动。</p>
+</div>
+</section>
+
+<section style="display:flex;gap:22px;align-items:flex-start">
+<span style="flex:none;width:46px;height:46px;border-radius:999px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:Caprasimo,serif;font-size:17px">06</span>
+<div style="min-width:0">
+<h2 style="margin:9px 0 0;font-size:21px;line-height:1.35;font-weight:700">28px 的圆角需要比 24px 更多的空气</h2>
+<p style="margin:12px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground);text-wrap:pretty">页面骨架清一色 <code style="font-family:var(--font-mono);font-size:14px">grid gap-6</code>（24px）。在中性紧凑主题里这个间距是合适的；配上 28px 圆角和暖底，圆角互相顶着，柔就读不出来 —— 反而像被裁圆的方块。</p>
+<p style="margin:10px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground)"><strong style="font-weight:700">改法：</strong>分区之间 56px，区内成组 24px，圆角容器内边距不小于 24px（半径 28 的角需要至少这么多才不切到内容）。表格行高从 40 提到 48。</p>
+</div>
+</section>
+
+<section style="display:flex;gap:22px;align-items:flex-start">
+<span style="flex:none;width:46px;height:46px;border-radius:999px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:Caprasimo,serif;font-size:17px">07</span>
+<div style="min-width:0">
+<h2 style="margin:9px 0 0;font-size:21px;line-height:1.35;font-weight:700">登录页是唯一能自由排版的一屏，却做成了居中卡片</h2>
+<p style="margin:12px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground);text-wrap:pretty"><code style="font-family:var(--font-mono);font-size:14px">Login.tsx</code> 是 <code style="font-family:var(--font-mono);font-size:14px">flex items-center justify-center</code> 里一张 <code style="font-family:var(--font-mono);font-size:14px">max-w-sm</code> 的卡片。表格页受数据约束，这一页不受 —— 它是整个产品里最该像 Organic 的地方。</p>
+<p style="margin:10px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground)"><strong style="font-weight:700">改法：</strong>左侧一列表单贴左，右侧留白配一个柔形；产品名用 Caprasimo 放到该有的字号。</p>
+</div>
+</section>
+
+</div>
+<div style="margin-top:64px;padding:32px;border-radius:28px;background:var(--well)">
+<h2 style="margin:0;font-size:19px;font-weight:700">不动的部分</h2>
+<p style="margin:12px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground);text-wrap:pretty">这些是产品自己的判断，与视觉风格无关，重做稿里逐条保留：行本身是点击目标、单元格里不放控件；行内操作在右键菜单或行尾悬浮条里；翻页永远是表格下面那一行，含区间、页码、每页条数；不可用的动作禁用并说明缺什么，而不是隐藏；空状态要说清楚什么会填满它，被筛空了就给出清除筛选；带输入的提示写在 placeholder 里，必须一直可见的话才用 FieldError 或 Alert；表单一律 Field / FieldGroup / FieldSet；列里的数字用 tabular-nums。</p>
+<p style="margin:14px 0 0;font-size:16px;line-height:1.75;color:var(--secondary-foreground)">颜色的分工也不动：陶土=动作，鼠尾草=数量，八个状态色槽=状态。装饰只能用 <code style="font-family:var(--font-mono);font-size:14px">--muted</code>、<code style="font-family:var(--font-mono);font-size:14px">--well</code>、<code style="font-family:var(--font-mono);font-size:14px">--border</code>。</p>
+</div>
+</div>
+</x-dc>
+</body>
+</html>

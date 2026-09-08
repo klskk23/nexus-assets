@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./ds-base.js"></script>
+<style>*{box-sizing:border-box}html,body{margin:0}body{padding:clamp(22px,4vw,56px);background:var(--background);color:var(--foreground);font-family:"Figtree Variable","Noto Sans SC",ui-sans-serif,sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--accent-foreground);text-decoration:none}a:hover{color:var(--primary)}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ring,var(--primary));outline-offset:2px}</style>
+</helmet>
+<div style="max-width:960px">
+<nav style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted-foreground)"><a href="#">资产</a><span>/</span><span>网络设备</span><span>/</span><span>交换机</span></nav>
+<div style="margin-top:14px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
+<div>
+<span style="display:block;font-family:Caprasimo,serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--primary)">03 · Asset</span>
+<div style="margin-top:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+<h1 style="margin:0;font-family:Caprasimo,serif;font-size:40px;line-height:1.1;font-weight:400;font-variant-numeric:tabular-nums">2199023255611</h1>
+<span class="status-green status-chip" style="font-size:14px;padding:6px 15px;border-radius:999px;border:1px solid">在库</span>
+</div>
+<p style="margin:12px 0 0;font-size:15px;color:var(--secondary-foreground)">编号由该类别的显示编号字段推导 · CRS310-1G-5S · MikroTik</p>
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap">
+<button type="button" style="cursor:pointer;font:inherit;font-size:14px;padding:11px 22px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">打印标签</button>
+<button type="button" style="cursor:pointer;font:inherit;font-size:14px;padding:11px 22px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">编辑设备属性</button>
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:11px 22px;border-radius:999px;background:var(--primary);color:var(--primary-foreground)" style-hover="background:#b3632f">流转</button>
+</div>
+</div>
+
+<div style="margin-top:40px;border-radius:28px;background:var(--well);padding:26px 30px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:26px">
+<div><span style="display:block;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted-foreground)">当前持有方</span><span style="display:block;margin-top:7px;font-size:16px">上海办公室 / 仓库 A</span></div>
+<div><span style="display:block;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted-foreground)">当前负责人</span><span style="display:block;margin-top:7px;font-size:16px">周敏</span></div>
+<div><span style="display:block;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted-foreground)">默认归属</span><span style="display:block;margin-top:7px;font-size:16px">上海办公室 / 仓库 A</span></div>
+<div><span style="display:block;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted-foreground)">建档时间</span><span style="display:block;margin-top:7px;font-size:16px;font-variant-numeric:tabular-nums">2024-03-12</span></div>
+</div>
+
+<section style="margin-top:56px">
+<h2 style="margin:0;font-size:21px;font-weight:700">设备属性</h2>
+<div style="margin-top:22px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 44px">
+<div style="padding:16px 0;border-bottom:1px solid var(--border-muted);display:flex;align-items:baseline;gap:14px"><span style="width:132px;flex:none;font-size:14px;color:var(--secondary-foreground)">MAC 地址</span><span style="font-family:var(--font-mono);font-size:15px;font-variant-numeric:tabular-nums">DC:2C:6E:1F:04:AB</span><span style="margin-left:auto;font-size:12px;padding:3px 10px;border-radius:999px;background:var(--well);border:1px solid var(--border-muted);color:var(--muted-foreground)">唯一</span></div>
+<div style="padding:16px 0;border-bottom:1px solid var(--border-muted);display:flex;align-items:baseline;gap:14px"><span style="width:132px;flex:none;font-size:14px;color:var(--secondary-foreground)">编号</span><span style="font-family:var(--font-mono);font-size:15px;font-variant-numeric:tabular-nums">2199023255611</span><span style="margin-left:auto;font-size:12px;padding:3px 10px;border-radius:999px;background:var(--well);border:1px solid var(--border-muted);color:var(--muted-foreground)">计算项</span></div>
+<div style="padding:16px 0;border-bottom:1px solid var(--border-muted);display:flex;align-items:baseline;gap:14px"><span style="width:132px;flex:none;font-size:14px;color:var(--secondary-foreground)">机柜位</span><span style="font-size:15px">B-07-U12</span><span style="margin-left:auto;font-size:12px;padding:3px 10px;border-radius:999px;background:var(--well);border:1px solid var(--border-muted);color:var(--muted-foreground)">继承</span></div>
+<div style="padding:16px 0;border-bottom:1px solid var(--border-muted);display:flex;align-items:baseline;gap:14px"><span style="width:132px;flex:none;font-size:14px;color:var(--secondary-foreground)">管理 IP</span><span style="font-family:var(--font-mono);font-size:15px;font-variant-numeric:tabular-nums">10.20.4.11</span></div>
+<div style="padding:16px 0;border-bottom:1px solid var(--border-muted);display:flex;align-items:baseline;gap:14px"><span style="width:132px;flex:none;font-size:14px;color:var(--secondary-foreground)">端口数</span><span style="font-size:15px;font-variant-numeric:tabular-nums">10</span></div>
+<div style="padding:16px 0;border-bottom:1px solid var(--border-muted);display:flex;align-items:baseline;gap:14px"><span style="width:132px;flex:none;font-size:14px;color:var(--secondary-foreground)">购入日期</span><span style="font-size:15px;font-variant-numeric:tabular-nums">2024-02-28</span></div>
+</div>
+<div style="margin-top:26px;border-radius:20px;background:var(--well);padding:20px 24px">
+<span style="font-size:14px;font-weight:700">已归档字段</span>
+<p style="margin:6px 0 0;font-size:14px;line-height:1.7;color:var(--secondary-foreground)">这些字段已不属于当前类别，保留展示但不参与校验。</p>
+<div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px"><span style="font-size:13px;padding:5px 13px;border-radius:999px;background:var(--background);border:1px solid var(--border-muted)">固件版本 · 6.49.7</span><span style="font-size:13px;padding:5px 13px;border-radius:999px;background:var(--background);border:1px solid var(--border-muted)">保修至 · 2027-02</span></div>
+</div>
+</section>
+
+<section style="margin-top:56px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:20px;flex-wrap:wrap">
+<h2 style="margin:0;font-size:21px;font-weight:700">流转历史</h2>
+<a href="#" style="font-size:14px">查看全部流转</a>
+</div>
+<ol style="margin:22px 0 0;padding:0;list-style:none">
+<li style="display:flex;gap:18px;padding:20px 0;border-top:1px solid var(--border-muted)">
+<span style="flex:none;width:12px;height:12px;margin-top:6px;border-radius:999px;background:var(--primary)"></span>
+<div style="min-width:0;flex:1">
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px"><span style="font-size:13px;padding:4px 12px;border-radius:999px;background:var(--well);border:1px solid var(--border-muted)">归还</span><span style="font-size:13px;color:var(--muted-foreground)">2026-09-07 11:08</span><span style="font-size:13px;color:var(--muted-foreground)">操作人：李文</span></div>
+<p style="margin:8px 0 0;font-size:15px;line-height:1.6"><span style="color:var(--muted-foreground)">自 </span>研发部 / 王倩<span style="color:var(--muted-foreground)">（已签出） 至 </span>上海办公室 / 仓库 A<span style="color:var(--muted-foreground)">（在库）</span></p>
+<div style="margin-top:12px"><button type="button" style="cursor:pointer;font:inherit;font-size:13px;padding:8px 16px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">修改这条记录</button><span style="margin-left:12px;font-size:13px;color:var(--muted-foreground)">只能修改最新的一条</span></div>
+</div>
+</li>
+<li style="display:flex;gap:18px;padding:20px 0;border-top:1px solid var(--border-muted)">
+<span style="flex:none;width:12px;height:12px;margin-top:6px;border-radius:999px;background:var(--accent-2)"></span>
+<div style="min-width:0">
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px"><span style="font-size:13px;padding:4px 12px;border-radius:999px;background:var(--well);border:1px solid var(--border-muted)">签出</span><span style="font-size:13px;color:var(--muted-foreground)">2026-06-14 09:31</span><span style="font-size:13px;color:var(--muted-foreground)">操作人：周敏</span></div>
+<p style="margin:8px 0 0;font-size:15px;line-height:1.6"><span style="color:var(--muted-foreground)">自 </span>上海办公室 / 仓库 A<span style="color:var(--muted-foreground)">（在库） 至 </span>研发部 / 王倩<span style="color:var(--muted-foreground)">（已签出）</span></p>
+<p style="margin:6px 0 0;font-size:14px;color:var(--muted-foreground)">备注：二期实验网搭建</p>
+</div>
+</li>
+<li style="display:flex;gap:18px;padding:20px 0;border-top:1px solid var(--border-muted)">
+<span style="flex:none;width:12px;height:12px;margin-top:6px;border-radius:999px;background:var(--accent-2)"></span>
+<div style="min-width:0">
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px"><span style="font-size:13px;padding:4px 12px;border-radius:999px;background:var(--well);border:1px solid var(--border-muted)">变更负责人</span><span style="font-size:13px;color:var(--muted-foreground)">2025-11-02 14:55</span><span style="font-size:13px;color:var(--muted-foreground)">操作人：李文</span></div>
+<p style="margin:8px 0 0;font-size:15px;line-height:1.6">上海办公室 / 仓库 A<span style="color:var(--muted-foreground)">（在库） · 负责人改为 </span>周敏</p>
+</div>
+</li>
+<li style="display:flex;gap:18px;padding:20px 0;border-top:1px solid var(--border-muted);border-bottom:1px solid var(--border-muted)">
+<span style="flex:none;width:12px;height:12px;margin-top:6px;border-radius:999px;background:var(--accent-2)"></span>
+<div style="min-width:0">
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px"><span style="font-size:13px;padding:4px 12px;border-radius:999px;background:var(--well);border:1px solid var(--border-muted)">录入</span><span style="font-size:13px;color:var(--muted-foreground)">2024-03-12 10:02</span><span style="font-size:13px;color:var(--muted-foreground)">操作人：周敏</span></div>
+<p style="margin:8px 0 0;font-size:15px;line-height:1.6">上海办公室 / 仓库 A<span style="color:var(--muted-foreground)">（在库）</span></p>
+</div>
+</li>
+</ol>
+</section>
+</div>
+</x-dc>
+</body>
+</html>

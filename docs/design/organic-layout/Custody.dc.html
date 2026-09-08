@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./ds-base.js"></script>
+<style>*{box-sizing:border-box}html,body{margin:0}body{padding:clamp(22px,4vw,56px);background:var(--background);color:var(--foreground);font-family:"Figtree Variable","Noto Sans SC",ui-sans-serif,sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--accent-foreground);text-decoration:none}a:hover{color:var(--primary)}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ring,var(--primary));outline-offset:2px}</style>
+</helmet>
+<div style="max-width:960px">
+<div>
+<span style="display:block;font-family:Caprasimo,serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--primary)">04 · Custody</span>
+<h1 style="margin:10px 0 0;font-size:40px;line-height:1.2;font-weight:700">签出与归还</h1>
+<p style="margin:14px 0 0;max-width:640px;font-size:16px;line-height:1.7;color:var(--secondary-foreground)">从资产列表勾选之后的那一步。签出、归还、转移、改负责人、改状态是同一个动作的五种问法，所以是一个面板、一组切换，而不是五个对话框。</p>
+</div>
+
+<div style="margin-top:40px;display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:16px 22px;border-radius:999px;background:var(--well)">
+<span style="font-size:14px;font-weight:700">已选 <span style="font-family:Caprasimo,serif;font-variant-numeric:tabular-nums">3</span> 台</span>
+<span style="font-family:var(--font-mono);font-size:13px;padding:5px 13px;border-radius:999px;background:var(--background);border:1px solid var(--border-muted);font-variant-numeric:tabular-nums">2199023255611</span>
+<span style="font-family:var(--font-mono);font-size:13px;padding:5px 13px;border-radius:999px;background:var(--background);border:1px solid var(--border-muted);font-variant-numeric:tabular-nums">2199023255742</span>
+<span style="font-family:var(--font-mono);font-size:13px;padding:5px 13px;border-radius:999px;background:var(--background);border:1px solid var(--border-muted);font-variant-numeric:tabular-nums">2199023256013</span>
+<button type="button" style="margin-left:auto;cursor:pointer;font:inherit;font-size:13px;padding:7px 16px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">取消选择</button>
+</div>
+
+<div style="margin-top:28px;max-width:620px;border-radius:28px;background:var(--card);padding:32px;box-shadow:0 18px 44px -20px rgba(32,30,29,.35)">
+<h2 style="margin:0;font-size:24px;font-weight:700">流转</h2>
+<p style="margin:8px 0 0;font-size:14px;color:var(--secondary-foreground)">选中的 3 台设备将一起提交，记为同一批。</p>
+
+<div style="margin-top:24px;display:inline-flex;padding:4px;border-radius:999px;background:var(--well);gap:2px;flex-wrap:wrap">
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 18px;border-radius:999px;background:var(--primary);color:var(--primary-foreground)">签出</button>
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 18px;border-radius:999px;background:transparent;color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">归还</button>
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 18px;border-radius:999px;background:transparent;color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">转移</button>
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 18px;border-radius:999px;background:transparent;color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">改负责人</button>
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 18px;border-radius:999px;background:transparent;color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">改状态</button>
+</div>
+
+<div style="margin-top:28px;display:flex;flex-direction:column;gap:22px">
+<label style="display:flex;flex-direction:column;gap:9px"><span style="font-size:14px;font-weight:600">目标</span>
+<select style="font:inherit;font-size:15px;height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--input);background:var(--background);color:var(--foreground)"><option>研发部 / 王倩</option><option>深圳办公室 / 前台</option><option>培训中心</option></select></label>
+
+<label style="display:flex;flex-direction:column;gap:9px"><span style="font-size:14px;font-weight:600">负责人</span>
+<select style="font:inherit;font-size:15px;height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--input);background:var(--background);color:var(--foreground)"><option>不变</option><option>王倩</option><option>周敏</option><option>李文</option></select>
+<span style="font-size:13.5px;line-height:1.6;color:var(--secondary-foreground)">交给公司、部门或位置时，仍然要有一个人负责。</span></label>
+
+<label style="display:flex;flex-direction:column;gap:9px"><span style="font-size:14px;font-weight:600">状态</span>
+<select style="font:inherit;font-size:15px;height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--input);background:var(--background);color:var(--foreground)"><option>已签出</option><option>在库</option><option>维修中</option></select></label>
+
+<label style="display:flex;flex-direction:column;gap:9px"><span style="font-size:14px;font-weight:600">本次流转的备注</span>
+<textarea rows="3" placeholder="记这一次移动的缘由" style="font:inherit;font-size:15px;padding:14px 18px;border-radius:20px;border:1px solid var(--input);background:var(--background);color:var(--foreground);resize:vertical"></textarea>
+<span style="font-size:13.5px;line-height:1.6;color:var(--secondary-foreground)">设备本身的备注在详情页，与流转无关。</span></label>
+</div>
+
+<div style="margin-top:26px;display:flex;gap:18px;padding:18px 22px;border-radius:20px;background:var(--well)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" style="flex:none;margin-top:2px;color:var(--accent-foreground)"><circle cx="12" cy="12" r="9"></circle><path d="M12 8h.01M11 12h1v4h1"></path></svg>
+<p style="margin:0;font-size:14px;line-height:1.7;color:var(--secondary-foreground)">换到「归还」时，不指定目标的话每台设备回到它自己的默认归属；没有设过的回到默认库存点。</p>
+</div>
+
+<div style="margin-top:28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+<button type="button" style="border:0;cursor:pointer;font:inherit;font-size:15px;padding:13px 26px;border-radius:999px;background:var(--primary);color:var(--primary-foreground)" style-hover="background:#b3632f">提交</button>
+<button type="button" style="cursor:pointer;font:inherit;font-size:15px;padding:13px 26px;border-radius:999px;background:transparent;border:1px solid var(--border);color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">取消</button>
+<span style="margin-left:auto;font-size:13px;color:var(--muted-foreground)">提交后在时间线里折成一条「批量操作（3 台）」</span>
+</div>
+</div>
+
+<p style="margin:26px 0 0;max-width:640px;font-size:14px;line-height:1.7;color:var(--muted-foreground)">这是整份重做稿里唯一用 <code style="font-family:var(--font-mono)">--card</code> 的地方 —— 它确实浮在列表之上。页面里的其他分区一律用留白和 <code style="font-family:var(--font-mono)">--well</code>。</p>
+</div>
+</x-dc>
+</body>
+</html>

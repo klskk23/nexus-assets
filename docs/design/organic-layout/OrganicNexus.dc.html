@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Organic Nexus" description="用 Organic 的设计逻辑重做的 Nexus Assets：一份审视报告、一页设计原则，和七个重排过的界面" -->
+<helmet>
+<script src="./ds-base.js"></script>
+<style>*{box-sizing:border-box}html>body{padding:0}html,body{margin:0;padding:0;background:var(--background);color:var(--foreground);font-family:"Figtree Variable","Noto Sans SC",ui-sans-serif,sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--accent-foreground);text-decoration:none}a:hover{color:var(--primary)}button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--ring);outline-offset:2px}</style>
+</helmet>
+<div style="display:flex;align-items:stretch;min-height:100vh;background:var(--background)">
+<aside style="flex:none;width:236px;padding:36px 18px 48px 30px;display:flex;flex-direction:column;gap:34px;border-right:1px solid var(--border-muted)">
+<div style="display:flex;flex-direction:column;gap:4px;padding-left:14px">
+<span style="font-family:Caprasimo,serif;font-size:21px;line-height:1.15;color:var(--foreground)">Nexus</span>
+<span style="font-family:Caprasimo,serif;font-size:21px;line-height:1.15;color:var(--primary)">Assets</span>
+<span style="margin-top:8px;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-foreground)">Organic 重做稿</span>
+</div>
+<nav style="display:flex;flex-direction:column;gap:22px" aria-label="重做稿导航">
+<div style="display:flex;flex-direction:column;gap:2px">
+<span style="padding:0 14px 8px;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-foreground)">审视</span>
+<sc-for list="{{ docs }}" as="item" hint-placeholder-count="2">
+<sc-if value="{{ item.active }}">
+<button type="button" onClick="{{ item.go }}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 14px;border-radius:999px;background:var(--primary);color:var(--primary-foreground)">
+<span style="font-family:Caprasimo,serif;font-size:11px;opacity:.6;width:18px;flex:none">{{ item.tag }}</span>
+<span>{{ item.label }}</span>
+</button>
+</sc-if>
+<sc-if value="{{ item.idle }}">
+<button type="button" onClick="{{ item.go }}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 14px;border-radius:999px;background:transparent;color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">
+<span style="font-family:Caprasimo,serif;font-size:11px;opacity:.6;width:18px;flex:none">{{ item.tag }}</span>
+<span>{{ item.label }}</span>
+</button>
+</sc-if>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px">
+<span style="padding:0 14px 8px;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-foreground)">重做的界面</span>
+<sc-for list="{{ screens }}" as="item" hint-placeholder-count="7">
+<sc-if value="{{ item.active }}">
+<button type="button" onClick="{{ item.go }}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 14px;border-radius:999px;background:var(--primary);color:var(--primary-foreground)">
+<span style="font-family:Caprasimo,serif;font-size:11px;opacity:.6;width:18px;flex:none">{{ item.tag }}</span>
+<span>{{ item.label }}</span>
+</button>
+</sc-if>
+<sc-if value="{{ item.idle }}">
+<button type="button" onClick="{{ item.go }}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;cursor:pointer;font:inherit;font-size:14px;padding:9px 14px;border-radius:999px;background:transparent;color:var(--foreground)" style-hover="background:var(--accent);color:var(--accent-foreground)">
+<span style="font-family:Caprasimo,serif;font-size:11px;opacity:.6;width:18px;flex:none">{{ item.tag }}</span>
+<span>{{ item.label }}</span>
+</button>
+</sc-if>
+</sc-for>
+</div>
+</nav>
+<p style="margin:auto 0 0;padding:0 14px;font-size:12px;line-height:1.6;color:var(--muted-foreground)">组件结构沿用 nexus-assets-web；版面、留白与字号按 Organic 重写。</p>
+</aside>
+<main style="flex:1;min-width:0;padding:44px 40px 120px 56px">
+<sc-if value="{{ isReview }}" hint-placeholder-val="{{ true }}"><dc-import name="Review" hint-size="100%,900px"></dc-import></sc-if>
+<sc-if value="{{ isPrinciples }}"><dc-import name="Principles" hint-size="100%,900px"></dc-import></sc-if>
+<sc-if value="{{ isOverview }}"><dc-import name="Overview" hint-size="100%,900px"></dc-import></sc-if>
+<sc-if value="{{ isList }}"><dc-import name="AssetList" hint-size="100%,900px"></dc-import></sc-if>
+<sc-if value="{{ isDetail }}"><dc-import name="AssetDetail" hint-size="100%,900px"></dc-import></sc-if>
+<sc-if value="{{ isCustody }}"><dc-import name="Custody" hint-size="100%,900px"></dc-import></sc-if>
+<sc-if value="{{ isMeta }}"><dc-import name="Metadata" hint-size="100%,900px"></dc-import></sc-if>
+<sc-if value="{{ isPrint }}"><dc-import name="PrintLabels" hint-size="100%,900px"></dc-import></sc-if>
+<sc-if value="{{ isSignIn }}"><dc-import name="SignIn" hint-size="100%,900px"></dc-import></sc-if>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const DOCS = [["review", "审视报告", "00"], ["principles", "设计原则", "0R"]];
+const SCREENS = [
+  ["overview", "概览", "01"],
+  ["list", "资产列表", "02"],
+  ["detail", "资产详情", "03"],
+  ["custody", "签出与归还", "04"],
+  ["meta", "元数据管理", "05"],
+  ["print", "打印标签", "06"],
+  ["signin", "登录", "07"],
+];
+
+class Component extends DCLogic {
+  state = { view: "review" };
+
+  items(list) {
+    const v = this.state.view;
+    return list.map(([id, label, tag]) => ({
+      id,
+      label,
+      tag,
+      go: () => this.setState({ view: id }),
+      active: v === id,
+      idle: v !== id,
+    }));
+  }
+
+  renderVals() {
+    const v = this.state.view;
+    return {
+      docs: this.items(DOCS),
+      screens: this.items(SCREENS),
+      isReview: v === "review",
+      isPrinciples: v === "principles",
+      isOverview: v === "overview",
+      isList: v === "list",
+      isDetail: v === "detail",
+      isCustody: v === "custody",
+      isMeta: v === "meta",
+      isPrint: v === "print",
+      isSignIn: v === "signin",
+    };
+  }
+}
+</script>
+</body>
+</html>
