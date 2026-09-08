@@ -140,6 +140,22 @@ export const RefusalStaysInside = () => (
         </Field>
       </FieldGroup>
       <Alert variant="destructive">
+        {/* A real <svg>, not a glyph in a span: Alert starts at
+            grid-cols-[0_1fr] and only opens its icon column for an svg child,
+            which the component then sizes itself. */}
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 8v4" />
+          <path d="M12 16h.01" />
+        </svg>
         <AlertTitle>键名已被占用</AlertTitle>
         <AlertDescription>
           「网络设备」上已经有一个 warranty_end。换一个键名，或者到那个字段上改它的显示名称。

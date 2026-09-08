@@ -19,6 +19,7 @@ import {
  * reverse so the primary lands under the thumb rather than above the cancel.
  */
 export const CancelAndSave = () => (
+  <div style={{ background: "var(--background)", padding: "1rem", minHeight: "100vh" }}>
   <Dialog defaultOpen>
     <DialogContent className="sm:max-w-2xl">
       <DialogHeader>
@@ -43,6 +44,7 @@ export const CancelAndSave = () => (
       </DialogFooter>
     </DialogContent>
   </Dialog>
+  </div>
 )
 
 /**
@@ -50,6 +52,7 @@ export const CancelAndSave = () => (
  * is readable without looking back up at the description.
  */
 export const ConfirmsABatch = () => (
+  <div style={{ background: "var(--background)", padding: "1rem", minHeight: "100vh" }}>
   <Dialog defaultOpen>
     <DialogContent>
       <DialogHeader>
@@ -64,6 +67,7 @@ export const ConfirmsABatch = () => (
       </DialogFooter>
     </DialogContent>
   </Dialog>
+  </div>
 )
 
 /**
@@ -72,6 +76,7 @@ export const ConfirmsABatch = () => (
  * hit on the way to it; and it still opens a confirm of its own before acting.
  */
 export const DestructiveAtTheFarEnd = () => (
+  <div style={{ background: "var(--background)", padding: "1rem", minHeight: "100vh" }}>
   <Dialog defaultOpen>
     <DialogContent className="sm:max-w-2xl">
       <DialogHeader>
@@ -101,4 +106,5 @@ export const DestructiveAtTheFarEnd = () => (
       </DialogFooter>
     </DialogContent>
   </Dialog>
+  </div>
 )

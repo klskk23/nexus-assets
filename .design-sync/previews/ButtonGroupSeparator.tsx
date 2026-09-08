@@ -1,5 +1,9 @@
 import { Button, ButtonGroup, ButtonGroupSeparator } from "nexus-assets-web"
 
+/* Preview glue only: the preview sheet's ground is white where the product's
+   is cream, so a card without this reads its `bg-card` and `bg-muted` parts as
+   pale chips instead of as surfaces on a page. */
+const ground = { background: "var(--background)", padding: "1rem" } as const
 /**
  * The hairline inside a joined run of buttons. It is not decoration: it is
  * where the meaning changes.
@@ -9,21 +13,23 @@ import { Button, ButtonGroup, ButtonGroupSeparator } from "nexus-assets-web"
  * the line can be undone by doing the opposite; nothing right of it can.
  */
 export const BeforeADestructiveAction = () => (
-  <ButtonGroup>
-    <Button size="sm" variant="outline">
-      签出
-    </Button>
-    <Button size="sm" variant="outline">
-      归还
-    </Button>
-    <Button size="sm" variant="outline">
-      转移
-    </Button>
-    <ButtonGroupSeparator />
-    <Button size="sm" variant="outline" className="text-destructive">
-      删除
-    </Button>
-  </ButtonGroup>
+  <div style={ground}>
+    <ButtonGroup>
+      <Button size="sm" variant="outline">
+        签出
+      </Button>
+      <Button size="sm" variant="outline">
+        归还
+      </Button>
+      <Button size="sm" variant="outline">
+        转移
+      </Button>
+      <ButtonGroupSeparator />
+      <Button size="sm" variant="outline" className="text-destructive">
+        删除
+      </Button>
+    </ButtonGroup>
+  </div>
 )
 
 /**
@@ -32,28 +38,30 @@ export const BeforeADestructiveAction = () => (
  * undivided buttons is a list nobody reads to the end of.
  */
 export const ThreeRuns = () => (
-  <ButtonGroup>
-    <Button size="sm" variant="outline">
-      签出
-    </Button>
-    <Button size="sm" variant="outline">
-      归还
-    </Button>
-    <Button size="sm" variant="outline">
-      改状态
-    </Button>
-    <ButtonGroupSeparator />
-    <Button size="sm" variant="outline">
-      打印标签
-    </Button>
-    <Button size="sm" variant="outline">
-      导出 CSV
-    </Button>
-    <ButtonGroupSeparator />
-    <Button size="sm" variant="outline" className="text-destructive">
-      删除
-    </Button>
-  </ButtonGroup>
+  <div style={ground}>
+    <ButtonGroup>
+      <Button size="sm" variant="outline">
+        签出
+      </Button>
+      <Button size="sm" variant="outline">
+        归还
+      </Button>
+      <Button size="sm" variant="outline">
+        改状态
+      </Button>
+      <ButtonGroupSeparator />
+      <Button size="sm" variant="outline">
+        打印标签
+      </Button>
+      <Button size="sm" variant="outline">
+        导出 CSV
+      </Button>
+      <ButtonGroupSeparator />
+      <Button size="sm" variant="outline" className="text-destructive">
+        删除
+      </Button>
+    </ButtonGroup>
+  </div>
 )
 
 /**
@@ -63,16 +71,18 @@ export const ThreeRuns = () => (
  * nothing rendered at all.
  */
 export const InAVerticalGroup = () => (
-  <ButtonGroup orientation="vertical">
-    <Button size="sm" variant="outline">
-      导出 CSV
-    </Button>
-    <Button size="sm" variant="outline">
-      下载模板
-    </Button>
-    <ButtonGroupSeparator orientation="horizontal" />
-    <Button size="sm" variant="outline" className="text-destructive">
-      清空导入草稿
-    </Button>
-  </ButtonGroup>
+  <div style={ground}>
+    <ButtonGroup orientation="vertical">
+      <Button size="sm" variant="outline">
+        导出 CSV
+      </Button>
+      <Button size="sm" variant="outline">
+        下载模板
+      </Button>
+      <ButtonGroupSeparator orientation="horizontal" />
+      <Button size="sm" variant="outline" className="text-destructive">
+        清空导入草稿
+      </Button>
+    </ButtonGroup>
+  </div>
 )

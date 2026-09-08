@@ -5,6 +5,10 @@ import {
   ToggleGroupItem,
 } from "nexus-assets-web"
 
+/* Preview glue only: the preview sheet's ground is white where the product's
+   is cream, so a card without this reads its `bg-card` and `bg-muted` parts as
+   pale chips instead of as surfaces on a page. */
+const ground = { background: "var(--background)", padding: "1rem" } as const
 /**
  * A short, fixed set of modes shown all at once, in a single pill. Always
  * `variant="outline"` in this product, and `className="justify-start"` so it
@@ -15,21 +19,23 @@ import {
  * together rather than behind a Select nobody opens.
  */
 export const TransferAction = () => (
-  <div className="grid gap-2">
-    <FieldLabel htmlFor="tg-action">操作</FieldLabel>
-    <ToggleGroup
-      id="tg-action"
-      type="single"
-      variant="outline"
-      className="justify-start"
-      defaultValue="checkout"
-    >
-      <ToggleGroupItem value="checkout">签出</ToggleGroupItem>
-      <ToggleGroupItem value="checkin">归还</ToggleGroupItem>
-      <ToggleGroupItem value="transfer">转移</ToggleGroupItem>
-      <ToggleGroupItem value="reassign">改负责人</ToggleGroupItem>
-      <ToggleGroupItem value="status">改状态</ToggleGroupItem>
-    </ToggleGroup>
+  <div style={ground}>
+    <div className="grid gap-2">
+      <FieldLabel htmlFor="tg-action">操作</FieldLabel>
+      <ToggleGroup
+        id="tg-action"
+        type="single"
+        variant="outline"
+        className="justify-start"
+        defaultValue="checkout"
+      >
+        <ToggleGroupItem value="checkout">签出</ToggleGroupItem>
+        <ToggleGroupItem value="checkin">归还</ToggleGroupItem>
+        <ToggleGroupItem value="transfer">转移</ToggleGroupItem>
+        <ToggleGroupItem value="reassign">改负责人</ToggleGroupItem>
+        <ToggleGroupItem value="status">改状态</ToggleGroupItem>
+      </ToggleGroup>
+    </div>
   </div>
 )
 
@@ -39,21 +45,23 @@ export const TransferAction = () => (
  * have to explain afterwards why the combination was refused.
  */
 export const BindingMode = () => (
-  <div className="grid gap-2">
-    <div className="flex items-center gap-1.5">
-      <FieldLabel htmlFor="tg-bind">绑定到</FieldLabel>
-      <Hint>只能选一种；绑型号的字段只出现在这些型号的设备上。</Hint>
+  <div style={ground}>
+    <div className="grid gap-2">
+      <div className="flex items-center gap-1.5">
+        <FieldLabel htmlFor="tg-bind">绑定到</FieldLabel>
+        <Hint>只能选一种；绑型号的字段只出现在这些型号的设备上。</Hint>
+      </div>
+      <ToggleGroup
+        id="tg-bind"
+        type="single"
+        variant="outline"
+        className="justify-start"
+        defaultValue="category"
+      >
+        <ToggleGroupItem value="category">类别</ToggleGroupItem>
+        <ToggleGroupItem value="device">设备</ToggleGroupItem>
+      </ToggleGroup>
     </div>
-    <ToggleGroup
-      id="tg-bind"
-      type="single"
-      variant="outline"
-      className="justify-start"
-      defaultValue="category"
-    >
-      <ToggleGroupItem value="category">类别</ToggleGroupItem>
-      <ToggleGroupItem value="device">设备</ToggleGroupItem>
-    </ToggleGroup>
   </div>
 )
 
@@ -64,19 +72,21 @@ export const BindingMode = () => (
  * for.
  */
 export const Frozen = () => (
-  <div className="grid gap-2">
-    <FieldLabel htmlFor="tg-frozen">绑定到</FieldLabel>
-    <ToggleGroup
-      id="tg-frozen"
-      type="single"
-      variant="outline"
-      className="justify-start"
-      defaultValue="device"
-      disabled
-    >
-      <ToggleGroupItem value="category">类别</ToggleGroupItem>
-      <ToggleGroupItem value="device">设备</ToggleGroupItem>
-    </ToggleGroup>
-    <p className="text-muted-foreground text-xs">要换先解除现有的全部绑定。</p>
+  <div style={ground}>
+    <div className="grid gap-2">
+      <FieldLabel htmlFor="tg-frozen">绑定到</FieldLabel>
+      <ToggleGroup
+        id="tg-frozen"
+        type="single"
+        variant="outline"
+        className="justify-start"
+        defaultValue="device"
+        disabled
+      >
+        <ToggleGroupItem value="category">类别</ToggleGroupItem>
+        <ToggleGroupItem value="device">设备</ToggleGroupItem>
+      </ToggleGroup>
+      <p className="text-muted-foreground text-xs">要换先解除现有的全部绑定。</p>
+    </div>
   </div>
 )

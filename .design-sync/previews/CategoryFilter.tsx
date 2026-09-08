@@ -6,6 +6,11 @@ import {
   Input,
 } from "nexus-assets-web"
 
+/* Preview glue only: the preview sheet's ground is white where the product's
+   is cream, so a filter row without this reads as chips on paper rather than
+   as controls on a page. */
+const ground = { background: "var(--background)", padding: "1rem" } as const
+
 /**
  * The category dropdown three pages narrow by. Not a generic Select: it holds
  * its own query and its own "all" sentinel, so the three pages cannot end up
@@ -25,19 +30,25 @@ import {
  * sentinel alone. That is exactly what the control looks like on a fresh
  * installation before anybody has made a category.
  */
-export const AllCategories = () => <CategoryFilter value="" onChange={() => {}} />
+export const AllCategories = () => (
+  <div style={ground}>
+    <CategoryFilter value="" onChange={() => {}} />
+  </div>
+)
 
 /**
  * Where it sits: the one filter row above the asset table, between the search
  * box and the modifier that only means something once a category is chosen.
  */
 export const InAFilterRow = () => (
-  <div className="flex flex-wrap items-center gap-3">
-    <Input placeholder="搜索" className="w-56" defaultValue="" aria-label="搜索资产" />
-    <CategoryFilter value="" onChange={() => {}} />
-    <Field orientation="horizontal" className="w-auto">
-      <Checkbox id="cf-descendants" defaultChecked />
-      <FieldLabel htmlFor="cf-descendants">含子类别</FieldLabel>
-    </Field>
+  <div style={ground}>
+    <div className="flex flex-wrap items-center gap-3">
+      <Input placeholder="搜索" className="w-56" defaultValue="" aria-label="搜索资产" />
+      <CategoryFilter value="" onChange={() => {}} />
+      <Field orientation="horizontal" className="w-auto">
+        <Checkbox id="cf-descendants" defaultChecked />
+        <FieldLabel htmlFor="cf-descendants">含子类别</FieldLabel>
+      </Field>
+    </div>
   </div>
 )

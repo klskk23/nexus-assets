@@ -6,6 +6,10 @@ import {
   CardContent,
 } from "nexus-assets-web"
 
+/* Preview glue only: the preview sheet's ground is white where the product's
+   is cream, so a card without this reads its `bg-card` and `bg-muted` parts as
+   pale chips instead of as surfaces on a page. */
+const ground = { background: "var(--background)", padding: "1rem" } as const
 /**
  * The segmented run of transfer actions, as the selection bar over the asset
  * table wears it. One act per button, all of them the same size and variant,
@@ -15,23 +19,25 @@ import {
  * The group is `w-fit`, so it never stretches to the row it sits in.
  */
 export const TransferActions = () => (
-  <ButtonGroup>
-    <Button size="sm" variant="outline">
-      签出
-    </Button>
-    <Button size="sm" variant="outline">
-      归还
-    </Button>
-    <Button size="sm" variant="outline">
-      转移
-    </Button>
-    <Button size="sm" variant="outline">
-      改负责人
-    </Button>
-    <Button size="sm" variant="outline">
-      改状态
-    </Button>
-  </ButtonGroup>
+  <div style={ground}>
+    <ButtonGroup>
+      <Button size="sm" variant="outline">
+        签出
+      </Button>
+      <Button size="sm" variant="outline">
+        归还
+      </Button>
+      <Button size="sm" variant="outline">
+        转移
+      </Button>
+      <Button size="sm" variant="outline">
+        改负责人
+      </Button>
+      <Button size="sm" variant="outline">
+        改状态
+      </Button>
+    </ButtonGroup>
+  </div>
 )
 
 /**
@@ -42,32 +48,34 @@ export const TransferActions = () => (
  * 删除 sits after a separator: the same click distance, a different act.
  */
 export const InTheSelectionBar = () => (
-  <Card className="gap-0 py-0 shadow-lg">
-    <CardContent className="flex flex-wrap items-center gap-2 px-3 py-2">
-      <span className="text-sm font-medium">已选 12 台</span>
-      <ButtonGroup>
-        <Button size="sm" variant="outline">
-          签出
+  <div style={ground}>
+    <Card className="gap-0 py-0 shadow-lg">
+      <CardContent className="flex flex-wrap items-center gap-2 px-3 py-2">
+        <span className="text-sm font-medium">已选 12 台</span>
+        <ButtonGroup>
+          <Button size="sm" variant="outline">
+            签出
+          </Button>
+          <Button size="sm" variant="outline">
+            归还
+          </Button>
+          <Button size="sm" variant="outline">
+            转移
+          </Button>
+          <Button size="sm" variant="outline">
+            导出 CSV
+          </Button>
+          <ButtonGroupSeparator />
+          <Button size="sm" variant="outline" className="text-destructive">
+            删除
+          </Button>
+        </ButtonGroup>
+        <Button size="sm" variant="ghost" className="ml-auto">
+          取消选择
         </Button>
-        <Button size="sm" variant="outline">
-          归还
-        </Button>
-        <Button size="sm" variant="outline">
-          转移
-        </Button>
-        <Button size="sm" variant="outline">
-          导出 CSV
-        </Button>
-        <ButtonGroupSeparator />
-        <Button size="sm" variant="outline" className="text-destructive">
-          删除
-        </Button>
-      </ButtonGroup>
-      <Button size="sm" variant="ghost" className="ml-auto">
-        取消选择
-      </Button>
-    </CardContent>
-  </Card>
+      </CardContent>
+    </Card>
+  </div>
 )
 
 /**
@@ -76,25 +84,27 @@ export const InTheSelectionBar = () => (
  * exists, let alone who can perform it. The reason rides on `title`.
  */
 export const PartlyDenied = () => (
-  <ButtonGroup>
-    <Button size="sm" variant="outline">
-      签出
-    </Button>
-    <Button size="sm" variant="outline">
-      归还
-    </Button>
-    <Button size="sm" variant="outline" disabled title="需要「打印标签」权限，请联系管理员">
-      打印标签
-    </Button>
-    <ButtonGroupSeparator />
-    <Button
-      size="sm"
-      variant="outline"
-      className="text-destructive"
-      disabled
-      title="需要「删除设备」权限，请联系管理员"
-    >
-      删除
-    </Button>
-  </ButtonGroup>
+  <div style={ground}>
+    <ButtonGroup>
+      <Button size="sm" variant="outline">
+        签出
+      </Button>
+      <Button size="sm" variant="outline">
+        归还
+      </Button>
+      <Button size="sm" variant="outline" disabled title="需要「打印标签」权限，请联系管理员">
+        打印标签
+      </Button>
+      <ButtonGroupSeparator />
+      <Button
+        size="sm"
+        variant="outline"
+        className="text-destructive"
+        disabled
+        title="需要「删除设备」权限，请联系管理员"
+      >
+        删除
+      </Button>
+    </ButtonGroup>
+  </div>
 )

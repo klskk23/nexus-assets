@@ -154,6 +154,21 @@ does.
 - `[DTS_STYLE_SYSTEM] filtering @types/react props` — informational and correct.
   React's own CSS-shorthand-named props are not this DS's API.
 
+## Two product defects this sync surfaced (unfixed)
+
+Authoring menu previews turned up a real gap in the component source, not in the
+sync. `DropdownMenuSubTrigger` (`web/src/components/ui/dropdown-menu.tsx:214`)
+and `ContextMenuSubTrigger` (`context-menu.tsx`) both lack
+`data-[disabled]:pointer-events-none data-[disabled]:opacity-50`, which
+`DropdownMenuItem`, `DropdownMenuCheckboxItem` and `DropdownMenuRadioItem` all
+carry. A disabled submenu branch therefore renders at full strength.
+
+That contradicts this product's own rule that unavailable menu items are
+*disabled rather than hidden* — the point of which is that they must LOOK
+disabled, or a colleague learns nothing from seeing them. Left unfixed here
+because changing component source mid-sync would have invalidated the bundle
+four agents were authoring against; it is a two-token fix in each file.
+
 ## Re-sync risks
 
 - **The surface is defined in `make-ds-src.mjs`, not discovered.** A component added

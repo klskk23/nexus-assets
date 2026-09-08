@@ -69,6 +69,20 @@ export const AsTheOnlyWayOut = () => (
       </DrawerHeader>
       <div style={{ padding: "0 1rem" }}>
         <Alert>
+          {/* A real <svg>: Alert's icon column only opens for one. */}
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4" />
+            <path d="M12 8h.01" />
+          </svg>
           <AlertTitle>跳过了 6 台</AlertTitle>
           <AlertDescription>这 6 台本来就是「维修中」，没有重复写记录。</AlertDescription>
         </Alert>

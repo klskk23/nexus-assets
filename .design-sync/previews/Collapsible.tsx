@@ -16,6 +16,10 @@ import {
   SelectValue,
 } from "nexus-assets-web"
 
+/* Preview glue only: the preview sheet's ground is white where the product's
+   is cream, so a card without this reads its `bg-card` and `bg-muted` parts as
+   pale chips instead of as surfaces on a page. */
+const ground = { background: "var(--background)", padding: "1rem" } as const
 /**
  * What a device's detail dialog puts behind 编辑属性: the model, the home and
  * the category's own fields. They are edited once in a device's life, and open
@@ -25,38 +29,40 @@ import {
  * it is read while deciding whether to open the thing at all.
  */
 export const EditAttributes = () => (
-  <Collapsible defaultOpen>
-    <div className="flex items-center gap-1.5">
-      <CollapsibleTrigger asChild>
-        <Button variant="outline" className="w-fit">
-          编辑属性
-        </Button>
-      </CollapsibleTrigger>
-      <Hint>型号、归属地和类别字段，改的是这台设备本身，不产生一条流转记录。</Hint>
-    </div>
-    <CollapsibleContent className="grid gap-6 pt-4">
-      <FieldGroup className="grid gap-4 rounded-md border p-4 sm:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor="cl-home">归属地</FieldLabel>
-          <Select defaultValue="sh">
-            <SelectTrigger id="cl-home">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="sh">上海仓库（默认库存点）</SelectItem>
-                <SelectItem value="bj">北京机房</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="cl-model">型号</FieldLabel>
-          <Input id="cl-model" defaultValue="Cisco Catalyst 9200" />
-        </Field>
-      </FieldGroup>
-    </CollapsibleContent>
-  </Collapsible>
+  <div style={ground}>
+    <Collapsible defaultOpen>
+      <div className="flex items-center gap-1.5">
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" className="w-fit">
+            编辑属性
+          </Button>
+        </CollapsibleTrigger>
+        <Hint>型号、归属地和类别字段，改的是这台设备本身，不产生一条流转记录。</Hint>
+      </div>
+      <CollapsibleContent className="grid gap-6 pt-4">
+        <FieldGroup className="grid gap-4 rounded-md border p-4 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="cl-home">归属地</FieldLabel>
+            <Select defaultValue="sh">
+              <SelectTrigger id="cl-home">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="sh">上海仓库（默认库存点）</SelectItem>
+                  <SelectItem value="bj">北京机房</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="cl-model">型号</FieldLabel>
+            <Input id="cl-model" defaultValue="Cisco Catalyst 9200" />
+          </Field>
+        </FieldGroup>
+      </CollapsibleContent>
+    </Collapsible>
+  </div>
 )
 
 /**
@@ -69,31 +75,33 @@ export const EditAttributes = () => (
  * This composition stands for the pattern, not for that screen.
  */
 export const NestedCategories = () => (
-  <Collapsible defaultOpen className="text-sm">
-    <CollapsibleTrigger asChild>
-      <Button variant="ghost" size="sm" className="w-fit">
-        网络设备 · 137 台
-      </Button>
-    </CollapsibleTrigger>
-    <CollapsibleContent style={{ paddingInlineStart: 20 }}>
-      <Collapsible defaultOpen>
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="sm" className="w-fit">
-            交换机 · 84 台
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent style={{ paddingInlineStart: 20 }}>
-          <div className="text-muted-foreground" style={{ padding: "4px 12px" }}>
-            接入交换机 · 61 台
-          </div>
-          <div className="text-muted-foreground" style={{ padding: "4px 12px" }}>
-            核心交换机 · 23 台
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-      <Button variant="ghost" size="sm" className="w-fit">
-        路由器 · 39 台
-      </Button>
-    </CollapsibleContent>
-  </Collapsible>
+  <div style={ground}>
+    <Collapsible defaultOpen className="text-sm">
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost" size="sm" className="w-fit">
+          网络设备 · 137 台
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent style={{ paddingInlineStart: 20 }}>
+        <Collapsible defaultOpen>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="w-fit">
+              交换机 · 84 台
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent style={{ paddingInlineStart: 20 }}>
+            <div className="text-muted-foreground" style={{ padding: "4px 12px" }}>
+              接入交换机 · 61 台
+            </div>
+            <div className="text-muted-foreground" style={{ padding: "4px 12px" }}>
+              核心交换机 · 23 台
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+        <Button variant="ghost" size="sm" className="w-fit">
+          路由器 · 39 台
+        </Button>
+      </CollapsibleContent>
+    </Collapsible>
+  </div>
 )

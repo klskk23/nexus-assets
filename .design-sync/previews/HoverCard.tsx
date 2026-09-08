@@ -4,6 +4,11 @@ import {
   HoverCardTrigger,
 } from "nexus-assets-web"
 
+/* Preview glue only: the preview sheet's ground is white where the product's
+   is cream, so the popover would otherwise float on a colour the product
+   never shows it on. */
+const ground = { background: "var(--background)", padding: "1rem", paddingBottom: 170 } as const
+
 /**
  * What `Hint` -- the question mark beside a label -- is built on. Opened by
  * the pointer *or* the keyboard, because the trigger is a real focusable
@@ -18,7 +23,7 @@ import {
  * it looks like.
  */
 export const BesideAFieldLabel = () => (
-  <div style={{ paddingBottom: 170 }}>
+  <div style={ground}>
     <div className="flex items-center gap-2 text-sm">
       <span className="font-medium">唯一</span>
       <HoverCard open>
@@ -44,7 +49,7 @@ export const BesideAFieldLabel = () => (
  * count rather than about a control.
  */
 export const OnAHeading = () => (
-  <div style={{ paddingBottom: 170 }}>
+  <div style={ground}>
     <h2 className="flex items-center gap-2 text-lg">
       类别分布
       <HoverCard open>

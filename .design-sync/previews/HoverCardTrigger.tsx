@@ -5,6 +5,11 @@ import {
   HoverCardTrigger,
 } from "nexus-assets-web"
 
+/* Preview glue only: the preview sheet's ground is white where the product's
+   is cream, so the popover would otherwise float on a colour the product
+   never shows it on. */
+const ground = { background: "var(--background)", padding: "1rem", paddingBottom: 170 } as const
+
 /**
  * Always `asChild` around something already focusable. The primitive renders a
  * plain `<a>` by default, and this product's rule is that the pointer must not
@@ -13,7 +18,7 @@ import {
  * keyboard at all.
  */
 export const AQuestionMark = () => (
-  <div style={{ paddingBottom: 170 }}>
+  <div style={ground}>
     <div className="flex items-center gap-2 text-sm">
       <span className="font-medium">绑定到</span>
       <HoverCard open>
@@ -40,7 +45,7 @@ export const AQuestionMark = () => (
  * to sit in a table cell.
  */
 export const ABadgeThatExplainsItself = () => (
-  <div style={{ paddingBottom: 170 }}>
+  <div style={ground}>
     <div className="flex items-center gap-2 text-sm">
       <span className="text-muted-foreground">保修截止</span>
       <HoverCard open>

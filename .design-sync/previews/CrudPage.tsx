@@ -13,6 +13,10 @@ import {
   SelectValue,
 } from "nexus-assets-web"
 
+/* Preview glue only: the preview sheet's ground is white where the product's
+   is cream, so a card without this reads its `bg-card` and `bg-muted` parts as
+   pale chips instead of as surfaces on a page. */
+const ground = { background: "var(--background)", padding: "1rem" } as const
 /**
  * The whole shape of a metadata page, in one component. Eight screens use it
  * -- 字段 / 类别 / 型号 / 厂商 / 持有方 / 账号 / 状态 / 字段组 -- and they
@@ -96,34 +100,36 @@ const typeFilter = (
 )
 
 export const FieldsPage = () => (
-  <CrudPage
-    title="字段"
-    queryKey="preview-fields"
-    list={async () => ({ items: FIELD_ROWS, total: 137 })}
-    searchHint="键名、显示名"
-    filters={() => typeFilter}
-    columns={columns}
-    create={async () => undefined}
-    createLabel="新建字段"
-    emptyTitle="还没有任何字段"
-    emptyHint="字段是全局共用的：同名字段在全系统含义一致。建好后到类别页绑定。"
-    form={fieldForm}
-    onCreated={() => {}}
-    onRowClick={() => {}}
-    rowActions={[
-      { label: "编辑", onSelect: () => {} },
-      {
-        label: "删除",
-        destructive: true,
-        onSelect: () => {},
-        confirm: (row: FieldRow) => ({
-          title: "删除字段",
-          description: `「${row.label}」将被彻底移除，包括它在各类别上的绑定。`,
-          phrase: row.key,
-        }),
-      },
-    ]}
-  />
+  <div style={ground}>
+    <CrudPage
+      title="字段"
+      queryKey="preview-fields"
+      list={async () => ({ items: FIELD_ROWS, total: 137 })}
+      searchHint="键名、显示名"
+      filters={() => typeFilter}
+      columns={columns}
+      create={async () => undefined}
+      createLabel="新建字段"
+      emptyTitle="还没有任何字段"
+      emptyHint="字段是全局共用的：同名字段在全系统含义一致。建好后到类别页绑定。"
+      form={fieldForm}
+      onCreated={() => {}}
+      onRowClick={() => {}}
+      rowActions={[
+        { label: "编辑", onSelect: () => {} },
+        {
+          label: "删除",
+          destructive: true,
+          onSelect: () => {},
+          confirm: (row: FieldRow) => ({
+            title: "删除字段",
+            description: `「${row.label}」将被彻底移除，包括它在各类别上的绑定。`,
+            phrase: row.key,
+          }),
+        },
+      ]}
+    />
+  </div>
 )
 
 /**
@@ -133,27 +139,29 @@ export const FieldsPage = () => (
  * somebody reading it has never made one.
  */
 export const NothingYet = () => (
-  <CrudPage
-    title="厂商"
-    queryKey="preview-vendors-empty"
-    list={async () => []}
-    searchHint="名称"
-    columns={[
-      { header: "名称", cell: (r: { id: string; name: string }) => r.name },
-      { header: "型号数", cell: () => "0" },
-    ]}
-    create={async () => undefined}
-    createLabel="新建厂商"
-    emptyTitle="还没有任何厂商"
-    emptyHint="厂商下面挂型号；绑在厂商上的字段，它旗下所有型号的设备都会有。"
-    form={
-      <Field>
-        <FieldLabel htmlFor="cp-vendor">名称</FieldLabel>
-        <Input id="cp-vendor" />
-      </Field>
-    }
-    onCreated={() => {}}
-  />
+  <div style={ground}>
+    <CrudPage
+      title="厂商"
+      queryKey="preview-vendors-empty"
+      list={async () => []}
+      searchHint="名称"
+      columns={[
+        { header: "名称", cell: (r: { id: string; name: string }) => r.name },
+        { header: "型号数", cell: () => "0" },
+      ]}
+      create={async () => undefined}
+      createLabel="新建厂商"
+      emptyTitle="还没有任何厂商"
+      emptyHint="厂商下面挂型号；绑在厂商上的字段，它旗下所有型号的设备都会有。"
+      form={
+        <Field>
+          <FieldLabel htmlFor="cp-vendor">名称</FieldLabel>
+          <Input id="cp-vendor" />
+        </Field>
+      }
+      onCreated={() => {}}
+    />
+  </div>
 )
 
 /**
@@ -163,35 +171,37 @@ export const NothingYet = () => (
  * follow the same rule through their own `disabled`.
  */
 export const CreateDenied = () => (
-  <CrudPage
-    title="持有方"
-    queryKey="preview-holders"
-    list={async () => [
-      { id: "1", name: "上海仓库", kind: "位置" },
-      { id: "2", name: "北京机房", kind: "位置" },
-      { id: "3", name: "研发部", kind: "部门" },
-    ]}
-    searchHint="名称"
-    columns={[
-      { header: "名称", cell: (r: { id: string; name: string; kind: string }) => r.name },
-      {
-        header: "类型",
-        cell: (r: { id: string; name: string; kind: string }) => (
-          <Badge variant="outline">{r.kind}</Badge>
-        ),
-      },
-    ]}
-    create={async () => undefined}
-    createLabel="新建持有方"
-    createDeniedReason="需要「管理持有方」权限，请联系管理员"
-    emptyTitle="还没有任何持有方"
-    emptyHint="公司、位置或部门。设备可以签给一个人，也可以签给其中之一。"
-    form={
-      <Field>
-        <FieldLabel htmlFor="cp-holder">名称</FieldLabel>
-        <Input id="cp-holder" />
-      </Field>
-    }
-    onCreated={() => {}}
-  />
+  <div style={ground}>
+    <CrudPage
+      title="持有方"
+      queryKey="preview-holders"
+      list={async () => [
+        { id: "1", name: "上海仓库", kind: "位置" },
+        { id: "2", name: "北京机房", kind: "位置" },
+        { id: "3", name: "研发部", kind: "部门" },
+      ]}
+      searchHint="名称"
+      columns={[
+        { header: "名称", cell: (r: { id: string; name: string; kind: string }) => r.name },
+        {
+          header: "类型",
+          cell: (r: { id: string; name: string; kind: string }) => (
+            <Badge variant="outline">{r.kind}</Badge>
+          ),
+        },
+      ]}
+      create={async () => undefined}
+      createLabel="新建持有方"
+      createDeniedReason="需要「管理持有方」权限，请联系管理员"
+      emptyTitle="还没有任何持有方"
+      emptyHint="公司、位置或部门。设备可以签给一个人，也可以签给其中之一。"
+      form={
+        <Field>
+          <FieldLabel htmlFor="cp-holder">名称</FieldLabel>
+          <Input id="cp-holder" />
+        </Field>
+      }
+      onCreated={() => {}}
+    />
+  </div>
 )

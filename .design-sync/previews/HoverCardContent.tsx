@@ -4,6 +4,11 @@ import {
   HoverCardTrigger,
 } from "nexus-assets-web"
 
+/* Preview glue only: the preview sheet's ground is white where the product's
+   is cream, so the popover would otherwise float on a colour the product
+   never shows it on. */
+const ground = { background: "var(--background)", padding: "1rem", paddingBottom: 170 } as const
+
 /**
  * The panel itself: `w-64` by default, popover ground, and the muted small
  * type this product gives every hint. It is portalled, so it is never clipped
@@ -13,7 +18,7 @@ import {
  * that only appears while the pointer is still is documentation nobody reads.
  */
 export const OneSentence = () => (
-  <div style={{ paddingBottom: 170 }}>
+  <div style={ground}>
     <div className="flex items-center gap-2 text-sm">
       <span className="font-medium">含子类别</span>
       <HoverCard open>
@@ -41,7 +46,7 @@ export const OneSentence = () => (
  * mid-identifier.
  */
 export const WiderAndAligned = () => (
-  <div style={{ paddingBottom: 200 }}>
+  <div style={{ ...ground, paddingBottom: 200 }}>
     <div className="flex items-center gap-2 text-sm">
       <span className="font-medium">表达式</span>
       <HoverCard open>

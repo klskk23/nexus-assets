@@ -1,5 +1,9 @@
 import { Badge } from "nexus-assets-web"
 
+/* Preview glue only: the preview sheet's ground is white where the product's
+   is cream, so a card without this reads its `bg-card` and `bg-muted` parts as
+   pale chips instead of as surfaces on a page. */
+const ground = { background: "var(--background)", padding: "1rem" } as const
 /**
  * A pill-shaped label for a fact about a record. Not a status chip -- a
  * device's status has its own component, `StatusBadge`, which resolves the
@@ -11,11 +15,13 @@ import { Badge } from "nexus-assets-web"
  * the row's subject.
  */
 export const WhatAFieldIsBoundTo = () => (
-  <div className="flex flex-wrap items-center gap-2">
-    <Badge variant="outline">类别 · 网络设备</Badge>
-    <Badge variant="outline">型号 · Catalyst 9200</Badge>
-    <Badge variant="outline">厂商 · 思科</Badge>
-    <Badge variant="outline">未绑定</Badge>
+  <div style={ground}>
+    <div className="flex flex-wrap items-center gap-2">
+      <Badge variant="outline">类别 · 网络设备</Badge>
+      <Badge variant="outline">型号 · Catalyst 9200</Badge>
+      <Badge variant="outline">厂商 · 思科</Badge>
+      <Badge variant="outline">未绑定</Badge>
+    </div>
   </div>
 )
 
@@ -26,12 +32,14 @@ export const WhatAFieldIsBoundTo = () => (
  * with the data; three is a decoration.
  */
 export const WhatKindOfRecord = () => (
-  <div className="flex flex-wrap items-center gap-2">
-    <Badge>类别</Badge>
-    <Badge>字段</Badge>
-    <Badge>型号</Badge>
-    <Badge>持有方</Badge>
-    <Badge>字段组</Badge>
+  <div style={ground}>
+    <div className="flex flex-wrap items-center gap-2">
+      <Badge>类别</Badge>
+      <Badge>字段</Badge>
+      <Badge>型号</Badge>
+      <Badge>持有方</Badge>
+      <Badge>字段组</Badge>
+    </div>
   </div>
 )
 
@@ -41,12 +49,14 @@ export const WhatKindOfRecord = () => (
  * `ghost` for a marker that must not draw the eye at all.
  */
 export const Variants = () => (
-  <div className="flex flex-wrap items-center gap-2">
-    <Badge variant="secondary">继承</Badge>
-    <Badge variant="secondary">唯一</Badge>
-    <Badge variant="outline">必填</Badge>
-    <Badge variant="destructive">3 条冲突</Badge>
-    <Badge variant="ghost">默认库存点</Badge>
+  <div style={ground}>
+    <div className="flex flex-wrap items-center gap-2">
+      <Badge variant="secondary">继承</Badge>
+      <Badge variant="secondary">唯一</Badge>
+      <Badge variant="outline">必填</Badge>
+      <Badge variant="destructive">3 条冲突</Badge>
+      <Badge variant="ghost">默认库存点</Badge>
+    </div>
   </div>
 )
 
@@ -56,11 +66,13 @@ export const Variants = () => (
  * against the one on the label in someone's hand.
  */
 export const AsAFilterStatement = () => (
-  <div className="flex flex-wrap items-center gap-2 text-sm">
-    <Badge variant="outline">
-      <span className="font-mono tabular-nums">仅 2199023255611</span>
-    </Badge>
-    <Badge variant="outline">上海仓库</Badge>
-    <Badge variant="outline">2026-08-03 – 2026-08-14</Badge>
+  <div style={ground}>
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      <Badge variant="outline">
+        <span className="font-mono tabular-nums">仅 2199023255611</span>
+      </Badge>
+      <Badge variant="outline">上海仓库</Badge>
+      <Badge variant="outline">2026-08-03 – 2026-08-14</Badge>
+    </div>
   </div>
 )

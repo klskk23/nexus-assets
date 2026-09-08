@@ -5,6 +5,10 @@ import {
   Hint,
 } from "nexus-assets-web"
 
+/* Preview glue only: the preview sheet's ground is white where the product's
+   is cream, so a card without this reads its `bg-card` and `bg-muted` parts as
+   pale chips instead of as surfaces on a page. */
+const ground = { background: "var(--background)", padding: "1rem" } as const
 /**
  * A flag with one line to itself. Always paired with a `FieldLabel htmlFor`
  * inside a `Field orientation="horizontal"` -- the 16px box is not a click
@@ -15,11 +19,13 @@ import {
  * category has been chosen, because "含子类别" means nothing without one.
  */
 export const IncludeDescendants = () => (
-  <Field orientation="horizontal" className="w-auto">
-    <Checkbox id="cb-descendants" defaultChecked />
-    <FieldLabel htmlFor="cb-descendants">含子类别</FieldLabel>
-    <Hint>勾上时「网络设备」也会带出交换机、路由器下面的设备。</Hint>
-  </Field>
+  <div style={ground}>
+    <Field orientation="horizontal" className="w-auto">
+      <Checkbox id="cb-descendants" defaultChecked />
+      <FieldLabel htmlFor="cb-descendants">含子类别</FieldLabel>
+      <Hint>勾上时「网络设备」也会带出交换机、路由器下面的设备。</Hint>
+    </Field>
+  </div>
 )
 
 /**
@@ -30,16 +36,18 @@ export const IncludeDescendants = () => (
  * switching from what it means to why it is dead.
  */
 export const TheTwoFieldFlags = () => (
-  <div className="grid gap-3 sm:grid-cols-2">
-    <div className="flex items-center gap-2">
-      <Checkbox id="cb-unique" defaultChecked disabled />
-      <FieldLabel htmlFor="cb-unique">唯一</FieldLabel>
-      <Hint>建好后不能改。</Hint>
-    </div>
-    <div className="flex items-center gap-2">
-      <Checkbox id="cb-required" defaultChecked />
-      <FieldLabel htmlFor="cb-required">必填</FieldLabel>
-      <Hint>所有绑定都要求填；存量设备下次编辑时才补。</Hint>
+  <div style={ground}>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div className="flex items-center gap-2">
+        <Checkbox id="cb-unique" defaultChecked disabled />
+        <FieldLabel htmlFor="cb-unique">唯一</FieldLabel>
+        <Hint>建好后不能改。</Hint>
+      </div>
+      <div className="flex items-center gap-2">
+        <Checkbox id="cb-required" defaultChecked />
+        <FieldLabel htmlFor="cb-required">必填</FieldLabel>
+        <Hint>所有绑定都要求填；存量设备下次编辑时才补。</Hint>
+      </div>
     </div>
   </div>
 )
@@ -50,18 +58,20 @@ export const TheTwoFieldFlags = () => (
  * the rest -- but the only honest picture of "part of this".
  */
 export const AllStates = () => (
-  <div className="grid gap-3">
-    <div className="flex items-center gap-2">
-      <Checkbox id="cb-all" checked={false} />
-      <FieldLabel htmlFor="cb-all">全选本页</FieldLabel>
-    </div>
-    <div className="flex items-center gap-2">
-      <Checkbox id="cb-some" checked="indeterminate" />
-      <FieldLabel htmlFor="cb-some">本页 12 条已选中</FieldLabel>
-    </div>
-    <div className="flex items-center gap-2">
-      <Checkbox id="cb-every" checked />
-      <FieldLabel htmlFor="cb-every">符合当前筛选的 137 条已全部选中</FieldLabel>
+  <div style={ground}>
+    <div className="grid gap-3">
+      <div className="flex items-center gap-2">
+        <Checkbox id="cb-all" checked={false} />
+        <FieldLabel htmlFor="cb-all">全选本页</FieldLabel>
+      </div>
+      <div className="flex items-center gap-2">
+        <Checkbox id="cb-some" checked="indeterminate" />
+        <FieldLabel htmlFor="cb-some">本页 12 条已选中</FieldLabel>
+      </div>
+      <div className="flex items-center gap-2">
+        <Checkbox id="cb-every" checked />
+        <FieldLabel htmlFor="cb-every">符合当前筛选的 137 条已全部选中</FieldLabel>
+      </div>
     </div>
   </div>
 )
@@ -72,23 +82,25 @@ export const AllStates = () => (
  * for.
  */
 export const InABindingList = () => (
-  <div className="grid gap-3">
-    <div className="flex items-center gap-2">
-      <Checkbox id="cb-bind-net" defaultChecked />
-      <FieldLabel htmlFor="cb-bind-net">网络设备</FieldLabel>
-    </div>
-    <div className="flex items-center gap-2">
-      <Checkbox id="cb-bind-sw" disabled />
-      <FieldLabel htmlFor="cb-bind-sw" className="text-muted-foreground">
-        交换机
-      </FieldLabel>
-      <span className="text-muted-foreground text-xs">
-        已从上级「网络设备」继承，同一条链上不必也不能再绑一次
-      </span>
-    </div>
-    <div className="flex items-center gap-2">
-      <Checkbox id="cb-bind-lap" />
-      <FieldLabel htmlFor="cb-bind-lap">笔记本电脑</FieldLabel>
+  <div style={ground}>
+    <div className="grid gap-3">
+      <div className="flex items-center gap-2">
+        <Checkbox id="cb-bind-net" defaultChecked />
+        <FieldLabel htmlFor="cb-bind-net">网络设备</FieldLabel>
+      </div>
+      <div className="flex items-center gap-2">
+        <Checkbox id="cb-bind-sw" disabled />
+        <FieldLabel htmlFor="cb-bind-sw" className="text-muted-foreground">
+          交换机
+        </FieldLabel>
+        <span className="text-muted-foreground text-xs">
+          已从上级「网络设备」继承，同一条链上不必也不能再绑一次
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <Checkbox id="cb-bind-lap" />
+        <FieldLabel htmlFor="cb-bind-lap">笔记本电脑</FieldLabel>
+      </div>
     </div>
   </div>
 )

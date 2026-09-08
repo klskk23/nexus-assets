@@ -62,6 +62,20 @@ export const AsTheOnlyWayOut = () => (
         <DialogDescription>128 台设备已写入 assets-2026-09-08.csv。</DialogDescription>
       </DialogHeader>
       <Alert>
+        {/* A real <svg>: Alert's icon column only opens for one. */}
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 16v-4" />
+          <path d="M12 8h.01" />
+        </svg>
         <AlertTitle>表头是键名</AlertTitle>
         <AlertDescription>
           回填时不要把它改成显示名称 —— 导入按键名对齐，改过的表头会整列落空。
