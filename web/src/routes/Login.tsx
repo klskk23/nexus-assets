@@ -128,14 +128,6 @@ export function Login() {
             </Button>
           </FieldGroup>
         </form>
-
-        {/* Before the button, not after a rejection. The admission boundary is
-            the domain whitelist, and someone whose account does not exist yet
-            has no other way to find that out -- the failure comes back from
-            an identity provider on another origin. The domains themselves are
-            deliberately not named: they are configuration, and this page is
-            served to anyone who can reach the host. */}
-        <p className="text-muted-foreground text-sm">{t.login.domains}</p>
       </div>
 
       {/* Four discs, and nothing else. Deliberately none of the eight status

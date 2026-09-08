@@ -169,7 +169,8 @@ Caprasimo 只有拉丁子集，中文必然落到 Noto Sans SC，**那一行什�
 2. **Given** 登录页，**When** 查看产品名，**Then** Caprasimo 52px/1.05 两行
 3. **Given** 登录页，**When** 查看右侧装饰，**Then** 是几个重叠柔形，
    `aria-hidden`，**没有借用任何状态色槽**
-4. **Given** 登录页，**When** 提交之前，**Then** 域名限制说明仍然可见 ——
+4. ~~**Given** 登录页，**When** 提交之前，**Then** 域名限制说明仍然可见~~
+   —— **2026-09-08 开发者裁定拆掉**，按稿子的 `SignIn` 来。原措辞：
    它是 v1 唯一的准入边界
 
 ### User Story 8 - 打印对话框（Priority: P3）
