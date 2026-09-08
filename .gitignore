@@ -42,6 +42,11 @@ ds-bundle/
 .design-sync/.cache/
 .design-sync/learnings/
 .design-sync/node_modules
+# 转换器读的自足样式表（由 buildCmd 从 dist/ 生成）
+web/.ds-css/
 
 # The local walkthrough instance's screenshots and its restart script.
 .playwright-mcp/
+web/ds-src/
+web/.ds-types/
+web/index.d.ts

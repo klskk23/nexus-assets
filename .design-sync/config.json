@@ -1,4 +1,9 @@
 {
   "projectId": "b4a9929d-2754-4bba-bcc7-f56abfccfa76",
-  "shape": "package"
+  "shape": "package",
+  "pkg": "nexus-assets-web",
+  "globalName": "NexusAssets",
+  "srcDir": "ds-src",
+  "buildCmd": "npm --prefix web run build && node .design-sync/make-ds-src.mjs && rm -rf web/.ds-types && npx --prefix web tsc -p .design-sync/tsconfig.dts.json && rm -rf web/.ds-css && mkdir -p web/.ds-css && cp web/dist/static/*.woff2 web/.ds-css/ && cat web/dist/static/*.css | sed 's|url(/static/|url(./|g' > web/.ds-css/styles.css",
+  "cssEntry": ".ds-css/styles.css"
 }
