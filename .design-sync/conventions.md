@@ -54,7 +54,10 @@ panels — use `rounded-lg` (28px), with `rounded-md` (16px) for
 mid-sized surfaces and `rounded-sm` (8px) for things inset in something else.
 **Small controls are pills**: buttons, inputs, selects, tabs, toggles and badges
 all say `rounded-full`. A textarea is the exception — a 999px corner cuts into
-its first and last line.
+its first and last line, so one inside an `InputGroup` needs `rounded-xl` to
+escape the group's pill. Note `rounded-lg` and `rounded-xl` are both 28px here,
+and `rounded-2xl` / `rounded-3xl` do not exist: this is three named radii, not a
+scale.
 
 Type is Caprasimo for page titles (`font-heading`, one weight — never ask for
 bold), Figtree for everything else, Noto Sans SC for Chinese. Numbers that sit
@@ -78,6 +81,10 @@ in a column get `tabular-nums`.
 - **Empty is a state, not a blank rectangle.** Say what would fill it, and if a
   filter emptied it, offer to clear the filter.
 - **Every icon-only button carries an `aria-label`.**
+- **Icons are inline `<svg>`, never a glyph in a `<span>`.** Several components
+  lay themselves out with `has-[>svg]` — `Alert` starts at `grid-cols-[0_1fr]`
+  and only opens its first column for a real `svg`, so a `<span>` icon lands in
+  a zero-width column and is clipped away.
 - There is one light theme. No `dark:` classes — they resolve to nothing.
 
 ### Where the truth is

@@ -114,6 +114,25 @@ path, this breaks.**
   stray up-chevron appears where it was. Choosing the first item does not fix
   it; padding the wrapper does.
 
+## Authoring: wrap every story in the page ground
+
+`style={{ background: "var(--background)", padding: "1rem" }}` on the story
+wrapper is the default here, not a fix for special cases. The card frame's
+ground is white; on white a `bg-muted` component reads as a lighter chip and a
+`bg-card` one does not read as a card at all.
+
+Two more traps in the same family:
+
+- **Icons must be an inline `<svg>`.** Components that lay out with `has-[>svg]`
+  — `Alert` is `grid-cols-[0_1fr]` and only opens column one for a real svg —
+  clip a `<span>` glyph into a zero-width column. Lucide path data written
+  inline needs no import and is sized by the component's own rules.
+- **The radius classes are three named values, not a scale.** `rounded-lg` and
+  `rounded-xl` are both exactly 28px; `rounded-2xl` and `rounded-3xl` do not
+  exist. This is what makes the InputGroup textarea fix work — the group is
+  unconditionally `rounded-full`, so a textarea inside needs `rounded-xl` to get
+  a card corner rather than a pill.
+
 ## Overlays need a card-mode override
 
 Anything that renders through a Portal — AlertDialog and its eleven parts, and
