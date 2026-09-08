@@ -67,9 +67,20 @@ export function AppShell() {
      * becomes a scroll container, and the whole thing scrolls as one -- taking
      * the nav off the top of the screen, which is the one thing a fixed rail is
      * for. The rail is a nav landmark; the panel is the document. */
-    <div className="grid h-screen grid-cols-[236px_1fr] bg-card text-foreground max-md:grid-cols-1 max-md:grid-rows-[auto_1fr]">
-      <div className="flex min-h-0 flex-col gap-6 px-5 py-6 max-md:flex-row max-md:items-center max-md:gap-4 max-md:py-3">
-        <span className="font-heading text-xl leading-none">{t.appName}</span>
+    /* The rail is a block sitting on the page ground, not an area fenced off
+     * from it by a hairline. That was the prototype's own first correction
+     * against what it delivered, and it is the same rule as everywhere else on
+     * this product: a thing is separated by its shape and its ground, not by a
+     * line drawn between two areas that otherwise look identical. */
+    <div className="grid h-screen grid-cols-[236px_1fr] bg-background p-3 text-foreground max-md:grid-cols-1 max-md:grid-rows-[auto_1fr] max-md:p-0">
+      <div className="bg-well flex min-h-0 flex-col gap-6 rounded-[28px] pt-9 pr-[18px] pb-12 pl-[30px] max-md:flex-row max-md:items-center max-md:gap-4 max-md:rounded-none max-md:px-5 max-md:py-3">
+        {/* Two lines, and the second one is the accent: it is the product's
+            name, not a heading, so it can carry the one piece of colour the
+            rail has. */}
+        <span className="font-heading grid text-[21px] leading-[1.15]">
+          <span>Nexus</span>
+          <span className="text-primary">Assets</span>
+        </span>
         <nav
           className="flex min-h-0 flex-col gap-0.5 overflow-y-auto max-md:flex-row max-md:overflow-x-auto"
           aria-label={t.nav.assets}
@@ -81,12 +92,33 @@ export function AppShell() {
               end={l.to === "/"}
               className={({ isActive }) =>
                 cn(
-                  "rounded-full px-4 py-2 text-sm whitespace-nowrap transition-colors hover:bg-accent",
-                  isActive && "bg-primary text-primary-foreground font-medium hover:bg-primary",
+                  "flex items-center gap-2.5 rounded-full py-[9px] pr-3.5 pl-3 text-sm whitespace-nowrap transition-colors",
+                  isActive
+                    ? "bg-accent text-accent-foreground font-semibold"
+                    : "hover:bg-accent hover:text-accent-foreground",
                 )
               }
             >
-              {l.label}
+              {({ isActive }) => (
+                <>
+                  {/* A dot, not a number. The prototype numbered these 01-11,
+                      and eleven destinations are not eleven steps -- there is
+                      no order to be in, and the audit entry disappears for a
+                      reader without the permission, which would leave the
+                      numbering with a hole in it. What the numbers were also
+                      doing, though, is worth keeping: marking the current item
+                      with something other than a slab of colour. So the mark
+                      stays and the counting goes. */}
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "size-1.5 shrink-0 rounded-full transition-colors",
+                      isActive ? "bg-primary" : "bg-transparent",
+                    )}
+                  />
+                  {l.label}
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -123,11 +155,7 @@ export function AppShell() {
       </div>
 
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
-      {/* The panel is the page ground and the rail is the darker surface, not
-          the other way round: cards inside are bg-card, and a card on a card is
-          invisible. The corner is the only place the rail's tone shows through,
-          which is the whole of the effect. */}
-      <main className="min-h-0 overflow-y-auto rounded-tl-[28px] bg-background pt-11 pr-10 pb-30 pl-14 max-md:rounded-none max-md:p-5">
+      <main className="min-h-0 overflow-y-auto bg-background pt-11 pr-10 pb-30 pl-14 max-md:p-5">
         {/* The content column has a ceiling and sits against the left edge.
          *
          * Not a centred column -- 017 removed the last of those, and what was
