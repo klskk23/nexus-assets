@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "cn"
 import { NAV_ICONS } from "@/features/common/navIcons"
+import { Logo } from "@/features/common/Logo"
 
 /**
  * The nav, built on each render.
@@ -83,16 +84,23 @@ export function AppShell() {
      * separation comes from the panel's own ground, which is the same rule as
      * everywhere else here: a thing is told apart by its shape and its
      * surface, never by a line drawn between two areas that look alike. */
-    <div className="grid h-screen grid-cols-[236px_1fr] bg-well p-3 text-foreground max-md:grid-cols-1 max-md:grid-rows-[auto_1fr] max-md:p-0">
-      <div className="flex min-h-0 flex-col gap-6 px-5 pt-9 pb-10 max-md:flex-row max-md:items-center max-md:gap-4 max-md:py-3">
+    <div className="grid h-screen grid-cols-[264px_1fr] bg-well p-3 text-foreground max-md:grid-cols-1 max-md:grid-rows-[auto_1fr] max-md:p-0">
+      <div className="flex min-h-0 flex-col gap-6 px-7 pt-9 pb-10 max-md:flex-row max-md:items-center max-md:gap-4 max-md:py-3">
         {/* Two lines, the second one carrying the product's one piece of
             colour. Split from the catalogue rather than written out here:
             the name is not translated, but it still has exactly one source,
             and two files spelling it themselves is two files to fix. */}
-        <span className="font-heading grid text-[21px] leading-[1.15]">
-          <span>{t.appName.split(" ")[0]}</span>
-          <span className="text-primary">{t.appName.split(" ").slice(1).join(" ")}</span>
-        </span>
+        {/* Mark and wordmark, centred as one block. The mark is not a link and
+            not a button -- there is nowhere for it to go that the nav below
+            does not already offer, and a logo that navigates is a second, less
+            discoverable way to do what "Overview" does. */}
+        <div className="flex items-center justify-center gap-3 max-md:justify-start">
+          <Logo className="size-10 shrink-0" />
+          <span className="font-heading grid text-[21px] leading-[1.15]">
+            <span>{t.appName.split(" ")[0]}</span>
+            <span className="text-primary">{t.appName.split(" ").slice(1).join(" ")}</span>
+          </span>
+        </div>
         <nav
           className="flex min-h-0 flex-col gap-0.5 overflow-y-auto max-md:flex-row max-md:overflow-x-auto"
           aria-label={t.nav.assets}
@@ -137,7 +145,7 @@ export function AppShell() {
          * something that is neither an action nor a status. The letter itself
          * is --foreground, not sage: sage on a sage tint measures 2.1:1, and
          * this is text even when it is one character. */}
-        <div className="mt-auto flex items-center gap-2 max-md:mt-0 max-md:ml-auto">
+        <div className="mt-auto flex items-center justify-center gap-2 max-md:mt-0 max-md:ml-auto max-md:justify-end">
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
