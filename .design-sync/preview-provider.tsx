@@ -1,5 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { applyLang } from "@/i18n"
+// Relative, not the app's "@/" alias: this file lives outside web/, so esbuild
+// walks up from here and finds no tsconfig to resolve the alias with.
+import { applyLang } from "../web/src/i18n"
 import { MemoryRouter } from "react-router"
 import type { ReactNode } from "react"
 
@@ -41,11 +43,21 @@ const STATUSES = [
 
 applyLang("zh")
 
+const CATEGORIES = [
+  { id: "net", code: "NET", name: "网络设备", parent_id: null, path: "/net/", display_key: "sn" },
+  { id: "srv", code: "SRV", name: "服务器", parent_id: null, path: "/srv/", display_key: "" },
+  { id: "pc", code: "PC", name: "办公终端", parent_id: null, path: "/pc/", display_key: "" },
+]
+
 export function DsPreviewProvider({ children }: { children?: ReactNode }) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity, refetchOnWindowFocus: false } },
   })
   client.setQueryData(["statuses"], STATUSES)
+  // CategoryFilter holds its own unseeded ["categories"] query, so without this
+  // it can only ever show its "all" sentinel. Truthful for a fresh install, but
+  // a picker card should show the component doing its job.
+  client.setQueryData(["categories"], CATEGORIES)
 
   return (
     <QueryClientProvider client={client}>

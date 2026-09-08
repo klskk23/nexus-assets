@@ -242,6 +242,48 @@
     },
     "DrawerTrigger": {
       "cardMode": "single"
+    },
+    "ConfirmDialog": {
+      "cardMode": "single"
+    },
+    "HoverCard": {
+      "cardMode": "single",
+      "primaryStory": "BesideAFieldLabel"
+    },
+    "HoverCardContent": {
+      "cardMode": "single",
+      "primaryStory": "OneSentence"
+    },
+    "HoverCardTrigger": {
+      "cardMode": "single",
+      "primaryStory": "AQuestionMark"
+    },
+    "Pager": {
+      "cardMode": "column"
+    },
+    "Pagination": {
+      "cardMode": "column"
+    },
+    "PaginationContent": {
+      "cardMode": "column"
+    },
+    "PaginationEllipsis": {
+      "cardMode": "column"
+    },
+    "PaginationItem": {
+      "cardMode": "column"
+    },
+    "ButtonGroup": {
+      "cardMode": "column"
+    },
+    "ButtonGroupSeparator": {
+      "cardMode": "column"
+    },
+    "Calendar": {
+      "cardMode": "column"
+    },
+    "CrudPage": {
+      "cardMode": "column"
     }
   },
   "readmeHeader": ".design-sync/conventions.md"

@@ -153,6 +153,12 @@ does.
 
 - `[DTS_STYLE_SYSTEM] filtering @types/react props` — informational and correct.
   React's own CSS-shorthand-named props are not this DS's API.
+- `[RENDER_ERRORS] AlertDialogMedia` — a harness artifact, triaged. The reported
+  "error" text is the dialog's own content, the card screenshots correctly
+  (21 KB, not blank, not thin, not hollow), and loading the page directly and
+  each `?story=` in headless Chrome produces no pageerror and no console error
+  at all. Non-blocking by the tag's own definition; it keeps `bad: 1` in
+  `.render-check.json`, which is why it is written down rather than chased.
 
 ## Three product defects this sync surfaced (unfixed)
 
