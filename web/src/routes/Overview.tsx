@@ -104,7 +104,9 @@ export function Overview() {
             </div>
           </section>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          {/* The distribution is the wider of the two: it is a chart being
+              read, and the quick-entry beside it is one select and a button. */}
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
             <section aria-label={tOverview.categoryTitle} className="grid content-start gap-3">
               <div className="grid gap-1">
                 <h2 className="text-[21px] leading-tight font-bold">{tOverview.categoryTitle}</h2>

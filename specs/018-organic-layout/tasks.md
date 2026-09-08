@@ -151,22 +151,22 @@
 
 ## 第 8 阶段：US5 概览（P2）
 
-- [ ] T045 [US5] `web/src/routes/Overview.tsx`：五个状态区块横向 flex-wrap，
+- [X] T045 [US5] `web/src/routes/Overview.tsx`：五个状态区块横向 flex-wrap，
       每个最小 152px，上芯片下 Caprasimo 34px 计数；**计数为 0 时数字退到次要色，
       但区块仍然可点**（筛出零条也是有效结果）
-- [ ] T046 [US5] `web/src/routes/Overview.tsx`：类别分布 + 快速录入改成
+- [X] T046 [US5] `web/src/routes/Overview.tsx`：类别分布 + 快速录入改成
       `1.55fr / 1fr`、间距 40px
-- [ ] T047 [US5] `web/src/features/overview/DistributionBar.tsx`：轨道高 18px、
+- [X] T047 [US5] `web/src/features/overview/DistributionBar.tsx`：轨道高 18px、
       类别名列 104px、计数列 46px 右对齐 Caprasimo。**整行可点**并跳到按类别筛选的列表
-- [ ] T048 [US5] **找开发者确认**：分布条现在按**最大类别**取比例（017 的决定），
+- [X] T048 [US5] ✅ **开发者裁定 2026-09-08：保留按最大类别。** 分布条按**最大类别**取比例（017 的决定），
       稿子没说比例基准。保留还是改成按总数？**逐条确认项之二**
-- [ ] T049 [US5] `web/src/features/transfers/Timeline.tsx`：行内边距 18px、
+- [X] T049 [US5] `web/src/features/transfers/Timeline.tsx`：行内边距 18px、
       鼠尾草圆点 10px、行间 `border-top: --border-muted`（末行补 bottom）
-- [ ] T050 [US5] **找开发者确认**：时间线的「当前」标记（环形圆点 + 文字标，017 加的）
+- [X] T050 [US5] ✅ **开发者裁定 2026-09-08：保留。** 时间线的「当前」标记（环形圆点 + 文字标，017 加的）
       稿子没画。保留还是按稿子拆掉？**逐条确认项之三**
-- [ ] T051 [US5] `web/tests/overview.test.tsx`：补一条断言 ——
+- [X] T051 [US5] `web/tests/overview.test.tsx`：补一条断言 ——
       状态区块计数为 0 时仍可点击（版面改动不得把它变成死块）
-- [ ] T052 [US5] 截图概览页，对照 `Overview.dc.html`
+- [X] T052 [US5] 截图概览页，对照 `Overview.dc.html`
 
 ## 第 9 阶段：US6 详情与流转（P2）
 

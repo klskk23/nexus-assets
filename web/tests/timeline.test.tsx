@@ -116,14 +116,12 @@ describe("Timeline", () => {
     expect(within(rows[1]).queryByText("当前")).not.toBeInTheDocument()
 
     // The markers differ in build, not in fill: a ring on the current one and a
-    // plain dot on the rest.
-    const markers = [...container.querySelectorAll("li > div > span:first-child")]
+    // filled dot on the rest. Both are the same sage -- which is the point, and
+    // is why this asserts the ring rather than the colour.
+    const markers = [...container.querySelectorAll("li > span[aria-hidden]")]
+    expect(markers).toHaveLength(rows.length)
     expect(markers[0].className).toContain("border-")
     expect(markers[1].className).not.toContain("border-")
-
-    // And the rail stops at the last entry rather than pointing at nothing.
-    const rails = container.querySelectorAll("li > div > span:nth-child(2)")
-    expect(rails).toHaveLength(rows.length - 1)
   })
 
   it("offers an empty state instead of a blank panel", () => {

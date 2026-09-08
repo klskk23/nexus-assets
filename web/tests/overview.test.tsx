@@ -76,6 +76,19 @@ describe("Overview", () => {
     expect(screen.getByText("共 70 台")).toBeInTheDocument()
   })
 
+  // A zero is dimmer, not dead. "Show me the lost ones" is a real question
+  // even when the answer is none, and an empty filtered list says that far
+  // more clearly than a block that will not respond. This is asserted because
+  // a layout round is exactly when a block quietly stops being a button --
+  // 018 rebuilt this one from a Card with role="button" into a real one.
+  it("still takes you to the list when the count is zero", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Overview />)
+
+    await user.click(await screen.findByRole("button", { name: "丢失 0 台" }))
+    expect(navigate).toHaveBeenCalledWith("/assets?status=lost")
+  })
+
   it("takes you to the correspondingly filtered asset list", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Overview />)
