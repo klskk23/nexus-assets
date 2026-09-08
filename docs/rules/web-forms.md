@@ -157,3 +157,17 @@ lucide 把宽度画成 SVG 的 presentation attribute，任何 CSS 规则都压�
 **不给图标的地方**：状态芯片（状态只由八个色槽 + 名字表达，加图标是第三种编码）、
 表格单元格（FR-020）、时间线的动作 chip（它降到 `--well` 就是为了压低存在感）、
 页标题（侧栏已经回答了「我在哪」）。
+
+### 菜单里能点的东西，不能点时要说出来
+
+`Item`、`CheckboxItem`、`RadioItem`、**`SubTrigger`** 四种都必须带
+`data-[disabled]:pointer-events-none data-[disabled]:opacity-50`。
+
+**shadcn 上游的两个 `SubTrigger` 都漏了这一对**（`dropdown-menu.tsx` 与 `context-menu.tsx`），
+后果是：给二级菜单入口加 `disabled`，Radix 会正确地不让它展开，
+但**它看起来和能用的一模一样** —— 鼠标移过去，子菜单不出来，界面什么也不解释。
+这与本产品「不可用的动作禁用并说明缺什么」直接冲突。
+
+`tests/menuDisabled.test.ts` 守着这四种。**它是源码不变量而非渲染断言** ——
+产品里目前一个二级菜单都没有，而 jsdom 也算不出 Tailwind 类的透明度。
+它同时挡住 `shadcn add` 把上游那一版重新覆盖回来。
