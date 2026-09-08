@@ -22,7 +22,7 @@ import {
  * rather than to the bottom of the card it was written in.
  */
 export const EscapesItsParent = () => (
-  <div style={{ width: "100%", maxWidth: "34rem" }}>
+  <div style={{ width: "100%", maxWidth: "34rem", background: "var(--background)", padding: "1rem" }}>
     <Card className="max-h-56 overflow-hidden">
       <CardHeader>
         <CardTitle>2199023255611</CardTitle>
@@ -82,7 +82,7 @@ export const EscapesItsParent = () => (
  * of the viewport, not of the card.
  */
 export const FromAToolbar = () => (
-  <div style={{ width: "100%", maxWidth: "34rem" }}>
+  <div style={{ width: "100%", maxWidth: "34rem", background: "var(--background)", padding: "1rem" }}>
     <Card>
       <CardHeader>
         <CardTitle>已选 128 台</CardTitle>

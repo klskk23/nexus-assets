@@ -39,7 +39,7 @@ const rows = [
  * to be shown in the dialog.
  */
 export const OverPageContent = () => (
-  <div style={{ width: "100%", maxWidth: "40rem" }}>
+  <div style={{ width: "100%", maxWidth: "40rem", background: "var(--background)", padding: "1rem" }}>
     <Card>
       <CardHeader>
         <CardTitle>网络设备</CardTitle>
@@ -102,7 +102,7 @@ export const OverPageContent = () => (
  * dialogs that must be answered pass `showCloseButton={false}` and say so.
  */
 export const UnderASmallDialog = () => (
-  <div style={{ width: "100%", maxWidth: "40rem" }}>
+  <div style={{ width: "100%", maxWidth: "40rem", background: "var(--background)", padding: "1rem" }}>
     <Card>
       <CardHeader>
         <CardTitle>已选 128 台</CardTitle>

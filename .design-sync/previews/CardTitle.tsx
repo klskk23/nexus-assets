@@ -55,7 +55,7 @@ export const TitleOnly = () => (
  * keep the layout.
  */
 export const WrappingBesideAnAction = () => (
-  <Card style={{ maxWidth: "22rem" }}>
+  <Card style={{ maxWidth: "16rem" }}>
     <CardHeader>
       <CardTitle>上海仓库的网络设备分布</CardTitle>
       <CardDescription>按子类别统计</CardDescription>

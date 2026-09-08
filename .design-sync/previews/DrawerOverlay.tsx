@@ -33,7 +33,7 @@ const rows = [
  * in step with the sheet as it is dragged rather than switching at the end.
  */
 export const OverTheDeviceList = () => (
-  <div style={{ width: "100%", maxWidth: "40rem" }}>
+  <div style={{ width: "100%", maxWidth: "40rem", background: "var(--background)", padding: "1rem" }}>
     <Card>
       <CardHeader>
         <CardTitle>网络设备</CardTitle>
@@ -92,7 +92,7 @@ export const OverTheDeviceList = () => (
  * over the page rather than beside it.
  */
 export const UnderASidePanel = () => (
-  <div style={{ width: "100%", maxWidth: "40rem" }}>
+  <div style={{ width: "100%", maxWidth: "40rem", background: "var(--background)", padding: "1rem" }}>
     <Card>
       <CardHeader>
         <CardTitle>已选 128 台</CardTitle>

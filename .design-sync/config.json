@@ -161,6 +161,28 @@
     },
     "SelectScrollDownButton": {
       "cardMode": "single"
+    },
+    "Popover": {
+      "cardMode": "single"
+    },
+    "PopoverTrigger": {
+      "cardMode": "single"
+    },
+    "PopoverContent": {
+      "cardMode": "single"
+    },
+    "PopoverAnchor": {
+      "cardMode": "single"
+    },
+    "PopoverHeader": {
+      "cardMode": "single"
+    },
+    "PopoverTitle": {
+      "cardMode": "single"
+    },
+    "PopoverDescription": {
+      "cardMode": "single"
     }
-  }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
 }

@@ -26,7 +26,7 @@ import {
  * viewport instead of being cropped by its parent.
  */
 export const EscapesItsParent = () => (
-  <div style={{ width: "100%", maxWidth: "34rem" }}>
+  <div style={{ width: "100%", maxWidth: "34rem", background: "var(--background)", padding: "1rem" }}>
     <Card className="max-h-56 overflow-hidden">
       <CardHeader>
         <CardTitle>字段 · 保修截止</CardTitle>
@@ -77,7 +77,7 @@ export const EscapesItsParent = () => (
  * toolbar's own stacking context -- so no `z-index` on the toolbar can bury it.
  */
 export const FromARowToolbar = () => (
-  <div style={{ width: "100%", maxWidth: "34rem" }}>
+  <div style={{ width: "100%", maxWidth: "34rem", background: "var(--background)", padding: "1rem" }}>
     <Card>
       <CardHeader>
         <CardTitle>已选 128 台</CardTitle>
