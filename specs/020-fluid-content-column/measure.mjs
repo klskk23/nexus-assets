@@ -28,13 +28,29 @@ const BASE = process.env.NEXUS_URL ?? 'http://localhost:8818'
 const EMAIL = process.env.NEXUS_EMAIL ?? 'admin@example.com'
 const PASSWORD = process.env.NEXUS_PASSWORD ?? 'devpass018x'
 
-/** Every width answers the same way now, so there is one list. */
-const WIDTHS = [3840, 2560, 1920, 1440, 1366]
+/**
+ * Every width answers the same way now, so there is one list.
+ *
+ * All six are the desktop layout. 1280 is here because the walkthrough asks
+ * for it and the script did not measure it -- a step that only a person
+ * remembers to run is a step that stops being run.
+ */
+const WIDTHS = [3840, 2560, 1920, 1440, 1366, 1280]
 /**
  * main's pr-10 plus the well gutter the panel sits in (p-3).
  * The one number the layout still owes the right-hand edge.
+ *
+ * Desktop only. Below the `md` breakpoint the panel drops its radius and the
+ * gutter (max-md:p-0) and takes max-md:p-5, so the constant is 20 -- measured,
+ * not assumed. MOBILE below checks that the fill rule survives the switch
+ * while the constant changes, which is the distinction FR-002/FR-002a draws.
  */
 const EDGE = 40 + 12
+/** [viewport, expected edge] for the other layout. */
+const MOBILE = [
+  [700, 20],
+  [390, 20],
+]
 
 const browser = await chromium.launch({ executablePath: process.env.DS_CHROMIUM_PATH ?? '/usr/bin/google-chrome' })
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
@@ -66,22 +82,37 @@ async function measure(width) {
 }
 
 const rows = []
-for (const w of WIDTHS) rows.push({ 视口: w, ...(await measure(w)) })
+for (const w of WIDTHS) rows.push({ 视口: w, 版式: '桌面', 期望右缘: EDGE, ...(await measure(w)) })
+for (const [w, edge] of MOBILE) {
+  rows.push({ 视口: w, 版式: '移动', 期望右缘: edge, ...(await measure(w)) })
+}
 await browser.close()
 
 console.table(
-  rows.map((r) => ({ 视口: r.视口, 包含块: r.inner, 内容列: r.column, 留白: r.void, 距屏幕右缘: r.edge })),
+  rows.map((r) => ({
+    视口: r.视口,
+    版式: r.版式,
+    包含块: r.inner,
+    内容列: r.column,
+    留白: r.void,
+    距屏幕右缘: r.edge,
+    期望: r.期望右缘,
+  })),
 )
 
 const fail = []
 for (const r of rows) {
   // One pixel of slack: a fractional panel width rounds, and a 1px difference
-  // is not a layout rule -- 020's 76% showed up here as hundreds.
+  // is not a layout rule -- 020's 76% showed up here as hundreds, and the
+  // smallest of them (1366) was 50x this tolerance.
+  //
+  // The fill rule is asserted in BOTH layouts: it is the rule. Only the edge
+  // constant differs, which is why the expectation travels with the row.
   if (Math.abs(r.void) > 1) {
-    fail.push(`视口 ${r.视口}：内容列 ${r.column}px 之外还剩 ${r.void}px 留白，应当铺满包含块 ${r.inner}px`)
+    fail.push(`视口 ${r.视口}（${r.版式}）：内容列 ${r.column}px 之外还剩 ${r.void}px 留白，应当铺满包含块 ${r.inner}px`)
   }
-  if (Math.abs(r.edge - EDGE) > 1) {
-    fail.push(`视口 ${r.视口}：内容右缘距屏幕 ${r.edge}px，应当恒为 ${EDGE}px（面板内边距 40 + 井槽 12）`)
+  if (Math.abs(r.edge - r.期望右缘) > 1) {
+    fail.push(`视口 ${r.视口}（${r.版式}）：内容右缘距屏幕 ${r.edge}px，应当为 ${r.期望右缘}px`)
   }
 }
 
@@ -89,4 +120,7 @@ if (fail.length) {
   console.error('\n✗ ' + fail.join('\n✗ '))
   process.exit(1)
 }
-console.log(`\n✓ ${WIDTHS.length} 档窗口内容列均铺满包含块，右缘距屏幕恒为 ${EDGE}px`)
+console.log(
+  `\n✓ 桌面 ${WIDTHS.length} 档右缘恒为 ${EDGE}px，移动 ${MOBILE.length} 档为 ${MOBILE[0][1]}px；` +
+    `全部 ${rows.length} 档内容列均铺满包含块`,
+)

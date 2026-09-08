@@ -187,9 +187,12 @@ export function AppShell() {
          * So the void is gone and the asymmetry with it. What separates
          * content from the screen edge is now the panel's own padding, which
          * is what padding is for. pr-10 (40px) rather than the well's 12px
-         * gutter because the panel's corner radius is 28px: content any closer
-         * runs into the curve, and the top-right buttons are the first thing
-         * to hit it.
+         * gutter, but NOT because content would hit the 28px corner: measured,
+         * the top-right buttons sit 46px below the panel's top edge and so
+         * never enter the corner's 28x28 box at either padding. The reason is
+         * plainer -- 56px on the left against 12px on the right reads as a
+         * mistake, while 56 against 40 reads as a decision, and content that
+         * close to the boundary is crowded whether or not it touches a curve.
          *
          * The cost, accepted with the screenshots in hand: a wide table spreads
          * its columns instead of ending early, and windows at and below 1548
