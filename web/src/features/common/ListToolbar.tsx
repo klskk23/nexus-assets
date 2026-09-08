@@ -37,7 +37,14 @@ export function ListToolbar({ q, onQ, searchHint, filters, actions, inputRef }: 
       {/* The search box takes the row's slack up to 640px, rather than a fixed
        * 256: it is the control people reach for first, and on a metadata page
        * with no filters beside it a stub of a search box in a wide row reads
-       * as an afterthought. Filters keep their own width and wrap below it. */}
+       * as an afterthought. Filters keep their own width and wrap below it.
+       *
+       * This 640 is a CONTROL's width and stays. 020 deleted an identical 640
+       * from the transfer form, which was a content column -- one rule decides
+       * how wide a page is, and it lives in AppShell. A search field spanning
+       * a 1675px row is not that rule being applied, it is a text input the
+       * size of a paragraph. Nothing would fail if this were swept up in a
+       * bulk replace, which is exactly why it is written down here. */}
       <Field className="w-auto max-w-[640px] min-w-64 flex-1">
         <FieldLabel htmlFor="list-q" className="sr-only">
           {searchHint}

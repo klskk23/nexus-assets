@@ -172,18 +172,25 @@ export function AppShell() {
 
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
       <main className="bg-background min-h-0 overflow-y-auto rounded-[28px] pt-11 pr-10 pb-30 pl-14 max-md:rounded-none max-md:p-5">
-        {/* The content column has a ceiling and sits against the left edge.
+        {/* The content column: left-aligned, with the white space on the
+         * right kept to a constant share of the panel.
          *
-         * Not a centred column -- 017 removed the last of those, and what was
-         * left was worse: no ceiling at all, so on a wide screen a line of
-         * text ran the full 1600px and the eye lost the start of the next one.
-         * Left-aligned with white space on the right keeps the first character
-         * of every row in the same place no matter how wide the window gets,
-         * which is what a ledger is read down.
+         * Three parts and deliberately no max-width. 76% is the proportion,
+         * so the void stays 24% at any width. max(960px, …) is the floor, so
+         * a laptop is pixel-for-pixel what 018 shipped. min(100%, …) is the
+         * catch, so a panel narrower than the floor is filled rather than
+         * overflowed -- a table that outgrows it scrolls inside its own frame.
          *
-         * Wider content is not clipped: a table that outgrows this scrolls
-         * inside its own frame. */}
-        <div className="max-w-[960px]">
+         * 018 capped this at a flat 960 and that held the column constant
+         * while the void grew without bound: 14% of the panel at 1440, 56% at
+         * 2560, 73% at 3840. A ceiling is the same failure moved further out,
+         * which is why there is none. The prototype's nine screens are all
+         * drawn at 960, so that number was only ever true at one width.
+         *
+         * The percentage resolves against the panel's content box, not the
+         * viewport: the rail and the padding are fixed, so measuring against
+         * the viewport would let the share creep up again. */}
+        <div className="w-[min(100%,max(960px,76%))]">
           <Outlet />
         </div>
       </main>

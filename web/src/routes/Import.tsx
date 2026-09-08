@@ -181,7 +181,7 @@ export function Import() {
   const canCommit = report !== null && report.ok === report.total && report.total > 0
 
   return (
-    <div className="grid max-w-[760px] gap-14">
+    <div className="grid gap-14">
       <PageHeader title={tImport.title} />
 
       {/* Three stages of one job, so they sit 22px apart in a single block --
