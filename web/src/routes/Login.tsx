@@ -116,7 +116,7 @@ export function Login() {
             )}
 
             <Button type="submit" disabled={submitting}>
-              {submitting && <Spinner data-icon="inline-start" aria-hidden />}
+              {submitting && <Spinner aria-hidden />}
               {submitting ? t.login.submitting : t.login.submit}
             </Button>
 

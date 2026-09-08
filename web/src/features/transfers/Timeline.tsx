@@ -4,6 +4,8 @@ import { useStatuses } from "@/features/statuses/useStatuses"
 import { StateBoundary } from "@/components/StateBoundary"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { HistoryIcon } from "lucide-react"
+
 import { cn } from "cn"
 
 interface Props {
@@ -60,6 +62,10 @@ export function Timeline({ events, isLoading = false, error = null, editableId, 
       isEmpty={entries.length === 0}
       emptyTitle={tTransfer.empty}
       emptyHint={tTransfer.emptyHint}
+      // The only override in the product: a device with no movements is not
+      // an empty asset list, and this timeline renders on three different
+      // routes, none of whose icons would be telling the truth here.
+      emptyIcon={HistoryIcon}
     >
       {/* Rows separated by rules, each led by a sage dot.
        *

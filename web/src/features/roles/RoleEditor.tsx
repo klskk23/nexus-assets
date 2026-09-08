@@ -127,7 +127,7 @@ export function RoleEditor({ role, onClose }: Props) {
             disabled={denied !== undefined || save.isPending || name === ""}
             title={denied}
           >
-            {save.isPending && <Spinner data-icon="inline-start" />}
+            {save.isPending && <Spinner />}
             {t.assets.save}
           </Button>
         </DialogFooter>

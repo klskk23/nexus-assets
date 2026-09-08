@@ -197,6 +197,15 @@
     font-synthesis-weight: none;
   }
 
+  /* Organic asks for a heavier, rounder icon than Lucide draws by default:
+   * stroke-width 2.75 against its 2. Set once here rather than at forty-five
+   * call sites -- Lucide puts the width on the SVG as a presentation
+   * attribute, which any CSS rule outranks. 017 and 018 both read past this
+   * line in the handoff; it is the whole of what was missing. */
+  .lucide {
+    stroke-width: 2.75;
+  }
+
   /* A ledger is read down a column, so the digits have to line up. Proportional
    * numerals put 1 on a narrower body than 8, which is invisible in a sentence
    * and wrong in a stack of forty asset numbers. Tables, counts and dates get

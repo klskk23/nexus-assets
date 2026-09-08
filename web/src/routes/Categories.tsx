@@ -89,7 +89,7 @@ export function Categories() {
               disabled={deniedReason("schema.manage") !== undefined}
               title={deniedReason("schema.manage")}
             >
-              <PlusIcon data-icon="inline-start" />
+              <PlusIcon />
               {tMeta.categories.create}
             </Button>
           </DialogTrigger>
@@ -144,7 +144,7 @@ export function Categories() {
                 onClick={() => create.mutate()}
                 disabled={code === "" || name === "" || create.isPending}
               >
-                {create.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+                {create.isPending && <Spinner aria-hidden />}
                 {tMeta.categories.create}
               </Button>
             </DialogFooter>

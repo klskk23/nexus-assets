@@ -69,7 +69,7 @@ export function SelectAllBanner({ params, total, selectedCount, onSelectAll }: P
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-sm" role="status">
       <span className="text-muted-foreground">{t.assets.pageSelected(selectedCount)}</span>
       <Button variant="link" size="sm" className="h-auto p-0" disabled={loading} onClick={selectAll}>
-        {loading && <Spinner data-icon="inline-start" aria-hidden />}
+        {loading && <Spinner aria-hidden />}
         {t.assets.selectAllMatching(total)}
       </Button>
       {/* Said once, here, rather than in a tooltip on every row: the range

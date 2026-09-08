@@ -417,7 +417,7 @@ export function PrintDialog({ ids, onClose }: Props) {
                 target="_blank"
                 rel="noreferrer"
               >
-                <ExternalLinkIcon data-icon="inline-start" />
+                <ExternalLinkIcon />
                 {anyFailed && confirmed ? t.print.openQueue : t.print.openService}
               </a>
             </Button>
@@ -432,7 +432,7 @@ export function PrintDialog({ ids, onClose }: Props) {
               onClick={() => submit.mutate()}
               disabled={plan.isPending || submit.isPending || printable === 0}
             >
-              {submit.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+              {submit.isPending && <Spinner aria-hidden />}
               {t.print.confirm(printable)}
             </Button>
           )}

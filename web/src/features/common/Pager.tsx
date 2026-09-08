@@ -19,7 +19,15 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-export const PAGE_SIZES: number[] = [20, 50, 100]
+/**
+ * The first one is the default, and the rest are the way out of it.
+ *
+ * Ten because a page of this product is read, not scrolled past: at 48px a row
+ * that is about 480px of table, which leaves the filters above it and the
+ * pager below it on screen together. Someone who wants the long view says so
+ * and gets it remembered in the address bar.
+ */
+export const PAGE_SIZES: number[] = [10, 20, 50, 100]
 
 /**
  * Which page numbers to draw: the ends, the neighbourhood of the current page,

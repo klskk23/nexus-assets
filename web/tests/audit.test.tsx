@@ -199,8 +199,8 @@ describe("Audit page", () => {
     await user.click(screen.getByRole("link", { name: "2" }))
     await waitFor(() => {
       const params = lastAuditCall()
-      expect(params.get("offset")).toBe("20")
-      expect(params.get("limit")).toBe("20")
+      expect(params.get("offset")).toBe("10")
+      expect(params.get("limit")).toBe("10")
     })
   })
 

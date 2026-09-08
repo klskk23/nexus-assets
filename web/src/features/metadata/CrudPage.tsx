@@ -203,7 +203,7 @@ export function CrudPage<T extends { id: string }>({
         >
           <DialogTrigger asChild>
             <Button disabled={createDeniedReason !== undefined} title={createDeniedReason}>
-              <PlusIcon data-icon="inline-start" />
+              <PlusIcon />
               {createLabel}
             </Button>
           </DialogTrigger>
@@ -232,7 +232,7 @@ export function CrudPage<T extends { id: string }>({
                 onClick={() => mutation.mutate()}
                 disabled={createDisabled || mutation.isPending}
               >
-                {mutation.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+                {mutation.isPending && <Spinner aria-hidden />}
                 {mutation.isPending ? t.assets.saving : createLabel}
               </Button>
             </DialogFooter>

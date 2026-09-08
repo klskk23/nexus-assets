@@ -49,7 +49,7 @@ export function AssetHistory() {
             below would leave a lone ghost button in the middle of nowhere. */}
         <Button variant="ghost" size="sm" className="-ml-2 w-fit" asChild>
           <Link to={`/assets/${id}`}>
-            <ArrowLeftIcon data-icon="inline-start" />
+            <ArrowLeftIcon />
             {t.assets.backToAsset}
           </Link>
         </Button>

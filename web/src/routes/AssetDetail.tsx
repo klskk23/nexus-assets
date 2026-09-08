@@ -216,7 +216,7 @@ export function AssetDetail() {
                       title={deniedReason("print") ?? t.print.action}
                       onClick={() => setPrinting(true)}
                     >
-                      <PrinterIcon data-icon="inline-start" />
+                      <PrinterIcon />
                       {t.print.action}
                     </Button>
                   )}
@@ -456,7 +456,7 @@ export function AssetDetail() {
 
                   <div className="flex items-center gap-2">
                     <Button onClick={() => save.mutate()} disabled={save.isPending}>
-                      {save.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+                      {save.isPending && <Spinner aria-hidden />}
                       {save.isPending ? t.assets.saving : t.assets.save}
                     </Button>
                     {/* At the far end, and it still asks for the number to be

@@ -277,7 +277,7 @@ export function Audit() {
                     aria-label={tAudit.dateRange}
                     className="justify-start font-normal"
                   >
-                    <CalendarIcon data-icon="inline-start" />
+                    <CalendarIcon />
                     {rangeText}
                   </Button>
                 </PopoverTrigger>

@@ -47,7 +47,7 @@ export function ExpressionHelp() {
     <Drawer direction="right">
       <DrawerTrigger asChild>
         <Button variant="ghost" size="sm" type="button">
-          <HelpCircleIcon data-icon="inline-start" />
+          <HelpCircleIcon />
           {tExprHelp.open}
         </Button>
       </DrawerTrigger>

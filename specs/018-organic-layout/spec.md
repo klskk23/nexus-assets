@@ -324,3 +324,55 @@ Caprasimo 只有拉丁子集，中文必然落到 Noto Sans SC，**那一行什�
 - **不新增移动端断点。** 参照稿没有做移动端；本轮沿用 017 已有的窄屏行为，
   内容列用上限而非固定宽，横向成组用 flex-wrap。
 - **图标沿用 Lucide**，按参照稿要求 `stroke-width: 2.75`。
+
+---
+
+## 附录：收口后的补充（2026-09-08）
+
+018 的 81 条任务已全部完成并通过门禁，**上面的验收记录不因这份附录而改动**。
+以下六条是收口之后开发者追加的，走同一分支、同一套判据。
+
+### FR-031：侧栏导航项 MUST 带图标
+
+十一项各一个，取自 `features/common/navIcons.ts`：
+`LayoutDashboard` 概览 · `Boxes` 资产 · `FolderTree` 类别 · `Columns3` 字段 ·
+`Cpu` 型号 · `CircleDot` 状态 · `Warehouse` 持有方 · `Users` 账号 ·
+`ShieldCheck` 角色 · `Upload` 导入 · `ScrollText` 审计。
+
+图标接手第 7 阶段那个陶土圆点的位置，**圆点删除**。当前态 = 图标吃
+`--accent-foreground` + `--accent` 浅底 + 字重。
+
+**参照稿在这里画的是 Caprasimo 编号，不是图标** —— 编号已于第 7 阶段按开发者裁定删除
+（十一个目的地不是十一个步骤，且审计页会因权限缺号）。图标不受那条理由约束：
+它回答的是「这是哪一个」，不是「这是第几个」。
+
+### FR-032：图标 MUST 是 `stroke-width: 2.75`
+
+`handoff.md` 第 199 行的明文规定，**017 与 018 都漏了** —— 全站 32 个图标一直是
+lucide 默认的 2。在 `index.css` 的 `.lucide` 上一次设定，实测生效（CSS 压过
+SVG 的 presentation attribute）。
+
+### FR-033：空状态 MUST 用所在页自己的图标
+
+此前十一页共用一个 `InboxIcon`。改为 `StateBoundary` 按路由取，最长前缀优先。
+唯一的显式覆盖是时间线（`HistoryIcon`）—— 一台没有流转记录的设备不是一张空的资产表，
+而它渲染在三个不同路由上。
+
+### FR-034：提示块图标 MUST 是 `--accent-foreground`
+
+`handoff.md` 第 164 行。此前 `Alert` 的图标跟着正文色走。
+`destructive` 变体保持 `text-current` —— 一条红色警告配陶土图标是在说两件事。
+
+### FR-035：`data-icon="inline-start"` MUST 移除
+
+31 处，CSS 与 Tailwind 选择器**零命中** —— 它什么也没做，而 `Button` 的
+`gap-2` 早已把它想做的事做了。一个看起来像约定的死属性比没有约定更坏。
+
+### FR-036：表格分页默认 MUST 是每页 10 条
+
+`PAGE_SIZES` 改为 `[10, 20, 50, 100]`，首项即默认。
+48px 行高下十行约 480px，筛选条与翻页条能同屏；要长视图的人自己选，
+选择记在地址栏里。**服务端不动** —— 前端一直显式发 `limit`，
+服务端的 `DefaultLimit = 50` 从未生效，SC-009 继续成立。
+
+**这一批不新增任何组件**，`lucide-react` 早已是既有依赖（45 处调用、32 个图标）。

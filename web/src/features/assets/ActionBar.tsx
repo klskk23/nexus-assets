@@ -100,7 +100,7 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
               title={deniedReason("print")}
               onClick={() => setPrintOpen(true)}
             >
-              <PrinterIcon data-icon="inline-start" />
+              <PrinterIcon />
               {t.print.action}
             </Button>
           )}
@@ -114,7 +114,7 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
             title={deniedReason("export")}
             onClick={onExport}
           >
-            <DownloadIcon data-icon="inline-start" />
+            <DownloadIcon />
             {tImport.exportSelection}
           </Button>
           <ButtonGroupSeparator />
@@ -129,7 +129,7 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
                 disabled={deniedReason("asset.delete") !== undefined}
                 title={deniedReason("asset.delete")}
               >
-                <Trash2Icon data-icon="inline-start" />
+                <Trash2Icon />
                 {t.assets.delete}
               </Button>
             }

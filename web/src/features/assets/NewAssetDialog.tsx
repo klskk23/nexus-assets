@@ -320,7 +320,7 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
             onClick={() => create.mutate()}
             disabled={categoryId === "" || holder === "" || effectiveOwner === "" || create.isPending}
           >
-            {create.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+            {create.isPending && <Spinner aria-hidden />}
             {create.isPending ? t.assets.saving : t.assets.save}
           </Button>
         </DialogFooter>

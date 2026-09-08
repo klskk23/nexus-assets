@@ -239,7 +239,7 @@ export function Import() {
                   .finally(() => setDownloading(false))
               }}
             >
-              {downloading && <Spinner data-icon="inline-start" />}
+              {downloading && <Spinner />}
               {tImport.download}
             </Button>
           </div>
@@ -278,7 +278,7 @@ export function Import() {
               title={categoryID === "" ? tImport.previewNeedsCategory : undefined}
               onClick={() => preview.mutate()}
             >
-              {preview.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+              {preview.isPending && <Spinner aria-hidden />}
               {preview.isPending ? tImport.previewing : tImport.preview}
             </Button>
           </div>
@@ -346,7 +346,7 @@ export function Import() {
 
             <div>
               <Button disabled={!canCommit || commit.isPending} onClick={() => commit.mutate()}>
-                {commit.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+                {commit.isPending && <Spinner aria-hidden />}
                 {commit.isPending ? tImport.committing : tImport.commit}
               </Button>
             </div>

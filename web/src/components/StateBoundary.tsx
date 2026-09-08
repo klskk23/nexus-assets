@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
-import { AlertCircleIcon, InboxIcon } from "lucide-react"
+import { AlertCircleIcon, type LucideIcon } from "lucide-react"
+import { useLocation } from "react-router"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { t } from "@/i18n"
+import { navIcon } from "@/features/common/navIcons"
 
 interface Props {
   isLoading: boolean
@@ -19,6 +21,11 @@ interface Props {
   isEmpty?: boolean
   emptyTitle?: string
   emptyHint?: string
+  /**
+   * Overrides the icon, for an empty state that is not about the page it sits
+   * on -- a device with no movements is not an empty asset list.
+   */
+  emptyIcon?: LucideIcon
   onRetry?: () => void
   children: ReactNode
 }
@@ -36,9 +43,14 @@ export function StateBoundary({
   isEmpty,
   emptyTitle,
   emptyHint,
+  emptyIcon,
   onRetry,
   children,
 }: Props) {
+  // Taken from the route rather than passed in by each of the eleven callers:
+  // a twelfth page should get the right icon by existing, not by remembering.
+  const { pathname } = useLocation()
+  const Icon = emptyIcon ?? navIcon(pathname)
   if (isLoading) {
     return (
       <div className="flex flex-col gap-3" role="status" aria-label={t.common.loading}>
@@ -71,7 +83,7 @@ export function StateBoundary({
       <Empty className="border">
         <EmptyHeader>
           <EmptyMedia variant="icon">
-            <InboxIcon />
+            <Icon />
           </EmptyMedia>
           <EmptyTitle>{emptyTitle}</EmptyTitle>
           {emptyHint && <EmptyDescription>{emptyHint}</EmptyDescription>}

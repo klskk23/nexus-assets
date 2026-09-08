@@ -345,7 +345,7 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
             <Button variant="ghost">{t.common.cancel}</Button>
           </DialogClose>
           <Button onClick={() => save.mutate()} disabled={name === "" || save.isPending}>
-            {save.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+            {save.isPending && <Spinner aria-hidden />}
             {tMeta.categories.save}
           </Button>
         </DialogFooter>

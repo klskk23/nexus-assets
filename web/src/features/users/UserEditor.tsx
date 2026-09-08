@@ -196,7 +196,7 @@ export function UserEditor({ user, roles, onClose }: Props) {
                 title={deniedUsers}
                 onClick={() => setEnabled.mutate(true)}
               >
-                {setEnabled.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+                {setEnabled.isPending && <Spinner aria-hidden />}
                 {tMeta.users.enable}
               </Button>
             )}
@@ -224,7 +224,7 @@ export function UserEditor({ user, roles, onClose }: Props) {
               title={deniedUsers}
               onClick={() => setResetting(true)}
             >
-              {reset.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+              {reset.isPending && <Spinner aria-hidden />}
               {tMeta.users.resetPassword}
             </Button>
             <ConfirmDialog
@@ -264,7 +264,7 @@ export function UserEditor({ user, roles, onClose }: Props) {
             disabled={save.isPending || name.trim() === "" || deniedUsers !== undefined}
             title={deniedUsers}
           >
-            {save.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+            {save.isPending && <Spinner aria-hidden />}
             {t.assets.save}
           </Button>
         </DialogFooter>

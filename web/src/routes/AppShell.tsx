@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "cn"
+import { NAV_ICONS } from "@/features/common/navIcons"
 
 /**
  * The nav, built on each render.
@@ -86,42 +87,33 @@ export function AppShell() {
           className="flex min-h-0 flex-col gap-0.5 overflow-y-auto max-md:flex-row max-md:overflow-x-auto"
           aria-label={t.nav.assets}
         >
-          {navLinks(can).map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              end={l.to === "/"}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-2.5 rounded-full py-[9px] pr-3.5 pl-3 text-sm whitespace-nowrap transition-colors",
-                  isActive
-                    ? "bg-accent text-accent-foreground font-semibold"
-                    : "hover:bg-accent hover:text-accent-foreground",
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {/* A dot, not a number. The prototype numbered these 01-11,
-                      and eleven destinations are not eleven steps -- there is
-                      no order to be in, and the audit entry disappears for a
-                      reader without the permission, which would leave the
-                      numbering with a hole in it. What the numbers were also
-                      doing, though, is worth keeping: marking the current item
-                      with something other than a slab of colour. So the mark
-                      stays and the counting goes. */}
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "size-1.5 shrink-0 rounded-full transition-colors",
-                      isActive ? "bg-primary" : "bg-transparent",
-                    )}
-                  />
-                  {l.label}
-                </>
-              )}
-            </NavLink>
-          ))}
+          {navLinks(can).map((l) => {
+            const Icon = NAV_ICONS[l.to as keyof typeof NAV_ICONS]
+            return (
+              <NavLink
+                key={l.to}
+                to={l.to}
+                end={l.to === "/"}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-2.5 rounded-full py-[9px] pr-3.5 pl-3 text-sm whitespace-nowrap transition-colors",
+                    isActive
+                      ? "bg-accent text-accent-foreground font-semibold"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )
+                }
+              >
+                {/* The icon is the mark, so there is no separate dot beside it.
+                    It replaced a number the prototype had drawn here: eleven
+                    destinations are not eleven steps, but they are eleven
+                    different things, and a shape says which one faster than a
+                    position ever did. Decorative -- the label is right there
+                    and reads it out. */}
+                <Icon aria-hidden className="size-4 shrink-0" />
+                {l.label}
+              </NavLink>
+            )
+          })}
         </nav>
         {/* Language and signing out are "about me, not about the data". Two
             controls competing with the nav for the same rail was two things to
@@ -135,7 +127,7 @@ export function AppShell() {
                   screen-reader user unable to hear whose session this is.
                   aria-haspopup already says a menu opens. */}
               <Button variant="ghost" size="sm" className="w-full justify-start max-md:w-auto">
-                <UserIcon data-icon="inline-start" />
+                <UserIcon />
                 {user.name}
               </Button>
             </DropdownMenuTrigger>

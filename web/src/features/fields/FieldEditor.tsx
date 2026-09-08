@@ -373,7 +373,7 @@ export function FieldEditor({ field, onClose }: Props) {
             <Button variant="ghost">{t.common.cancel}</Button>
           </DialogClose>
           <Button onClick={submit} disabled={save.isPending}>
-            {save.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+            {save.isPending && <Spinner aria-hidden />}
             {save.isPending ? tConfig.field.saving : tConfig.field.save}
           </Button>
 

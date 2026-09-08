@@ -184,7 +184,7 @@ export function SettingsDialog({ onClose }: Props) {
                 className="ml-auto"
                 onClick={() => setCreating(true)}
               >
-                <PlusIcon data-icon="inline-start" />
+                <PlusIcon />
                 {t.settings.keyCreate}
               </Button>
             </div>
@@ -339,7 +339,7 @@ export function SettingsDialog({ onClose }: Props) {
             <div>
               <Button variant="outline" size="sm" asChild>
                 <a href="/api/docs" target="_blank" rel="noreferrer">
-                  <ExternalLinkIcon data-icon="inline-start" />
+                  <ExternalLinkIcon />
                   {t.settings.docsOpen}
                 </a>
               </Button>

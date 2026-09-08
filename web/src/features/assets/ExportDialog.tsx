@@ -258,7 +258,7 @@ export function ExportDialog({
             <Button variant="outline">{t.common.cancel}</Button>
           </DialogClose>
           <Button onClick={run} disabled={(!ticked && chosen === "") || busy}>
-            {busy && <Spinner data-icon="inline-start" />}
+            {busy && <Spinner />}
             {tImport.exportGo}
           </Button>
         </DialogFooter>

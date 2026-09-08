@@ -380,7 +380,7 @@ export function TransferForm({
       <div className="flex justify-end gap-2">
         {cancel}
         <Button disabled={!canSubmit || submit.isPending} onClick={() => submit.mutate()}>
-          {submit.isPending && <Spinner data-icon="inline-start" aria-hidden />}
+          {submit.isPending && <Spinner aria-hidden />}
           {submit.isPending ? tTransfer.actions.submitting : tTransfer.actions.submit}
         </Button>
       </div>
