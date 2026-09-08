@@ -25,6 +25,10 @@ export function Hint({ children }: { children: React.ReactNode }) {
             a focusable trigger is what lets the keyboard open it too. */}
         <button
           type="button"
+          // Marks this as an annotation rather than a control, so a dialog
+          // opening does not hand it the caret -- and, because HoverCard opens
+          // on focus, does not pop it open unasked. See lib/dialogFocus.
+          data-slot="hint"
           aria-label={t.common.whatIsThis}
           className="text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex size-4 shrink-0 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:outline-none"
         >
