@@ -69,7 +69,7 @@ export function Overview() {
   const hasCategories = (categories.data ?? []).length > 0
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-14">
       <PageHeader title={tOverview.title} />
 
       <StateBoundary
@@ -77,7 +77,7 @@ export function Overview() {
         error={overview.error as Error | null}
         onRetry={() => overview.refetch()}
       >
-        <div className="grid gap-6">
+        <div className="grid gap-14">
           <section aria-label={tOverview.statusTitle} className="grid gap-3">
             <div className="flex items-baseline gap-3">
               <h2 className="font-medium">{tOverview.statusTitle}</h2>

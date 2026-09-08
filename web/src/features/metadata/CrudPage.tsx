@@ -185,7 +185,7 @@ export function CrudPage<T extends { id: string }>({
   })
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-14">
       {/* Creating is occasional; the list is what the page is for. The form
           lives behind a button so the records get the screen. */}
       <PageHeader title={title}>
@@ -240,83 +240,89 @@ export function CrudPage<T extends { id: string }>({
         </Dialog>
       </PageHeader>
 
-      {notice}
+      {/* The list is one thing: a notice about it, the controls that narrow
+          it, the rows, and the pager under them. 22px inside, 56px to the
+          title above -- a single gap for both made the page read as four
+          unrelated blocks. */}
+      <div className="grid gap-[22px]">
+        {notice}
 
-      {/* One row, the same on every page: search, this page's filters, and
-          whatever belongs at the right end. */}
-      <ListToolbar
-        q={listQuery.q}
-        onQ={listQuery.setQ}
-        searchHint={searchHint}
-        filters={filters?.(listQuery)}
-        actions={toolbarActions}
-      />
-
-      <StateBoundary
-        isLoading={query.isLoading}
-        error={query.error as Error | null}
-        isEmpty={query.isSuccess && rows.length === 0}
-        emptyTitle={emptyTitle}
-        emptyHint={emptyHint}
-        onRetry={() => query.refetch()}
-      >
-        <TableFrame>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {columns.map((c) => (
-                  <TableHead key={c.header}>{c.header}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row) => {
-                const cells = columns.map((c) => (
-                  <TableCell key={c.header}>{c.cell(row)}</TableCell>
-                ))
-                const tr = (
-                  <TableRow
-                    key={row.id}
-                    className={cn(onRowClick && "cursor-pointer")}
-                    onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  >
-                    {cells}
-                  </TableRow>
-                )
-                if (!rowActions?.length) return tr
-                return (
-                  <ContextMenu key={row.id}>
-                    <ContextMenuTrigger asChild>{tr}</ContextMenuTrigger>
-                    <ContextMenuContent>
-                      {rowActions.map((a, i) => (
-                        <Fragment key={a.label}>
-                          {a.destructive && i > 0 && <ContextMenuSeparator />}
-                          <ContextMenuItem
-                            variant={a.destructive ? "destructive" : "default"}
-                            disabled={a.disabled?.(row)}
-                            onSelect={() =>
-                              a.confirm ? setPending({ action: a, row }) : a.onSelect(row)
-                            }
-                          >
-                            {a.label}
-                          </ContextMenuItem>
-                        </Fragment>
-                      ))}
-                    </ContextMenuContent>
-                  </ContextMenu>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </TableFrame>
-        <Pager
-          page={listQuery.page}
-          pageSize={listQuery.pageSize}
-          total={total}
-          onPage={listQuery.setPage}
-          onPageSize={listQuery.setPageSize}
+        {/* One row, the same on every page: search, this page's filters, and
+            whatever belongs at the right end. */}
+        <ListToolbar
+          q={listQuery.q}
+          onQ={listQuery.setQ}
+          searchHint={searchHint}
+          filters={filters?.(listQuery)}
+          actions={toolbarActions}
         />
-      </StateBoundary>
+
+        <StateBoundary
+          isLoading={query.isLoading}
+          error={query.error as Error | null}
+          isEmpty={query.isSuccess && rows.length === 0}
+          emptyTitle={emptyTitle}
+          emptyHint={emptyHint}
+          onRetry={() => query.refetch()}
+        >
+          <TableFrame>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {columns.map((c) => (
+                    <TableHead key={c.header}>{c.header}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => {
+                  const cells = columns.map((c) => (
+                    <TableCell key={c.header}>{c.cell(row)}</TableCell>
+                  ))
+                  const tr = (
+                    <TableRow
+                      key={row.id}
+                      className={cn(onRowClick && "cursor-pointer")}
+                      onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    >
+                      {cells}
+                    </TableRow>
+                  )
+                  if (!rowActions?.length) return tr
+                  return (
+                    <ContextMenu key={row.id}>
+                      <ContextMenuTrigger asChild>{tr}</ContextMenuTrigger>
+                      <ContextMenuContent>
+                        {rowActions.map((a, i) => (
+                          <Fragment key={a.label}>
+                            {a.destructive && i > 0 && <ContextMenuSeparator />}
+                            <ContextMenuItem
+                              variant={a.destructive ? "destructive" : "default"}
+                              disabled={a.disabled?.(row)}
+                              onSelect={() =>
+                                a.confirm ? setPending({ action: a, row }) : a.onSelect(row)
+                              }
+                            >
+                              {a.label}
+                            </ContextMenuItem>
+                          </Fragment>
+                        ))}
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </TableFrame>
+          <Pager
+            page={listQuery.page}
+            pageSize={listQuery.pageSize}
+            total={total}
+            onPage={listQuery.setPage}
+            onPageSize={listQuery.setPageSize}
+          />
+        </StateBoundary>
+      </div>
 
       {pending?.action.confirm && (
         <ConfirmDialog

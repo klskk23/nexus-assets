@@ -138,3 +138,31 @@ describe("the audit log", () => {
     )
   })
 })
+
+// Eight metadata pages are one component wearing eight sets of columns, and
+// this is the shape they all borrow: a title, a way to narrow the list, the
+// rows, and a pager under them.
+//
+// It is asserted once, here, because until now nothing said it in one place.
+// Drop the pager while rearranging CrudPage and eight page tests go red at
+// the same moment, with nothing to show that they are eight symptoms of one
+// cause. This test is that cause, stated.
+//
+// Deliberately not a snapshot and deliberately not about classes: the claim is
+// that the four parts are present and reachable, not how they are laid out.
+// Whether they are 22px apart is a question for the screenshot walkthrough.
+describe("the shape every metadata page borrows", () => {
+  it("gives a title, a search box, rows and a pager -- all four, together", async () => {
+    renderWithProviders(<Holders />)
+
+    expect(await screen.findByRole("heading", { level: 1, name: "持有方" })).toBeInTheDocument()
+    expect(screen.getByLabelText("名称、备注")).toBeInTheDocument()
+    expect(await screen.findByRole("row", { name: /上海仓库/ })).toBeInTheDocument()
+
+    // The range line is the part of the pager that is always there. Page links
+    // and the per-page picker come and go with the row count, and a list of
+    // three does not need either -- but "how many matched" is still the
+    // question someone came to a filtered list to ask.
+    expect(screen.getByText("第 1–3 条，共 3 条")).toBeInTheDocument()
+  })
+})

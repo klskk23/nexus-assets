@@ -191,7 +191,7 @@ export function AssetDetail() {
           onRetry={() => detail.refetch()}
         >
           {asset && (
-            <div className="grid gap-6">
+            <div className="grid gap-14">
               <DialogHeader>
                 {/* pe-10 leaves room for the print button and, past it, the
                     dialog's own close button. */}

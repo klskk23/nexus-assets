@@ -67,7 +67,7 @@ export function AppShell() {
      * becomes a scroll container, and the whole thing scrolls as one -- taking
      * the nav off the top of the screen, which is the one thing a fixed rail is
      * for. The rail is a nav landmark; the panel is the document. */
-    <div className="grid h-screen grid-cols-[15rem_1fr] bg-card text-foreground max-md:grid-cols-1 max-md:grid-rows-[auto_1fr]">
+    <div className="grid h-screen grid-cols-[236px_1fr] bg-card text-foreground max-md:grid-cols-1 max-md:grid-rows-[auto_1fr]">
       <div className="flex min-h-0 flex-col gap-6 px-5 py-6 max-md:flex-row max-md:items-center max-md:gap-4 max-md:py-3">
         <span className="font-heading text-xl leading-none">{t.appName}</span>
         <nav
@@ -127,8 +127,21 @@ export function AppShell() {
           the other way round: cards inside are bg-card, and a card on a card is
           invisible. The corner is the only place the rail's tone shows through,
           which is the whole of the effect. */}
-      <main className="min-h-0 overflow-y-auto rounded-tl-[28px] bg-background p-8 max-md:rounded-none max-md:p-5">
-        <Outlet />
+      <main className="min-h-0 overflow-y-auto rounded-tl-[28px] bg-background pt-11 pr-10 pb-30 pl-14 max-md:rounded-none max-md:p-5">
+        {/* The content column has a ceiling and sits against the left edge.
+         *
+         * Not a centred column -- 017 removed the last of those, and what was
+         * left was worse: no ceiling at all, so on a wide screen a line of
+         * text ran the full 1600px and the eye lost the start of the next one.
+         * Left-aligned with white space on the right keeps the first character
+         * of every row in the same place no matter how wide the window gets,
+         * which is what a ledger is read down.
+         *
+         * Wider content is not clipped: a table that outgrows this scrolls
+         * inside its own frame. */}
+        <div className="max-w-[960px]">
+          <Outlet />
+        </div>
       </main>
     </div>
   )

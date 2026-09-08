@@ -346,7 +346,7 @@ export function Assets() {
   const total = assets.data?.total ?? 0
 
   return (
-    <div className="grid gap-6">
+    <div>
       <PageHeader title={t.assets.title}>
         {/* Not a link: every credential this app has travels in a header, and
             a plain download navigation carries none of them. */}
@@ -367,432 +367,436 @@ export function Assets() {
         </Button>
       </PageHeader>
 
-      {/* One row. The labels are read out but not drawn: each control already
-          shows what it is -- the magnifier, "全部类别", "全部状态" -- so drawing
-          a caption above each one only pushed the filters onto three lines. */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Field className="w-auto">
-          <FieldLabel htmlFor="q" className="sr-only">
-            {t.assets.search}
-          </FieldLabel>
-          <InputGroup className="w-64">
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="q"
-              ref={searchRef}
-              placeholder={t.assets.searchPlaceholder}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </InputGroup>
-        </Field>
-
-        <Field className="w-auto">
-          <FieldLabel htmlFor="category" className="sr-only">
-            {t.assets.category}
-          </FieldLabel>
-          <Select value={toNone(categoryId)} onValueChange={(v) => setCategoryId(fromNone(v))}>
-            <SelectTrigger id="category" className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value={NONE}>{t.assets.allCategories}</SelectItem>
-                {(categories.data ?? []).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-
-        <Field className="w-auto">
-          <FieldLabel htmlFor="status" className="sr-only">
-            {t.assets.statusLabel}
-          </FieldLabel>
-          <Select value={toNone(status)} onValueChange={(v) => setStatus(fromNone(v))}>
-            <SelectTrigger id="status" className="w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value={NONE}>{t.assets.allStatuses}</SelectItem>
-                {statuses.statuses.map(({ key: k, label: v }) => (
-                  <SelectItem key={k} value={k}>
-                    {v}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-
-        <Field className="w-auto">
-          <FieldLabel htmlFor="owner" className="sr-only">
-            {t.assets.owner}
-          </FieldLabel>
-          <Select value={toNone(ownerId)} onValueChange={(v) => setOwnerId(fromNone(v))}>
-            <SelectTrigger id="owner" className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value={NONE}>{t.assets.allOwners}</SelectItem>
-                {(users.data ?? [])
-                  .filter((u) => u.status === "active")
-                  .map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.name}
-                    </SelectItem>
-                  ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-
-        <Field className="w-auto">
-          <FieldLabel htmlFor="holder" className="sr-only">
-            {t.assets.holderFilter}
-          </FieldLabel>
-          <Select value={toNone(holderId)} onValueChange={(v) => setHolderId(fromNone(v))}>
-            <SelectTrigger id="holder" className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value={NONE}>{t.assets.allHolders}</SelectItem>
-                {(holders.data ?? []).map((h) => (
-                  <SelectItem key={h.id} value={h.id}>
-                    {h.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-
-        <Field className="w-auto">
-          <FieldLabel htmlFor="vendor" className="sr-only">
-            {t.assets.vendorFilter}
-          </FieldLabel>
-          <Select value={toNone(vendorId)} onValueChange={(v) => setVendorId(fromNone(v))}>
-            <SelectTrigger id="vendor" className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value={NONE}>{t.assets.allVendors}</SelectItem>
-                {vendorList.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-
-        {/* Only within a category: models belong to categories, and a picker
-            listing every model in the system would offer choices that cannot
-            match the rows on screen. */}
-        {categoryId && (
+      {/* The list is one thing seen in three parts: the controls that narrow
+          it, the rows, and the pager under them. */}
+      <div className="mt-14 grid gap-[22px]">
+        {/* One row. The labels are read out but not drawn: each control already
+            shows what it is -- the magnifier, "全部类别", "全部状态" -- so drawing
+            a caption above each one only pushed the filters onto three lines. */}
+        <div className="flex flex-wrap items-center gap-2">
           <Field className="w-auto">
-            <FieldLabel htmlFor="model" className="sr-only">
-              {t.assets.modelFilter}
+            <FieldLabel htmlFor="q" className="sr-only">
+              {t.assets.search}
             </FieldLabel>
-            <Select value={toNone(modelId)} onValueChange={(v) => setModelId(fromNone(v))}>
-              <SelectTrigger id="model" className="w-44">
+            <InputGroup className="w-64">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                id="q"
+                ref={searchRef}
+                placeholder={t.assets.searchPlaceholder}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </InputGroup>
+          </Field>
+
+          <Field className="w-auto">
+            <FieldLabel htmlFor="category" className="sr-only">
+              {t.assets.category}
+            </FieldLabel>
+            <Select value={toNone(categoryId)} onValueChange={(v) => setCategoryId(fromNone(v))}>
+              <SelectTrigger id="category" className="w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value={NONE}>{t.assets.allModels}</SelectItem>
-                  {modelList
-                    .filter((m) => (m.category_ids ?? []).includes(categoryId))
-                    .map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {modelLabel(m)}
+                  <SelectItem value={NONE}>{t.assets.allCategories}</SelectItem>
+                  {(categories.data ?? []).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field className="w-auto">
+            <FieldLabel htmlFor="status" className="sr-only">
+              {t.assets.statusLabel}
+            </FieldLabel>
+            <Select value={toNone(status)} onValueChange={(v) => setStatus(fromNone(v))}>
+              <SelectTrigger id="status" className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={NONE}>{t.assets.allStatuses}</SelectItem>
+                  {statuses.statuses.map(({ key: k, label: v }) => (
+                    <SelectItem key={k} value={k}>
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field className="w-auto">
+            <FieldLabel htmlFor="owner" className="sr-only">
+              {t.assets.owner}
+            </FieldLabel>
+            <Select value={toNone(ownerId)} onValueChange={(v) => setOwnerId(fromNone(v))}>
+              <SelectTrigger id="owner" className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={NONE}>{t.assets.allOwners}</SelectItem>
+                  {(users.data ?? [])
+                    .filter((u) => u.status === "active")
+                    .map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name}
                       </SelectItem>
                     ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
           </Field>
-        )}
 
-        {categoryId && (
-          <Field orientation="horizontal" className="w-auto">
-            <Checkbox
-              id="descendants"
-              checked={includeDescendants}
-              onCheckedChange={(v) => setIncludeDescendants(v === true)}
-            />
-            <FieldLabel htmlFor="descendants">{t.assets.includeDescendants}</FieldLabel>
+          <Field className="w-auto">
+            <FieldLabel htmlFor="holder" className="sr-only">
+              {t.assets.holderFilter}
+            </FieldLabel>
+            <Select value={toNone(holderId)} onValueChange={(v) => setHolderId(fromNone(v))}>
+              <SelectTrigger id="holder" className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={NONE}>{t.assets.allHolders}</SelectItem>
+                  {(holders.data ?? []).map((h) => (
+                    <SelectItem key={h.id} value={h.id}>
+                      {h.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </Field>
-        )}
 
-        {/* The column picker used to be a bordered box of checkboxes standing
-            between the filters and the table, as tall as it had fields. It is
-            a menu on the table's own bar now: a category with twelve fields no
-            longer pushes the rows off the screen. */}
-        {/* Always here, not only once a category is chosen: the built-in
-            columns exist on every device, so there is something to choose even
-            under "all categories". */}
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="ml-auto" aria-label={t.assets.columns}>
-              <MoreVerticalIcon />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{t.assets.columns}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              {BUILTIN_COLUMNS.map((k) => (
-                <DropdownMenuCheckboxItem
-                  key={k}
-                  checked={builtins.shows(k)}
-                  // Kept open: choosing columns is a handful of decisions in a
-                  // row, and closing after each one makes it four trips.
-                  onSelect={(e) => e.preventDefault()}
-                  onCheckedChange={() => builtins.toggle(k)}
-                >
-                  {t.assets.columnLabels[k]}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuGroup>
-            {available.length > 0 && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel>{t.assets.fieldColumns}</DropdownMenuLabel>
-                <DropdownMenuGroup>
-                  {available.map((f) => (
-                    <DropdownMenuCheckboxItem
-                      key={f.key}
-                      checked={extraColumns.includes(f.key)}
-                      disabled={!unlocked(f)}
-                      title={unlocked(f) ? undefined : t.assets.modelColumnLocked}
-                      onSelect={(e) => e.preventDefault()}
-                      onCheckedChange={() => toggle(f.key)}
-                    >
-                      {f.label}
-                    </DropdownMenuCheckboxItem>
+          <Field className="w-auto">
+            <FieldLabel htmlFor="vendor" className="sr-only">
+              {t.assets.vendorFilter}
+            </FieldLabel>
+            <Select value={toNone(vendorId)} onValueChange={(v) => setVendorId(fromNone(v))}>
+              <SelectTrigger id="vendor" className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={NONE}>{t.assets.allVendors}</SelectItem>
+                  {vendorList.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name}
+                    </SelectItem>
                   ))}
-                </DropdownMenuGroup>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
 
-      <StateBoundary
-        isLoading={assets.isLoading}
-        error={assets.error as Error | null}
-        isEmpty={assets.data?.items.length === 0}
-        emptyTitle={t.assets.empty}
-        emptyHint={t.assets.emptyHint}
-        onRetry={() => assets.refetch()}
-      >
-        <>
-          <TableFrame>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox
-                      aria-label={t.assets.selectPage}
-                      checked={
-                        selection.pageAllSelected(pageIds)
-                          ? true
-                          : selection.pageSomeSelected(pageIds)
-                            ? "indeterminate"
-                            : false
-                      }
-                      onCheckedChange={() => selection.togglePage(pageIds)}
-                    />
-                  </TableHead>
-                  {/* The number is not optional: it is what a row is read by
-                      and what the click opens. */}
-                  <TableHead>{t.assets.sn}</TableHead>
-                  {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
-                    <TableHead key={k}>{t.assets.columnLabels[k]}</TableHead>
-                  ))}
-                  {extraColumns.map((k) => (
-                    <TableHead key={k}>{available.find((f) => f.key === k)?.label ?? k}</TableHead>
-                  ))}
-                  {/* The row actions. No heading text: three icon buttons that
-                      appear on hover are not a column of data, and a label over
-                      them would claim they are. */}
-                  <TableHead className="w-px" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(assets.data?.items ?? []).map((a, i) => (
-                  <ContextMenu key={a.id}>
-                    <ContextMenuTrigger asChild>
-                      {/* The whole row opens the device. It used to carry the
-                          pointer cursor while only the number cell listened,
-                          so four columns out of five looked clickable and
-                          were not. */}
-                      <TableRow
-                        className="group/row cursor-pointer"
-                        onClick={() => navigate(`/assets/${a.id}`)}
+          {/* Only within a category: models belong to categories, and a picker
+              listing every model in the system would offer choices that cannot
+              match the rows on screen. */}
+          {categoryId && (
+            <Field className="w-auto">
+              <FieldLabel htmlFor="model" className="sr-only">
+                {t.assets.modelFilter}
+              </FieldLabel>
+              <Select value={toNone(modelId)} onValueChange={(v) => setModelId(fromNone(v))}>
+                <SelectTrigger id="model" className="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value={NONE}>{t.assets.allModels}</SelectItem>
+                    {modelList
+                      .filter((m) => (m.category_ids ?? []).includes(categoryId))
+                      .map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {modelLabel(m)}
+                        </SelectItem>
+                      ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+
+          {categoryId && (
+            <Field orientation="horizontal" className="w-auto">
+              <Checkbox
+                id="descendants"
+                checked={includeDescendants}
+                onCheckedChange={(v) => setIncludeDescendants(v === true)}
+              />
+              <FieldLabel htmlFor="descendants">{t.assets.includeDescendants}</FieldLabel>
+            </Field>
+          )}
+
+          {/* The column picker used to be a bordered box of checkboxes standing
+              between the filters and the table, as tall as it had fields. It is
+              a menu on the table's own bar now: a category with twelve fields no
+              longer pushes the rows off the screen. */}
+          {/* Always here, not only once a category is chosen: the built-in
+              columns exist on every device, so there is something to choose even
+              under "all categories". */}
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="ml-auto" aria-label={t.assets.columns}>
+                <MoreVerticalIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>{t.assets.columns}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                {BUILTIN_COLUMNS.map((k) => (
+                  <DropdownMenuCheckboxItem
+                    key={k}
+                    checked={builtins.shows(k)}
+                    // Kept open: choosing columns is a handful of decisions in a
+                    // row, and closing after each one makes it four trips.
+                    onSelect={(e) => e.preventDefault()}
+                    onCheckedChange={() => builtins.toggle(k)}
+                  >
+                    {t.assets.columnLabels[k]}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuGroup>
+              {available.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>{t.assets.fieldColumns}</DropdownMenuLabel>
+                  <DropdownMenuGroup>
+                    {available.map((f) => (
+                      <DropdownMenuCheckboxItem
+                        key={f.key}
+                        checked={extraColumns.includes(f.key)}
+                        disabled={!unlocked(f)}
+                        title={unlocked(f) ? undefined : t.assets.modelColumnLocked}
+                        onSelect={(e) => e.preventDefault()}
+                        onCheckedChange={() => toggle(f.key)}
                       >
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            aria-label={t.common.selectOne(a.display_name)}
-                            checked={selection.has(a.id)}
-                            // The modifier has to be read here rather than from
-                            // the cell: onCheckedChange carries no event, and a
-                            // handler on the parent runs after Radix has already
-                            // toggled, so the range and the tick cancel out.
-                            // Radix composes this before its own and skips that
-                            // one when the default is prevented, which is what
-                            // keeps a Shift-click from also toggling the row.
-                            onClick={(e) => {
-                              if (!e.shiftKey) return
-                              e.preventDefault()
-                              selection.extendTo(a.id, i, pageIds)
-                            }}
-                            onCheckedChange={() => selection.toggle(a.id, i)}
-                          />
-                        </TableCell>
-                        <TableCell className="font-mono">{a.display_name}</TableCell>
-                        {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
-                          <TableCell
-                            key={k}
-                            // A note is a sentence: truncated, with the whole
-                            // of it on hover, or one long one sets the width of
-                            // every column beside it.
-                            className={cn(
-                              k === "note" && "text-muted-foreground max-w-48 truncate",
-                            )}
-                            title={k === "note" ? a.note : undefined}
-                          >
-                            {builtinCell(k, a)}
-                          </TableCell>
-                        ))}
-                        {extraColumns.map((k) => (
-                          <TableCell key={k}>{cellText(a.attrs[k])}</TableCell>
-                        ))}
-                        {/* One device, no ticking first. The developer's own
-                            complaint was the number of clicks a single device
-                            cost, and ticking it only to untick it afterwards
-                            was two of them.
+                        {f.label}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
-                            stopPropagation on every one: these sit inside the
-                            row's own click target, and without it a print would
-                            also open the device behind the dialog. Each carries
-                            an aria-label -- an icon button with no accessible
-                            name is a button a keyboard user cannot identify.
-                            Visible on hover and on focus, so tabbing through
-                            reaches something that can be seen. */}
-                        <TableCell className="w-px" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
-                            {printing && (
+        <StateBoundary
+          isLoading={assets.isLoading}
+          error={assets.error as Error | null}
+          isEmpty={assets.data?.items.length === 0}
+          emptyTitle={t.assets.empty}
+          emptyHint={t.assets.emptyHint}
+          onRetry={() => assets.refetch()}
+        >
+          <>
+            <TableFrame>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        aria-label={t.assets.selectPage}
+                        checked={
+                          selection.pageAllSelected(pageIds)
+                            ? true
+                            : selection.pageSomeSelected(pageIds)
+                              ? "indeterminate"
+                              : false
+                        }
+                        onCheckedChange={() => selection.togglePage(pageIds)}
+                      />
+                    </TableHead>
+                    {/* The number is not optional: it is what a row is read by
+                        and what the click opens. */}
+                    <TableHead>{t.assets.sn}</TableHead>
+                    {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
+                      <TableHead key={k}>{t.assets.columnLabels[k]}</TableHead>
+                    ))}
+                    {extraColumns.map((k) => (
+                      <TableHead key={k}>{available.find((f) => f.key === k)?.label ?? k}</TableHead>
+                    ))}
+                    {/* The row actions. No heading text: three icon buttons that
+                        appear on hover are not a column of data, and a label over
+                        them would claim they are. */}
+                    <TableHead className="w-px" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(assets.data?.items ?? []).map((a, i) => (
+                    <ContextMenu key={a.id}>
+                      <ContextMenuTrigger asChild>
+                        {/* The whole row opens the device. It used to carry the
+                            pointer cursor while only the number cell listened,
+                            so four columns out of five looked clickable and
+                            were not. */}
+                        <TableRow
+                          className="group/row cursor-pointer"
+                          onClick={() => navigate(`/assets/${a.id}`)}
+                        >
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              aria-label={t.common.selectOne(a.display_name)}
+                              checked={selection.has(a.id)}
+                              // The modifier has to be read here rather than from
+                              // the cell: onCheckedChange carries no event, and a
+                              // handler on the parent runs after Radix has already
+                              // toggled, so the range and the tick cancel out.
+                              // Radix composes this before its own and skips that
+                              // one when the default is prevented, which is what
+                              // keeps a Shift-click from also toggling the row.
+                              onClick={(e) => {
+                                if (!e.shiftKey) return
+                                e.preventDefault()
+                                selection.extendTo(a.id, i, pageIds)
+                              }}
+                              onCheckedChange={() => selection.toggle(a.id, i)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-mono">{a.display_name}</TableCell>
+                          {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
+                            <TableCell
+                              key={k}
+                              // A note is a sentence: truncated, with the whole
+                              // of it on hover, or one long one sets the width of
+                              // every column beside it.
+                              className={cn(
+                                k === "note" && "text-muted-foreground max-w-48 truncate",
+                              )}
+                              title={k === "note" ? a.note : undefined}
+                            >
+                              {builtinCell(k, a)}
+                            </TableCell>
+                          ))}
+                          {extraColumns.map((k) => (
+                            <TableCell key={k}>{cellText(a.attrs[k])}</TableCell>
+                          ))}
+                          {/* One device, no ticking first. The developer's own
+                              complaint was the number of clicks a single device
+                              cost, and ticking it only to untick it afterwards
+                              was two of them.
+
+                              stopPropagation on every one: these sit inside the
+                              row's own click target, and without it a print would
+                              also open the device behind the dialog. Each carries
+                              an aria-label -- an icon button with no accessible
+                              name is a button a keyboard user cannot identify.
+                              Visible on hover and on focus, so tabbing through
+                              reaches something that can be seen. */}
+                          <TableCell className="w-px" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+                              {printing && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  aria-label={t.assets.rowPrint}
+                                  disabled={!can("print")}
+                                  onClick={() => setPrintingOne(a.id)}
+                                >
+                                  <PrinterIcon />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="icon-sm"
-                                aria-label={t.assets.rowPrint}
-                                disabled={!can("print")}
-                                onClick={() => setPrintingOne(a.id)}
+                                aria-label={t.assets.rowTransfer}
+                                disabled={!can("transfer.create")}
+                                onClick={() => setRowTransfer({ id: a.id, action: "checkout" })}
                               >
-                                <PrinterIcon />
+                                <ArrowRightLeftIcon />
                               </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label={t.assets.rowTransfer}
-                              disabled={!can("transfer.create")}
-                              onClick={() => setRowTransfer({ id: a.id, action: "checkout" })}
-                            >
-                              <ArrowRightLeftIcon />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label={t.assets.rowDetail}
-                              onClick={() => navigate(`/assets/${a.id}`)}
-                            >
-                              <InfoIcon />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    </ContextMenuTrigger>
-                    {/* The same actions the selection bar offers, reachable on
-                        one device without ticking it first. */}
-                    <ContextMenuContent>
-                      {/* Reading before doing: the dialog a click opens shows
-                          the last five movements, and this is the way to the
-                          rest of them without opening it first. */}
-                      <ContextMenuItem onSelect={() => navigate(`/assets/${a.id}/history`)}>
-                        {t.assets.fullHistory}
-                      </ContextMenuItem>
-                      <ContextMenuSeparator />
-                      {transferActions().map(([action, label]) => (
-                        <ContextMenuItem
-                          key={action}
-                          // Disabled rather than hidden: a colleague who cannot
-                          // see the item has no way to learn it exists.
-                          disabled={!can("transfer.create")}
-                          onSelect={() => setRowTransfer({ id: a.id, action })}
-                        >
-                          {label}
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={t.assets.rowDetail}
+                                onClick={() => navigate(`/assets/${a.id}`)}
+                              >
+                                <InfoIcon />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </ContextMenuTrigger>
+                      {/* The same actions the selection bar offers, reachable on
+                          one device without ticking it first. */}
+                      <ContextMenuContent>
+                        {/* Reading before doing: the dialog a click opens shows
+                            the last five movements, and this is the way to the
+                            rest of them without opening it first. */}
+                        <ContextMenuItem onSelect={() => navigate(`/assets/${a.id}/history`)}>
+                          {t.assets.fullHistory}
                         </ContextMenuItem>
-                      ))}
-                      {/* One device, without ticking it first -- the same
-                          reason every other action is on this menu. */}
-                      {printing && (
+                        <ContextMenuSeparator />
+                        {transferActions().map(([action, label]) => (
+                          <ContextMenuItem
+                            key={action}
+                            // Disabled rather than hidden: a colleague who cannot
+                            // see the item has no way to learn it exists.
+                            disabled={!can("transfer.create")}
+                            onSelect={() => setRowTransfer({ id: a.id, action })}
+                          >
+                            {label}
+                          </ContextMenuItem>
+                        ))}
+                        {/* One device, without ticking it first -- the same
+                            reason every other action is on this menu. */}
+                        {printing && (
+                          <ContextMenuItem
+                            disabled={!can("print")}
+                            onSelect={() => setPrintingOne(a.id)}
+                          >
+                            {t.print.action}
+                          </ContextMenuItem>
+                        )}
+                        <ContextMenuSeparator />
                         <ContextMenuItem
-                          disabled={!can("print")}
-                          onSelect={() => setPrintingOne(a.id)}
+                          variant="destructive"
+                          disabled={!can("asset.delete")}
+                          onSelect={() => setDeleting(a)}
                         >
-                          {t.print.action}
+                          {t.assets.delete}
                         </ContextMenuItem>
-                      )}
-                      <ContextMenuSeparator />
-                      <ContextMenuItem
-                        variant="destructive"
-                        disabled={!can("asset.delete")}
-                        onSelect={() => setDeleting(a)}
-                      >
-                        {t.assets.delete}
-                      </ContextMenuItem>
-                    </ContextMenuContent>
-                  </ContextMenu>
-                ))}
-              </TableBody>
-            </Table>
-          </TableFrame>
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableFrame>
 
-          {/* Only once the whole page is ticked. Twenty rows out of six hundred
-              is a deliberate act that needs no offer; a full page is the gesture
-              that usually means "and the rest as well". */}
-          {selection.pageAllSelected(pageIds) && (
-            <SelectAllBanner
-              params={params}
-              total={assets.data?.total ?? 0}
-              selectedCount={selection.ids.length}
-              onSelectAll={selection.add}
+            {/* Only once the whole page is ticked. Twenty rows out of six hundred
+                is a deliberate act that needs no offer; a full page is the gesture
+                that usually means "and the rest as well". */}
+            {selection.pageAllSelected(pageIds) && (
+              <SelectAllBanner
+                params={params}
+                total={assets.data?.total ?? 0}
+                selectedCount={selection.ids.length}
+                onSelectAll={selection.add}
+              />
+            )}
+
+            {/* Under the table, where you land after reading it. */}
+            <Pager
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPage={setPage}
+              onPageSize={setPageSize}
             />
-          )}
-
-          {/* Under the table, where you land after reading it. */}
-          <Pager
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onPage={setPage}
-            onPageSize={setPageSize}
-          />
-        </>
-      </StateBoundary>
+          </>
+        </StateBoundary>
+      </div>
 
       {done && (
         <Alert role="status">

@@ -73,7 +73,7 @@ export function Categories() {
   }
 
   return (
-    <div className="grid gap-6">
+    <div>
       {/* The list is what the page is for; creating a category is occasional,
           so the form waits behind a button. */}
       <PageHeader title={tMeta.categories.title} hint={tMeta.categories.selectHint}>
@@ -152,25 +152,29 @@ export function Categories() {
         </Dialog>
       </PageHeader>
 
-      <ListToolbar q={listQuery.q} onQ={listQuery.setQ} searchHint={tMeta.categories.searchHint} />
+      {/* 56px below the title, 22px inside the list -- and stated here rather
+          than as one gap on the root, whose other children are dialogs. */}
+      <div className="mt-14 grid gap-[22px]">
+        <ListToolbar q={listQuery.q} onQ={listQuery.setQ} searchHint={tMeta.categories.searchHint} />
 
-      <StateBoundary
-        isLoading={categories.isLoading}
-        error={categories.error as Error | null}
-        isEmpty={categories.data?.length === 0}
-        emptyTitle={tMeta.categories.empty}
-        emptyHint={tMeta.categories.emptyHint}
-      >
-        <CategoryTable
-          categories={categories.data ?? []}
-          search={listQuery.q}
-          onOpen={setEditing}
-          onCreateChild={(c) => {
-            setParentId(c.id)
-            setCreateOpen(true)
-          }}
-        />
-      </StateBoundary>
+        <StateBoundary
+          isLoading={categories.isLoading}
+          error={categories.error as Error | null}
+          isEmpty={categories.data?.length === 0}
+          emptyTitle={tMeta.categories.empty}
+          emptyHint={tMeta.categories.emptyHint}
+        >
+          <CategoryTable
+            categories={categories.data ?? []}
+            search={listQuery.q}
+            onOpen={setEditing}
+            onCreateChild={(c) => {
+              setParentId(c.id)
+              setCreateOpen(true)
+            }}
+          />
+        </StateBoundary>
+      </div>
 
       {editing && (
         <CategoryEditor
