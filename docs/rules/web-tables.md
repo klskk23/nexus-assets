@@ -103,3 +103,48 @@
   表单容器是 `FieldGroup`（栅格写成 `className="sm:grid sm:grid-cols-2"`），
   空状态是 `Empty`，提示是 `Alert`。`Field` 默认占满宽度 ——
   要窄的控件把宽度写在 `Field` 上，写在 `SelectTrigger` 上不生效。
+
+## 版面数字（018）
+
+**这些数字不是风格偏好，是量出来的，改之前先读完这一节。**
+
+| | | 为什么 |
+|---|---|---|
+| 表格行高 | **48px** | 来自 `TableCell` 的 `py-[14px]` + 20px 行盒，**不是** `TableRow` 上的 `h-12` |
+| 单元格内边距 | `px-5 py-[14px]` | 表头同款；表头字重 600、色 `--secondary-foreground` |
+| 分区之间 | **56px**（`gap-14`） | 页标题与内容之间也是这个 |
+| 区内成组 | **22px**（`gap-[22px]`） | 搜索条 / 表格 / 翻页条是**一组**，不是三个分区 |
+| 内容列 | **≤960px 贴左** | 在 `AppShell` 的 `<main>` 里一次设定；正文类 760、表单 620–640 |
+| 圆角 | **28 / 20 / 999** 三档 | 容器 / 下沉块与提示块 / 小控件。例外两处，见 `index.css` 注释 |
+| 输入与选择 | **48px**（登录 50px） | 按钮**不按高度规定**，按 `py-3`（≈44px） |
+
+### 带控件的单元格必须 `py-0`
+
+`TableCell` 里已经写了 `[&:has(button)]:py-0`、`[&:has([data-slot=badge])]:py-0`。
+**不要拿掉。** 一个 22px 的状态芯片或 32px 的行尾按钮组，加上 28px 内边距，
+会让有芯片的行比没芯片的行高一截 —— 一列里两种行高。
+
+参照稿不会遇到这件事，因为**它的芯片是普通 inline `<span>`**，
+而行内盒的纵向内边距根本不进入行盒。我们的 `Badge` 是 `inline-flex`，
+是一个原子行内块，它的高度会顶进行盒里。这是这一轮花时间最长的一处，记在这里。
+
+### 中文标题不要挂 `font-heading`
+
+Caprasimo **只有 latin 子集**。挂在「资产」两个字上，什么也不会发生 ——
+017 曾经为它「没有粗体」写过一整段推理，而前提是错的：那两个字从来没被它渲染过。
+
+中文层级靠字号字重：页标题 `text-[40px]/1.2 font-bold`，区标题 `text-[21px] font-bold`。
+**反过来也成立**：资产编号、计数、页码、流程序号是拉丁与数字，**应当**加 `font-heading`。
+`PageHeader` 的 `title` 收 `ReactNode`，所以标题本身是拉丁的页面自己传进来。
+
+### 焦点环是 outline，不是 ring
+
+`index.css` 的 `:focus-visible` 一条管全站：`outline: 2px solid var(--ring); outline-offset: 2px`。
+**不要在组件上再写 `focus-visible:ring-*`，更不要写 `outline-none`** ——
+后者会把全局规则关掉，而它偏偏出现在最需要焦点环的那些控件上。
+
+唯一的例外是 `InputGroup`：环画在药丸本身，内层 `input` 用 `focus-visible:outline-none` 让位，
+否则 outline 会在圆角组里横着画一个矩形。
+
+四种底色实测 5.09–6.22:1（WCAG 1.4.11 要 3:1）。017 那版失败在**半透明**（1.69），
+不在机制 —— 换机制时重量过一遍，数字记在 `specs/018-organic-layout/research.md` 第五节。

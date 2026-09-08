@@ -79,7 +79,7 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
     // picker on the right. Stacked in two rows they read as two unrelated
     // controls that happen to sit near each other.
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-      <p className="text-muted-foreground text-sm">
+      <p className="text-muted-foreground text-sm tabular-nums">
         {t.assets.rangeOf(
           total === 0 ? 0 : page * pageSize + 1,
           Math.min((page + 1) * pageSize, total),
