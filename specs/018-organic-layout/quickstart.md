@@ -12,6 +12,84 @@ NEXUS_JWT_SECRET=... NEXUS_ADMIN_EMAIL=... NEXUS_ADMIN_PASSWORD=... \
 NEXUS_ALLOWED_EMAIL_DOMAINS=example.com NEXUS_DB_PATH=/tmp/qs018.db /tmp/nexus seed 60
 ```
 
+## 尺子
+
+把这一段贴进控制台，下面每一步都用它量。**目测不算验收** ——
+这一轮改的全部是数字，而人眼分不出 44 和 48。
+
+```js
+// 令牌名反查：把量到的颜色说成人话，而不是一串 rgb
+const GROUND = {
+  'rgb(245, 234, 216)': '--background 页面',
+  'rgb(235, 221, 197)': '--card 浮起',
+  'rgb(249, 244, 237)': '--well 下沉',
+  'rgb(238, 231, 219)': '--secondary 次级',
+  'rgba(0, 0, 0, 0)': '透明（继承父级）',
+}
+const px = (v) => Math.round(parseFloat(v) * 100) / 100
+
+// ruler('td') —— 一个选择器的盒子读数
+window.ruler = (sel) => {
+  const rows = [...document.querySelectorAll(sel)].slice(0, 8).map((e) => {
+    const s = getComputedStyle(e)
+    return {
+      高: px(e.getBoundingClientRect().height),
+      宽: px(e.getBoundingClientRect().width),
+      内边距: `${px(s.paddingTop)}/${px(s.paddingRight)}/${px(s.paddingBottom)}/${px(s.paddingLeft)}`,
+      圆角: px(s.borderRadius),
+      字号: px(s.fontSize),
+      字重: s.fontWeight,
+      底: GROUND[s.backgroundColor] ?? s.backgroundColor,
+    }
+  })
+  console.table(rows)
+  return rows
+}
+
+// gaps('main > *') —— 相邻分区的实测间距（外边距会塌陷，所以量边到边）
+window.gaps = (sel) => {
+  const el = [...document.querySelectorAll(sel)]
+  const out = el.slice(1).map((e, i) => ({
+    从: el[i].className.slice(0, 40) || el[i].tagName,
+    到: e.className.slice(0, 40) || e.tagName,
+    间距: px(e.getBoundingClientRect().top - el[i].getBoundingClientRect().bottom),
+  }))
+  console.table(out)
+  return out
+}
+
+// grounds() —— 全站地面普查。--card 的每一处命中都要能回答「它浮起来了吗」
+window.grounds = () => {
+  const hit = {}
+  for (const e of document.querySelectorAll('*')) {
+    const bg = getComputedStyle(e).backgroundColor
+    if (bg === 'rgba(0, 0, 0, 0)') continue
+    ;(hit[GROUND[bg] ?? bg] ??= []).push(e.className || e.tagName)
+  }
+  for (const [k, v] of Object.entries(hit)) console.log(k, v.length, v.slice(0, 12))
+  return hit
+}
+```
+
+三个函数覆盖这份走查里的全部读数：`ruler` 量盒子（行高、内边距、圆角、字重），
+`gaps` 量节奏（分区 56、成组 22–24），`grounds` 查地面分工。
+
+### 改造前的读数（2026-09-08，1920×1000 的资产列表）
+
+这些是**动第一行代码之前**用上面的尺子量出来的，不是估的。
+走查时拿新读数对着这一列看：
+
+| 量什么 | 改造前 | 目标 |
+|---|---|---|
+| `tbody td` 高 | **45px** | 48px |
+| `tbody td` 内边距 | **6/0/6/8** | 15/20/15/20 |
+| `thead th` 高 / 字重 | **36px / 500** | 由内边距得出 / 600 |
+| 内容列宽（窗口 1920） | **1616px** —— 无上限 | ≤960px，右侧留白 |
+| `--card` 命中数 | **2**（表格框、外壳） | 只剩真正浮起的东西 |
+
+**「内容列 1616px」这一条最能说明这一轮在改什么**：它不是「居中列太窄」，
+是根本没有边界（research 第一节）。
+
 ---
 
 **1. 内容列贴左且有上限。**

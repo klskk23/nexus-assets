@@ -13,44 +13,44 @@
 
 ## 第 1 阶段：基线（做任何改动之前）
 
-- [ ] T001 起本地实例并灌种子数据（`quickstart.md` 顶部的命令），确认 18 个路由都打得开
-- [ ] T002 **拍改造前的基线截图**，18 个路由各一张，存 `.playwright-mcp/before/`。
+- [X] T001 起本地实例并灌种子数据（`quickstart.md` 顶部的命令），确认 16 个路由都打得开
+- [X] T002 **拍改造前的基线截图**，16 个路由各一张，存 `.playwright-mcp/before/`。
       版面轮改完之后「变好了没有」只能靠对比回答，事后补拍不回来
-- [ ] T003 写一段量尺子的控制台片段并存进 `quickstart.md`：给定选择器吐出
+- [X] T003 写一段量尺子的控制台片段并存进 `quickstart.md`：给定选择器吐出
       行高、内边距、相邻分区间距、背景色。**逐页目测「看起来对」不算验收**
 
 ## 第 2 阶段：共用件（阻塞所有故事）
 
 改完这一阶段，**十个表格页与八个元数据页一起动**。先改页面再改共用件等于每页看两遍。
 
-- [ ] T004 `web/src/components/ui/table.tsx`：`TableHead` 的 `h-9 px-2` 改成
+- [X] T004 `web/src/components/ui/table.tsx`：`TableHead` 的 `h-9 px-2` 改成
       `px-5 py-[15px]`，字重 `font-medium` → `font-semibold`，
       色 `text-muted-foreground` → `text-secondary-foreground`
-- [ ] T005 `web/src/components/ui/table.tsx`：`TableCell` 的 `px-2 py-1.5` 改成
+- [X] T005 `web/src/components/ui/table.tsx`：`TableCell` 的 `px-2 py-1.5` 改成
       `px-5 py-[15px]`，字号 14px，并加 `tabular-nums`（FR-013：列里的数字必须等宽 ——
       台账是竖着读的，比例数字会让一列编号看起来参差）。
       **行高 48px 由内边距得出，不要给 `TableRow` 设 `h-12`** ——
       显式高度会和含芯片、含按钮的行打架（research 第三节）
-- [ ] T006 `web/src/features/common/TableFrame.tsx`：`bg-card` → `bg-background`。
+- [X] T006 `web/src/features/common/TableFrame.tsx`：`bg-card` → `bg-background`。
       **边框与 28px 圆角保留** —— 稿子的容器是
       `border 1px + radius 28px + background: var(--background)`，不是去掉容器
-- [ ] T007 `web/src/features/common/PageHeader.tsx`：**摘掉中文 h1 上的 `font-heading`**，
+- [X] T007 `web/src/features/common/PageHeader.tsx`：**摘掉中文 h1 上的 `font-heading`**，
       改成 `text-[40px] leading-[1.2] font-bold`。017 在这里写了条注释解释为什么不加字重 ——
       那条推理建立在「Caprasimo 渲染了这些字」的错误前提上，注释一并改掉
-- [ ] T008 `web/src/features/common/ListToolbar.tsx`：搜索框 640px 上限；
+- [X] T008 `web/src/features/common/ListToolbar.tsx`：搜索框 640px 上限；
       控件按**纵向内边距**规定而非高度（研究第七节：按钮 11–13px 内边距 ≈ 44px，
       与「输入/选择 48px」不冲突）
-- [ ] T009 `web/src/index.css`：焦点环从 `ring-[3px] ring-ring` 换成
+- [X] T009 `web/src/index.css`：焦点环从 `ring-[3px] ring-ring` 换成
       `outline: 2px solid var(--ring); outline-offset: 2px`。
       **调研已实测四种底色 5.09–6.22，全过**（research 第五节），本任务只做机制替换
-- [ ] T010 全站悬停态统一：每个可交互元素给 `--accent` 浅底 + `--accent-foreground` 文字，
+- [X] T010 全站悬停态统一：每个可交互元素给 `--accent` 浅底 + `--accent-foreground` 文字，
       主按钮压深到 `#b3632f`，链接默认 `--accent-foreground`、hover 转 `--primary`（FR-016）。
       **稿子的全局规则第 8 条，此前一个任务都没对上**
-- [ ] T011 `web/src/features/common/Pager.tsx`：节奏调到区内成组 22–24px。
+- [X] T011 `web/src/features/common/Pager.tsx`：节奏调到区内成组 22–24px。
       **结构一字不动** —— 它必须仍是表格下方的一整行，含区间、页码、每页条数（FR-021）
-- [ ] T012 跑 `npx vitest run --maxWorkers=4`。**预期 367 全绿** ——
+- [X] T012 跑 `npx vitest run --maxWorkers=4`。**预期 367 全绿** ——
       共用件只改类名不动角色。**有测试红说明动到了 DOM 结构，停下来查**
-- [ ] T013 截图：任选两个元数据页 + 资产列表，确认行高 48、表头字重与色已变。
+- [X] T013 截图：任选两个元数据页 + 资产列表，确认行高 48、表头字重与色已变。
       对照 T002 的基线
 
 ## 第 3 阶段：US2 三档地面各归各位（P1）
@@ -207,7 +207,7 @@
 
 ## 第 12 阶段：US9 三个没画的页面（P3）
 
-**放在最后是有原因的**：它们要照抄的是前面十五页**收敛出来的**语汇，
+**放在最后是有原因的**：它们要照抄的是前面十三页**收敛出来的**语汇，
 不是我对规范的第一次解读。
 
 - [ ] T068 [P] [US9] `web/src/routes/Import.tsx`：按收敛后的语汇重排流程页
@@ -224,7 +224,7 @@
       ③ 表格与统计里的数字列都带 `tabular-nums`（FR-013）
 - [ ] T073 两份 i18n 复核。**本轮预期零新增文案**；若有（如侧栏底部文字的替代），
       两种语言齐全，`tests/i18n.test.ts` 的孤儿检查为零
-- [ ] T074 **英文界面逐页走查**：18 个路由在英文下药丸不换行、48px 行高不被撑破、
+- [ ] T074 **英文界面逐页走查**：16 个路由在英文下药丸不换行、48px 行高不被撑破、
       固定列宽没把内容挤没（SC-007）
 - [ ] T075 **键盘走查**：从页头 Tab 到页尾，每个可交互元素都到得了，
       焦点环（outline 2px + offset 2）始终可见（SC-008）
@@ -279,7 +279,7 @@
 **六个需要开发者裁定的点**：T021（Alert 的 bg-card）、T043（侧栏两版裁定）、T048（分布条比例基准）、T050（时间线当前态）、T061（登录域名提示）、T071（三页确认）。
 **按阶段攒批问，不逐个打断** —— 开发者明确要求过。
 
-**MVP = 第 1–4 阶段**（T001–T031）：共用件 + 地面 + 十八页里十个表格页到位。
+**MVP = 第 1–4 阶段**（T001–T031）：共用件 + 地面 + 十六页里十个表格页到位。
 到这里版面已经是新的了 —— 但按决策 129，本轮**一个分支做完再发**，不中途发布。
 
 **任务总数 81，其中 12 个标了 `[P]`，6 个是需要开发者裁定的确认点。**

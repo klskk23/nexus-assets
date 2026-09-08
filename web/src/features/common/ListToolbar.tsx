@@ -34,11 +34,15 @@ interface Props {
 export function ListToolbar({ q, onQ, searchHint, filters, actions, inputRef }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Field className="w-auto">
+      {/* The search box takes the row's slack up to 640px, rather than a fixed
+       * 256: it is the control people reach for first, and on a metadata page
+       * with no filters beside it a stub of a search box in a wide row reads
+       * as an afterthought. Filters keep their own width and wrap below it. */}
+      <Field className="w-auto max-w-[640px] min-w-64 flex-1">
         <FieldLabel htmlFor="list-q" className="sr-only">
           {searchHint}
         </FieldLabel>
-        <InputGroup className="w-64">
+        <InputGroup className="w-full">
           <InputGroupAddon>
             <SearchIcon />
           </InputGroupAddon>

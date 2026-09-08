@@ -78,7 +78,7 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
     // One row: the range on the left, the page links in the middle, the size
     // picker on the right. Stacked in two rows they read as two unrelated
     // controls that happen to sit near each other.
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
       <p className="text-muted-foreground text-sm">
         {t.assets.rangeOf(
           total === 0 ? 0 : page * pageSize + 1,

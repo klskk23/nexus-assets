@@ -24,6 +24,10 @@
   --popover-foreground: #201e1d;
   --primary: #c67139;
   --primary-foreground: #f5ead8;
+  /* Terracotta pressed one stop darker, named by the prototype (handoff §hover).
+   * Not derivable: `primary/90` composites toward the cream ground and comes
+   * out LIGHTER, so the button lifts under the cursor instead of pressing. */
+  --primary-hover: #b3632f;
   --secondary: #eee7db;
   --secondary-foreground: #2e2b25;
   --muted: #eee7db;
@@ -82,6 +86,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -161,6 +166,21 @@
 @layer base {
   * {
     @apply border-border outline-ring;
+  }
+
+  /* Focus is one rule for the whole product, not a ring re-declared on eleven
+   * primitives and missing from everything else -- links, the nav, any div
+   * given a tabindex.
+   *
+   * 2px solid at 2px offset, measured against all four grounds this palette
+   * puts under a control: 5.72:1 on the page, 5.09 on card, 6.22 on well,
+   * 5.54 on secondary. WCAG 1.4.11 asks 3:1 and 2.4.13 asks a 2px perimeter.
+   * 017's ring failed at 1.69 because it was translucent, not because of the
+   * mechanism; the offset is what makes this one measurable, since the ring
+   * lands on the ground rather than half on the control's own border. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
   body {
     @apply bg-background text-foreground font-sans;
