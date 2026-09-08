@@ -190,7 +190,7 @@ export function TransferForm({
     (action !== "reassign" || ownerID !== "")
 
   return (
-    <div className="grid gap-4">
+    <div className="grid max-w-[640px] gap-4">
       <Field>
         <FieldLabel htmlFor="td-action">{tTransfer.actions.action}</FieldLabel>
         <ToggleGroup

@@ -67,10 +67,16 @@
    * something else, 16 for mid-sized surfaces, 28 for cards, dialogs and
    * panels. xl repeats lg rather than inventing a fourth.
    *
-   * Small controls -- buttons, inputs, tabs, toggles -- are not on this scale
-   * at all; they are pills, and say rounded-full at the component. */
+   * Small controls -- buttons, inputs, tabs, toggles, status chips -- are not
+   * on this scale at all; they are pills, and say rounded-full at the
+   * component.
+   *
+   * Two things are deliberately off all four of those numbers. A checkbox is
+   * 4px: at 999 it would be a radio button, which already means something
+   * else. And a menu item is 8px, because it is inset in a surface that is
+   * itself 20 -- a row with its parent's corner reads as a second panel. */
   --radius-sm: 8px;
-  --radius-md: 16px;
+  --radius-md: 20px;
   --radius-lg: 28px;
   --radius-xl: 28px;
   /* Latin first, Chinese second, system last. Order matters: Figtree has no CJK

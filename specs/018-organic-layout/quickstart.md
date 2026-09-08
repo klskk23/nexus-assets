@@ -141,6 +141,7 @@ grep -rn "bg-card\|<Card" web/src --include='*.tsx'
 |---|---|
 | `features/assets/ActionBar.tsx` | `sticky bottom-4`，行从它下面滚过去 —— 它真的浮着 |
 | `components/ui/card.tsx` | 「浮起」这个原语本身 |
+| `components/ui/dialog.tsx` | 对话框真的浮在页面之上 —— 这一处是 018 **加上**去的 |
 | `routes/AppShell.tsx` | **暂时**：侧栏两版裁定前不动（见第 7 阶段） |
 
 `ui/alert.tsx` 曾经在这份名单上，2026-09-08 由开发者裁定移出 ——

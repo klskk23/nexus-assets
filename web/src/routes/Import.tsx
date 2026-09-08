@@ -123,7 +123,7 @@ export function Import() {
   const canCommit = report !== null && report.ok === report.total && report.total > 0
 
   return (
-    <div className="grid max-w-4xl gap-14">
+    <div className="grid max-w-[760px] gap-14">
       <PageHeader title={tImport.title} />
 
       <section aria-label={tImport.step1} className="grid content-start gap-3">
