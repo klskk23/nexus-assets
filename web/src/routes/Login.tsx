@@ -9,9 +9,8 @@ import { t } from "@/i18n"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Field, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
-import { Separator } from "@/components/ui/separator"
 
 interface LoginResponse {
   token: string
@@ -65,81 +64,88 @@ export function Login() {
   }
 
   return (
-    /* Two columns: what this is on the left, the way in on the right. The left
-     * one goes away below md rather than stacking -- on a phone the way in
-     * should be the first thing on screen, not the second. */
-    <div className="grid min-h-screen md:grid-cols-2">
-      <div className="hidden flex-col justify-between gap-8 p-12 md:flex">
-        <span className="font-heading text-3xl leading-none">{t.appName}</span>
-        {/* Three discs of the palette, overlapped. The one piece of decoration
-         * on the whole product, and it is here because a sign-in page is the
-         * only screen with nothing of the user's own on it to look at. */}
-        <div aria-hidden className="flex items-center">
-          <span className="bg-primary size-28 shrink-0 rounded-full" />
-          <span className="-ml-10 size-28 shrink-0 rounded-full bg-accent-2" />
-          <span className="bg-background -ml-10 size-28 shrink-0 rounded-full" />
+    /* The form on the left, the decoration on the right -- and the decoration
+     * is what goes away on a phone, not the way in. This is the one screen in
+     * the product with nothing of the user's own on it, so it is the one place
+     * that can spend space on being looked at. */
+    <div className="grid min-h-screen items-center gap-16 p-12 max-md:p-6 md:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+      <div className="grid gap-8">
+        {/* Two lines at 52px. Caprasimo covers every glyph in the product
+            name, which is exactly why it is allowed to be this loud here --
+            and why the Chinese page titles are not. */}
+        <div className="grid gap-3">
+          <span className="font-heading grid text-[52px] leading-[1.05]">
+            <span>{t.appName.split(" ")[0]}</span>
+            <span className="text-primary">{t.appName.split(" ").slice(1).join(" ")}</span>
+          </span>
+          <p className="text-muted-foreground">{t.login.tagline}</p>
         </div>
-        <p className="text-muted-foreground text-sm">{t.login.tagline}</p>
+
+        <form onSubmit={onSubmit} aria-label={t.login.title}>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="email">{t.login.email}</FieldLabel>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="username"
+                required
+                className="h-[50px]"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="password">{t.login.password}</FieldLabel>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                className="h-[50px]"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </Field>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircleIcon />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button type="submit" disabled={submitting}>
+              {submitting && <Spinner data-icon="inline-start" aria-hidden />}
+              {submitting ? t.login.submitting : t.login.submit}
+            </Button>
+
+            {/* The other way in, on the other side of a rule: one of these is a
+                password, the other is somebody else's sign-in page. */}
+            <FieldSeparator>{t.login.or}</FieldSeparator>
+            <Button variant="outline" className="w-full" asChild>
+              <a href="/api/auth/oidc/start">{t.login.google}</a>
+            </Button>
+          </FieldGroup>
+        </form>
+
+        {/* Before the button, not after a rejection. The admission boundary is
+            the domain whitelist, and someone whose account does not exist yet
+            has no other way to find that out -- the failure comes back from
+            an identity provider on another origin. The domains themselves are
+            deliberately not named: they are configuration, and this page is
+            served to anyone who can reach the host. */}
+        <p className="text-muted-foreground text-sm">{t.login.domains}</p>
       </div>
 
-      <div className="flex items-center justify-center p-6">
-        <div className="w-full max-w-sm">
-          <form onSubmit={onSubmit} aria-label={t.login.title}>
-            <FieldGroup>
-              {/* The wordmark only on narrow screens: the left column carries
-                  it everywhere else, and two of them is one too many. */}
-              <span className="font-heading text-2xl leading-none md:hidden">{t.appName}</span>
-              <Field>
-                <FieldLabel htmlFor="email">{t.login.email}</FieldLabel>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="username"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="password">{t.login.password}</FieldLabel>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </Field>
-
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircleIcon />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <Button type="submit" disabled={submitting}>
-                {submitting && <Spinner data-icon="inline-start" aria-hidden />}
-                {submitting ? t.login.submitting : t.login.submit}
-              </Button>
-            </FieldGroup>
-          </form>
-
-          {/* The other way in, on the other side of a rule: one of these is a
-              password, the other is somebody else's sign-in page. */}
-          <Separator className="my-6" />
-          <Button variant="outline" className="w-full" asChild>
-            <a href="/api/auth/oidc/start">{t.login.google}</a>
-          </Button>
-          {/* Before the button, not after a rejection. The admission boundary is
-              the domain whitelist, and someone whose account does not exist yet
-              has no other way to find that out -- the failure comes back from
-              an identity provider on another origin. The domains themselves are
-              deliberately not named: they are configuration, and this page is
-              served to anyone who can reach the host. */}
-          <p className="text-muted-foreground mt-3 text-sm">{t.login.domains}</p>
-        </div>
+      {/* Four discs, and nothing else. Deliberately none of the eight status
+          palettes: on this product a colour means a state a device is in, and
+          a decoration that borrowed one would be saying something. */}
+      <div aria-hidden className="relative hidden h-[440px] md:block">
+        <span className="bg-card absolute top-12 left-10 size-[300px] rounded-full" />
+        <span className="bg-accent-2 absolute top-40 left-56 size-[190px] rounded-full opacity-[.62]" />
+        <span className="bg-primary absolute top-24 left-[26rem] size-[132px] rounded-full opacity-90" />
+        <span className="border-border absolute top-64 left-[30rem] size-[84px] rounded-full border" />
       </div>
     </div>
   )

@@ -170,30 +170,30 @@
 
 ## 第 9 阶段：US6 详情与流转（P2）
 
-- [ ] T053 [US6] `web/src/routes/AssetDetail.tsx`：属性区改 `repeat(4, minmax(0,1fr))`
+- [X] T053 [US6] `web/src/routes/AssetDetail.tsx`：属性区改 `repeat(4, minmax(0,1fr))`
       网格，窄屏降 `repeat(2, ...)`，整块坐 `--well`、圆角 28、内边距 ≥24
-- [ ] T054 [US6] `web/src/routes/AssetDetail.tsx`：页头 = 资产编号 h1 + 状态芯片
+- [X] T054 [US6] `web/src/routes/AssetDetail.tsx`：页头 = 资产编号 h1 + 状态芯片
       （配合 T038 的 `font-heading`）
-- [ ] T055 [US6] `web/src/features/transfers/TransferForm.tsx`：字段一律
+- [X] T055 [US6] `web/src/features/transfers/TransferForm.tsx`：字段一律
       `Field`/`FieldGroup`，控件高 48px、圆角 999px
-- [ ] T056 [US6] `web/tests/assetDetail.test.tsx`：补一条断言 ——
+- [X] T056 [US6] `web/tests/assetDetail.test.tsx`：补一条断言 ——
       属性网格渲染出全部字段（四列布局不得吞掉任何一个）
-- [ ] T057 [US6] 截图详情与流转，对照 `AssetDetail.dc.html` 与 `Custody.dc.html`
+- [X] T057 [US6] 截图详情与流转，对照 `AssetDetail.dc.html` 与 `Custody.dc.html`
 
 ## 第 10 阶段：US7 登录（P2）
 
-- [ ] T058 [US7] `web/src/routes/Login.tsx`：`minmax(0,420px) / minmax(0,1fr)`、
+- [X] T058 [US7] `web/src/routes/Login.tsx`：`minmax(0,420px) / minmax(0,1fr)`、
       间距 64px、垂直居中、`min-height:560px`
-- [ ] T059 [US7] `web/src/routes/Login.tsx`：产品名 Caprasimo 52px/1.05 两行；
+- [X] T059 [US7] `web/src/routes/Login.tsx`：产品名 Caprasimo 52px/1.05 两行；
       控件高 50px；「或」分隔线；整宽次级按钮
-- [ ] T060 [US7] `web/src/routes/Login.tsx`：右侧四个绝对定位柔形
+- [X] T060 [US7] `web/src/routes/Login.tsx`：右侧四个绝对定位柔形
       （`--card` 300 / `--accent-2` 190 opacity .62 / `--primary` 132 opacity .9 /
       `--border` 描边空心 84），`aria-hidden`，**不含任何状态色槽**
 - [ ] T061 [US7] **找开发者确认**：域名限制提示（017 加的，v1 唯一的准入边界）
       稿子的 `SignIn` 没有这一行。保留还是拆？**逐条确认项之一**
-- [ ] T062 [US7] `web/tests/` 登录相关：确认域名提示在提交前可见的断言仍然成立
+- [X] T062 [US7] `web/tests/` 登录相关：确认域名提示在提交前可见的断言仍然成立
       （或按 T056 的裁定更新）
-- [ ] T063 [US7] 截图登录页，对照 `SignIn.dc.html`
+- [X] T063 [US7] 截图登录页，对照 `SignIn.dc.html`
 
 ## 第 11 阶段：US8 打印对话框（P3）
 

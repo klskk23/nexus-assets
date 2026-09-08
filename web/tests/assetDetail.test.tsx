@@ -479,6 +479,21 @@ describe("the attribute section", () => {
     expect(within(card).getByText("2.1.3")).toBeInTheDocument()
   })
 
+  // The named-value check above proves two fields survived. This proves none
+  // went missing: a four-column grid is a place where a field can be dropped
+  // and nobody notices, because the row still looks full.
+  it("draws one pair per field, and no more", async () => {
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+
+    const dialog = screen.getByRole("dialog")
+    const section = within(dialog).getByText("设备属性").closest("section") as HTMLElement
+    const keys = [...section.querySelectorAll("dt")].map((e) => e.textContent)
+
+    expect(keys).toEqual(["基准 MAC", "固件版本"])
+    expect(section.querySelectorAll("dd")).toHaveLength(keys.length)
+  })
+
   // Identity comes before action: the card sits above the transfer form.
   it("sits above the transfer card", async () => {
     renderWithProviders(<AssetDetail />)

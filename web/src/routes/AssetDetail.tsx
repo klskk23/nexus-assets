@@ -234,7 +234,7 @@ export function AssetDetail() {
                   to look and two to keep right. */}
               <section aria-label={t.assets.attrs} className="grid content-start gap-3">
                 <h2 className="text-[21px] leading-tight font-bold">{t.assets.attrs}</h2>
-                <div className="bg-well rounded-[20px] p-6">
+                <div className="bg-well rounded-[28px] p-6">
                   {shown.length === 0 ? (
                     <Empty>
                       <EmptyHeader>
@@ -249,7 +249,7 @@ export function AssetDetail() {
                       </EmptyHeader>
                     </Empty>
                   ) : (
-                    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
+                    <dl className="grid grid-cols-2 gap-x-6 gap-y-5 text-sm sm:grid-cols-4">
                       {shown.map((f) => (
                         <div key={f.key}>
                           {/* The label names the row; the value is what

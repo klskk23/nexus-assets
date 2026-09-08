@@ -93,6 +93,7 @@ export const zh = {
     email: "邮箱",
     password: "密码",
     submit: "登录",
+    or: "或",
     google: "使用 Google 登录",
     submitting: "登录中…",
     tagline: "内部资产台账",

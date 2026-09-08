@@ -108,6 +108,7 @@ export const en: typeof zh = {
     email: "Email",
     password: "Password",
     submit: "Sign in",
+    or: "or",
     google: "Sign in with Google",
     submitting: "Signing in…",
     tagline: "The internal asset ledger",

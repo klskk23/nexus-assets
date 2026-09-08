@@ -74,12 +74,13 @@ export function AppShell() {
      * line drawn between two areas that otherwise look identical. */
     <div className="grid h-screen grid-cols-[236px_1fr] bg-background p-3 text-foreground max-md:grid-cols-1 max-md:grid-rows-[auto_1fr] max-md:p-0">
       <div className="bg-well flex min-h-0 flex-col gap-6 rounded-[28px] pt-9 pr-[18px] pb-12 pl-[30px] max-md:flex-row max-md:items-center max-md:gap-4 max-md:rounded-none max-md:px-5 max-md:py-3">
-        {/* Two lines, and the second one is the accent: it is the product's
-            name, not a heading, so it can carry the one piece of colour the
-            rail has. */}
+        {/* Two lines, the second one carrying the product's one piece of
+            colour. Split from the catalogue rather than written out here:
+            the name is not translated, but it still has exactly one source,
+            and two files spelling it themselves is two files to fix. */}
         <span className="font-heading grid text-[21px] leading-[1.15]">
-          <span>Nexus</span>
-          <span className="text-primary">Assets</span>
+          <span>{t.appName.split(" ")[0]}</span>
+          <span className="text-primary">{t.appName.split(" ").slice(1).join(" ")}</span>
         </span>
         <nav
           className="flex min-h-0 flex-col gap-0.5 overflow-y-auto max-md:flex-row max-md:overflow-x-auto"
