@@ -8,13 +8,10 @@ import { usePermissions } from "@/features/auth/usePermissions"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import {
   TransferDialog,
-  transferActions,
   type TransferAction,
 } from "@/features/transfers/TransferDialog"
 import { DownloadIcon, PrinterIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { ButtonGroup, ButtonGroupSeparator } from "@/components/ui/button-group"
-import { Card, CardContent } from "@/components/ui/card"
 import { PrintDialog } from "@/features/print/PrintDialog"
 import { usePrinting } from "@/features/print/usePrinting"
 
@@ -37,6 +34,10 @@ interface Props {
  * with that action preselected, so the list page and the detail page cannot
  * end up behaving differently for the same operation.
  */
+/** An outlined pill on the dark bar. Transparent, so the bar shows through. */
+const PILL =
+  "border-background/35 text-background hover:bg-background/15 rounded-full border bg-transparent"
+
 export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
   const queryClient = useQueryClient()
   const { deniedReason } = usePermissions()
@@ -62,95 +63,94 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
   if (selected.length === 0) return null
 
   return (
-    // Card's own py-6 and gap-6 were adding 48px of nothing above and below a
-    // single row of 32px buttons. The bar floats over the table it is about,
-    // so every pixel of it is a pixel of the table nobody can read.
-    /* One of the two places in the product that keeps --card. This bar is
-     * stuck to the bottom of the viewport with rows scrolling underneath it:
-     * it genuinely floats, which is the whole test. Everything else that used
-     * to be a card here now sits on the page ground.
+    /* A dark pill floating over the table, centred, rather than a full-width
+     * card. It is the one thing on this page that has to be found instantly
+     * while a list of forty rows scrolls behind it, and this palette's four
+     * grounds are all within 1.22:1 of each other -- none of them can carry
+     * that. --foreground can, and it is already in the palette.
      *
-     * z-20 because the table's pinned first and last columns carry an opaque
-     * background and a stacking order of their own -- without this the bar,
-     * which is what "floats" means here, was painted over by them. */
-    <Card className="sticky bottom-4 z-20 gap-0 py-0 shadow-lg">
-      <CardContent className="flex flex-wrap items-center gap-2 px-3 py-2">
-        <span className="text-sm font-medium">{tTransfer.actions.selected(selected.length)}</span>
+     * z-20 because the table's pinned columns carry an opaque background and a
+     * stacking order of their own; without it the bar was painted over by the
+     * very rows it floats above.
+     *
+     * Four actions, not eight. The five transfer verbs used to sit here as
+     * five buttons, which is a menu spelled out along a bar -- the dialog they
+     * open asks which one anyway, so it asks there. What is left is the four
+     * things you do to a batch: move it, label it, take it away, delete it. */
+    <div className="sticky bottom-6 z-20 flex justify-center">
+      <div className="bg-foreground text-background flex flex-wrap items-center gap-1.5 rounded-full py-2 pr-2 pl-5 shadow-lg">
+        <span className="mr-1 text-sm whitespace-nowrap">
+          {tTransfer.actions.selected(selected.length)}
+        </span>
 
-        <ButtonGroup>
-          {transferActions().map(([a, label]) => (
-            <Button
-              key={a}
-              size="sm"
-              variant="outline"
-              disabled={deniedReason("transfer.create") !== undefined}
-              title={deniedReason("transfer.create")}
-              onClick={() => {
-                setAction(a)
-                setOpen(true)
-              }}
-            >
-              {label}
-            </Button>
-          ))}
-          {/* Printing is a property of the installation: with no print
-              service configured there is no button, rather than one that
-              answers "not configured" after it is pressed. */}
-          {printing && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={deniedReason("print") !== undefined}
-              title={deniedReason("print")}
-              onClick={() => setPrintOpen(true)}
-            >
-              <PrinterIcon />
-              {t.print.action}
-            </Button>
-          )}
-          {/* Exporting what was ticked, here rather than only in the header:
-              the selection is what the bar is about, and going back up to a
-              button that then asks "the ticked ones?" is a detour. */}
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={deniedReason("export") !== undefined}
-            title={deniedReason("export")}
-            onClick={onExport}
-          >
-            <DownloadIcon />
-            {tImport.exportSelection}
-          </Button>
-          <ButtonGroupSeparator />
-          {/* Destructive, so it sits after a separator rather than in the run
-              of transfer actions -- the same click distance, a different act. */}
-          <ConfirmDialog
-            trigger={
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-destructive"
-                disabled={deniedReason("asset.delete") !== undefined}
-                title={deniedReason("asset.delete")}
-              >
-                <Trash2Icon />
-                {t.assets.delete}
-              </Button>
-            }
-            title={t.assets.deleteTitle}
-            description={t.assets.deleteManyHint(selected.length)}
-            confirmLabel={t.assets.delete}
-            // A batch cannot ask for every number to be typed out, so it asks
-            // for its size: you cannot confirm without having looked at it.
-            requirePhrase={String(selected.length)}
-            onConfirm={() => remove.mutate()}
-          />
-        </ButtonGroup>
-
-        <Button size="sm" variant="ghost" className="ml-auto" onClick={onClear}>
+        <Button size="sm" className={PILL} onClick={onClear}>
           {tTransfer.actions.clear}
         </Button>
-      </CardContent>
+
+        <Button
+          size="sm"
+          className={PILL}
+          disabled={deniedReason("transfer.create") !== undefined}
+          title={deniedReason("transfer.create")}
+          onClick={() => {
+            setAction(null)
+            setOpen(true)
+          }}
+        >
+          {tTransfer.actions.title}
+        </Button>
+
+        <Button
+          size="sm"
+          className={PILL}
+          disabled={deniedReason("export") !== undefined}
+          title={deniedReason("export")}
+          onClick={onExport}
+        >
+          <DownloadIcon />
+          {tImport.exportSelection}
+        </Button>
+
+        {/* Destructive, and the only one that cannot be undone, so it wears
+            the danger colour rather than sitting quietly among the others. */}
+        <ConfirmDialog
+          trigger={
+            <Button
+              size="sm"
+              className="text-destructive border-destructive/40 hover:bg-destructive/15 rounded-full border bg-transparent"
+              disabled={deniedReason("asset.delete") !== undefined}
+              title={deniedReason("asset.delete")}
+            >
+              <Trash2Icon />
+              {t.assets.delete}
+            </Button>
+          }
+          title={t.assets.deleteTitle}
+          description={t.assets.deleteManyHint(selected.length)}
+          confirmLabel={t.assets.delete}
+          // A batch cannot ask for every number to be typed out, so it asks
+          // for its size: you cannot confirm without having looked at it.
+          requirePhrase={String(selected.length)}
+          onConfirm={() => remove.mutate()}
+        />
+
+        {/* Printing is a property of the installation: with no print service
+            configured there is no button, rather than one that answers "not
+            configured" after it is pressed. It is the primary act here --
+            a batch is usually selected in order to label it. */}
+        {printing && (
+          <Button
+            size="sm"
+            className="rounded-full"
+            disabled={deniedReason("print") !== undefined}
+            title={deniedReason("print")}
+            onClick={() => setPrintOpen(true)}
+          >
+            <PrinterIcon />
+            {t.print.action}
+          </Button>
+        )}
+      </div>
 
       <TransferDialog
         assetIDs={selected}
@@ -163,6 +163,6 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
         }}
       />
       {printOpen && <PrintDialog ids={selected} onClose={() => setPrintOpen(false)} />}
-    </Card>
+    </div>
   )
 }

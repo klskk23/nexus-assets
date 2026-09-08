@@ -162,7 +162,7 @@ describe("Assets list", () => {
   it("keeps each category's columns to itself", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     await chooseByLabel(user, "类别", "网络设备")
     await user.click(await screen.findByRole("button", { name: "显示列" }))
@@ -186,7 +186,7 @@ describe("Assets list", () => {
   it("shows no field columns at all with the category filter off", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     await chooseByLabel(user, "类别", "网络设备")
     await user.click(await screen.findByRole("button", { name: "显示列" }))
@@ -210,7 +210,7 @@ describe("Assets list", () => {
 
   it("shows the total and the fixed columns", async () => {
     renderWithProviders(<Assets />)
-    expect(await screen.findByText(/共 1 条/)).toBeInTheDocument()
+    expect(await screen.findByLabelText(/共 1 条/)).toBeInTheDocument()
     const row = screen.getByRole("row", { name: /112394521950/ })
     expect(within(row).getByText("在库")).toBeInTheDocument()
     expect(within(row).getByText("上海仓库")).toBeInTheDocument()
@@ -220,7 +220,7 @@ describe("Assets list", () => {
   it("passes the category filter and the descendants switch to the query", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     await chooseByLabel(user, "类别", "网络设备")
     await waitFor(() =>
@@ -236,7 +236,7 @@ describe("Assets list", () => {
   it("adds a custom-field column and remembers the choice in localStorage", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     await chooseByLabel(user, "类别", "网络设备")
     await user.click(await screen.findByRole("button", { name: "显示列" }))
@@ -303,21 +303,21 @@ describe("Assets paging", () => {
 
   it("asks for ten rows by default", async () => {
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 137 条/)
+    await screen.findByLabelText(/共 137 条/)
 
     expect(lastAssetCall().get("limit")).toBe("10")
     expect(lastAssetCall().get("offset")).toBe("0")
-    expect(screen.getByText("第 1–10 条，共 137 条")).toBeInTheDocument()
+    expect(screen.getByLabelText("第 1–10 条，共 137 条")).toBeInTheDocument()
   })
 
   it("moves through the pages", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 137 条/)
+    await screen.findByLabelText(/共 137 条/)
 
     await user.click(screen.getByRole("link", { name: "14" }))
     await waitFor(() => expect(lastAssetCall().get("offset")).toBe("130"))
-    expect(screen.getByText("第 131–137 条，共 137 条")).toBeInTheDocument()
+    expect(screen.getByLabelText("第 131–137 条，共 137 条")).toBeInTheDocument()
 
     await user.click(screen.getByRole("link", { name: "上一页" }))
     await waitFor(() => expect(lastAssetCall().get("offset")).toBe("120"))
@@ -327,7 +327,7 @@ describe("Assets paging", () => {
   // while the words on screen were shadcn's own English literals.
   it("writes the page links in the reader's language, not the component's", async () => {
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 137 条/)
+    await screen.findByLabelText(/共 137 条/)
 
     expect(screen.getByRole("link", { name: "上一页" })).toHaveTextContent("上一页")
     expect(screen.getByRole("link", { name: "下一页" })).toHaveTextContent("下一页")
@@ -336,13 +336,13 @@ describe("Assets paging", () => {
   it("offers 10, 20, 50 and 100 rows a page", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 137 条/)
+    await screen.findByLabelText(/共 137 条/)
 
     await user.click(screen.getByRole("combobox", { name: "每页" }))
     const sizes = (await screen.findAllByRole("option")).map((o) => o.textContent)
-    expect(sizes).toEqual(["10 条", "20 条", "50 条", "100 条"])
+    expect(sizes).toEqual(["10 / 页", "20 / 页", "50 / 页", "100 / 页"])
 
-    await user.click(screen.getByRole("option", { name: "100 条" }))
+    await user.click(screen.getByRole("option", { name: "100 / 页" }))
     await waitFor(() => expect(lastAssetCall().get("limit")).toBe("100"))
   })
 
@@ -350,7 +350,7 @@ describe("Assets paging", () => {
   it("returns to the first page when the filter changes", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 137 条/)
+    await screen.findByLabelText(/共 137 条/)
 
     await user.click(screen.getByRole("link", { name: "2" }))
     await waitFor(() => expect(lastAssetCall().get("offset")).toBe("10"))
@@ -365,7 +365,7 @@ describe("Assets paging", () => {
     try {
       const user = userEvent.setup()
       renderWithProviders(<Assets />)
-      await screen.findByText(/共 137 条/)
+      await screen.findByLabelText(/共 137 条/)
       await user.click(screen.getByRole("link", { name: "2" }))
 
       const params = await exportQuery(user, dl)
@@ -379,7 +379,7 @@ describe("Assets paging", () => {
   it("draws no pager when everything fits on one page", async () => {
     get.mockImplementation(route)
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
     expect(screen.queryByRole("link", { name: "下一页" })).not.toBeInTheDocument()
   })
 })
@@ -397,7 +397,7 @@ describe("Assets owner filter", () => {
   it("filters by owner", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     await chooseByLabel(user, "负责人", "张三")
     await waitFor(() => {
@@ -411,7 +411,7 @@ describe("Assets owner filter", () => {
   it("offers only active accounts", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     await user.click(screen.getByRole("combobox", { name: "负责人" }))
     const names = (await screen.findAllByRole("option")).map((o) => o.textContent)
@@ -425,7 +425,7 @@ describe("Assets owner filter", () => {
     try {
       const user = userEvent.setup()
       renderWithProviders(<Assets />)
-      await screen.findByText(/共 1 条/)
+      await screen.findByLabelText(/共 1 条/)
 
       await chooseByLabel(user, "负责人", "张三")
       expect((await exportQuery(user, dl)).get("owner_id")).toBe("u2")
@@ -445,7 +445,7 @@ describe("Assets holder filter", () => {
   it("filters by holder, sending the kind alongside the id", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     await chooseByLabel(user, "持有方", "XX 集团")
     await waitFor(() => {
@@ -462,7 +462,7 @@ describe("Assets holder filter", () => {
     try {
       const user = userEvent.setup()
       renderWithProviders(<Assets />)
-      await screen.findByText(/共 1 条/)
+      await screen.findByLabelText(/共 1 条/)
 
       await chooseByLabel(user, "持有方", "上海仓库")
       expect((await exportQuery(user, dl)).get("holder_id")).toBe("loc")
@@ -607,7 +607,7 @@ describe("Assets column picker", () => {
   // two suppliers sell the same model, which is real but not the common case.
   it("shows the built-in columns it should, and not the vendor", async () => {
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     for (const name of ["编号", "类别", "状态", "持有方", "型号", "负责人", "备注"]) {
       expect(screen.getByRole("columnheader", { name })).toBeInTheDocument()
@@ -618,7 +618,7 @@ describe("Assets column picker", () => {
   it("adds the vendor when it is ticked, and remembers it", async () => {
     const user = userEvent.setup()
     const { unmount } = renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     await user.click(screen.getByRole("button", { name: "显示列" }))
     await user.click(await screen.findByRole("menuitemcheckbox", { name: "厂商" }))
@@ -634,7 +634,7 @@ describe("Assets column picker", () => {
   it("takes a built-in column away again", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     await user.click(screen.getByRole("button", { name: "显示列" }))
     await user.click(await screen.findByRole("menuitemcheckbox", { name: "备注" }))
@@ -649,7 +649,7 @@ describe("Assets column picker", () => {
   it("names the model and its vendor from the model list", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     await user.click(screen.getByRole("button", { name: "显示列" }))
     await user.click(await screen.findByRole("menuitemcheckbox", { name: "厂商" }))
@@ -703,7 +703,7 @@ describe("Assets filters in the address", () => {
         <Address />
       </>,
     )
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     await user.type(screen.getByLabelText(/搜索资产/), "4D5E")
     await chooseByLabel(user, "类别", "网络设备")
@@ -743,7 +743,7 @@ describe("Assets filters in the address", () => {
         <Address />
       </>,
     )
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     await user.type(screen.getByLabelText(/搜索资产/), "abc")
     await waitFor(() => expect(screen.getByTestId("address")).toHaveTextContent("q=abc"))
@@ -876,7 +876,7 @@ describe("Assets vendor filter", () => {
         <Address />
       </>,
     )
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
     await chooseByLabel(user, "厂商", "Dell")
 
     await waitFor(() => {
@@ -954,7 +954,7 @@ describe("Assets vendor filter", () => {
 
   it("has no field-group filter", async () => {
     renderWithProviders(<Assets />)
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
     expect(screen.queryByRole("combobox", { name: "字段组" })).not.toBeInTheDocument()
   })
 })
@@ -1102,4 +1102,23 @@ describe("Assets selection", () => {
       expect(within(row).getByRole("button", { name })).toBeInTheDocument()
     }
   })
+  // One right-click cannot mean two things. The row menu acts on the device
+  // under the cursor and the bulk bar acts on whatever is ticked; with a
+  // selection standing, right-clicking a ticked row and getting an action for
+  // only that row is the kind of thing you find out about afterwards. The bar
+  // is on screen by then and carries the same verbs.
+  it("stops offering the single-device menu once anything is selected", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    const row = await screen.findByRole("row", { name: /112394521951/ })
+
+    const menu = await openMenu(user, row)
+    expect(within(menu).getAllByRole("menuitem").length).toBeGreaterThan(0)
+    await user.keyboard("{Escape}")
+
+    await user.click(within(row).getByRole("checkbox"))
+    await user.pointer({ target: row, keys: "[MouseRight]" })
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument()
+  })
 })
+

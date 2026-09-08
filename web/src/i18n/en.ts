@@ -150,9 +150,12 @@ export const en: typeof zh = {
     rowPrint: "Print this device's label",
     rowTransfer: "Change this device's status",
     rowDetail: "Open this device",
-    perPageUnit: (n: number) => `${n}`,
+    perPageUnit: (n: number) => `${n} / page`,
     rangeOf: (from: number, to: number, total: number) =>
       `${from}–${to} of ${total.toLocaleString("en-GB")}`,
+    /** The same thing, short enough for a footer. Read out as rangeOf. */
+    rangeShort: (from: number, to: number, total: number) =>
+      `${from}–${to} / ${total.toLocaleString("en-GB")}`,
     prevPage: "Previous",
     nextPage: "Next",
     newAsset: "Add device",

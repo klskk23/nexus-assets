@@ -102,7 +102,7 @@ describe("every table page searches, filters and pages the same way", () => {
 
     expect(screen.queryByRole("button", { name: "上一页" })).not.toBeInTheDocument()
     // The count stays: "how many are there" is a question a short list has too.
-    expect(screen.getByText(/共 3 条/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/共 3 条/)).toBeInTheDocument()
   })
 })
 
@@ -163,6 +163,6 @@ describe("the shape every metadata page borrows", () => {
     // and the per-page picker come and go with the row count, and a list of
     // three does not need either -- but "how many matched" is still the
     // question someone came to a filtered list to ask.
-    expect(screen.getByText("第 1–3 条，共 3 条")).toBeInTheDocument()
+    expect(screen.getByLabelText("第 1–3 条，共 3 条")).toBeInTheDocument()
   })
 })

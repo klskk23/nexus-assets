@@ -651,7 +651,14 @@ export function Assets() {
                 <TableBody>
                   {(assets.data?.items ?? []).map((a, i) => (
                     <ContextMenu key={a.id}>
-                      <ContextMenuTrigger asChild>
+                      {/* No row menu while a selection stands. The menu acts
+                          on this one device and the bar below acts on the N
+                          that are ticked, and one right-click cannot mean
+                          both -- right-clicking a ticked row and getting an
+                          action for only that row is the kind of thing you
+                          find out about afterwards. The bar is on screen and
+                          carries the same four verbs. */}
+                      <ContextMenuTrigger asChild disabled={selection.ids.length > 0}>
                         {/* The whole row opens the device. It used to carry the
                             pointer cursor while only the number cell listened,
                             so four columns out of five looked clickable and

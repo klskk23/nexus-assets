@@ -33,10 +33,13 @@ export const PAGE_SIZES: number[] = [10, 20, 50, 100]
  * Which page numbers to draw: the ends, the neighbourhood of the current page,
  * and an ellipsis for each run in between.
  *
- * A list of forty pages drawn in full is a scrollbar of its own.
+ * A list of forty pages drawn in full is a scrollbar of its own. Six is where
+ * it folds: seven numbers plus two arrows is already wider than the count
+ * beside it, and the ends and the neighbourhood are what anyone actually
+ * clicks.
  */
 export function pageWindow(current: number, count: number): (number | null)[] {
-  if (count <= 7) return Array.from({ length: count }, (_, i) => i)
+  if (count <= 6) return Array.from({ length: count }, (_, i) => i)
 
   const keep = new Set([0, count - 1, current, current - 1, current + 1])
   const out: (number | null)[] = []
@@ -83,95 +86,121 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
   const paging = pageCount > 1 || total > PAGE_SIZES[0]
 
   return (
-    // One row: the range on the left, the page links in the middle, the size
-    // picker on the right. Stacked in two rows they read as two unrelated
-    // controls that happen to sit near each other.
-    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-      <p className="text-muted-foreground text-sm tabular-nums">
-        {t.assets.rangeOf(
+    // The count on the left, everything you can do about it on the right --
+    // the page links sit next to the per-page picker rather than between the
+    // two, because they answer the same question and the eye should find them
+    // in one place. Smaller and tighter than the table above it: this is the
+    // furniture, not the content.
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs">
+      {/* Shown short, read out in full: "1–10 / 60" is compact enough for
+          furniture and is not a sentence when spoken. */}
+      <p
+        className="text-muted-foreground tabular-nums"
+        aria-label={t.assets.rangeOf(
           total === 0 ? 0 : page * pageSize + 1,
           Math.min((page + 1) * pageSize, total),
           total,
         )}
+      >
+        <span aria-hidden>
+          {t.assets.rangeShort(
+            total === 0 ? 0 : page * pageSize + 1,
+            Math.min((page + 1) * pageSize, total),
+            total,
+          )}
+        </span>
       </p>
       {children}
 
-      {pageCount > 1 && (
-        <Pagination className="mx-0 w-auto flex-1">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                aria-label={t.assets.prevPage}
-                aria-disabled={page === 0}
-                className={cn(page === 0 && "pointer-events-none opacity-50")}
-                onClick={(e) => {
-                  e.preventDefault()
-                  onPage(Math.max(0, page - 1))
-                }}
-              >
-                {t.assets.prevPage}
-              </PaginationPrevious>
-            </PaginationItem>
-            {pageWindow(page, pageCount).map((n, i) =>
-              n === null ? (
-                <PaginationItem key={`gap-${i}`}>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              ) : (
-                <PaginationItem key={n}>
-                  <PaginationLink
-                    href="#"
-                    isActive={n === page}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      onPage(n)
-                    }}
-                  >
-                    <span className="font-heading">{n + 1}</span>
-                  </PaginationLink>
-                </PaginationItem>
-              ),
-            )}
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                aria-label={t.assets.nextPage}
-                aria-disabled={page >= pageCount - 1}
-                className={cn(page >= pageCount - 1 && "pointer-events-none opacity-50")}
-                onClick={(e) => {
-                  e.preventDefault()
-                  onPage(Math.min(pageCount - 1, page + 1))
-                }}
-              >
-                {t.assets.nextPage}
-              </PaginationNext>
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {pageCount > 1 && (
+          <Pagination className="mx-0 w-auto">
+            <PaginationContent className="gap-0.5">
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  aria-label={t.assets.prevPage}
+                  aria-disabled={page === 0}
+                  // Icon only. The words sat either side of the numbers and
+                  // made the run twice as wide as the thing it pages.
+                  className={cn(
+                    "size-6 gap-0 px-0 [&>span]:sr-only",
+                    page === 0 && "pointer-events-none opacity-50",
+                  )}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onPage(Math.max(0, page - 1))
+                  }}
+                >
+                  <span>{t.assets.prevPage}</span>
+                </PaginationPrevious>
+              </PaginationItem>
+              {pageWindow(page, pageCount).map((n, i) =>
+                n === null ? (
+                  <PaginationItem key={`gap-${i}`}>
+                    <PaginationEllipsis className="size-6" />
+                  </PaginationItem>
+                ) : (
+                  <PaginationItem key={n}>
+                    <PaginationLink
+                      href="#"
+                      isActive={n === page}
+                      className="size-6 text-[11px]"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        onPage(n)
+                      }}
+                    >
+                      <span className="font-heading">{n + 1}</span>
+                    </PaginationLink>
+                  </PaginationItem>
+                ),
+              )}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  aria-label={t.assets.nextPage}
+                  aria-disabled={page >= pageCount - 1}
+                  className={cn(
+                    "size-6 gap-0 px-0 [&>span]:sr-only",
+                    page >= pageCount - 1 && "pointer-events-none opacity-50",
+                  )}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onPage(Math.min(pageCount - 1, page + 1))
+                  }}
+                >
+                  <span>{t.assets.nextPage}</span>
+                </PaginationNext>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        )}
 
-      {paging && (
-        <Field orientation="horizontal" className="w-auto">
-          <FieldLabel htmlFor="page-size" className="text-muted-foreground text-sm">
-            {t.assets.perPage}
-          </FieldLabel>
-          <Select value={String(pageSize)} onValueChange={(v) => onPageSize(Number(v))}>
-            <SelectTrigger id="page-size" size="sm" className="w-24">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {PAGE_SIZES.map((n) => (
-                  <SelectItem key={n} value={String(n)}>
-                    {t.assets.perPageUnit(n)}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-      )}
+        {paging && (
+          <Field orientation="horizontal" className="w-auto gap-2">
+            {/* The label is read out but not drawn: the value already says
+                "10 / 页", and a caption in front of it said it twice. */}
+            <FieldLabel htmlFor="page-size" className="sr-only">
+              {t.assets.perPage}
+            </FieldLabel>
+            <Select value={String(pageSize)} onValueChange={(v) => onPageSize(Number(v))}>
+              <SelectTrigger id="page-size" size="sm" className="h-6 w-[74px] gap-1 px-2 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {PAGE_SIZES.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {t.assets.perPageUnit(n)}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+        )}
+      </div>
     </div>
   )
 }

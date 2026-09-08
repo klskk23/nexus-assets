@@ -29,6 +29,22 @@ beforeEach(() => {
   post.mockReset().mockResolvedValue({ batch_id: "b1", transfers: twenty.map((id) => ({ id })) })
 })
 
+/**
+ * Opens the transfer dialog from the bar and picks the action inside it.
+ *
+ * The bar used to carry all five verbs as five buttons, which is a menu
+ * spelled out along a bar; the dialog it opened asked again anyway. These
+ * tests are about what a batch transfer does, not about where the verb is
+ * chosen, so they go through whichever path exists.
+ */
+async function startTransfer(user: ReturnType<typeof userEvent.setup>, action: string) {
+  await user.click(screen.getByRole("button", { name: "流转" }))
+  const dialog = await screen.findByRole("dialog")
+  // The verb is a toggle inside the dialog, not a select: scoped to the
+  // dialog because the bar behind it has buttons of its own.
+  await user.click(within(dialog).getByRole("radio", { name: action }))
+}
+
 describe("ActionBar", () => {
   it("stays hidden until something is selected", () => {
     renderWithProviders(<ActionBar selected={[]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
@@ -41,7 +57,7 @@ describe("ActionBar", () => {
     renderWithProviders(<ActionBar selected={twenty} onClear={vi.fn()} onDone={onDone} onExport={vi.fn()} />)
 
     expect(screen.getByText("已选 20 台")).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "签出" }))
+    await startTransfer(user, "签出")
     await chooseByLabel(user, "账号", "张三")
     // The box says what it is for and how it differs from the device's own
     // note; it used to say it on a line underneath, next to a second note box.
@@ -71,7 +87,7 @@ describe("ActionBar", () => {
     const user = userEvent.setup()
     renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
-    await user.click(screen.getByRole("button", { name: "归还" }))
+    await startTransfer(user, "归还")
     expect(screen.getByRole("combobox", { name: "目标" })).toHaveTextContent("各自的默认归属")
     await user.click(screen.getByRole("button", { name: "提交" }))
 
@@ -89,7 +105,7 @@ describe("ActionBar", () => {
     const user = userEvent.setup()
     renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
-    await user.click(screen.getByRole("button", { name: "转移" }))
+    await startTransfer(user, "转移")
     expect(screen.getByRole("button", { name: "提交" })).toBeDisabled()
 
     await chooseByLabel(user, "账号", "张三")
@@ -103,7 +119,7 @@ describe("ActionBar", () => {
     const user = userEvent.setup()
     renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
 
-    await user.click(screen.getByRole("button", { name: "改状态" }))
+    await startTransfer(user, "改状态")
     await user.click(screen.getByRole("button", { name: "提交" }))
     expect(await screen.findByRole("alert")).toHaveTextContent(/terminal/)
   })

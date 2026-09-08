@@ -99,7 +99,7 @@ describe("what a role without permissions sees", () => {
 
   it("disables the buttons it may not press, and explains", async () => {
     renderWithProviders(<Assets />, { permissions: ["export"] })
-    await screen.findByText(/共 1 条/)
+    await screen.findByLabelText(/共 1 条/)
 
     const create = screen.getByRole("button", { name: "录入设备" })
     expect(create).toBeDisabled()
@@ -112,7 +112,7 @@ describe("what a role without permissions sees", () => {
   it("leaves reading alone", async () => {
     renderWithProviders(<Assets />, { permissions: [] })
     // The list is the point of the ledger: it is open to anyone signed in.
-    expect(await screen.findByText(/共 1 条/)).toBeInTheDocument()
+    expect(await screen.findByLabelText(/共 1 条/)).toBeInTheDocument()
     expect(screen.getByRole("row", { name: /112394521950/ })).toBeInTheDocument()
   })
 

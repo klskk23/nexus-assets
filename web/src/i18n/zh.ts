@@ -137,9 +137,12 @@ export const zh = {
     rowPrint: "打印这一台的标签",
     rowTransfer: "变更这一台的状态",
     rowDetail: "查看这一台的详情",
-    perPageUnit: (n: number) => `${n} 条`,
+    perPageUnit: (n: number) => `${n} / 页`,
     rangeOf: (from: number, to: number, total: number) =>
       `第 ${from}–${to} 条，共 ${total.toLocaleString("zh-CN")} 条`,
+    /** The same thing, short enough for a footer. Read out as rangeOf. */
+    rangeShort: (from: number, to: number, total: number) =>
+      `${from}–${to} / ${total.toLocaleString("zh-CN")}`,
     prevPage: "上一页",
     nextPage: "下一页",
     newAsset: "录入设备",
