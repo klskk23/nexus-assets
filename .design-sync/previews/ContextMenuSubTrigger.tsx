@@ -21,11 +21,10 @@ import {
 } from "nexus-assets-web"
 
 /**
- * A submenu is what keeps a list of destinations or statuses out of the top
- * level: 改状态 is one action with five answers, not five actions. Unlike the
- * root, `ContextMenuSub` does take `defaultOpen` -- it anchors to its own
- * trigger, which is an element on screen -- and these cards use it to show the
- * second panel.
+ * The row a submenu hangs from. It looks like an item and behaves like one --
+ * hover or arrow-right opens the second panel -- and the chevron on its right
+ * is drawn by the component, not by the caller. `inset` lines it up with
+ * checkbox and radio items when the panel mixes them.
  *
  * `useRightClicked` is preview scaffolding: the right-click both opens the menu
  * and tells Radix where to anchor it, so a card that only sets `open` on the
@@ -92,15 +91,13 @@ function DeviceTable({ menu }: { menu: ReactNode }) {
   )
 }
 
-/** 改状态 opens onto the five built-in statuses, with the current one marked. */
-export const StatusSubmenu = () => (
+/** Open: the trigger keeps the highlight for as long as its panel is up. */
+export const Opened = () => (
   <DeviceTable
     menu={
       <>
         <ContextMenuItem>查看全部流转</ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem>签出</ContextMenuItem>
-        <ContextMenuItem>归还</ContextMenuItem>
         <ContextMenuSub defaultOpen>
           <ContextMenuSubTrigger>改状态</ContextMenuSubTrigger>
           <ContextMenuSubContent>
@@ -108,8 +105,6 @@ export const StatusSubmenu = () => (
               <ContextMenuRadioItem value="in_stock">在库</ContextMenuRadioItem>
               <ContextMenuRadioItem value="checked_out">已签出</ContextMenuRadioItem>
               <ContextMenuRadioItem value="repairing">维修中</ContextMenuRadioItem>
-              <ContextMenuRadioItem value="lost">丢失</ContextMenuRadioItem>
-              <ContextMenuRadioItem value="retired">已报废</ContextMenuRadioItem>
             </ContextMenuRadioGroup>
           </ContextMenuSubContent>
         </ContextMenuSub>
@@ -119,24 +114,27 @@ export const StatusSubmenu = () => (
   />
 )
 
-/** 转移到 opens onto the holders a device can be handed to. */
-export const DestinationSubmenu = () => (
+/** At rest: two submenus closed, each showing only its chevron. */
+export const AtRest = () => (
   <DeviceTable
     menu={
       <>
         <ContextMenuItem>查看全部流转</ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuSub defaultOpen>
+        <ContextMenuSub>
           <ContextMenuSubTrigger>转移到</ContextMenuSubTrigger>
           <ContextMenuSubContent>
             <ContextMenuItem>上海仓库</ContextMenuItem>
             <ContextMenuItem>北京机房</ContextMenuItem>
-            <ContextMenuItem>研发二部</ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem>选择其他持有方…</ContextMenuItem>
           </ContextMenuSubContent>
         </ContextMenuSub>
-        <ContextMenuItem>改负责人</ContextMenuItem>
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>改状态</ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem>在库</ContextMenuItem>
+            <ContextMenuItem>维修中</ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
         <ContextMenuItem>打印标签</ContextMenuItem>
       </>
     }

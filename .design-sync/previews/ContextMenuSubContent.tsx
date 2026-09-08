@@ -21,11 +21,10 @@ import {
 } from "nexus-assets-web"
 
 /**
- * A submenu is what keeps a list of destinations or statuses out of the top
- * level: 改状态 is one action with five answers, not five actions. Unlike the
- * root, `ContextMenuSub` does take `defaultOpen` -- it anchors to its own
- * trigger, which is an element on screen -- and these cards use it to show the
- * second panel.
+ * The second panel. It is a menu in its own right: items, separators, radio
+ * groups all work inside it, and it positions itself beside its trigger rather
+ * than at the pointer, so a submenu near the right edge flips to the left on
+ * its own.
  *
  * `useRightClicked` is preview scaffolding: the right-click both opens the menu
  * and tells Radix where to anchor it, so a card that only sets `open` on the
@@ -92,15 +91,13 @@ function DeviceTable({ menu }: { menu: ReactNode }) {
   )
 }
 
-/** 改状态 opens onto the five built-in statuses, with the current one marked. */
-export const StatusSubmenu = () => (
+/** A radio group inside the second panel: one status, already marked. */
+export const StatusChoices = () => (
   <DeviceTable
     menu={
       <>
         <ContextMenuItem>查看全部流转</ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem>签出</ContextMenuItem>
-        <ContextMenuItem>归还</ContextMenuItem>
         <ContextMenuSub defaultOpen>
           <ContextMenuSubTrigger>改状态</ContextMenuSubTrigger>
           <ContextMenuSubContent>
@@ -119,8 +116,8 @@ export const StatusSubmenu = () => (
   />
 )
 
-/** 转移到 opens onto the holders a device can be handed to. */
-export const DestinationSubmenu = () => (
+/** Items and a separator: the recent holders, then the full picker. */
+export const Destinations = () => (
   <DeviceTable
     menu={
       <>
@@ -137,7 +134,6 @@ export const DestinationSubmenu = () => (
           </ContextMenuSubContent>
         </ContextMenuSub>
         <ContextMenuItem>改负责人</ContextMenuItem>
-        <ContextMenuItem>打印标签</ContextMenuItem>
       </>
     }
   />

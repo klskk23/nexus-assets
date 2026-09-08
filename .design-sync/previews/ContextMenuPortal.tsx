@@ -1,13 +1,9 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, type ReactNode } from "react"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuPortal,
   ContextMenuSeparator,
   ContextMenuTrigger,
   StatusBadge,
@@ -21,10 +17,14 @@ import {
 } from "nexus-assets-web"
 
 /**
- * The trigger is the thing that was right-clicked, and it is almost always
- * `asChild` over something that already exists -- a table row, a card. Wrapping
- * the row in the trigger's own `<span>` instead would break the table's markup
- * and lose the row's hover state.
+ * The portal is what lifts the open panel out of the table and onto the end of
+ * the document, so a menu opened on the last visible row is not clipped by the
+ * table's own scroll box or covered by the row after it.
+ *
+ * In this library you almost never write it: `ContextMenuContent` already wraps
+ * itself in one, which is why every other card here goes straight from
+ * `ContextMenu` to `ContextMenuContent`. Reach for it explicitly only to hold a
+ * menu somewhere other than the document body.
  *
  * `useRightClicked` is preview scaffolding: the right-click both opens the menu
  * and tells Radix where to anchor it, so a card that only sets `open` would pin
@@ -43,8 +43,8 @@ function useRightClicked<T extends HTMLElement>(x = 140, y = 16) {
   return ref
 }
 
-/** The usual one: `asChild` over the row of a device table. */
-export const RowTrigger = () => {
+/** The last row of a table -- the case the portal exists for. */
+function DeviceTable({ menu }: { menu: ReactNode }) {
   const row = useRightClicked<HTMLTableRowElement>()
   return (
     <TableFrame>
@@ -53,7 +53,7 @@ export const RowTrigger = () => {
           <TableRow>
             <TableHead>资产编号</TableHead>
             <TableHead>类别</TableHead>
-            <TableHead>持有方</TableHead>
+            <TableHead>位置</TableHead>
             <TableHead>状态</TableHead>
           </TableRow>
         </TableHeader>
@@ -70,20 +70,14 @@ export const RowTrigger = () => {
             <ContextMenuTrigger asChild>
               <TableRow ref={row} className="cursor-pointer">
                 <TableCell className="font-mono">NX-0418</TableCell>
-                <TableCell>终端</TableCell>
-                <TableCell>研发二部 · 周敏</TableCell>
+                <TableCell>网络设备</TableCell>
+                <TableCell>上海仓库</TableCell>
                 <TableCell>
                   <StatusBadge status="checked_out" />
                 </TableCell>
               </TableRow>
             </ContextMenuTrigger>
-            <ContextMenuContent>
-              <ContextMenuItem>查看全部流转</ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem>归还</ContextMenuItem>
-              <ContextMenuItem>转移</ContextMenuItem>
-              <ContextMenuItem>打印标签</ContextMenuItem>
-            </ContextMenuContent>
+            {menu}
           </ContextMenu>
         </TableBody>
       </Table>
@@ -91,31 +85,36 @@ export const RowTrigger = () => {
   )
 }
 
-/** A whole card can be the trigger too -- the device panel on a detail page. */
-export const BlockTrigger = () => {
-  const block = useRightClicked<HTMLDivElement>(268, 128)
-  return (
-    <ContextMenu modal={false}>
-      <ContextMenuTrigger asChild>
-        <Card ref={block} style={{ maxWidth: "22rem" }}>
-          <CardHeader>
-            <CardTitle className="font-mono">NX-0418</CardTitle>
-            <CardDescription>网络设备 · 上海仓库</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              负责人 周敏 · 签出于 2024-04-02
-            </p>
-          </CardContent>
-        </Card>
-      </ContextMenuTrigger>
+/** The form to write: the content portals itself, and the panel overflows the
+ *  table's last row instead of being cut off by it. */
+export const Implicit = () => (
+  <DeviceTable
+    menu={
       <ContextMenuContent>
         <ContextMenuItem>查看全部流转</ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem>归还</ContextMenuItem>
-        <ContextMenuItem>改负责人</ContextMenuItem>
+        <ContextMenuItem>转移</ContextMenuItem>
         <ContextMenuItem>打印标签</ContextMenuItem>
       </ContextMenuContent>
-    </ContextMenu>
-  )
-}
+    }
+  />
+)
+
+/** The explicit form, for when the panel has to live in a named container.
+ *  It renders identically -- this is the only thing that changes. */
+export const Explicit = () => (
+  <DeviceTable
+    menu={
+      <ContextMenuPortal>
+        <ContextMenuContent>
+          <ContextMenuItem>查看全部流转</ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem>归还</ContextMenuItem>
+          <ContextMenuItem>转移</ContextMenuItem>
+          <ContextMenuItem>打印标签</ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenuPortal>
+    }
+  />
+)

@@ -11,52 +11,156 @@
   },
   "overrides": {
     "AlertDialog": {
-      "cardMode": "single",
-      "viewport": "720x520"
+      "cardMode": "single"
     },
     "AlertDialogAction": {
-      "cardMode": "single",
-      "viewport": "720x520"
+      "cardMode": "single"
     },
     "AlertDialogCancel": {
-      "cardMode": "single",
-      "viewport": "720x520"
+      "cardMode": "single"
     },
     "AlertDialogContent": {
-      "cardMode": "single",
-      "viewport": "720x520"
+      "cardMode": "single"
     },
     "AlertDialogDescription": {
-      "cardMode": "single",
-      "viewport": "720x520"
+      "cardMode": "single"
     },
     "AlertDialogFooter": {
-      "cardMode": "single",
-      "viewport": "720x520"
+      "cardMode": "single"
     },
     "AlertDialogHeader": {
-      "cardMode": "single",
-      "viewport": "720x520"
+      "cardMode": "single"
     },
     "AlertDialogMedia": {
-      "cardMode": "single",
-      "viewport": "720x520"
+      "cardMode": "single"
     },
     "AlertDialogOverlay": {
-      "cardMode": "single",
-      "viewport": "720x560"
+      "cardMode": "single"
     },
     "AlertDialogPortal": {
-      "cardMode": "single",
-      "viewport": "720x560"
+      "cardMode": "single"
     },
     "AlertDialogTitle": {
-      "cardMode": "single",
-      "viewport": "720x520"
+      "cardMode": "single"
     },
     "AlertDialogTrigger": {
+      "cardMode": "single"
+    },
+    "ContextMenu": {
+      "cardMode": "single"
+    },
+    "ContextMenuCheckboxItem": {
+      "cardMode": "single"
+    },
+    "ContextMenuContent": {
+      "cardMode": "single"
+    },
+    "ContextMenuGroup": {
+      "cardMode": "single"
+    },
+    "ContextMenuItem": {
+      "cardMode": "single"
+    },
+    "ContextMenuLabel": {
+      "cardMode": "single"
+    },
+    "ContextMenuPortal": {
       "cardMode": "single",
-      "viewport": "720x520"
+      "primaryStory": "Implicit"
+    },
+    "ContextMenuRadioGroup": {
+      "cardMode": "single"
+    },
+    "ContextMenuRadioItem": {
+      "cardMode": "single"
+    },
+    "ContextMenuSeparator": {
+      "cardMode": "single"
+    },
+    "ContextMenuShortcut": {
+      "cardMode": "single"
+    },
+    "ContextMenuSub": {
+      "cardMode": "single"
+    },
+    "ContextMenuSubContent": {
+      "cardMode": "single"
+    },
+    "ContextMenuSubTrigger": {
+      "cardMode": "single",
+      "primaryStory": "Opened"
+    },
+    "ContextMenuTrigger": {
+      "cardMode": "single"
+    },
+    "DropdownMenu": {
+      "cardMode": "single"
+    },
+    "DropdownMenuCheckboxItem": {
+      "cardMode": "single"
+    },
+    "DropdownMenuContent": {
+      "cardMode": "single"
+    },
+    "DropdownMenuGroup": {
+      "cardMode": "single"
+    },
+    "DropdownMenuItem": {
+      "cardMode": "single"
+    },
+    "DropdownMenuLabel": {
+      "cardMode": "single"
+    },
+    "DropdownMenuPortal": {
+      "cardMode": "single"
+    },
+    "DropdownMenuRadioGroup": {
+      "cardMode": "single"
+    },
+    "DropdownMenuRadioItem": {
+      "cardMode": "single"
+    },
+    "DropdownMenuSeparator": {
+      "cardMode": "single"
+    },
+    "DropdownMenuShortcut": {
+      "cardMode": "single"
+    },
+    "DropdownMenuSub": {
+      "cardMode": "single"
+    },
+    "DropdownMenuSubContent": {
+      "cardMode": "single"
+    },
+    "DropdownMenuSubTrigger": {
+      "cardMode": "single"
+    },
+    "DropdownMenuTrigger": {
+      "cardMode": "single"
+    },
+    "Select": {
+      "cardMode": "single"
+    },
+    "SelectGroup": {
+      "cardMode": "single"
+    },
+    "SelectItem": {
+      "cardMode": "single"
+    },
+    "SelectLabel": {
+      "cardMode": "single"
+    },
+    "SelectSeparator": {
+      "cardMode": "single"
+    },
+    "SelectContent": {
+      "cardMode": "single"
+    },
+    "SelectScrollUpButton": {
+      "cardMode": "single"
+    },
+    "SelectScrollDownButton": {
+      "cardMode": "single"
     }
   }
 }

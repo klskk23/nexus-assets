@@ -102,6 +102,18 @@ path, this breaks.**
   is necessarily Chinese) and seeds the five real statuses so `StatusBadge` and
   `Timeline` resolve labels instead of showing raw keys.
 
+## Two things about the preview card frame
+
+- **The card frame does not paint `--background`.** Its ground is white; the
+  design system's page is cream. So a component that punches a hole in itself
+  with `bg-background` — a labelled separator, a notched border, a floating
+  label — renders a tan chip that reads as a highlight rather than a gap. The
+  glue is `style={{ background: "var(--background)" }}` on the story wrapper.
+- **An item-aligned `Select` clips whatever is above the selected row.** The
+  trigger sits at the frame's top, so a leading `SelectLabel` scrolls out and a
+  stray up-chevron appears where it was. Choosing the first item does not fix
+  it; padding the wrapper does.
+
 ## Overlays need a card-mode override
 
 Anything that renders through a Portal — AlertDialog and its eleven parts, and
@@ -109,10 +121,14 @@ expect the same of Dialog, Drawer, Select content, Popover, HoverCard and the
 menus — paints fixed over the whole viewport. Per-story capture isolates them so
 the grading sheets look fine, but the product's grid card would stack every
 export on top of the others. Those components carry
-`cfg.overrides.<Name>: {"cardMode": "single", "viewport": "720x520"}`
-(560 tall where the cell deliberately shows page content behind the overlay).
-The list grows as batches land; it is not a per-component judgement call, it is
-what a portal does.
+`cfg.overrides.<Name>: {"cardMode": "single"}` — **and deliberately no
+`viewport` key.** `viewport` is part of a component's graded sourceKey, so
+adding one clears every verdict for that component and costs a re-capture and a
+re-grade; `cardMode` and `primaryStory` are not, so they are free. Several
+batches recommended viewports for framing; those were dropped for this reason,
+and framing is a refinement a future sync can pay for deliberately. The list
+grows as batches land — it is not a per-component judgement, it is what a portal
+does.
 
 ## Known render warns
 
