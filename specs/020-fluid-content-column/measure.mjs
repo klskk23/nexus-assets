@@ -3,14 +3,22 @@
  *
  *   node specs/020-fluid-content-column/measure.mjs
  *
- * This is the acceptance for SC-001, and it cannot live in vitest: jsdom does
- * no layout, so getBoundingClientRect() returns zeroes and any assertion about
- * a proportion would pass whatever the CSS said.
+ * This cannot live in vitest: jsdom does no layout, so getBoundingClientRect()
+ * returns zeroes and any assertion about a width or a proportion would pass
+ * whatever the CSS said.
  *
- * It is written to FAIL, which is the point. Change the column back to a fixed
- * max-width and the spread across widths blows past the tolerance -- that
- * check is a step in the task list, not an afterthought, because a layout
- * assertion that was only ever seen passing is not evidence of anything.
+ * **What it asserts changed on 2026-09-08 (决策 135).** 020 shipped a column at
+ * 76% of the panel and this script checked that the 24% void held steady across
+ * widths -- it did, and the void was still the problem: 581px of nothing at
+ * 2560. The column now fills the panel, so the acceptance is that there is no
+ * void at all, at any width, and that what separates content from the screen is
+ * the panel's padding -- a constant, not a share.
+ *
+ * Still written to FAIL, which is the point. Give the column any width rule --
+ * a max-width, a percentage, the old min(100%, max(960px, 76%)) -- and `void`
+ * goes non-zero at the wide end and the script exits 1. That check is a step in
+ * the task list, not an afterthought: a layout assertion that was only ever
+ * seen passing is not evidence of anything.
  *
  * Needs the walkthrough instance running (see quickstart.md).
  */
@@ -20,11 +28,13 @@ const BASE = process.env.NEXUS_URL ?? 'http://localhost:8818'
 const EMAIL = process.env.NEXUS_EMAIL ?? 'admin@example.com'
 const PASSWORD = process.env.NEXUS_PASSWORD ?? 'devpass018x'
 
-/** Above the floor the void must be a constant share of the panel. */
-const FLUID = [1920, 2560, 3840]
-/** At and below the floor the column must still be exactly 960. */
-const FLOORED = [1440, 1366]
-const TOLERANCE = 5 // percentage points, per SC-001
+/** Every width answers the same way now, so there is one list. */
+const WIDTHS = [3840, 2560, 1920, 1440, 1366]
+/**
+ * main's pr-10 plus the well gutter the panel sits in (p-3).
+ * The one number the layout still owes the right-hand edge.
+ */
+const EDGE = 40 + 12
 
 const browser = await chromium.launch({ executablePath: process.env.DS_CHROMIUM_PATH ?? '/usr/bin/google-chrome' })
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
@@ -42,35 +52,41 @@ async function measure(width) {
     const main = document.querySelector('main')
     const col = main.firstElementChild
     const s = getComputedStyle(main)
-    // The containing block is the panel's content box, not its border box:
-    // that is what a percentage width resolves against.
-    const inner = main.getBoundingClientRect().width - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight)
-    const w = col.getBoundingClientRect().width
-    return { inner: Math.round(inner), column: Math.round(w), void: Math.round(inner - w) }
+    // The containing block is the panel's content box, not its border box.
+    const inner =
+      main.getBoundingClientRect().width - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight)
+    const box = col.getBoundingClientRect()
+    return {
+      inner: Math.round(inner),
+      column: Math.round(box.width),
+      void: Math.round(inner - box.width),
+      edge: Math.round(window.innerWidth - box.right),
+    }
   })
 }
 
 const rows = []
-for (const w of [...FLUID, ...FLOORED]) rows.push({ 视口: w, ...(await measure(w)) })
+for (const w of WIDTHS) rows.push({ 视口: w, ...(await measure(w)) })
 await browser.close()
 
-for (const r of rows) r.留白占比 = Math.round((r.void / r.inner) * 1000) / 10
-console.table(rows.map((r) => ({ 视口: r.视口, 包含块: r.inner, 内容列: r.column, 留白: r.void, '留白%': r.留白占比 })))
-
-const fluid = rows.filter((r) => FLUID.includes(r.视口)).map((r) => r.留白占比)
-const spread = Math.max(...fluid) - Math.min(...fluid)
-const floored = rows.filter((r) => FLOORED.includes(r.视口))
+console.table(
+  rows.map((r) => ({ 视口: r.视口, 包含块: r.inner, 内容列: r.column, 留白: r.void, 距屏幕右缘: r.edge })),
+)
 
 const fail = []
-if (spread > TOLERANCE) {
-  fail.push(`SC-001：${FLUID.join('/')} 三档的留白占比极差 ${spread.toFixed(1)} 个百分点，超过 ${TOLERANCE}`)
-}
-for (const r of floored) {
-  if (r.column !== 960) fail.push(`FR-004：视口 ${r.视口} 下内容列是 ${r.column}px，地板要求 960`)
+for (const r of rows) {
+  // One pixel of slack: a fractional panel width rounds, and a 1px difference
+  // is not a layout rule -- 020's 76% showed up here as hundreds.
+  if (Math.abs(r.void) > 1) {
+    fail.push(`视口 ${r.视口}：内容列 ${r.column}px 之外还剩 ${r.void}px 留白，应当铺满包含块 ${r.inner}px`)
+  }
+  if (Math.abs(r.edge - EDGE) > 1) {
+    fail.push(`视口 ${r.视口}：内容右缘距屏幕 ${r.edge}px，应当恒为 ${EDGE}px（面板内边距 40 + 井槽 12）`)
+  }
 }
 
 if (fail.length) {
   console.error('\n✗ ' + fail.join('\n✗ '))
   process.exit(1)
 }
-console.log(`\n✓ 留白占比极差 ${spread.toFixed(1)} 个百分点（容差 ${TOLERANCE}）；地板档内容列均为 960px`)
+console.log(`\n✓ ${WIDTHS.length} 档窗口内容列均铺满包含块，右缘距屏幕恒为 ${EDGE}px`)

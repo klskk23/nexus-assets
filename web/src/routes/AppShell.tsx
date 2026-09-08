@@ -172,25 +172,30 @@ export function AppShell() {
 
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
       <main className="bg-background min-h-0 overflow-y-auto rounded-[28px] pt-11 pr-10 pb-30 pl-14 max-md:rounded-none max-md:p-5">
-        {/* The content column: left-aligned, with the white space on the
-         * right kept to a constant share of the panel.
+        {/* The content column fills the panel. There is no rule here at all
+         * any more -- a block element is already its container's width -- and
+         * the div stays only because the routes below expect one wrapper.
          *
-         * Three parts and deliberately no max-width. 76% is the proportion,
-         * so the void stays 24% at any width. max(960px, …) is the floor, so
-         * a laptop is pixel-for-pixel what 018 shipped. min(100%, …) is the
-         * catch, so a panel narrower than the floor is filled rather than
-         * overflowed -- a table that outgrows it scrolls inside its own frame.
+         * This is the third answer to the same question and the first one with
+         * no number in it. 018 capped the column at a flat 960: the column
+         * stayed put while the void grew without bound -- 14% of the panel at
+         * 1440, 56% at 2560, 73% at 3840. 020 made the void a constant 24%
+         * share instead, which fixed the growth but not the void: at 2560 that
+         * is still 581px of nothing, and the page reads as though it failed to
+         * load rather than as though it was composed.
          *
-         * 018 capped this at a flat 960 and that held the column constant
-         * while the void grew without bound: 14% of the panel at 1440, 56% at
-         * 2560, 73% at 3840. A ceiling is the same failure moved further out,
-         * which is why there is none. The prototype's nine screens are all
-         * drawn at 960, so that number was only ever true at one width.
+         * So the void is gone and the asymmetry with it. What separates
+         * content from the screen edge is now the panel's own padding, which
+         * is what padding is for. pr-10 (40px) rather than the well's 12px
+         * gutter because the panel's corner radius is 28px: content any closer
+         * runs into the curve, and the top-right buttons are the first thing
+         * to hit it.
          *
-         * The percentage resolves against the panel's content box, not the
-         * viewport: the rail and the padding are fixed, so measuring against
-         * the viewport would let the share creep up again. */}
-        <div className="w-[min(100%,max(960px,76%))]">
+         * The cost, accepted with the screenshots in hand: a wide table spreads
+         * its columns instead of ending early, and windows at and below 1548
+         * are no longer pixel-for-pixel 018 (the 960 floor went with the rest
+         * of the rule -- at 1440 the column is 1084). */}
+        <div>
           <Outlet />
         </div>
       </main>

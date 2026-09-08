@@ -5,12 +5,16 @@ import { join } from "node:path"
 /**
  * One rule decides how wide a page is, and it lives in AppShell.
  *
- * This is a source-level invariant, not a rendered one, and deliberately so:
- * the thing 020 changed has no behaviour jsdom can see. jsdom performs no
- * layout, so getBoundingClientRect returns zeroes and any assertion about a
- * width or a proportion would pass whatever the CSS said. The proportion is
- * measured for real in specs/020-fluid-content-column/measure.mjs, which is
- * run against a browser and checked in both directions.
+ * That rule is now "the panel's width, and nothing else" -- AppShell declares
+ * no width class at all. Which makes this test the only thing standing between
+ * that and a page quietly capping itself again: with no number left in
+ * AppShell to contradict, a stray max-w- would simply win.
+ *
+ * A source-level invariant, not a rendered one, and deliberately so: none of
+ * this has behaviour jsdom can see. jsdom performs no layout, so
+ * getBoundingClientRect returns zeroes and any assertion about a width or a
+ * proportion would pass whatever the CSS said. The real widths are measured in
+ * specs/020-fluid-content-column/measure.mjs against a browser.
  *
  * What this guards is the thing that silently comes back: a page reaching for
  * its own width. 018 shipped three of those (960 / 760 / 640) and 020 removed
