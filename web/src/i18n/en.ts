@@ -622,11 +622,12 @@ export const enConfig: typeof zhConfig = {
 
 export const enImport: typeof zhImport = {
   title: "Bulk import",
-  step1: "1. Download the template",
+  steps: "Import steps",
+  step1: "Download the template",
   step1Hint:
     "The first row is prose for whoever fills the sheet in; the second is the machine key. Only the key row is read back, so renaming a display name never breaks a template already downloaded.",
   download: "Download template",
-  step2: "2. Upload and preview",
+  step2: "Upload and preview",
   step2Hint:
     "The preview validates every row with exactly the rules manual entry uses, and writes nothing.",
   category: "Import into category",
@@ -635,7 +636,7 @@ export const enImport: typeof zhImport = {
   previewNeedsCategory:
     "Choose a category in step 1 first: the preview checks each row against that category's fields.",
   previewing: "Validating…",
-  step3: "3. Confirm the import",
+  step3: "Confirm the import",
   step3Hint: "The whole file is written at once. If any row fails, nothing is written.",
   commit: "Import",
   committing: "Importing…",

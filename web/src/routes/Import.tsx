@@ -1,10 +1,11 @@
 import { AlertCircleIcon } from "lucide-react"
-import { useRef, useState } from "react"
+import { useRef, useState, type ReactNode } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 
 import { api, ApiError, download } from "@/lib/api"
 import type { Category } from "@/lib/types"
 import { t, tImport } from "@/i18n"
+import { cn } from "cn"
 import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -77,6 +78,63 @@ function reportOf(e: unknown): Report | undefined {
   return (e.payload as { report?: Report } | undefined)?.report
 }
 
+/**
+ * One stage of the import, and the card it lives in.
+ *
+ * The numbering is here rather than in the copy: a heading that reads
+ * "1. Download the template" is a list pretending to be a flow, and it says
+ * the number twice the moment a rail is drawn above it. Here the number is
+ * the position and the heading is the name of the thing.
+ *
+ * A stage nobody can act on yet is dimmed rather than hidden. Hiding it would
+ * mean the page changed shape underneath somebody halfway through, and would
+ * take away the one thing worth knowing at step one: how much is left.
+ */
+function Step({
+  n,
+  title,
+  hint,
+  state,
+  children,
+}: {
+  n: number
+  title: string
+  hint: string
+  state: "done" | "current" | "waiting"
+  children: ReactNode
+}) {
+  return (
+    <li
+      aria-label={title}
+      aria-current={state === "current" ? "step" : undefined}
+      className={cn(
+        "bg-well grid content-start gap-4 rounded-[28px] border px-[26px] py-[22px]",
+        state === "current" ? "border-primary" : "border-transparent",
+        state === "waiting" && "opacity-60",
+      )}
+    >
+      <div className="grid gap-1">
+        <div className="flex items-center gap-2.5">
+          <span
+            aria-hidden
+            className={cn(
+              "font-heading grid size-6 shrink-0 place-items-center rounded-full text-[11px]",
+              state === "waiting"
+                ? "border-border-muted border"
+                : "bg-primary text-primary-foreground",
+            )}
+          >
+            {n}
+          </span>
+          <h2 className="text-[21px] leading-tight font-bold">{title}</h2>
+        </div>
+        <p className="text-muted-foreground text-sm">{hint}</p>
+      </div>
+      {children}
+    </li>
+  )
+}
+
 export function Import() {
   const [categoryID, setCategoryID] = useState("")
   const [file, setFile] = useState<File | null>(null)
@@ -126,11 +184,19 @@ export function Import() {
     <div className="grid max-w-[760px] gap-14">
       <PageHeader title={tImport.title} />
 
-      <section aria-label={tImport.step1} className="grid content-start gap-3">
-        <div className="grid gap-1">
-          <h2 className="text-[21px] leading-tight font-bold">{tImport.step1}</h2>
-          <p className="text-sm text-muted-foreground">{tImport.step1Hint}</p>
-        </div>
+      {/* Three stages of one job, so they sit 22px apart in a single block --
+          56px between them would read as three unrelated things that happen
+          to be on the same page. An ordered list, because that is what it is:
+          the order is the point, and a screen reader should hear "3 of 3"
+          rather than three headings that happen to follow each other. */}
+      <ol aria-label={tImport.steps} className="grid gap-[22px]">
+
+      <Step
+        n={1}
+        title={tImport.step1}
+        hint={tImport.step1Hint}
+        state={categoryID === "" ? "current" : "done"}
+      >
         <div className="grid gap-4">
           <div className="flex flex-wrap items-end gap-4">
             <Field className="w-56">
@@ -184,13 +250,14 @@ export function Import() {
             </Alert>
           )}
         </div>
-      </section>
+      </Step>
 
-      <section aria-label={tImport.step2} className="grid content-start gap-3">
-        <div className="grid gap-1">
-          <h2 className="text-[21px] leading-tight font-bold">{tImport.step2}</h2>
-          <p className="text-sm text-muted-foreground">{tImport.step2Hint}</p>
-        </div>
+      <Step
+        n={2}
+        title={tImport.step2}
+        hint={tImport.step2Hint}
+        state={categoryID === "" ? "waiting" : report ? "done" : "current"}
+      >
         <div className="grid gap-4">
           <div className="flex flex-wrap items-end gap-4">
             <Field className="w-80">
@@ -232,14 +299,10 @@ export function Import() {
             </Alert>
           )}
         </div>
-      </section>
+      </Step>
 
       {report && (
-        <section aria-label={tImport.step3} className="grid content-start gap-3">
-          <div className="grid gap-1">
-            <h2 className="text-[21px] leading-tight font-bold">{tImport.step3}</h2>
-            <p className="text-sm text-muted-foreground">{tImport.step3Hint}</p>
-          </div>
+        <Step n={3} title={tImport.step3} hint={tImport.step3Hint} state="current">
           <div className="grid gap-4">
             <p role="status">
               {tImport.summary(report.ok, report.total)}
@@ -288,8 +351,9 @@ export function Import() {
               </Button>
             </div>
           </div>
-        </section>
-      )}
+        </Step>
+        )}
+      </ol>
     </div>
   )
 }

@@ -41,28 +41,32 @@ export function AssetHistory() {
   const asset = detail.data?.asset
 
   return (
-    <div className="grid gap-6">
-      {/* Back to the device rather than browser back: you can arrive here from
-          the dialog, from a link somebody sent, or from a reload. */}
-      <Button variant="ghost" size="sm" className="-ml-2 w-fit" asChild>
-        <Link to={`/assets/${id}`}>
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t.assets.backToAsset}
-        </Link>
-      </Button>
+    <div className="grid gap-14">
+      <div className="grid gap-3">
+        {/* Back to the device rather than browser back: you can arrive here
+            from the dialog, from a link somebody sent, or from a reload. It
+            belongs to the title, not to a band of its own -- 56px above and
+            below would leave a lone ghost button in the middle of nowhere. */}
+        <Button variant="ghost" size="sm" className="-ml-2 w-fit" asChild>
+          <Link to={`/assets/${id}`}>
+            <ArrowLeftIcon data-icon="inline-start" />
+            {t.assets.backToAsset}
+          </Link>
+        </Button>
 
-      <PageHeader
-        title={
-          <>
-            <span className="font-mono">{asset?.display_name ?? id}</span>
-            {asset && <StatusBadge status={asset.status} />}
-          </>
-        }
-      />
+        <PageHeader
+          title={
+            <>
+              <span className="font-heading tabular-nums">{asset?.display_name ?? id}</span>
+              {asset && <StatusBadge status={asset.status} />}
+            </>
+          }
+        />
+      </div>
 
-      <section aria-label={t.assets.historyTitle} className="grid content-start gap-3">
+      <section aria-label={t.assets.historyTitle} className="grid content-start gap-[22px]">
         <h2 className="text-[21px] leading-tight font-bold">{t.assets.historyTitle}</h2>
-        <div className="grid gap-4">
+        <div className="grid gap-[22px]">
           {editing && <EditEvent event={editing} assetID={id} onClose={() => setEditing(null)} />}
           <Timeline
             events={events}

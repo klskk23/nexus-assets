@@ -189,217 +189,221 @@ export function Audit() {
     `${e.target_label ?? e.target_id}`
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-14">
       <PageHeader title={tAudit.title} hint={tAudit.hint} />
 
-      {/* One row, the same one every table page wears. Every control carries
-          its own "all of them" wording, so the labels are for screen readers
-          rather than a second tier of text. */}
-      <ListToolbar
-        q={q}
-        onQ={setQ}
-        searchHint={tAudit.searchHint}
-        filters={
+      {/* The same two rhythms as every other list on the product: 56px under
+          the title, 22px between the controls, the rows and the pager. */}
+      <div className="grid gap-[22px]">
+        {/* One row, the same one every table page wears. Every control carries
+            its own "all of them" wording, so the labels are for screen readers
+            rather than a second tier of text. */}
+        <ListToolbar
+          q={q}
+          onQ={setQ}
+          searchHint={tAudit.searchHint}
+          filters={
+            <>
+              <Field className="w-auto">
+                <FieldLabel htmlFor="au-type" className="sr-only">
+                  {tAudit.targetType}
+                </FieldLabel>
+                <Select value={toNone(targetType)} onValueChange={(v) => setTargetType(fromNone(v))}>
+                  <SelectTrigger id="au-type" className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value={NONE}>{tAudit.allTypes}</SelectItem>
+                      {Object.entries(tAudit.targets).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>
+                          {v}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field className="w-auto">
+                <FieldLabel htmlFor="au-action" className="sr-only">
+                  {tAudit.action}
+                </FieldLabel>
+                <Select value={toNone(action)} onValueChange={(v) => setAction(fromNone(v))}>
+                  <SelectTrigger id="au-action" className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value={NONE}>{tAudit.allActions}</SelectItem>
+                      {Object.entries(tAudit.actions).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>
+                          {v}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field className="w-auto">
+                <FieldLabel htmlFor="au-actor" className="sr-only">
+                  {tAudit.actor}
+                </FieldLabel>
+                <Select value={toNone(actorID)} onValueChange={(v) => setActorID(fromNone(v))}>
+                  <SelectTrigger id="au-actor" className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value={NONE}>{tAudit.allActors}</SelectItem>
+                      {knownActors.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name}
+                        </SelectItem>
+                      ))}
+                      {actorMissing && (
+                        <SelectItem value={actorID}>{actorName || actorID}</SelectItem>
+                      )}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    aria-label={tAudit.dateRange}
+                    className="justify-start font-normal"
+                  >
+                    <CalendarIcon data-icon="inline-start" />
+                    {rangeText}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="range"
+                    autoFocus
+                    numberOfMonths={2}
+                    // Reopening the picker lands on the range you chose, not on
+                    // today -- otherwise a filter set last March is one month button
+                    // at a time away from being read back.
+                    defaultMonth={range?.from}
+                    selected={range}
+                    onSelect={setRange}
+                    locale={getLang() === "zh" ? zhCN : enUS}
+                  />
+                  {range?.from && (
+                    <div className="border-t p-2">
+                      <Button variant="ghost" size="sm" onClick={() => setRange(undefined)}>
+                        {tAudit.clearDates}
+                      </Button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+
+              {targetID && (
+                <>
+                  <Badge variant="outline">{tAudit.onlyTarget(targetID)}</Badge>
+                  <Button variant="ghost" size="sm" onClick={() => setTargetID("")}>
+                    {tAudit.clearFilters}
+                  </Button>
+                </>
+              )}
+            </>
+          }
+        />
+
+        <StateBoundary
+          isLoading={query.isLoading}
+          error={query.error as Error | null}
+          isEmpty={query.data?.items.length === 0}
+          emptyTitle={tAudit.empty}
+          emptyHint={tAudit.emptyHint}
+          onRetry={() => query.refetch()}
+        >
           <>
-            <Field className="w-auto">
-              <FieldLabel htmlFor="au-type" className="sr-only">
-                {tAudit.targetType}
-              </FieldLabel>
-              <Select value={toNone(targetType)} onValueChange={(v) => setTargetType(fromNone(v))}>
-                <SelectTrigger id="au-type" className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value={NONE}>{tAudit.allTypes}</SelectItem>
-                    {Object.entries(tAudit.targets).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>
-                        {v}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
+            <TableFrame>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{tAudit.when}</TableHead>
+                    <TableHead>{tAudit.actor}</TableHead>
+                    <TableHead>{tAudit.action}</TableHead>
+                    <TableHead>{tAudit.target}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(query.data?.items ?? []).map((e) => {
+                    const hasChange = e.before != null || e.after != null
+                    return (
+                      <ContextMenu key={e.id}>
+                        <ContextMenuTrigger asChild>
+                          {/* An audit entry cannot be edited or deleted -- it is
+                              the record. So the row opens the values and the menu
+                              narrows the question rather than acting on it. */}
+                          <TableRow
+                            className={cn(hasChange && "cursor-pointer")}
+                            onClick={() => hasChange && setDetail(e)}
+                          >
+                            <TableCell className="whitespace-nowrap">
+                              {new Date(e.created_at).toLocaleString(locale())}
+                            </TableCell>
+                            <TableCell>{e.actor_name}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">
+                                {tAudit.actions[e.action] ?? e.action}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {tAudit.targets[e.target_type] ?? e.target_type}
+                              <span className="text-muted-foreground ml-2 text-xs">
+                                {e.target_label ?? e.target_id}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent>
+                          <ContextMenuItem disabled={!hasChange} onSelect={() => setDetail(e)}>
+                            {tAudit.viewChanges}
+                          </ContextMenuItem>
+                          <ContextMenuSeparator />
+                          <ContextMenuItem onSelect={() => setTargetType(e.target_type)}>
+                            {tAudit.onlyThisType}
+                          </ContextMenuItem>
+                          <ContextMenuItem onSelect={() => setTargetID(e.target_id)}>
+                            {tAudit.onlyThisTarget}
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            onSelect={() => {
+                              setActorID(e.actor_id)
+                              setActorName(e.actor_name)
+                            }}
+                          >
+                            {tAudit.onlyThisActor}
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </TableFrame>
 
-            <Field className="w-auto">
-              <FieldLabel htmlFor="au-action" className="sr-only">
-                {tAudit.action}
-              </FieldLabel>
-              <Select value={toNone(action)} onValueChange={(v) => setAction(fromNone(v))}>
-                <SelectTrigger id="au-action" className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value={NONE}>{tAudit.allActions}</SelectItem>
-                    {Object.entries(tAudit.actions).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>
-                        {v}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-
-            <Field className="w-auto">
-              <FieldLabel htmlFor="au-actor" className="sr-only">
-                {tAudit.actor}
-              </FieldLabel>
-              <Select value={toNone(actorID)} onValueChange={(v) => setActorID(fromNone(v))}>
-                <SelectTrigger id="au-actor" className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value={NONE}>{tAudit.allActors}</SelectItem>
-                    {knownActors.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.name}
-                      </SelectItem>
-                    ))}
-                    {actorMissing && (
-                      <SelectItem value={actorID}>{actorName || actorID}</SelectItem>
-                    )}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  aria-label={tAudit.dateRange}
-                  className="justify-start font-normal"
-                >
-                  <CalendarIcon data-icon="inline-start" />
-                  {rangeText}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="range"
-                  autoFocus
-                  numberOfMonths={2}
-                  // Reopening the picker lands on the range you chose, not on
-                  // today -- otherwise a filter set last March is one month button
-                  // at a time away from being read back.
-                  defaultMonth={range?.from}
-                  selected={range}
-                  onSelect={setRange}
-                  locale={getLang() === "zh" ? zhCN : enUS}
-                />
-                {range?.from && (
-                  <div className="border-t p-2">
-                    <Button variant="ghost" size="sm" onClick={() => setRange(undefined)}>
-                      {tAudit.clearDates}
-                    </Button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
-
-            {targetID && (
-              <>
-                <Badge variant="outline">{tAudit.onlyTarget(targetID)}</Badge>
-                <Button variant="ghost" size="sm" onClick={() => setTargetID("")}>
-                  {tAudit.clearFilters}
-                </Button>
-              </>
-            )}
+            {/* Under the table, where you land after reading it -- and where the
+                asset list keeps its own pager. */}
+            <Pager
+              page={page}
+              pageSize={pageSize}
+              total={query.data?.total ?? 0}
+              onPage={setPage}
+              onPageSize={setPageSize}
+            />
           </>
-        }
-      />
-
-      <StateBoundary
-        isLoading={query.isLoading}
-        error={query.error as Error | null}
-        isEmpty={query.data?.items.length === 0}
-        emptyTitle={tAudit.empty}
-        emptyHint={tAudit.emptyHint}
-        onRetry={() => query.refetch()}
-      >
-        <>
-          <TableFrame>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{tAudit.when}</TableHead>
-                  <TableHead>{tAudit.actor}</TableHead>
-                  <TableHead>{tAudit.action}</TableHead>
-                  <TableHead>{tAudit.target}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(query.data?.items ?? []).map((e) => {
-                  const hasChange = e.before != null || e.after != null
-                  return (
-                    <ContextMenu key={e.id}>
-                      <ContextMenuTrigger asChild>
-                        {/* An audit entry cannot be edited or deleted -- it is
-                            the record. So the row opens the values and the menu
-                            narrows the question rather than acting on it. */}
-                        <TableRow
-                          className={cn(hasChange && "cursor-pointer")}
-                          onClick={() => hasChange && setDetail(e)}
-                        >
-                          <TableCell className="whitespace-nowrap">
-                            {new Date(e.created_at).toLocaleString(locale())}
-                          </TableCell>
-                          <TableCell>{e.actor_name}</TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">
-                              {tAudit.actions[e.action] ?? e.action}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {tAudit.targets[e.target_type] ?? e.target_type}
-                            <span className="text-muted-foreground ml-2 text-xs">
-                              {e.target_label ?? e.target_id}
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      </ContextMenuTrigger>
-                      <ContextMenuContent>
-                        <ContextMenuItem disabled={!hasChange} onSelect={() => setDetail(e)}>
-                          {tAudit.viewChanges}
-                        </ContextMenuItem>
-                        <ContextMenuSeparator />
-                        <ContextMenuItem onSelect={() => setTargetType(e.target_type)}>
-                          {tAudit.onlyThisType}
-                        </ContextMenuItem>
-                        <ContextMenuItem onSelect={() => setTargetID(e.target_id)}>
-                          {tAudit.onlyThisTarget}
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          onSelect={() => {
-                            setActorID(e.actor_id)
-                            setActorName(e.actor_name)
-                          }}
-                        >
-                          {tAudit.onlyThisActor}
-                        </ContextMenuItem>
-                      </ContextMenuContent>
-                    </ContextMenu>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </TableFrame>
-
-          {/* Under the table, where you land after reading it -- and where the
-              asset list keeps its own pager. */}
-          <Pager
-            page={page}
-            pageSize={pageSize}
-            total={query.data?.total ?? 0}
-            onPage={setPage}
-            onPageSize={setPageSize}
-          />
-        </>
-      </StateBoundary>
+        </StateBoundary>
+      </div>
 
       <Dialog open={detail !== null} onOpenChange={(open) => !open && setDetail(null)}>
         <DialogContent className="sm:max-w-2xl">
@@ -420,7 +424,7 @@ export function Audit() {
             {detail?.before != null && (
               <div className="border-border border-l-2 pl-3">
                 <p className="text-muted-foreground mb-1">{tAudit.before}</p>
-                <pre className="bg-well text-muted-foreground overflow-x-auto rounded-[16px] p-3">
+                <pre className="bg-well text-muted-foreground overflow-x-auto rounded-[20px] p-3">
                   {JSON.stringify(detail.before, null, 2)}
                 </pre>
               </div>
@@ -428,7 +432,7 @@ export function Audit() {
             {detail?.after != null && (
               <div className="border-primary border-l-2 pl-3">
                 <p className="text-muted-foreground mb-1">{tAudit.after}</p>
-                <pre className="bg-well overflow-x-auto rounded-[16px] p-3">
+                <pre className="bg-well overflow-x-auto rounded-[20px] p-3">
                   {JSON.stringify(detail.after, null, 2)}
                 </pre>
               </div>
