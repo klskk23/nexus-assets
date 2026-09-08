@@ -20,11 +20,15 @@ const ground = { background: "var(--background)", padding: "1rem" } as const
  */
 export const IncludeDescendants = () => (
   <div style={ground}>
-    <Field orientation="horizontal" className="w-auto">
-      <Checkbox id="cb-descendants" defaultChecked />
-      <FieldLabel htmlFor="cb-descendants">含子类别</FieldLabel>
+    <div className="flex items-center gap-2">
+      <Field orientation="horizontal" className="w-auto">
+        <Checkbox id="cb-descendants" defaultChecked />
+        <FieldLabel htmlFor="cb-descendants">含子类别</FieldLabel>
+      </Field>
+      {/* Outside the Field: a horizontal Field spreads its children across the
+          row, which would push the mark to the far end of the toolbar. */}
       <Hint>勾上时「网络设备」也会带出交换机、路由器下面的设备。</Hint>
-    </Field>
+    </div>
   </div>
 )
 
@@ -37,7 +41,7 @@ export const IncludeDescendants = () => (
  */
 export const TheTwoFieldFlags = () => (
   <div style={ground}>
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-3 sm:grid-cols-2" style={{ maxWidth: 560 }}>
       <div className="flex items-center gap-2">
         <Checkbox id="cb-unique" defaultChecked disabled />
         <FieldLabel htmlFor="cb-unique">唯一</FieldLabel>

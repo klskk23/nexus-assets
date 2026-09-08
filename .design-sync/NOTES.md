@@ -154,7 +154,7 @@ does.
 - `[DTS_STYLE_SYSTEM] filtering @types/react props` — informational and correct.
   React's own CSS-shorthand-named props are not this DS's API.
 
-## Two product defects this sync surfaced (unfixed)
+## Three product defects this sync surfaced (unfixed)
 
 Authoring menu previews turned up a real gap in the component source, not in the
 sync. `DropdownMenuSubTrigger` (`web/src/components/ui/dropdown-menu.tsx:214`)
@@ -168,6 +168,17 @@ That contradicts this product's own rule that unavailable menu items are
 disabled, or a colleague learns nothing from seeing them. Left unfixed here
 because changing component source mid-sync would have invalidated the bundle
 four agents were authoring against; it is a two-token fix in each file.
+
+Third: `DialogContent`'s close button carries a hardcoded English
+`<span className="sr-only">Close</span>` (`dialog.tsx:74`). That is the
+accessible name of the close control on **every dialog in this product**, and an
+sr-only label is user-visible text — it just happens to be visible only to
+someone using a screen reader, so it belongs in the catalogue like any other
+string. The repo has already fixed this exact class of bug once, in 014, when
+`PaginationPrevious`/`PaginationNext` had their upstream-hardcoded
+"Previous"/"Next" made overridable so the words could go through the catalogue.
+`tests/assetDetail.test.tsx` currently accommodates it with a
+`/关闭|Close/` alternation rather than failing on it.
 
 ## Re-sync risks
 

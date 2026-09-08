@@ -32,7 +32,11 @@ const ground = { background: "var(--background)", padding: "1rem" } as const
  */
 export const AllCategories = () => (
   <div style={ground}>
-    <CategoryFilter value="" onChange={() => {}} />
+    {/* In a flex row, as the toolbar has it: the trigger is `w-48` and only
+        keeps that width when its parent is not stretching it. */}
+    <div className="flex items-center gap-3">
+      <CategoryFilter value="" onChange={() => {}} />
+    </div>
   </div>
 )
 

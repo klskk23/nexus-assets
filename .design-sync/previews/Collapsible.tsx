@@ -78,27 +78,27 @@ export const NestedCategories = () => (
   <div style={ground}>
     <Collapsible defaultOpen className="text-sm">
       <CollapsibleTrigger asChild>
-        <Button variant="ghost" size="sm" className="w-fit">
+        <Button variant="outline" size="sm" className="w-fit">
           网络设备 · 137 台
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent style={{ paddingInlineStart: 20 }}>
-        <Collapsible defaultOpen>
+      <CollapsibleContent style={{ paddingInlineStart: 20, display: "grid", gap: 4, paddingTop: 4 }}>
+        <Collapsible defaultOpen style={{ display: "grid", gap: 4 }}>
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="w-fit">
+            <Button variant="outline" size="sm" className="w-fit">
               交换机 · 84 台
             </Button>
           </CollapsibleTrigger>
-          <CollapsibleContent style={{ paddingInlineStart: 20 }}>
-            <div className="text-muted-foreground" style={{ padding: "4px 12px" }}>
+          <CollapsibleContent style={{ paddingInlineStart: 20, display: "grid", gap: 4, paddingTop: 4 }}>
+            <div className="text-muted-foreground" style={{ padding: "2px 12px" }}>
               接入交换机 · 61 台
             </div>
-            <div className="text-muted-foreground" style={{ padding: "4px 12px" }}>
+            <div className="text-muted-foreground" style={{ padding: "2px 12px" }}>
               核心交换机 · 23 台
             </div>
           </CollapsibleContent>
         </Collapsible>
-        <Button variant="ghost" size="sm" className="w-fit">
+        <Button variant="outline" size="sm" className="w-fit">
           路由器 · 39 台
         </Button>
       </CollapsibleContent>

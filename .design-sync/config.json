@@ -182,6 +182,66 @@
     },
     "PopoverDescription": {
       "cardMode": "single"
+    },
+    "Dialog": {
+      "cardMode": "single"
+    },
+    "DialogClose": {
+      "cardMode": "single"
+    },
+    "DialogContent": {
+      "cardMode": "single"
+    },
+    "DialogDescription": {
+      "cardMode": "single"
+    },
+    "DialogFooter": {
+      "cardMode": "single"
+    },
+    "DialogHeader": {
+      "cardMode": "single"
+    },
+    "DialogOverlay": {
+      "cardMode": "single"
+    },
+    "DialogPortal": {
+      "cardMode": "single"
+    },
+    "DialogTitle": {
+      "cardMode": "single"
+    },
+    "DialogTrigger": {
+      "cardMode": "single"
+    },
+    "Drawer": {
+      "cardMode": "single"
+    },
+    "DrawerClose": {
+      "cardMode": "single"
+    },
+    "DrawerContent": {
+      "cardMode": "single"
+    },
+    "DrawerDescription": {
+      "cardMode": "single"
+    },
+    "DrawerFooter": {
+      "cardMode": "single"
+    },
+    "DrawerHeader": {
+      "cardMode": "single"
+    },
+    "DrawerOverlay": {
+      "cardMode": "single"
+    },
+    "DrawerPortal": {
+      "cardMode": "single"
+    },
+    "DrawerTitle": {
+      "cardMode": "single"
+    },
+    "DrawerTrigger": {
+      "cardMode": "single"
     }
   },
   "readmeHeader": ".design-sync/conventions.md"

@@ -85,53 +85,57 @@ const recent = [
  * the dim behind it and the × in the corner all come from `DialogContent`.
  */
 export const EditField = () => (
-  <Dialog defaultOpen>
-    <DialogContent className="sm:max-w-2xl">
-      <DialogHeader>
-        <DialogTitle>编辑字段</DialogTitle>
-        <DialogDescription>
-          键名与类型在创建时就定下了，之后不能改 —— 已经按那个形状存下的值不会跟着变。
-        </DialogDescription>
-      </DialogHeader>
+  /* Scaffolding: the card frame paints white while the product paints cream,
+     and the ground is the point here -- the dim reads against it. */
+  <div style={{ background: "var(--background)", padding: "1rem", minHeight: "100vh" }}>
+    <Dialog defaultOpen>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>编辑字段</DialogTitle>
+          <DialogDescription>
+            键名与类型在创建时就定下了，之后不能改 —— 已经按那个形状存下的值不会跟着变。
+          </DialogDescription>
+        </DialogHeader>
 
-      <FieldGroup className="sm:grid sm:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor="edit-field-key">键名</FieldLabel>
-          <Input id="edit-field-key" className="font-mono" defaultValue="warranty_end" disabled />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="edit-field-label">显示名称</FieldLabel>
-          <Input id="edit-field-label" defaultValue="保修截止" />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="edit-field-type">类型</FieldLabel>
-          <Select defaultValue="date">
-            <SelectTrigger id="edit-field-type" disabled>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="text">文本</SelectItem>
-              <SelectItem value="number">数字</SelectItem>
-              <SelectItem value="date">日期</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field orientation="horizontal" style={{ alignSelf: "end" }}>
-          <Checkbox id="edit-field-required" defaultChecked />
-          <FieldLabel htmlFor="edit-field-required">必填</FieldLabel>
-          <Checkbox id="edit-field-unique" disabled />
-          <FieldLabel htmlFor="edit-field-unique">唯一</FieldLabel>
-        </Field>
-      </FieldGroup>
+        <FieldGroup className="sm:grid sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="edit-field-key">键名</FieldLabel>
+            <Input id="edit-field-key" className="font-mono" defaultValue="warranty_end" disabled />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="edit-field-label">显示名称</FieldLabel>
+            <Input id="edit-field-label" defaultValue="保修截止" />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="edit-field-type">类型</FieldLabel>
+            <Select defaultValue="date">
+              <SelectTrigger id="edit-field-type" disabled>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">文本</SelectItem>
+                <SelectItem value="number">数字</SelectItem>
+                <SelectItem value="date">日期</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field orientation="horizontal" style={{ alignSelf: "end" }}>
+            <Checkbox id="edit-field-required" defaultChecked />
+            <FieldLabel htmlFor="edit-field-required">必填</FieldLabel>
+            <Checkbox id="edit-field-unique" disabled />
+            <FieldLabel htmlFor="edit-field-unique">唯一</FieldLabel>
+          </Field>
+        </FieldGroup>
 
-      <DialogFooter>
-        <DialogClose asChild>
-          <Button variant="ghost">取消</Button>
-        </DialogClose>
-        <Button>保存</Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="ghost">取消</Button>
+          </DialogClose>
+          <Button>保存</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </div>
 )
 
 /**
@@ -141,34 +145,38 @@ export const EditField = () => (
  * carries identity, status and the last few movements without a page change.
  */
 export const AssetDetail = () => (
-  <Dialog defaultOpen>
-    <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
-      <DialogHeader>
-        <DialogTitle className="flex flex-wrap items-center gap-3 pe-10">
-          <span className="font-mono">2199023255611</span>
-          <StatusBadge status="repairing" />
-          <Button size="sm" variant="outline" className="ml-auto">
-            打印标签
+  /* Scaffolding: the card frame paints white while the product paints cream,
+     and the ground is the point here -- the dim reads against it. */
+  <div style={{ background: "var(--background)", padding: "1rem", minHeight: "100vh" }}>
+    <Dialog defaultOpen>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex flex-wrap items-center gap-3 pe-10">
+            <span className="font-mono">2199023255611</span>
+            <StatusBadge status="repairing" />
+            <Button size="sm" variant="outline" className="ml-auto">
+              打印标签
+            </Button>
+          </DialogTitle>
+          <DialogDescription>网络设备 · 上海仓库 · 负责人 周文</DialogDescription>
+        </DialogHeader>
+
+        <div style={{ display: "grid", gap: "0.5rem" }}>
+          <span className="text-sm font-medium">最近流转</span>
+          <Timeline events={recent} />
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" style={{ marginRight: "auto" }}>
+            完整历史
           </Button>
-        </DialogTitle>
-        <DialogDescription>网络设备 · 上海仓库 · 负责人 周文</DialogDescription>
-      </DialogHeader>
-
-      <div style={{ display: "grid", gap: "0.5rem" }}>
-        <span className="text-sm font-medium">最近流转</span>
-        <Timeline events={recent} />
-      </div>
-
-      <DialogFooter>
-        <Button variant="outline" style={{ marginRight: "auto" }}>
-          完整历史
-        </Button>
-        <DialogClose asChild>
-          <Button variant="ghost">关闭</Button>
-        </DialogClose>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+          <DialogClose asChild>
+            <Button variant="ghost">关闭</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </div>
 )
 
 /**
@@ -177,49 +185,53 @@ export const AssetDetail = () => (
  * hoisted to the top of the page.
  */
 export const FromATrigger = () => (
-  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-    <Button size="sm" variant="outline">
-      变更状态
-    </Button>
-    <Dialog defaultOpen>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          导出 CSV
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>导出 CSV</DialogTitle>
-          <DialogDescription>
-            导出当前筛选下的 128 台设备。键名行不翻译，回填时按它对齐。
-          </DialogDescription>
-        </DialogHeader>
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="export-category">类别</FieldLabel>
-            <Select defaultValue="network">
-              <SelectTrigger id="export-category">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="network">网络设备</SelectItem>
-                <SelectItem value="laptop">笔记本</SelectItem>
-                <SelectItem value="server">服务器</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field orientation="horizontal">
-            <Checkbox id="export-attrs" defaultChecked />
-            <FieldLabel htmlFor="export-attrs">包含类别字段</FieldLabel>
-          </Field>
-        </FieldGroup>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="ghost">取消</Button>
-          </DialogClose>
-          <Button>导出</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+  /* Scaffolding: the card frame paints white while the product paints cream,
+     and the ground is the point here -- the dim reads against it. */
+  <div style={{ background: "var(--background)", padding: "1rem", minHeight: "100vh" }}>
+    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+      <Button size="sm" variant="outline">
+        变更状态
+      </Button>
+      <Dialog defaultOpen>
+        <DialogTrigger asChild>
+          <Button size="sm" variant="outline">
+            导出 CSV
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>导出 CSV</DialogTitle>
+            <DialogDescription>
+              导出当前筛选下的 128 台设备。键名行不翻译，回填时按它对齐。
+            </DialogDescription>
+          </DialogHeader>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="export-category">类别</FieldLabel>
+              <Select defaultValue="network">
+                <SelectTrigger id="export-category">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="network">网络设备</SelectItem>
+                  <SelectItem value="laptop">笔记本</SelectItem>
+                  <SelectItem value="server">服务器</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field orientation="horizontal">
+              <Checkbox id="export-attrs" defaultChecked />
+              <FieldLabel htmlFor="export-attrs">包含类别字段</FieldLabel>
+            </Field>
+          </FieldGroup>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost">取消</Button>
+            </DialogClose>
+            <Button>导出</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   </div>
 )

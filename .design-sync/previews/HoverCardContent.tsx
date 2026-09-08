@@ -62,8 +62,7 @@ export const WiderAndAligned = () => (
         <HoverCardContent
           align="start"
           side="bottom"
-          className="text-muted-foreground text-sm leading-relaxed"
-          style={{ width: 320 }}
+          className="text-muted-foreground w-72 text-sm leading-relaxed"
         >
           可以引用同一台设备上的其他字段，写作{" "}
           <code className="font-mono">fields.warranty_until</code>
