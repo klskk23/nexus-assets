@@ -222,27 +222,30 @@
 
 ## 第 13 阶段：收口
 
-- [ ] T072 静态检查三条：① `bg-card` / `<Card` 的命中集合等于白名单；
+- [X] T072 静态检查三条：① `bg-card` / `<Card` 的命中集合等于白名单；
       ② `font-heading` 的命中里没有中文标题；
       ③ 表格与统计里的数字列都带 `tabular-nums`（FR-013）
-- [ ] T073 两份 i18n 复核。**本轮预期零新增文案**；若有（如侧栏底部文字的替代），
+- [X] T073 两份 i18n 复核。**本轮预期零新增文案**；若有（如侧栏底部文字的替代），
       两种语言齐全，`tests/i18n.test.ts` 的孤儿检查为零
-- [ ] T074 **英文界面逐页走查**：16 个路由在英文下药丸不换行、48px 行高不被撑破、
+- [X] T074 **英文界面逐页走查**：16 个路由在英文下药丸不换行、48px 行高不被撑破、
       固定列宽没把内容挤没（SC-007）
-- [ ] T075 **键盘走查**：从页头 Tab 到页尾，每个可交互元素都到得了，
+- [X] T075 **键盘走查**：从页头 Tab 到页尾，每个可交互元素都到得了，
       焦点环（outline 2px + offset 2）始终可见（SC-008）
-- [ ] T076 `docs/rules/web-forms.md` 更新：三档地面的判据、圆角三档、
+- [X] T076 `docs/rules/web-forms.md` 更新：三档地面的判据、圆角三档、
       内容列上限、48px 行高来自内边距、焦点环是 outline 不是 ring —— 
       让下一个人不必重新发现
-- [ ] T077 空状态复核（FR-030）：48px 行高与新的地面分工不适用于空态。
-      逐个确认空状态仍说清什么会填满它，被筛空时仍给出清除筛选
-- [ ] T078 跑完整门禁（章程七条）：`gofmt -l` 空、`go vet`、`golangci-lint` 零告警；
+- [X] T077 空状态复核（FR-030）：空态说清什么会填满它 —— **通过**，五处都有断言守着
+      （`assets` / `audit` / `timeline` / `print` / `assetDetail`）。
+      ⚠️ **但「被筛空时给出清除筛选」这个能力根本不存在**，也从来没有测试守过它 ——
+      plan.md 的章程第二条把它列成了「DOM 测试守的行为」之一，那句话不成立。
+      不是本轮改坏的，也不属于版面轮的范围；**记在这里，不假装它过了**
+- [X] T078 跑完整门禁（章程七条）：`gofmt -l` 空、`go vet`、`golangci-lint` 零告警；
       `go test ./...` 全过；`nexus verify`；`npx tsc --noEmit`、`eslint`、
       `vitest run --maxWorkers=4`、`npm run build`；真镜像 `deploy/smoke.sh`
-- [ ] T079 **验证 SC-009**：`git diff main --stat -- internal/ cmd/ migrations/` 必须为**空**。
+- [X] T079 **验证 SC-009**：`git diff main --stat -- internal/ cmd/ migrations/` 必须为**空**。
       非空说明这一轮越界了
-- [ ] T080 按 [quickstart.md](./quickstart.md) 实机走完 19 步，带尺子量
-- [ ] T081 **前后对比**：把 T002 的基线截图与终版并排给开发者。
+- [X] T080 按 [quickstart.md](./quickstart.md) 实机走完 19 步，带尺子量
+- [X] T081 **前后对比**：把 T002 的基线截图与终版并排给开发者。
       「版面改好了没有」只有这样才回答得了
 
 ---
