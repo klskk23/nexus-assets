@@ -11,6 +11,7 @@ import { useStatuses } from "@/features/statuses/useStatuses"
 import { useAuth } from "@/features/auth/useAuth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { DialogFooter } from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -377,13 +378,17 @@ export function TransferForm({
           <AlertDescription>{banner}</AlertDescription>
         </Alert>
       )}
-      <div className="flex justify-end gap-2">
+      {/* DialogFooter, not a row of our own: it is what carries the band
+          every other dialog's actions sit on, and hand-rolling the row here is
+          exactly how this one ended up looking like a different product. This
+          form only ever renders inside TransferDialog, so it can say so. */}
+      <DialogFooter>
         {cancel}
         <Button disabled={!canSubmit || submit.isPending} onClick={() => submit.mutate()}>
           {submit.isPending && <Spinner aria-hidden />}
           {submit.isPending ? tTransfer.actions.submitting : tTransfer.actions.submit}
         </Button>
-      </div>
+      </DialogFooter>
     </div>
   )
 }

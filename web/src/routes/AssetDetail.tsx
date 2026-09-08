@@ -30,6 +30,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -529,7 +530,7 @@ export function AssetDetail() {
                       </FieldSet>
                     </>
 
-                    <div className="flex items-center gap-2">
+                    <DialogFooter>
                       <Button onClick={() => save.mutate()} disabled={save.isPending}>
                         {save.isPending && <Spinner aria-hidden />}
                         {save.isPending ? t.assets.saving : t.assets.save}
@@ -554,7 +555,7 @@ export function AssetDetail() {
                         requirePhrase={asset.display_name}
                         onConfirm={() => remove.mutate()}
                       />
-                    </div>
+                    </DialogFooter>
                   </div>
                 </DialogContent>
               </Dialog>
