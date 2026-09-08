@@ -61,7 +61,7 @@ export function AssetHistory() {
       />
 
       <section aria-label={t.assets.historyTitle} className="grid content-start gap-3">
-        <h2 className="font-medium">{t.assets.historyTitle}</h2>
+        <h2 className="text-[21px] leading-tight font-bold">{t.assets.historyTitle}</h2>
         <div className="grid gap-4">
           {editing && <EditEvent event={editing} assetID={id} onClose={() => setEditing(null)} />}
           <Timeline

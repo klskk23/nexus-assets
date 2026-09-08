@@ -80,7 +80,7 @@ export function Overview() {
         <div className="grid gap-14">
           <section aria-label={tOverview.statusTitle} className="grid gap-3">
             <div className="flex items-baseline gap-3">
-              <h2 className="font-medium">{tOverview.statusTitle}</h2>
+              <h2 className="text-[21px] leading-tight font-bold">{tOverview.statusTitle}</h2>
               <span className="text-sm text-muted-foreground">
                 {tOverview.total(overview.data?.total ?? 0)}
               </span>
@@ -107,7 +107,7 @@ export function Overview() {
           <div className="grid gap-6 lg:grid-cols-2">
             <section aria-label={tOverview.categoryTitle} className="grid content-start gap-3">
               <div className="grid gap-1">
-                <h2 className="font-medium">{tOverview.categoryTitle}</h2>
+                <h2 className="text-[21px] leading-tight font-bold">{tOverview.categoryTitle}</h2>
                 <p className="text-sm text-muted-foreground">{tOverview.categoryHint}</p>
               </div>
               <div>
@@ -131,7 +131,7 @@ export function Overview() {
 
             <section aria-label={tOverview.quickTitle} className="grid content-start gap-3">
               <div className="grid gap-1">
-                <h2 className="font-medium">{tOverview.quickTitle}</h2>
+                <h2 className="text-[21px] leading-tight font-bold">{tOverview.quickTitle}</h2>
                 <p className="text-sm text-muted-foreground">
                   {hasCategories ? tOverview.quickHint : tOverview.noCategoriesHint}
                 </p>
@@ -184,7 +184,7 @@ export function Overview() {
 
           <section aria-label={tOverview.recentTitle} className="grid gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-medium">{tOverview.recentTitle}</h2>
+              <h2 className="text-[21px] leading-tight font-bold">{tOverview.recentTitle}</h2>
               {/* Each entry is a multi-line block, so how many belong here is a
                   matter of taste rather than a constant worth guessing at. */}
               <Field orientation="horizontal" className="w-auto">

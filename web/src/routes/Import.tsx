@@ -128,7 +128,7 @@ export function Import() {
 
       <section aria-label={tImport.step1} className="grid content-start gap-3">
         <div className="grid gap-1">
-          <h2 className="font-medium">{tImport.step1}</h2>
+          <h2 className="text-[21px] leading-tight font-bold">{tImport.step1}</h2>
           <p className="text-sm text-muted-foreground">{tImport.step1Hint}</p>
         </div>
         <div className="grid gap-4">
@@ -188,7 +188,7 @@ export function Import() {
 
       <section aria-label={tImport.step2} className="grid content-start gap-3">
         <div className="grid gap-1">
-          <h2 className="font-medium">{tImport.step2}</h2>
+          <h2 className="text-[21px] leading-tight font-bold">{tImport.step2}</h2>
           <p className="text-sm text-muted-foreground">{tImport.step2Hint}</p>
         </div>
         <div className="grid gap-4">
@@ -237,7 +237,7 @@ export function Import() {
       {report && (
         <section aria-label={tImport.step3} className="grid content-start gap-3">
           <div className="grid gap-1">
-            <h2 className="font-medium">{tImport.step3}</h2>
+            <h2 className="text-[21px] leading-tight font-bold">{tImport.step3}</h2>
             <p className="text-sm text-muted-foreground">{tImport.step3Hint}</p>
           </div>
           <div className="grid gap-4">

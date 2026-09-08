@@ -195,8 +195,14 @@ export function AssetDetail() {
               <DialogHeader>
                 {/* pe-10 leaves room for the print button and, past it, the
                     dialog's own close button. */}
-                <DialogTitle className="flex flex-wrap items-center gap-3 pe-10">
-                  <span className="font-mono">{asset.display_name}</span>
+                {/* The one heading on this product that IS Latin: a device
+                    number. font-heading was taken off the Chinese page titles
+                    because Caprasimo renders none of those glyphs -- here it
+                    renders all of them, so this is where it belongs.
+                    Tabular figures because the number beside it in the list
+                    was set the same way. */}
+                <DialogTitle className="flex flex-wrap items-center gap-3 pe-10 text-[40px] leading-[1.2]">
+                  <span className="font-heading tabular-nums">{asset.display_name}</span>
                   <StatusBadge status={asset.status} />
                   {/* Printing is a property of the installation: with no
                       print service configured there is no button, the same
@@ -227,7 +233,7 @@ export function AssetDetail() {
                   this dialog, and repeating them here would make two places
                   to look and two to keep right. */}
               <section aria-label={t.assets.attrs} className="grid content-start gap-3">
-                <h2 className="font-medium">{t.assets.attrs}</h2>
+                <h2 className="text-[21px] leading-tight font-bold">{t.assets.attrs}</h2>
                 <div className="bg-well rounded-[20px] p-6">
                   {shown.length === 0 ? (
                     <Empty>
@@ -275,7 +281,7 @@ export function AssetDetail() {
                   on screen rather than behind a button -- it used to be one
                   click further away than editing a field. */}
               <section aria-label={tTransfer.actions.title} className="grid content-start gap-3">
-                <h2 className="font-medium">{tTransfer.actions.title}</h2>
+                <h2 className="text-[21px] leading-tight font-bold">{tTransfer.actions.title}</h2>
                 <div className="grid gap-4">
                   {/* Where the device is now, and who answers for it. Stated
                       rather than editable: the form right below is how both of
@@ -308,7 +314,7 @@ export function AssetDetail() {
               </section>
 
               <section aria-label={t.assets.recentTransfers} className="grid content-start gap-3">
-                <h2 className="font-medium">{t.assets.recentTransfers}</h2>
+                <h2 className="text-[21px] leading-tight font-bold">{t.assets.recentTransfers}</h2>
                 <div className="grid gap-4">
                   {editing && (
                     <EditEvent event={editing} assetID={id} onClose={() => setEditing(null)} />
@@ -333,7 +339,7 @@ export function AssetDetail() {
               </section>
 
               <section aria-label={t.assets.title} className="grid content-start gap-3">
-                <h2 className="font-medium">{t.assets.title}</h2>
+                <h2 className="text-[21px] leading-tight font-bold">{t.assets.title}</h2>
                 <div className="grid gap-6">
                   {/* A sentence that belongs to the device and to no category's
                   schema: the scratch on the lid, the trial it is out on. It
@@ -479,7 +485,7 @@ export function AssetDetail() {
               {(detail.data?.value_history ?? []).length > 0 && (
                 <section aria-label={t.assets.valueHistory} className="grid content-start gap-3">
                   <div className="grid gap-1">
-                    <h2 className="font-medium">{t.assets.valueHistory}</h2>
+                    <h2 className="text-[21px] leading-tight font-bold">{t.assets.valueHistory}</h2>
                     <p className="text-sm text-muted-foreground">{t.assets.valueHistoryHint}</p>
                   </div>
                   <div className="bg-well rounded-[20px] p-6">

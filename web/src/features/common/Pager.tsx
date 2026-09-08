@@ -120,7 +120,7 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
                       onPage(n)
                     }}
                   >
-                    {n + 1}
+                    <span className="font-heading">{n + 1}</span>
                   </PaginationLink>
                 </PaginationItem>
               ),

@@ -39,14 +39,14 @@ export function DistributionBar({ data, onSelect }: Props) {
             type="button"
             onClick={() => onSelect(d.category_id)}
             aria-label={`${d.name} ${d.count} ${tOverview.unit}`}
-            className="hover:bg-accent focus-visible:ring-ring grid w-full grid-cols-[minmax(6rem,9rem)_1fr_auto] items-center gap-3 rounded-full px-3 py-1.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+            className="grid w-full grid-cols-[104px_1fr_46px] items-center gap-4 rounded-full py-1.5 text-left text-sm transition-opacity hover:opacity-[.72]"
           >
             <span className="truncate" title={d.name}>
               {d.name}
             </span>
             {/* aria-hidden: the button's own label already says the name and the
                 count, and a track read out as well would say it a second time. */}
-            <span aria-hidden className="bg-well h-2.5 overflow-hidden rounded-full">
+            <span aria-hidden className="bg-well h-[18px] overflow-hidden rounded-full">
               {/* display:block, not inline: a percentage width on an inline box
                   is ignored and every bar would come out the width of nothing.
                   min-width so a category with one device is still a mark rather
@@ -56,7 +56,7 @@ export function DistributionBar({ data, onSelect }: Props) {
                 style={{ width: `${(d.count / largest) * 100}%` }}
               />
             </span>
-            <span className="text-muted-foreground w-10 text-right tabular-nums">{d.count}</span>
+            <span className="font-heading text-right tabular-nums">{d.count}</span>
           </button>
         </li>
       ))}

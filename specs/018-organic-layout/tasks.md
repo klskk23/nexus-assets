@@ -127,12 +127,12 @@
 
 **独立验收**：中文页面上页标题、区标题、正文三级在不看颜色时可分。
 
-- [ ] T038 [US3] `web/src/routes/AssetDetail.tsx`：h1 是资产编号（拉丁数字），
+- [X] T038 [US3] `web/src/routes/AssetDetail.tsx`：h1 是资产编号（拉丁数字），
       **应当加上 `font-heading`** + `tabular-nums`。T007 摘掉的是中文标题上的，
       这里是反过来 —— **漏了这条就白改**（plan 风险表）
-- [ ] T039 [P] [US3] 区标题统一 21px/700；计数、字段键名、页码加 `font-heading`
+- [X] T039 [P] [US3] 区标题统一 21px/700；计数、字段键名、页码加 `font-heading`
       （它们全是拉丁与数字）
-- [ ] T040 [US3] 截图：一个中文页 + 资产详情，确认中文靠字号分层、拉丁走 Caprasimo
+- [X] T040 [US3] 截图：一个中文页 + 资产详情，确认中文靠字号分层、拉丁走 Caprasimo
 
 ## 第 7 阶段：AppShell 两版 —— 开发者裁定（闸）
 
