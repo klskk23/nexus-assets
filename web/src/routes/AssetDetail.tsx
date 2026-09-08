@@ -36,13 +36,7 @@ import {
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty"
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field"
+import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import {
   Select,
   SelectContent,
@@ -241,10 +235,42 @@ export function AssetDetail() {
                     renders all of them, so this is where it belongs.
                     Tabular figures because the number beside it in the list
                     was set the same way. */}
-                <h1 className="flex flex-wrap items-center gap-3 text-[40px] leading-[1.2] font-bold">
-                  <span className="font-heading tabular-nums">{asset.display_name}</span>
-                  <StatusBadge status={asset.status} />
-                </h1>
+                {/* The number and the verbs share a line: the number is what
+                    you came to identify, the buttons are what you came to do,
+                    and on a page this wide keeping them apart left a band of
+                    nothing between them. They wrap under on a narrow panel,
+                    which is the only width where the row cannot hold both. */}
+                <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+                  <h1 className="flex flex-wrap items-center gap-3 text-[40px] leading-[1.2] font-bold">
+                    <span className="font-heading tabular-nums">{asset.display_name}</span>
+                    <StatusBadge status={asset.status} />
+                  </h1>
+                  {/* Everything you can DO to this device, in one row, ordered by
+                    how often it is done: label it, correct it, move it. The page
+                    below is what the device IS; these are the verbs, and keeping
+                    them together is what lets the reading part stay readable.
+
+                    Moving is the primary because it is why this system exists.
+                    The other two are outlines -- printing is occasional, editing
+                    happens about once in a device's life. */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canPrint && (
+                      <Button
+                        variant="outline"
+                        disabled={deniedReason("print") !== undefined}
+                        title={deniedReason("print") ?? t.print.action}
+                        onClick={() => setPrinting(true)}
+                      >
+                        <PrinterIcon />
+                        {t.print.action}
+                      </Button>
+                    )}
+                    <Button variant="outline" onClick={() => setEditOpen(true)}>
+                      {t.assets.editAttrs}
+                    </Button>
+                    <Button onClick={() => setTransferOpen(true)}>{tTransfer.actions.title}</Button>
+                  </div>
+                </div>
                 {/* Data, not prose. The mock had a sentence here explaining how
                     the number is derived -- that belongs to the entry form,
                     where somebody is deciding whether to type one. No model, no
@@ -254,33 +280,6 @@ export function AssetDetail() {
                     {[model.name, model.vendor_name].filter(Boolean).join(" · ")}
                   </p>
                 )}
-                {/* Everything you can DO to this device, in one row, ordered by
-                    how often it is done: label it, correct it, move it. The page
-                    below is what the device IS; these are the verbs, and keeping
-                    them together is what lets the reading part stay readable.
-
-                    Moving is the primary because it is why this system exists.
-                    The other two are outlines -- printing is occasional, editing
-                    happens about once in a device's life. */}
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {canPrint && (
-                    <Button
-                      variant="outline"
-                      disabled={deniedReason("print") !== undefined}
-                      title={deniedReason("print") ?? t.print.action}
-                      onClick={() => setPrinting(true)}
-                    >
-                      <PrinterIcon />
-                      {t.print.action}
-                    </Button>
-                  )}
-                  <Button variant="outline" onClick={() => setEditOpen(true)}>
-                    {t.assets.editAttrs}
-                  </Button>
-                  <Button onClick={() => setTransferOpen(true)}>
-                    {tTransfer.actions.title}
-                  </Button>
-                </div>
               </header>
 
               {printing && <PrintDialog ids={[id]} onClose={() => setPrinting(false)} />}
@@ -426,27 +425,27 @@ export function AssetDetail() {
                     <DialogDescription>{t.assets.editAttrsHint}</DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-6">
-                  {/* A sentence that belongs to the device and to no category's
+                    {/* A sentence that belongs to the device and to no category's
                   schema: the scratch on the lid, the trial it is out on. It
                   sits with the built-ins because that is what it is. */}
-                  <Field>
-                    <FieldLabel htmlFor="asset-note">{t.assets.note}</FieldLabel>
-                    <Textarea
-                      id="asset-note"
-                      rows={2}
-                      value={note}
-                      placeholder={t.assets.notePlaceholder}
-                      onChange={(e) => setNote(e.target.value)}
-                    />
-                  </Field>
+                    <Field>
+                      <FieldLabel htmlFor="asset-note">{t.assets.note}</FieldLabel>
+                      <Textarea
+                        id="asset-note"
+                        rows={2}
+                        value={note}
+                        placeholder={t.assets.notePlaceholder}
+                        onChange={(e) => setNote(e.target.value)}
+                      />
+                    </Field>
 
-                  {/* No second layer of hiding. This used to be a
+                    {/* No second layer of hiding. This used to be a
                       Collapsible on the page, because the model, the home and
                       the category's fields were taking the room a movement
                       should have had. The dialog already IS the "not now"
                       state, so folding things inside it only meant two clicks
                       to reach what the dialog was opened for. */}
-                  <>
+                    <>
                       {/* Where it belongs when it is not out. Editable here rather
                     than on the entry form: a device's home changes when it is
                     relocated for good, which is an edit, not a recording. */}
@@ -528,34 +527,34 @@ export function AssetDetail() {
                           )}
                         </FieldGroup>
                       </FieldSet>
-                  </>
+                    </>
 
-                  <div className="flex items-center gap-2">
-                    <Button onClick={() => save.mutate()} disabled={save.isPending}>
-                      {save.isPending && <Spinner aria-hidden />}
-                      {save.isPending ? t.assets.saving : t.assets.save}
-                    </Button>
-                    {/* At the far end, and it still asks for the number to be
+                    <div className="flex items-center gap-2">
+                      <Button onClick={() => save.mutate()} disabled={save.isPending}>
+                        {save.isPending && <Spinner aria-hidden />}
+                        {save.isPending ? t.assets.saving : t.assets.save}
+                      </Button>
+                      {/* At the far end, and it still asks for the number to be
                         typed out: near enough to find, far enough not to be
                         hit on the way to Save. */}
-                    <ConfirmDialog
-                      trigger={
-                        <Button
-                          variant="destructive"
-                          className="ml-auto"
-                          disabled={remove.isPending}
-                        >
-                          {t.assets.delete}
-                        </Button>
-                      }
-                      title={t.assets.deleteTitle}
-                      description={t.assets.deleteHint(asset.display_name)}
-                      confirmLabel={t.assets.delete}
-                      tone="danger"
-                      requirePhrase={asset.display_name}
-                      onConfirm={() => remove.mutate()}
-                    />
-                  </div>
+                      <ConfirmDialog
+                        trigger={
+                          <Button
+                            variant="destructive"
+                            className="ml-auto"
+                            disabled={remove.isPending}
+                          >
+                            {t.assets.delete}
+                          </Button>
+                        }
+                        title={t.assets.deleteTitle}
+                        description={t.assets.deleteHint(asset.display_name)}
+                        confirmLabel={t.assets.delete}
+                        tone="danger"
+                        requirePhrase={asset.display_name}
+                        onConfirm={() => remove.mutate()}
+                      />
+                    </div>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -585,17 +584,17 @@ export function AssetDetail() {
                   value -- and a list of two-word rows was a table pretending to
                   be prose. */}
               {archived.length > 0 && (
-                <section aria-label={t.assets.archivedFields} className="bg-card grid content-start gap-3 rounded-[28px] px-8 py-6">
+                <section
+                  aria-label={t.assets.archivedFields}
+                  className="bg-card grid content-start gap-3 rounded-[28px] px-8 py-6"
+                >
                   <div className="grid gap-1">
                     <h2 className="text-base font-bold">{t.assets.archivedFields}</h2>
                     <p className="text-muted-foreground text-sm">{t.assets.archivedHint}</p>
                   </div>
                   <ul className="flex flex-wrap gap-2">
                     {archived.map(([k, v]) => (
-                      <li
-                        key={k}
-                        className="bg-background rounded-full border px-3 py-1.5 text-sm"
-                      >
+                      <li key={k} className="bg-background rounded-full border px-3 py-1.5 text-sm">
                         <span className="text-muted-foreground">{k}</span>
                         <span className="text-muted-foreground/60 px-1.5">·</span>
                         <span className="tabular-nums">{String(v)}</span>
