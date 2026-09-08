@@ -64,7 +64,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (newToken: string, user: User) => {
       setToken(newToken)
       setLocalToken(newToken)
-      queryClient.setQueryData(["me", newToken], user)
+      // The sign-in response's user is a placeholder, not the answer: it
+      // carries the name and the role id, and /me is the only endpoint that
+      // fills in `permissions` and `is_admin`. Seeded so the shell can paint
+      // immediately instead of flashing a skeleton, and stamped as already
+      // stale so the real one is fetched at once.
+      //
+      // Without `updatedAt` this was seeding data the client held fresh for
+      // its 30s staleTime, and nothing ever came along to refetch it --
+      // refetchOnWindowFocus is off and the provider does not remount. So
+      // /me was never called for the whole session, every permission read
+      // undefined, and an admin who had just signed in could not see the
+      // audit entry until they reloaded the page.
+      queryClient.setQueryData(["me", newToken], user, { updatedAt: 0 })
     },
     [queryClient],
   )
