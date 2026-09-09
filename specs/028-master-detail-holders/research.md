@@ -90,7 +90,7 @@ holder_type = 'entity' AND holder_id IN (
 那种坑，所以**不靠注释互相指认，靠一条测试把它们钉在一起**：
 
 > `TestHolderCountsAgreeWithTheFilteredList` —— 对夹具里的**每一个**持有方，
-> 断言 `counts[id] == len(list(holder_id=id, include_descendants=true))`。
+> 断言 `counts[id] == len(list(holder_id=id, holder_include_descendants=true))`。
 > 两边各自算错的可能性存在，**算成同一个错的可能性不存在**。
 
 这条测试就是 spec SC-002 在服务端的落点；前端那一半（行尾的数 = 链接文案里的数 =

@@ -42,8 +42,10 @@ description: "Task list for 028 — 持有方主从化，四页拉齐"
       `internal/httpapi/routes.go` 挂上。读默认全开放，与 `/categories/counts` 一致。
 - [ ] T005 [P] `internal/httpapi/handlers_assets.go`：读 `holder_include_descendants`，
       **默认 false**（与类别的 `include_descendants` 默认 true 故意不同，注释写明理由）。
-- [ ] T006 检查读同一套筛选的另外三处（`handlers_importexport.go`、`handlers_rows.go`、
-      `handlers_print.go`）：明确它们保持 false，或一并支持。**任选其一，但要写下来**——
+- [ ] T006 读同一套筛选的另外三处（`handlers_importexport.go`、`handlers_rows.go`、
+      `handlers_print.go`）**保持默认 false**，本轮不支持新参数 —— 它们回答的都是
+      「就这一批」（导出这一批、打印这一批、取这一批的行），含下级会让一次导出
+      悄悄多出几百行。**在这三处各留一行注释写明这是决定而非遗漏**；
       026 的教训是「一处改了契约、另几处没跟上，而 mock 把测试变成绿的」。
 
 ### Foundational 的测试（与实现同一批，不后置）
@@ -96,7 +98,14 @@ description: "Task list for 028 — 持有方主从化，四页拉齐"
 - [ ] T020 [US1] `web/tests/holdersTree.test.tsx`：层级正确（公司与无上级的位置并排在根）、
       根按名字排序、点节点写地址、刷新保持、**陈旧 id 与空列表是两句不同的话**、
       搜索平展且带完整路径、**备注可见（SC-007，025 删过一次的那条）**、
-      树上无右键菜单、窄屏返回入口。
+      树上无右键菜单、窄屏返回入口、**行上标出类型**（FR-003）、
+      **属性带里的上级不是链接**（FR-016，024 决策 8）、
+      **无 `holder.create` 时新建按钮禁用并说出缺什么**（FR-009）。
+- [ ] T020a [US1] `web/tests/holdersTree.test.tsx`：**左栏的分页与折叠**（FR-005、FR-006）。
+      根多于一页时，翻到第二页后**任何一行的父都在同一页上**（014 决策 91 的守卫）；
+      单节点子项超阈值时默认折起并在行上写明数量，点一下展开。
+      **这条不能漏**：本轮 research 的第一节正是「功能在、守卫不在」的现场，
+      在同一轮里给类别补上守卫却不给持有方补，是把同一个坑挖第二遍。
 - [ ] T021 [US1] 改写 `web/tests/holderHierarchy.test.tsx`：表格断言换成树与对话框断言。
       **不要删掉任何一条既有断言就换掉它** —— 025 就是在改写测试文件时把功能与守卫
       一起删掉的。逐条对照：每条旧断言要么迁移，要么在这里写下为什么不再适用。
@@ -199,8 +208,9 @@ description: "Task list for 028 — 持有方主从化，四页拉齐"
 - [ ] T045 **FR-035 检查**：确认 `MasterDetail` / `useMasterSelection` 本轮零改动。
       若被迫改了，**在交付说明里报告是什么迫使它改变**，不要顺手改掉了事。
 - [ ] T046 门禁全跑：`gofmt -l internal cmd`、`go vet ./...`、`go test ./...`、
-      `cd web && npx vitest run --maxWorkers=4`、`npm run build`、`npm run lint`、
-      真实库副本上 `nexus verify`。
+      **`go test -cover ./internal/asset/ ./internal/holder/ ./internal/httpapi/` 并记下数字
+      （SC-008 要求核心管线 ≥80%）**、`cd web && npx vitest run --maxWorkers=4`、
+      `npm run build`、`npm run lint`、真实库副本上 `nexus verify`。
 - [ ] T047 实机走查：按 `quickstart.md` 十节全走一遍，**含第 9 节**
       （若类别页的分页与折叠走查不出来，research 第一节的结论就是错的，回去重查）。
 
