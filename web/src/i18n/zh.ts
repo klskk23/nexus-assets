@@ -82,7 +82,6 @@ export const zh = {
     holders: "持有方",
     users: "账号",
     roles: "角色",
-    importPage: "导入",
     audit: "审计",
     signOut: "退出登录",
     language: "切换语言",

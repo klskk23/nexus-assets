@@ -1179,3 +1179,25 @@ describe("Assets selection", () => {
   })
 })
 
+/**
+ * Importing opens from where the devices are.
+ *
+ * It was a page on the navigation bar, which put a rare job beside the eleven
+ * things people do daily. It is an act, not a place: you are looking at this
+ * list when a spreadsheet of new devices arrives.
+ */
+describe("导入的入口", () => {
+  it("资产页有导入按钮，点开是对话框", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await user.click(await screen.findByRole("button", { name: "批量导入" }))
+    expect(await screen.findByRole("dialog")).toBeInTheDocument()
+  })
+
+  it("没有 import 权限时按钮禁用并说明缺什么", async () => {
+    renderWithProviders(<Assets />, { permissions: [] })
+    const b = await screen.findByRole("button", { name: "批量导入" })
+    expect(b).toBeDisabled()
+    expect(b).toHaveAttribute("title", expect.stringContaining("导入"))
+  })
+})

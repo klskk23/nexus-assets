@@ -59,7 +59,6 @@ export const router = createBrowserRouter([
         path: "audit/transfers",
         lazy: async () => ({ Component: (await import("./TransferAudit")).TransferAudit }),
       },
-      { path: "import", lazy: async () => ({ Component: (await import("./Import")).Import }) },
       { path: "users", lazy: async () => ({ Component: (await import("./Users")).Users }) },
     ],
   },

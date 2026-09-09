@@ -10,10 +10,15 @@ import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
 import { Field, FieldLabel } from "@/components/ui/field"
-import { PageHeader } from "@/features/common/PageHeader"
 import {
   Select,
   SelectContent,
@@ -135,7 +140,20 @@ function Step({
   )
 }
 
-export function Import() {
+/**
+ * Importing, in a dialog.
+ *
+ * It was a page on the navigation bar, which put a rare job beside the eleven
+ * things people do daily and made it look like a place rather than an act. It
+ * is an act: you are on the asset list, or reading the overview, and you want
+ * these rows in. So it opens from there, and closing it puts you back where
+ * you were rather than on a screen you now have to navigate away from.
+ *
+ * The three steps are unchanged. They still read as one job in one block --
+ * the order is the point, which is why it is an ordered list and a screen
+ * reader hears "3 of 3".
+ */
+export function ImportDialog({ onClose }: { onClose: () => void }) {
   const [categoryID, setCategoryID] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [report, setReport] = useState<Report | null>(null)
@@ -181,9 +199,11 @@ export function Import() {
   const canCommit = report !== null && report.ok === report.total && report.total > 0
 
   return (
-    <div className="grid gap-14">
-      <PageHeader title={tImport.title} />
-
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{tImport.title}</DialogTitle>
+        </DialogHeader>
       {/* Three stages of one job, so they sit 22px apart in a single block --
           56px between them would read as three unrelated things that happen
           to be on the same page. An ordered list, because that is what it is:
@@ -354,6 +374,7 @@ export function Import() {
         </Step>
         )}
       </ol>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

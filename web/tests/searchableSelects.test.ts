@@ -29,7 +29,7 @@ const BOUNDED: Record<string, string> = {
   "routes/Assets.tsx": "状态筛选：由状态页配置，五到十个",
   "routes/Audit.tsx": "对象类型与动作：两组常量",
   "routes/Holders.tsx": "持有方类型三种、是否默认库存点两种",
-  "routes/Import.tsx": "导入页是 demo，本轮不动（026 FR-026）",
+  "features/import/ImportDialog.tsx": "导入的类别选择：demo，本轮不动（026 FR-026）",
   "routes/Overview.tsx": "每页条数：常量",
   "routes/Statuses.tsx": "颜色：八个色槽",
   "routes/TransferAudit.tsx": "动作类型：六种，代码里写死",

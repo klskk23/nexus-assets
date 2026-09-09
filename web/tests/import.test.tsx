@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
-import { Import } from "@/routes/Import"
+import { ImportDialog } from "@/features/import/ImportDialog"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { chooseByLabel } from "@/test/choose"
 import { stubDownloads } from "@/test/downloads"
@@ -65,7 +65,7 @@ describe("Import page", () => {
     const dl = stubDownloads()
     try {
       const user = userEvent.setup()
-      renderWithProviders(<Import />)
+      renderWithProviders(<ImportDialog onClose={vi.fn()} />)
 
       expect(await screen.findByRole("button", { name: "下载模板" })).toBeDisabled()
 
@@ -87,7 +87,7 @@ describe("Import page", () => {
   // grey, and the reason lived in the card above with nothing pointing at it.
   it("says why the preview is unavailable until a category is chosen", async () => {
     const user = userEvent.setup()
-    renderWithProviders(<Import />)
+    renderWithProviders(<ImportDialog onClose={vi.fn()} />)
 
     expect(await screen.findByText(/先在第 1 步选好类别/)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "预览" })).toBeDisabled()
@@ -113,7 +113,7 @@ describe("Import page", () => {
     })
 
     const user = userEvent.setup()
-    renderWithProviders(<Import />)
+    renderWithProviders(<ImportDialog onClose={vi.fn()} />)
     await uploadAndPreview(user)
 
     expect(await screen.findByText("全部 3 行校验通过")).toBeInTheDocument()
@@ -137,7 +137,7 @@ describe("Import page", () => {
       }),
     )
     const user = userEvent.setup()
-    renderWithProviders(<Import />)
+    renderWithProviders(<ImportDialog onClose={vi.fn()} />)
     await uploadAndPreview(user)
 
     expect(await screen.findByRole("status")).toHaveTextContent("120 行中 117 行可以导入")
@@ -159,7 +159,7 @@ describe("Import page", () => {
   it("enables the commit only when every line passes", async () => {
     fetchMock.mockReturnValue(ok({ total: 3, ok: 3, rows: [] }))
     const user = userEvent.setup()
-    renderWithProviders(<Import />)
+    renderWithProviders(<ImportDialog onClose={vi.fn()} />)
     await uploadAndPreview(user)
 
     expect(await screen.findByText("全部 3 行校验通过")).toBeInTheDocument()
@@ -179,7 +179,7 @@ describe("Import page", () => {
   it("sends the category and the file as one upload", async () => {
     fetchMock.mockReturnValue(ok({ total: 1, ok: 1, rows: [] }))
     const user = userEvent.setup()
-    renderWithProviders(<Import />)
+    renderWithProviders(<ImportDialog onClose={vi.fn()} />)
     await uploadAndPreview(user)
 
     await waitFor(() =>
@@ -195,7 +195,7 @@ describe("Import page", () => {
   it("keeps showing the offending lines when the commit is refused", async () => {
     fetchMock.mockReturnValueOnce(ok({ total: 2, ok: 2, rows: [] }))
     const user = userEvent.setup()
-    renderWithProviders(<Import />)
+    renderWithProviders(<ImportDialog onClose={vi.fn()} />)
     await uploadAndPreview(user)
     await screen.findByText("全部 2 行校验通过")
 

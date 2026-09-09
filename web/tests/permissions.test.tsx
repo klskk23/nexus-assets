@@ -164,6 +164,14 @@ describe("the navigation", () => {
   // Which of the two the entry opens. Whoever can read movements lands there:
   // who has the device is asked daily, who renamed a field is asked once
   // something has already gone wrong.
+  // Importing left the bar when it became a dialog: it is an act done from
+  // the asset list or the overview, not a place among the eleven destinations.
+  it("导航条上不再有导入", async () => {
+    renderWithProviders(<AppShell />)
+    await waitFor(() => expect(screen.getByRole("link", { name: "资产" })).toBeInTheDocument())
+    expect(screen.queryByRole("link", { name: "导入" })).not.toBeInTheDocument()
+  })
+
   it("带两个权限时，审计入口开在流转审计", async () => {
     renderWithProviders(<AppShell />, { permissions: ["audit.read", "transfer.audit"] })
     await waitFor(() =>

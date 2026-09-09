@@ -34,7 +34,6 @@ function navLinks(can: (p: Permission) => boolean) {
     { to: "/holders", label: t.nav.holders },
     { to: "/users", label: t.nav.users },
     { to: "/roles", label: t.nav.roles },
-    { to: "/import", label: t.nav.importPage },
     // The one page that is hidden rather than shown with dead buttons: it has
     // nothing on it a reader without the permission may see, and an entry that
     // only ever answers 403 is worse than no entry.

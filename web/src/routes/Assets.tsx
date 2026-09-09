@@ -43,6 +43,7 @@ import { ExportDialog } from "@/features/assets/ExportDialog"
 import { NewAssetDialog } from "@/features/assets/NewAssetDialog"
 import { SearchSelect } from "@/features/common/SearchSelect"
 import { FOLD_ABOVE } from "@/features/common/useFoldable"
+import { ImportDialog } from "@/features/import/ImportDialog"
 import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -113,6 +114,7 @@ export function Assets() {
   // Not in the address: how much of a menu is open is a posture in one
   // visit, not a place to share. Same judgement 025 made about folding.
   const [showAllFields, setShowAllFields] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [categoryId, setCategoryId] = useState(searchParams.get("category_id") ?? "")
   const [includeDescendants, setIncludeDescendants] = useState(
     searchParams.get("include_descendants") !== "false",
@@ -397,6 +399,16 @@ export function Assets() {
       <PageHeader title={t.assets.title}>
         {/* Not a link: every credential this app has travels in a header, and
             a plain download navigation carries none of them. */}
+        {/* Beside export, because they are the same job in two directions and
+            importing is not a place to navigate to. */}
+        <Button
+          variant="outline"
+          onClick={() => setImporting(true)}
+          disabled={deniedReason("import") !== undefined}
+          title={deniedReason("import")}
+        >
+          {tImport.title}
+        </Button>
         <Button
           variant="outline"
           onClick={() => setExporting(true)}
@@ -871,6 +883,7 @@ export function Assets() {
         </Alert>
       )}
 
+      {importing && <ImportDialog onClose={() => setImporting(false)} />}
       <ExportDialog
         open={exporting}
         onOpenChange={setExporting}

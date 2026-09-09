@@ -97,7 +97,6 @@ export const en: typeof zh = {
     holders: "Holders",
     users: "Accounts",
     roles: "Roles",
-    importPage: "Import",
     audit: "Audit",
     signOut: "Sign out",
     language: "Switch language",

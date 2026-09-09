@@ -6,12 +6,14 @@ import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import type { AssetStatus, Category } from "@/lib/types"
 import type { Transfer } from "@/lib/transferTypes"
-import { t, tAudit, tOverview } from "@/i18n"
+import { t, tAudit, tOverview, tImport } from "@/i18n"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { StateBoundary } from "@/components/StateBoundary"
 import { DistributionBar } from "@/features/overview/DistributionBar"
 import { PageHeader } from "@/features/common/PageHeader"
+import { ImportDialog } from "@/features/import/ImportDialog"
+import { usePermissions } from "@/features/auth/usePermissions"
 import { TransferChange } from "@/features/transfers/TransferChange"
 import { TableFrame } from "@/features/common/TableFrame"
 import {
@@ -62,6 +64,8 @@ export function Overview() {
   const navigate = useNavigate()
   const statuses = useStatuses()
   const [recentCount, setRecentCount] = useState(RECENT_COUNTS[1])
+  const [importing, setImporting] = useState(false)
+  const { deniedReason } = usePermissions()
 
   const overview = useQuery({
     queryKey: ["overview", recentCount],
@@ -79,6 +83,18 @@ export function Overview() {
   return (
     <div className="grid gap-14">
       <PageHeader title={tOverview.title}>
+        {/* Importing is an act performed from where the devices are, not a
+            place on the navigation bar beside the eleven things people do
+            daily. Here and on the asset list, which are the two screens
+            somebody is looking at when a spreadsheet of new devices arrives. */}
+        <Button
+          variant="outline"
+          onClick={() => setImporting(true)}
+          disabled={deniedReason("import") !== undefined}
+          title={deniedReason("import")}
+        >
+          {tImport.title}
+        </Button>
         <Button
           disabled={!hasCategories}
           title={hasCategories ? undefined : tOverview.noCategoriesHint}
@@ -88,6 +104,7 @@ export function Overview() {
           {t.assets.newAsset}
         </Button>
       </PageHeader>
+      {importing && <ImportDialog onClose={() => setImporting(false)} />}
 
       <StateBoundary
         isLoading={overview.isLoading}

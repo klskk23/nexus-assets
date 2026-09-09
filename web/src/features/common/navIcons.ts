@@ -8,7 +8,6 @@ import {
   LayoutDashboardIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
-  UploadIcon,
   UsersIcon,
   WarehouseIcon,
   type LucideIcon,
@@ -41,7 +40,6 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   "/holders": WarehouseIcon,
   "/users": UsersIcon,
   "/roles": ShieldCheckIcon,
-  "/import": UploadIcon,
   "/audit": ScrollTextIcon,
 }
 
