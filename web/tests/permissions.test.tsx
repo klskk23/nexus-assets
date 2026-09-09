@@ -133,9 +133,15 @@ describe("what a role without permissions sees", () => {
     )
   })
 
+  // The button moved to the foot of the rail in 025; what it does when the
+  // permission is missing did not change.
   it("disables creating on a metadata page", async () => {
-    renderWithProviders(<Models />, { permissions: ordinary })
-    const create = await screen.findByRole("button", { name: "新建型号" })
+    renderWithProviders(<Models />, {
+      permissions: ordinary,
+      route: "/models",
+      path: ["/models", "/models/:id"],
+    })
+    const create = await screen.findByRole("button", { name: /新建型号/ })
     expect(create).toBeDisabled()
     expect(create).toHaveAttribute("title", expect.stringContaining("管理型号"))
   })

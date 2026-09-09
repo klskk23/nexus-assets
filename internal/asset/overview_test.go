@@ -252,3 +252,80 @@ func TestOverviewAndSubtreeCountsAgreeByConstruction(t *testing.T) {
 		}
 	}
 }
+
+// The model count and the category count take the same view of one device.
+//
+// Compared against each other rather than each against a constant: two tests
+// asserting 2 both stay green on the day one path starts counting written-off
+// units and the other does not. A model reading 42 inside a category that has
+// already left a retired unit out is a difference the interface cannot explain
+// and every reader reports as a broken ledger (024 settled this for
+// categories; a model is the same question asked one level down).
+func TestModelCountsAndCategoryCountsAgreeOnWhatCounts(t *testing.T) {
+	f := newFixture(t)
+	m, err := f.schema.CreateModel(f.ctx, schema.CreateModelInput{
+		Name: "R640", CategoryIDs: []string{f.catID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a, err := f.save(t, SaveInput{ModelID: &m.ID, Attrs: map[string]any{"mac": "001A2B3C4D01"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.save(t, SaveInput{
+		ModelID: &m.ID, Attrs: map[string]any{"mac": "001A2B3C4D02"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	byModel, err := f.svc.CountsByModel(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byCategory, err := f.svc.SubtreeCountsByCategory(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Every device here carries this model and sits in this category, so the
+	// two numbers are answers to the same question and must match.
+	if byModel[m.ID] != byCategory[f.catID] {
+		t.Fatalf("model says %d, category says %d", byModel[m.ID], byCategory[f.catID])
+	}
+
+	// Retire one and they must move together.
+	if _, err := f.save(t, SaveInput{
+		ID: a.ID, Version: a.Version, ModelID: &m.ID, Status: model.StatusRetired,
+		Attrs: map[string]any{"mac": "001A2B3C4D01"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	byModel, _ = f.svc.CountsByModel(f.ctx)
+	byCategory, _ = f.svc.SubtreeCountsByCategory(f.ctx)
+	if byModel[m.ID] != byCategory[f.catID] {
+		t.Errorf("after retiring one: model %d, category %d -- the two filters have drifted",
+			byModel[m.ID], byCategory[f.catID])
+	}
+	if byModel[m.ID] != 1 {
+		t.Errorf("the retired device should be out, got %d", byModel[m.ID])
+	}
+}
+
+// Present at zero, for the reason every count here is.
+func TestModelCountsIncludeModelsWithNothingOnThem(t *testing.T) {
+	f := newFixture(t)
+	m, err := f.schema.CreateModel(f.ctx, schema.CreateModelInput{
+		Name: "Unused", CategoryIDs: []string{f.catID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	counts, err := f.svc.CountsByModel(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n, ok := counts[m.ID]; !ok || n != 0 {
+		t.Errorf("want present at 0, got %d (present: %v)", n, ok)
+	}
+}

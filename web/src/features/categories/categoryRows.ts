@@ -16,11 +16,17 @@ export interface CategoryRow {
  * the parent links are re-walked here rather than trusted: silently dropping a
  * category whose parent sorted after it would be worse than being slow.
  *
- * No `collapsed` argument any more -- 024 made the tree always open, and a
- * parameter every caller passes an empty array to is an invitation to bring
- * folding back without deciding to.
+ * Folding is conditional (025): a node whose children would fill the rail on
+ * their own starts closed and says how many are behind it. 024 removed folding
+ * outright and CollapsibleTree was deleted for it before that -- both times
+ * the objection was a control that hides half the answer to "what is there".
+ * What is different is that the reader is now told what they are not seeing,
+ * which is the piece both earlier attempts were missing.
  */
-export function flattenCategories(items: Category[]): CategoryRow[] {
+export function flattenCategories(
+  items: Category[],
+  isFolded: (id: string, childCount: number) => boolean = () => false,
+): CategoryRow[] {
   const children = new Map<string, Category[]>()
   const roots: Category[] = []
   const known = new Set(items.map((c) => c.id))
@@ -37,7 +43,7 @@ export function flattenCategories(items: Category[]): CategoryRow[] {
     for (const c of list) {
       const kids = children.get(c.id) ?? []
       out.push({ category: c, depth, hasChildren: kids.length > 0 })
-      walk(kids, depth + 1)
+      if (!isFolded(c.id, kids.length)) walk(kids, depth + 1)
     }
   }
   walk(roots, 0)
@@ -73,4 +79,17 @@ export function searchCategories(items: Category[], q: string): CategoryRow[] {
         c.name.toLowerCase().includes(needle) || c.code.toLowerCase().includes(needle),
     )
     .map((c) => ({ category: c, depth: 0, hasChildren: false, path: pathOf(c) }))
+}
+
+/**
+ * The id of the root this category hangs from -- itself, if it is one.
+ *
+ * Read off the materialised path rather than walked up through parents: the
+ * path is what the server maintains and what every ancestor query in this
+ * product already uses, and a second way of answering "which chain is this in"
+ * is a second thing that can disagree.
+ */
+export function rootIDOf(c: Category): string {
+  const [first] = c.path.split("/").filter(Boolean)
+  return first ?? c.id
 }

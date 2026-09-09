@@ -191,3 +191,53 @@ func (s *Service) availableByCategory(ctx context.Context, statuses model.Status
 	}
 	return perCategory, rows.Err()
 }
+
+// CountsByModel is how many devices carry each model.
+//
+// One query for every model rather than one per model: the model page's rail
+// shows this beside every row, and a vendor with sixty models would otherwise
+// issue sixty requests. The same reasoning is already written above Overview.
+//
+// The filter is the one categories use -- statuses marked as not counting
+// towards stock are left out. Not for symmetry: 024 settled that a system may
+// only have one answer to "how many of these do we have", and both numbers
+// appear on screens a person moves between. A model reading 42 where the
+// category it sits in has already excluded a written-off unit is the kind of
+// difference nobody can explain and everybody reports.
+//
+// Models with nothing on them are present at 0, for the reason every count in
+// this codebase is: a blank where a digit belongs reads as "not loaded".
+func (s *Service) CountsByModel(ctx context.Context) (map[string]int, error) {
+	statuses, err := s.schema.StatusSet(ctx)
+	if err != nil {
+		return nil, err
+	}
+	models, err := s.schema.ListModels(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]int, len(models))
+	for _, m := range models {
+		out[m.ID] = 0
+	}
+
+	rows, err := s.db.ReadDB().QueryContext(ctx,
+		`SELECT model_id, status, count(*) FROM assets WHERE model_id IS NOT NULL
+		 GROUP BY model_id, status`)
+	if err != nil {
+		return nil, fmt.Errorf("count by model: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var st model.AssetStatus
+		var n int
+		if err := rows.Scan(&id, &st, &n); err != nil {
+			return nil, err
+		}
+		if _, known := out[id]; known && statuses.CountsAsAvailable(st) {
+			out[id] += n
+		}
+	}
+	return out, rows.Err()
+}

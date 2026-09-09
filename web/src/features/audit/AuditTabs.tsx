@@ -1,22 +1,24 @@
 import { Link } from "react-router"
 
-import { tAudit, tMeta } from "@/i18n"
+import { tAudit } from "@/i18n"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { usePermissions, type Permission } from "@/features/auth/usePermissions"
 
 /**
- * The pairs of lists that describe one thing between them.
+ * The two audits, which are two routes behind one navigation entry.
  *
- * Two routes each, not one address with two tables: a CrudPage keeps its
- * search and its page number in the address bar, so sharing an address would
- * mean typing in one list paged the other (016, decision 107). The two audits
- * joined this for the same reason -- both filter, both page, both write to the
- * address.
+ * This used to serve the metadata pairs as well -- models/vendors and
+ * fields/groups -- and it lived under features/metadata because of them. 025
+ * merged both of those into master-detail pages, so the audits are all that is
+ * left, and a "generic" component with one caller is a claim about the product
+ * that is no longer true: the next person reads it as a site-wide convention
+ * and reaches for it.
  *
- * Two routes, one navigation entry. A vendor is something a model has and a
- * group is a handful of fields -- neither is a place of its own, and giving
- * each a top-level entry would make the bar longer without making anything
- * easier to find.
+ * Two routes rather than two tabs over one address, and that reason is
+ * unchanged: both audits filter, both page, both write to the address, and two
+ * of those behind a single address trample each other's query string (016,
+ * decision 107). The metadata pairs left precisely because they were not that
+ * shape -- a rail does not page against its detail.
  */
 interface Tab {
   value: string
@@ -26,15 +28,7 @@ interface Tab {
   permission?: Permission
 }
 
-const GROUPS: Record<string, Tab[]> = {
-  models: [
-    { value: "models", to: "/models", label: () => tMeta.vendors.tabModels },
-    { value: "vendors", to: "/models/vendors", label: () => tMeta.vendors.tabVendors },
-  ],
-  fields: [
-    { value: "fields", to: "/fields", label: () => tMeta.fieldGroups.tabFields },
-    { value: "groups", to: "/fields/groups", label: () => tMeta.fieldGroups.tabGroups },
-  ],
+const GROUPS: Record<"audit", Tab[]> = {
   // Movements first, and it is the entry's destination too: who has the device
   // is asked daily, who renamed a field is asked when something already broke.
   audit: [
@@ -48,21 +42,12 @@ const GROUPS: Record<string, Tab[]> = {
   ],
 }
 
-/** Which tab bar, and which of its two is the current page. */
-export type MetadataTab = "models" | "vendors" | "fields" | "groups" | "audit" | "transfers"
+/** Which of the two audits is the current page. */
+export type AuditTab = "audit" | "transfers"
 
-const GROUP_OF: Record<MetadataTab, keyof typeof GROUPS> = {
-  models: "models",
-  vendors: "models",
-  fields: "fields",
-  groups: "fields",
-  audit: "audit",
-  transfers: "audit",
-}
-
-export function MetadataTabs({ current }: { current: MetadataTab }) {
+export function AuditTabs({ current }: { current: AuditTab }) {
   const { can } = usePermissions()
-  const tabs = GROUPS[GROUP_OF[current]].filter((tab) => !tab.permission || can(tab.permission))
+  const tabs = GROUPS.audit.filter((tab) => !tab.permission || can(tab.permission))
 
   // Hidden, not disabled -- which is the opposite of this product's usual rule,
   // and the same exception the audit's own navigation entry already makes: a

@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router"
+import { Navigate, createBrowserRouter } from "react-router"
 
 import { AppShell } from "./AppShell"
 import { Login } from "./Login"
@@ -36,17 +36,18 @@ export const router = createBrowserRouter([
       // decision 107 warns about.
       { path: "categories", lazy: async () => ({ Component: (await import("./Categories")).Categories }) },
       { path: "categories/:id", lazy: async () => ({ Component: (await import("./Categories")).Categories }) },
+      // Fields and their groups on one page, models under their vendors on
+      // another (025). Both were two tabs; both are one thing seen from two
+      // sides, and the tab hid the side you were not on.
       { path: "fields", lazy: async () => ({ Component: (await import("./Fields")).Fields }) },
+      { path: "fields/:id", lazy: async () => ({ Component: (await import("./Fields")).Fields }) },
       { path: "models", lazy: async () => ({ Component: (await import("./Models")).Models }) },
-      // Its own route, not a tab inside /models: a CrudPage keeps its search
-      // and page number in the address, and two of them behind one address
-      // would trample each other (016, decision 107).
-      { path: "models/vendors", lazy: async () => ({ Component: (await import("./Vendors")).Vendors }) },
-      // Beside the field library rather than on the navigation bar: a group
-      // is a handful of fields, not a place of its own. Its own address for
-      // the same reason vendors have one -- two CrudPages behind one would
-      // share a search box and a page number.
-      { path: "fields/groups", lazy: async () => ({ Component: (await import("./FieldGroups")).FieldGroups }) },
+      { path: "models/:id", lazy: async () => ({ Component: (await import("./Models")).Models }) },
+      // Redirects, not pages. 025 merged both pairs into one master-detail
+      // page each; these two addresses are in people's bookmarks and in the
+      // internal notes, and a 404 there teaches nothing.
+      { path: "models/vendors", element: <Navigate to="/models" replace /> },
+      { path: "fields/groups", element: <Navigate to="/fields" replace /> },
       { path: "statuses", lazy: async () => ({ Component: (await import("./Statuses")).Statuses }) },
       { path: "holders", lazy: async () => ({ Component: (await import("./Holders")).Holders }) },
       { path: "roles", lazy: async () => ({ Component: (await import("./Roles")).Roles }) },

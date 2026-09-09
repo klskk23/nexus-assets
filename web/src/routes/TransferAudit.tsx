@@ -13,7 +13,7 @@ import { StateBoundary } from "@/components/StateBoundary"
 import { PageHeader } from "@/features/common/PageHeader"
 import { PAGE_SIZES, Pager } from "@/features/common/Pager"
 import { TableFrame } from "@/features/common/TableFrame"
-import { MetadataTabs } from "@/features/metadata/MetadataTabs"
+import { AuditTabs } from "@/features/audit/AuditTabs"
 import { TransferChange } from "@/features/transfers/TransferChange"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -121,7 +121,7 @@ export function TransferAudit() {
           heading under the first, and pushed the filters and the table one
           band further down on a page whose whole job is the table. */}
       <PageHeader title={tAudit.movementsTitle} hint={tAudit.movementsHint}>
-        <MetadataTabs current="transfers" />
+        <AuditTabs current="transfers" />
       </PageHeader>
 
       <div className="grid gap-[22px]">

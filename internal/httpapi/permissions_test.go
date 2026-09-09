@@ -26,8 +26,8 @@ func TestOrdinaryUserCanWorkButNotConfigure(t *testing.T) {
 	// can look things up (decision 78).
 	for _, path := range []string{
 		"/api/assets", "/api/assets/" + id, "/api/categories", "/api/categories/counts",
-		"/api/fields", "/api/models", "/api/statuses", "/api/holders", "/api/users",
-		"/api/roles", "/api/overview",
+		"/api/fields", "/api/models", "/api/models/counts",
+		"/api/statuses", "/api/holders", "/api/users", "/api/roles", "/api/overview",
 	} {
 		if rec := h.doAs(t, tok, http.MethodGet, path, ""); rec.Code != http.StatusOK {
 			t.Errorf("GET %s should be open to everyone, got %d", path, rec.Code)

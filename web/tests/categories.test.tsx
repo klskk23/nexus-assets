@@ -290,7 +290,7 @@ describe("类别树", () => {
     expect(await screen.findByRole("link", { name: /网络设备 \/ SDWAN 路由器/ })).toBeInTheDocument()
   })
 
-  it("子类别排在父类别下面，且一个折叠控件都没有", async () => {
+  it("子类别排在父类别下面", async () => {
     openAt()
     await screen.findByRole("link", { name: /SDWAN 路由器/ })
 
@@ -298,8 +298,29 @@ describe("类别树", () => {
     expect(names[0]).toContain("网络设备")
     expect(names[1]).toContain("SDWAN 路由器")
 
-    expect(screen.queryByRole("button", { name: /折叠|展开/ })).not.toBeInTheDocument()
+    // The old right-click items are gone for good; folding is a control on
+    // the row now, and only on rows that have something to hide.
     expect(screen.queryByText("折叠子类别")).not.toBeInTheDocument()
+  })
+
+  /**
+   * Folding came back in 025, conditionally.
+   *
+   * 024 removed it and CollapsibleTree was deleted for it before that, both
+   * times because a control that hides half the answer to "what categories are
+   * there" costs more than it saves. What changed is the condition: only a
+   * node whose children would fill the rail on their own starts closed, and
+   * the row says how many are behind it -- so the reader knows what they are
+   * not being shown, which is what both earlier attempts lacked.
+   */
+  it("小的父节点默认展开，且折叠控件只出现在有子类别的行上", async () => {
+    openAt()
+    await screen.findByRole("link", { name: /SDWAN 路由器/ })
+
+    // One child is nowhere near the threshold, so it stays open.
+    const fold = screen.getAllByRole("button", { name: /折叠|展开/ })
+    expect(fold).toHaveLength(1)
+    expect(fold[0]).toHaveAttribute("aria-expanded", "true")
   })
 
   // The number is text inside the row, not a second destination: the row is

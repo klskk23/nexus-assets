@@ -98,6 +98,9 @@ func (s *Server) Router() *gin.Engine {
 	// before them so the conflict, if the router ever stops allowing both, is a
 	// panic at boot rather than a category whose id happens to be "counts".
 	authed.GET("/categories/counts", s.categoryCounts)
+	// Same shape and the same reason as /categories/counts: a static segment
+	// registered before the ":id" routes that follow.
+	authed.GET("/models/counts", s.modelCounts)
 	authed.GET("/categories/:id/schema", s.categorySchema)
 
 	authed.GET("/fields", s.listFields)

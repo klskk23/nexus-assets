@@ -1,10 +1,13 @@
-import { Link } from "react-router"
+import { useState } from "react"
 
-import { cn } from "cn"
 import type { Category } from "@/lib/types"
 import { tMeta } from "@/i18n"
 import { usePermissions } from "@/features/auth/usePermissions"
-import { flattenCategories, searchCategories } from "./categoryRows"
+import { flattenCategories, rootIDOf, searchCategories } from "./categoryRows"
+import { useFoldable } from "@/features/common/useFoldable"
+import { TreePager } from "@/features/common/TreePager"
+import { clampPage, pageCount, pageOfRoots } from "@/features/common/rootPaging"
+import { RailRow } from "@/features/common/RailRow"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
@@ -40,6 +43,9 @@ interface Props {
  * Each row is a link. The row *is* the control -- nothing clickable sits
  * inside it, so the count beside the name is text, not a second destination.
  */
+/** Root categories per page. A page is N roots and all their descendants. */
+const ROOTS_PER_PAGE = 12
+
 export function CategoryTree({
   categories,
   counts,
@@ -49,9 +55,30 @@ export function CategoryTree({
   onCreate,
 }: Props) {
   const { deniedReason } = usePermissions()
-  const rows = search.trim()
+  const folds = useFoldable()
+  const [page, setPage] = useState(0)
+
+  // Paged by root, so no category is ever shown without its parent: page two
+  // of a flattened tree can open with a child whose parent was the last row of
+  // page one, and an indented line under nothing claims a place that is not on
+  // screen (014 decision 91).
+  const roots = categories.filter((c) => !c.parent_id)
+  // How many children each node has, so a node can say what it is hiding.
+  const childCounts = categories.reduce<Record<string, number>>((acc, c) => {
+    if (c.parent_id) acc[c.parent_id] = (acc[c.parent_id] ?? 0) + 1
+    return acc
+  }, {})
+  const at = clampPage(page, roots.length, ROOTS_PER_PAGE)
+  const searching = search.trim() !== ""
+  const visible = searching
+    ? categories
+    : (() => {
+        const keep = new Set(pageOfRoots(roots, at, ROOTS_PER_PAGE).map((c) => c.id))
+        return categories.filter((c) => keep.has(rootIDOf(c)))
+      })()
+  const rows = searching
     ? searchCategories(categories, search)
-    : flattenCategories(categories)
+    : flattenCategories(visible, folds.isFolded)
   const denied = deniedReason("schema.manage")
 
   return (
@@ -83,31 +110,37 @@ export function CategoryTree({
         </Empty>
       ) : (
         <ul className="grid gap-0.5">
-          {rows.map(({ category: c, depth, path }) => (
+          {rows.map(({ category: c, depth, hasChildren, path }) => (
             <li key={c.id}>
-              <Link
+              <RailRow
                 to={`/categories/${c.id}`}
-                aria-current={c.id === currentID ? "true" : undefined}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-full py-[9px] pr-3.5 text-sm transition-colors",
-                  c.id === currentID
-                    ? "bg-accent text-accent-foreground font-semibold"
-                    : "hover:bg-accent hover:text-accent-foreground",
-                  depth > 0 && c.id !== currentID && "text-muted-foreground",
-                )}
-                style={{ paddingInlineStart: 14 + depth * 18 }}
-              >
-                <span className="min-w-0 flex-1 truncate" title={path ?? c.name}>
-                  {path ?? c.name}
-                </span>
-                {/* Zero is written out. A blank where a digit belongs reads as
-                    "not loaded", which is a different answer from "none" and
-                    the reader cannot tell them apart afterwards. */}
-                <span className="shrink-0 text-[13px] tabular-nums">{counts[c.id] ?? 0}</span>
-              </Link>
+                label={path ?? c.name}
+                count={counts[c.id] ?? 0}
+                depth={depth}
+                selected={c.id === currentID}
+                folded={
+                  hasChildren && !searching
+                    ? folds.isFolded(c.id, childCounts[c.id] ?? 0)
+                    : undefined
+                }
+                onFold={() => folds.toggle(c.id, childCounts[c.id] ?? 0)}
+                foldLabel={
+                  folds.isFolded(c.id, childCounts[c.id] ?? 0)
+                    ? tMeta.panes.unfold
+                    : tMeta.panes.fold
+                }
+              />
             </li>
           ))}
         </ul>
+      )}
+
+      {!searching && (
+        <TreePager
+          page={at}
+          pageCount={pageCount(roots.length, ROOTS_PER_PAGE)}
+          onPage={setPage}
+        />
       )}
 
       {/* A category, not a child of whatever is selected: the parent is a

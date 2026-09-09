@@ -78,3 +78,13 @@ func (s *Server) categoryCounts(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, counts)
 }
+
+// modelCounts is how many devices carry each model, for the model page's rail.
+func (s *Server) modelCounts(c *gin.Context) {
+	counts, err := s.assets.CountsByModel(c.Request.Context())
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, counts)
+}

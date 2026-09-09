@@ -13,7 +13,7 @@ import { getLang, locale, tAudit } from "@/i18n"
 import { StateBoundary } from "@/components/StateBoundary"
 import { ListToolbar } from "@/features/common/ListToolbar"
 import { PageHeader } from "@/features/common/PageHeader"
-import { MetadataTabs } from "@/features/metadata/MetadataTabs"
+import { AuditTabs } from "@/features/audit/AuditTabs"
 import { PAGE_SIZES, Pager } from "@/features/common/Pager"
 import { TableFrame } from "@/features/common/TableFrame"
 import { Badge } from "@/components/ui/badge"
@@ -192,7 +192,7 @@ export function Audit() {
   return (
     <div className="grid gap-14">
       <PageHeader title={tAudit.title} hint={tAudit.hint}>
-        <MetadataTabs current="audit" />
+        <AuditTabs current="audit" />
       </PageHeader>
 
       {/* The same two rhythms as every other list on the product: 56px under

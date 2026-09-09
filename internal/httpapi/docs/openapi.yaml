@@ -433,6 +433,24 @@ paths:
                 type: object
                 additionalProperties: { type: integer, minimum: 0 }
 
+  /models/counts:
+    get:
+      tags: [metadata]
+      summary: 每个型号的在册设备数
+      description: >
+        键是型号 id，值是带该型号的设备数（025 决策 165）。
+        口径与 `/categories/counts` **完全相同** —— 排除标记为「不计入类别分布」
+        （`counts_as_available = 0`）的状态。一个系统只能有一种「有多少台」，
+        而这两个数会出现在同一个人前后看的两个屏幕上。
+        没有设备的型号也返回 0：缺键在界面上读作「没加载出来」，不是「没有」。
+        读默认全开放。
+      responses:
+        "200":
+          description: 型号 id 到设备数的映射
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: { type: integer, minimum: 0 } }
+
   /categories/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
