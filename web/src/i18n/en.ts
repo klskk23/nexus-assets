@@ -761,8 +761,6 @@ export const enStatuses: typeof zhStatuses = {
   terminal: "Terminal",
   terminalHint:
     "A device in a terminal status cannot move on; correct the last transfer record instead.",
-  builtinLocked:
-    "Built-in statuses cannot be deleted. Apart from “holder must be a location” their behaviour is fixed; only the name and colour can change.",
   usage: "Usage",
   inUse: (n: number) => `${n} device(s)`,
   unused: "Unused",

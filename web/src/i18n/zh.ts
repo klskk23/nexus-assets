@@ -723,7 +723,6 @@ export const zhStatuses = {
   notCounted: "不计入类别分布",
   terminal: "终态",
   terminalHint: "终态的设备不能再转到别的状态，只能改最后一条流转记录。",
-  builtinLocked: "内置状态不能删除；除「持有方必须是位置」外，其行为由系统定义，只能改显示名与颜色。",
   usage: "使用情况",
   inUse: (n: number) => `${n} 台设备`,
   unused: "无设备使用",

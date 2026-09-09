@@ -75,10 +75,11 @@ describe("流转审计页", () => {
     expect(link).toHaveAttribute("href", "/assets/a-1")
   })
 
-  // The number is an identifier people read off a label and match against the
-  // screen, not display typography. Caprasimo can render these glyphs, which
-  // was the old argument for using it here -- being able to is not a reason to.
-  it("资产编号用普通字体，不挂 font-heading", async () => {
+  // In a cell the number is a value to match character by character against a
+  // label in somebody's hand, and the display face makes that slower. On the
+  // detail page the same number IS the page's title and keeps font-heading --
+  // the split is title versus cell, not identifier versus quantity.
+  it("表格里的资产编号用普通字体，不挂 font-heading", async () => {
     renderWithProviders(<TransferAudit />, { permissions: ["audit.read", "transfer.audit"] })
     const link = await screen.findByRole("link", { name: "NX-0042" })
     expect(link.className).not.toContain("font-heading")

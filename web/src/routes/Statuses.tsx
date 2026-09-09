@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertCircleIcon, InfoIcon } from "lucide-react"
+import { AlertCircleIcon } from "lucide-react"
 
 import { api, ApiError } from "@/lib/api"
 import type { Status, StatusUsage } from "@/lib/types"
@@ -158,20 +158,12 @@ export function Statuses() {
       emptyTitle={tStatuses.empty}
       emptyHint={tStatuses.emptyHint}
       notice={
-        <>
-          {/* Said once above the table rather than repeated on five rows: the
-              built-ins have no delete button, and this is the answer to why. */}
-          <Alert>
-            <InfoIcon />
-            <AlertDescription>{tStatuses.builtinLocked}</AlertDescription>
+        notice && (
+          <Alert variant="destructive">
+            <AlertCircleIcon />
+            <AlertDescription>{notice}</AlertDescription>
           </Alert>
-          {notice && (
-            <Alert variant="destructive">
-              <AlertCircleIcon />
-              <AlertDescription>{notice}</AlertDescription>
-            </Alert>
-          )}
-        </>
+        )
       }
       columns={[
         {
