@@ -63,6 +63,11 @@ describe("language", () => {
     await pickLanguage(u, "English")
     await waitFor(() => expect(screen.getByRole("link", { name: "Overview" })).toBeInTheDocument())
     expect(screen.queryByRole("link", { name: "概览" })).not.toBeInTheDocument()
+    // The group headings too. They are the newest thing in the rail read from
+    // the catalogue at render time, and a heading frozen in the language the
+    // page was first loaded in is exactly the trap the nav array was rewritten
+    // as a function to avoid.
+    expect(screen.getByRole("group", { name: "Configuration" })).toBeInTheDocument()
 
     await pickLanguage(u, "中文")
     await waitFor(() => expect(screen.getByRole("link", { name: "概览" })).toBeInTheDocument())

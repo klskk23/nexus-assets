@@ -73,6 +73,9 @@ export const zh = {
   },
 
   nav: {
+    label: "主导航",
+    groupConfig: "配置",
+    groupAccess: "权限与审计",
     overview: "概览",
     assets: "资产",
     categories: "类别",

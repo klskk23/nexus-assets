@@ -88,6 +88,9 @@ export const en: typeof zh = {
   },
 
   nav: {
+    label: "Main navigation",
+    groupConfig: "Configuration",
+    groupAccess: "Access & audit",
     overview: "Overview",
     assets: "Assets",
     categories: "Categories",

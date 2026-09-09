@@ -22,29 +22,63 @@ import { Logo } from "@/features/common/Logo"
  *
  * A module-level array would be evaluated once at import time and would still
  * be holding the labels of whatever language the page was first loaded in.
+ *
+ * Three groups, because eleven entries in one column is a list you read rather
+ * than a place you know your way around. The split is by what the entry is
+ * for, not by permission: the ledger itself, the things that decide what a
+ * device can record, and who may do it. Grouping by permission would have been
+ * easy to compute and wrong -- half of "configuration" is readable by
+ * everyone, and the groups would rearrange themselves per account.
+ *
+ * The first group has no heading. Overview and assets are what this product
+ * is; naming them adds a word above the two entries nobody needs help finding,
+ * and the space it costs is at the top of the rail where it is most visible.
+ * The other two earn their headings by not being obvious from their entries --
+ * "fields" and "statuses" say nothing about being settings until something
+ * says so.
  */
-function navLinks(can: (p: Permission) => boolean) {
+function navGroups(can: (p: Permission) => boolean) {
   return [
-    { to: "/", label: t.nav.overview },
-    { to: "/assets", label: t.nav.assets },
-    { to: "/categories", label: t.nav.categories },
-    { to: "/fields", label: t.nav.fields },
-    { to: "/models", label: t.nav.models },
-    { to: "/statuses", label: t.nav.statuses },
-    { to: "/holders", label: t.nav.holders },
-    { to: "/users", label: t.nav.users },
-    { to: "/roles", label: t.nav.roles },
-    // The one page that is hidden rather than shown with dead buttons: it has
-    // nothing on it a reader without the permission may see, and an entry that
-    // only ever answers 403 is worse than no entry.
-    // Either half is enough to have somewhere to go, and movements are where
-    // this entry lands when a person can open both: who has the device is asked
-    // daily, who renamed a field is asked when something has already gone
-    // wrong. Still hidden rather than disabled, for the reason it always was --
-    // an entry that only answers 403 is worse than no entry.
-    ...(can("audit.read") || can("transfer.audit")
-      ? [{ to: can("transfer.audit") ? "/audit/transfers" : "/audit", label: t.nav.audit }]
-      : []),
+    {
+      key: "ledger",
+      label: "",
+      items: [
+        { to: "/", label: t.nav.overview },
+        { to: "/assets", label: t.nav.assets },
+      ],
+    },
+    {
+      key: "config",
+      label: t.nav.groupConfig,
+      items: [
+        { to: "/categories", label: t.nav.categories },
+        { to: "/fields", label: t.nav.fields },
+        { to: "/models", label: t.nav.models },
+        { to: "/statuses", label: t.nav.statuses },
+        { to: "/holders", label: t.nav.holders },
+      ],
+    },
+    {
+      key: "access",
+      label: t.nav.groupAccess,
+      items: [
+        { to: "/users", label: t.nav.users },
+        { to: "/roles", label: t.nav.roles },
+        // The one page that is hidden rather than shown with dead buttons: it
+        // has nothing on it a reader without the permission may see, and an
+        // entry that only ever answers 403 is worse than no entry. Which is
+        // why this group can arrive with two entries rather than three, and
+        // why its heading must not promise an audit that is not there -- it
+        // says "access and audit" of the group, not of any one row.
+        // Either half is enough to have somewhere to go, and movements are
+        // where this entry lands when a person can open both: who has the
+        // device is asked daily, who renamed a field is asked when something
+        // has already gone wrong.
+        ...(can("audit.read") || can("transfer.audit")
+          ? [{ to: can("transfer.audit") ? "/audit/transfers" : "/audit", label: t.nav.audit }]
+          : []),
+      ],
+    },
   ]
 }
 
@@ -114,41 +148,74 @@ export function AppShell() {
         </div>
         <nav
           className="flex min-h-0 flex-col gap-0.5 overflow-y-auto max-md:flex-row max-md:overflow-x-auto"
-          aria-label={t.nav.assets}
+          aria-label={t.nav.label}
         >
-          {navLinks(can).map((l) => {
-            // Through navIcon, not by indexing the table: an entry may point
-            // at a sub-route (the audit's entry opens whichever half the
-            // person can read), and a table lookup answers those with
-            // undefined, which React renders by taking the whole shell down.
-            // navIcon is the function written for exactly this -- longest
-            // prefix wins, and anything unknown looks plain rather than broken.
-            const Icon = navIcon(l.to)
-            return (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                end={l.to === "/"}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-2.5 rounded-full py-[9px] pr-3.5 pl-3 text-sm whitespace-nowrap transition-colors",
-                    isActive
-                      ? "bg-accent text-accent-foreground font-semibold"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                  )
-                }
-              >
-                {/* The icon is the mark, so there is no separate dot beside it.
-                    It replaced a number the prototype had drawn here: eleven
-                    destinations are not eleven steps, but they are eleven
-                    different things, and a shape says which one faster than a
-                    position ever did. Decorative -- the label is right there
-                    and reads it out. */}
-                <Icon aria-hidden className="size-4 shrink-0" />
-                {l.label}
-              </NavLink>
-            )
-          })}
+          {navGroups(can).map((g) => (
+            /* A group is a box, not a run of siblings with margins: the
+             * heading and its entries have to move together when the rail
+             * turns into a horizontal strip on a phone, and the only thing
+             * that changes there is this box's direction.
+             *
+             * role="group" only where there is a name to give it. An unnamed
+             * group announces "group ... group end" around two links and tells
+             * a listener nothing they could not already hear. */
+            <div
+              key={g.key}
+              role={g.label ? "group" : undefined}
+              aria-labelledby={g.label ? `nav-group-${g.key}` : undefined}
+              className="flex flex-col gap-0.5 max-md:flex-row"
+            >
+              {/* Named by aria-labelledby above rather than repeated into an
+                  aria-label, so the words are said once. Not a heading element
+                  and not focusable: it is a divider that happens to have a
+                  name, and a tab stop here would put something in the path of
+                  every keyboard user for no destination. Gone on a phone,
+                  where the strip is horizontal and a label between two links
+                  reads as a twelfth entry. */}
+              {g.label && (
+                <div
+                  id={`nav-group-${g.key}`}
+                  className="text-muted-foreground px-3.5 pt-3.5 pb-[5px] text-xs tracking-[0.04em] max-md:hidden"
+                >
+                  {g.label}
+                </div>
+              )}
+              {g.items.map((l) => {
+                // Through navIcon, not by indexing the table: an entry may
+                // point at a sub-route (the audit's entry opens whichever half
+                // the person can read), and a table lookup answers those with
+                // undefined, which React renders by taking the whole shell
+                // down. navIcon is the function written for exactly this --
+                // longest prefix wins, and anything unknown looks plain rather
+                // than broken.
+                const Icon = navIcon(l.to)
+                return (
+                  <NavLink
+                    key={l.to}
+                    to={l.to}
+                    end={l.to === "/"}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center gap-2.5 rounded-full py-[9px] pr-3.5 pl-3 text-sm whitespace-nowrap transition-colors",
+                        isActive
+                          ? "bg-accent text-accent-foreground font-semibold"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      )
+                    }
+                  >
+                    {/* The icon is the mark, so there is no separate dot beside
+                        it. It replaced a number the prototype had drawn here:
+                        eleven destinations are not eleven steps, but they are
+                        eleven different things, and a shape says which one
+                        faster than a position ever did. Decorative -- the label
+                        is right there and reads it out. */}
+                    <Icon aria-hidden className="size-4 shrink-0" />
+                    {l.label}
+                  </NavLink>
+                )
+              })}
+            </div>
+          ))}
         </nav>
         {/* Whose session this is, and the two things you can do about it.
          *
