@@ -223,6 +223,7 @@ const (
 	KeyPermHolderStock    = "perm.holder_default_stock"
 	KeyPermUserManage     = "perm.user_manage"
 	KeyPermAuditRead      = "perm.audit_read"
+	KeyPermTransferAudit  = "perm.transfer_audit"
 	KeyPermRoleManage     = "perm.role_manage"
 	KeyPermUnknown        = "perm.unknown"
 

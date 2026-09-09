@@ -66,5 +66,6 @@ var permissionNames = map[authz.Permission]string{
 	authz.HolderDefaultStock: i18n.KeyPermHolderStock,
 	authz.UserManage:         i18n.KeyPermUserManage,
 	authz.AuditRead:          i18n.KeyPermAuditRead,
+	authz.TransferAudit:      i18n.KeyPermTransferAudit,
 	authz.RoleManage:         i18n.KeyPermRoleManage,
 }

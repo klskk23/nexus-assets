@@ -27,6 +27,7 @@ export const PERMISSIONS = [
   "holder.default_stock",
   "user.manage",
   "audit.read",
+  "transfer.audit",
   "role.manage",
 ] as const
 

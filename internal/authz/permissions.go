@@ -52,8 +52,15 @@ const (
 	HolderDefaultStock Permission = "holder.default_stock"
 
 	UserManage Permission = "user.manage"
-	AuditRead  Permission = "audit.read"
-	RoleManage Permission = "role.manage"
+	// Two audits, because they answer different questions to different people.
+	// AuditRead is the operations log -- who renamed a field, who deleted a
+	// category -- and it is administrative. TransferAudit is where devices went,
+	// which is the ledger's own subject matter and is useful to anyone who
+	// keeps stock. Splitting them lets the second be ordinary without making
+	// the first so.
+	AuditRead     Permission = "audit.read"
+	TransferAudit Permission = "transfer.audit"
+	RoleManage    Permission = "role.manage"
 )
 
 // All is every permission, in the order the interface lists them.
@@ -63,7 +70,7 @@ var All = []Permission{
 	Print, Import, Export,
 	SchemaManage, ModelManage, StatusManage,
 	HolderCreate, HolderUpdate, HolderDelete, HolderDefaultStock,
-	UserManage, AuditRead, RoleManage,
+	UserManage, AuditRead, TransferAudit, RoleManage,
 }
 
 // Valid reports whether a stored string is still a permission this build
