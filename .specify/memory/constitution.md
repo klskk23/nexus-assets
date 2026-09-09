@@ -73,6 +73,10 @@ Templates requiring updates:
 Follow-up TODOs: 无
 
 v1.0.1 (2026-08-27) 回填 SQLite 驱动：modernc.org/sqlite，CGO_ENABLED=0 与 DSN pragma 形式
+v1.2.1 (2026-09-09) PATCH：把「随 shadcn/ui 组件生成物引入的依赖不另计为框架级依赖」
+                    从点名两个（react-hook-form、zod）改写成一条通则。措辞澄清，
+                    无新增或移除约束 —— 023 引入 Command/cmdk 时发现原措辞读起来
+                    像白名单，于是「要不要为它修订章程」变成没有依据的判断
 v1.0.0 (2026-08-27) 首次批准：五项核心原则、技术栈约束、开发工作流与质量门禁、治理规则
 -->
 
@@ -206,8 +210,14 @@ error 里，故障将表现为静默的数据损坏而非可见的崩溃。
 - 样式：Tailwind CSS
 - 组件库：shadcn/ui（强制，见原则 III）
 - 数据层：TanStack Query
-- 表单：`react-hook-form` + `zod`。二者随 shadcn/ui `Form` 组件生成物一同引入，
-  视为 shadcn/ui 的组成部分，**不另计为框架级依赖**，无需为其修订本章程
+- 表单：`react-hook-form` + `zod`。
+- **随 shadcn/ui 组件生成物一同引入的依赖，视为 shadcn/ui 的组成部分**，
+  不另计为框架级依赖，无需为其修订本章程。`react-hook-form` 与 `zod`（随 `Form`）、
+  `cmdk`（随 `Command`）都属此类。
+  > 本条原先只点名了 `react-hook-form` 与 `zod` 两个，读起来像一份白名单而不是一条规则。
+  > 023 引入 `Command` 时暴露了这一点：`cmdk` 的情形与那两个完全相同，却不在名单上，
+  > 于是「要不要为它修订章程」变成一个没有依据的判断。改写成通则，
+  > 下一个 shadcn 组件不必再问一次。
 - 测试：Vitest + React Testing Library + jsdom
 
 **交付**
@@ -280,4 +290,4 @@ error 里，故障将表现为静默的数据损坏而非可见的崩溃。
 - 每次 code review 必须核对上节的七条合并门禁
 - 运行时开发指引见 `CLAUDE.md`（跨栈硬规则）与 `docs/rules/`（按包分开的详细规则）
 
-**Version**: 1.2.0 | **Ratified**: 2026-08-27 | **Last Amended**: 2026-09-07
+**Version**: 1.2.1 | **Ratified**: 2026-08-27 | **Last Amended**: 2026-09-09
