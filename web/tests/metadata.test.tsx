@@ -77,7 +77,7 @@ function route(p: string) {
   if (p.startsWith("/assets?")) return Promise.resolve({ items: [], total: 3, offset: 0, limit: 1 })
   if (p.startsWith("/holders")) return Promise.resolve(listed(holders, p))
   if (p.startsWith("/users")) return Promise.resolve(listed(users, p))
-  if (p.endsWith("/schema")) return Promise.resolve(schema)
+  if (p.includes("/schema")) return Promise.resolve(schema)
   return Promise.resolve([])
 }
 

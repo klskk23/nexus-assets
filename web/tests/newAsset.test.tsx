@@ -52,7 +52,7 @@ function route(path: string, holders: unknown[] = withLocation) {
   if (path === "/users") return Promise.resolve(users)
   if (path === "/me") return Promise.resolve(me)
   if (path === "/models") return Promise.resolve([])
-  if (path.endsWith("/schema")) return Promise.resolve(schema)
+  if (path.includes("/schema")) return Promise.resolve(schema)
   return Promise.resolve([])
 }
 
@@ -232,31 +232,34 @@ describe("NewAssetDialog", () => {
   })
 })
 
-// A model-bound field is on the category's schema whatever device is being
-// recorded, but belongs only to its own models (015). The entry form is where
-// that difference first shows: pick a Dell and the field appears, pick a
-// Lenovo and it is not there to fill in wrongly.
+// A model's field reaches the form because the form asks about the model.
+//
+// It used to arrive on the category's schema, which is what made attaching a
+// model to a category change that category. 026 severed that, so the entry
+// form has to name the model it has chosen -- and this mock answers the way
+// the server does, category-only until asked about a device. Mocking the old
+// contract is how this test stayed green while the form stopped working.
 describe("fields that belong to a model", () => {
   const models = [
     { id: "m-dell", name: "Latitude 5420", vendor_name: "Dell", category_ids: ["rt"], attr_defaults: {} },
     { id: "m-lenovo", name: "ThinkPad T14", vendor_name: "Lenovo", category_ids: ["rt"], attr_defaults: {} },
   ]
-  const withModelField = {
-    category: categories[0],
-    fields: [
-      ...schema.fields,
-      {
-        id: "f2", key: "servicetag", label: "ServiceTag", type: "text",
-        options: {}, is_unique: false, required: false, sort: 20,
-        model_ids: ["m-dell"],
-      },
-    ],
+  const serviceTag = {
+    id: "f2", key: "servicetag", label: "ServiceTag", type: "text",
+    options: {}, is_unique: false, required: false, sort: 20,
+    model_ids: ["m-dell"],
   }
 
   beforeEach(() => {
     get.mockReset().mockImplementation((p: string) => {
       if (p === "/models") return Promise.resolve(models)
-      if (p.endsWith("/schema")) return Promise.resolve(withModelField)
+      if (p.includes("/schema")) {
+        const asked = new URL(p, "http://x").searchParams.get("model_id")
+        return Promise.resolve({
+          category: categories[0],
+          fields: asked === "m-dell" ? [...schema.fields, serviceTag] : schema.fields,
+        })
+      }
       return route(p)
     })
   })
@@ -276,6 +279,41 @@ describe("fields that belong to a model", () => {
     await chooseByLabel(user, "设备型号", "Lenovo ThinkPad T14")
     await waitFor(() =>
       expect(screen.queryByLabelText("ServiceTag")).not.toBeInTheDocument(),
+    )
+  })
+})
+
+/**
+ * The form asks the server about the device, not about the category.
+ *
+ * 026 stopped a category's schema carrying its models' fields, and for a while
+ * the frontend went on asking the old question -- so a model's fields simply
+ * stopped appearing, in the entry form and in the asset editor both. Nothing
+ * failed: the mocks in these tests answered the way the server used to.
+ *
+ * Pinned on the request rather than on the rendering, because the rendering
+ * was right the whole time; it was being handed the wrong answer.
+ */
+describe("表单问的是这台设备", () => {
+  it("选了型号之后，schema 请求带上 model_id", async () => {
+    const user = userEvent.setup()
+    get.mockReset().mockImplementation((p: string) => {
+      if (p === "/models") {
+        return Promise.resolve([
+          { id: "m-dell", name: "Latitude 5420", vendor_name: "Dell", category_ids: ["rt"], attr_defaults: {} },
+        ])
+      }
+      if (p.includes("/schema")) return Promise.resolve({ category: categories[0], fields: schema.fields })
+      return route(p)
+    })
+    renderWithProviders(<NewAssetDialog open onOpenChange={vi.fn()} />)
+    await chooseByLabel(user, "类别", "SDWAN 路由器")
+    await chooseByLabel(user, "设备型号", "Dell Latitude 5420")
+
+    await waitFor(() =>
+      expect(
+        get.mock.calls.map((c) => c[0] as string).some((p) => p.includes("model_id=m-dell")),
+      ).toBe(true),
     )
   })
 })

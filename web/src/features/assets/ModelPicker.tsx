@@ -65,9 +65,20 @@ export function ModelPicker({ categoryID, value, onChange, values, confirmOverwr
   // carry several categories, making it visible somewhere is an explicit act.
   const self = (categories.data ?? []).find((c) => c.id === categoryID)
   const chain = new Set((self?.path ?? "").split("/").filter(Boolean))
-  const candidates = (models.data ?? []).filter(
-    (m) => !m.archived_at && (m.category_ids ?? []).some((id) => chain.has(id)),
-  )
+  // Every model, with the ones registered under this category first.
+  //
+  // The association stopped being a restriction in 026 -- a model belongs to a
+  // vendor, not to a category -- but it is still the best guess at what
+  // somebody is looking for, so it decides the order rather than the contents.
+  // Filtering by it is what made a device silently lose its model's fields
+  // when the two disagreed.
+  const candidates = (models.data ?? [])
+    .filter((m) => !m.archived_at)
+    .sort((a, b) => {
+      const near = (m: ProductModelRow) =>
+        (m.category_ids ?? []).some((id) => chain.has(id)) ? 0 : 1
+      return near(a) - near(b) || a.name.localeCompare(b.name)
+    })
 
   const defaultsOf = (id: string) => candidates.find((m) => m.id === id)?.attr_defaults ?? {}
 

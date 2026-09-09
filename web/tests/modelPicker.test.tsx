@@ -38,9 +38,18 @@ beforeEach(() => {
 })
 
 describe("ModelPicker", () => {
-  // A model from a sibling branch has nothing to do with this device; offering
-  // it only invites a mis-selection.
-  it("offers the category chain's models and nothing from a sibling branch", async () => {
+  /**
+   * Every model, with this category's first.
+   *
+   * The association used to filter the list -- a model from a sibling branch
+   * was withheld -- and 026 turned it into an ordering instead. Filtering was
+   * what made a device silently lose its model's fields when the two
+   * disagreed, and the association was never a fact about the model anyway: a
+   * model comes from a vendor.
+   *
+   * Archived models stay out, which is a different question and unchanged.
+   */
+  it("offers every model, this category's first, and no archived ones", async () => {
     renderWithProviders(
       <ModelPicker categoryID="rt" value={null} values={{}} onChange={vi.fn()} />,
     )
@@ -52,7 +61,9 @@ describe("ModelPicker", () => {
     expect(labels).toContain("Acme X100")
     expect(labels).toContain("通用机")
     expect(labels).toContain("Acme 两用机")
-    expect(labels).not.toContain("Acme S24")
+    // The sibling branch's model is offered now, and last.
+    expect(labels).toContain("Acme S24")
+    expect(labels.indexOf("Acme S24")).toBeGreaterThan(labels.indexOf("Acme X100"))
     // Archived models are not choices either.
     expect(labels.some((l) => l?.includes("旧款"))).toBe(false)
   })
@@ -132,11 +143,14 @@ describe("ModelPicker", () => {
   })
 })
 
-// A model reaches every category below the ones it is associated with, matching
-// how bound fields are inherited -- and stops there. Attaching a model to a
-// child does not make it appear on the parent.
-describe("ModelPicker inheritance", () => {
-  it("does not offer a model attached to a child category to its parent", async () => {
+// The association orders the list; it no longer decides what is in it (026).
+//
+// Which direction it reaches is therefore a question about ordering rather than
+// about availability: a model attached to a child is not "this category's", so
+// it sorts after the ones that are -- but it is still offered, because the
+// person choosing it knows something the association does not.
+describe("ModelPicker ordering", () => {
+  it("puts a child category's model after this category's own", async () => {
     renderWithProviders(
       <ModelPicker categoryID="net" value={null} values={{}} onChange={vi.fn()} />,
     )
@@ -145,8 +159,8 @@ describe("ModelPicker inheritance", () => {
     const labels = (await screen.findAllByRole("option")).map((o) => o.textContent)
 
     expect(labels).toContain("通用机")
-    expect(labels).not.toContain("Acme X100")
-    expect(labels).not.toContain("Acme 两用机")
+    expect(labels).toContain("Acme X100")
+    expect(labels.indexOf("Acme X100")).toBeGreaterThan(labels.indexOf("通用机"))
   })
 
   it("offers a model associated with several categories under each of them", async () => {

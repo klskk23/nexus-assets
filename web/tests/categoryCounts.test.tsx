@@ -52,7 +52,7 @@ function route(p: string) {
     })
   }
   if (p === "/capabilities") return Promise.resolve({ printing: false })
-  if (p.endsWith("/schema")) return Promise.resolve({ category: categories[1], fields: [] })
+  if (p.includes("/schema")) return Promise.resolve({ category: categories[1], fields: [] })
   return Promise.resolve([])
 }
 

@@ -59,7 +59,7 @@ function route(p: string) {
       { id: "m2", category_ids: ["net"], name: "别的机", vendor_name: "", attr_defaults: {} },
     ])
   }
-  if (p.endsWith("/schema")) return Promise.resolve(schema)
+  if (p.includes("/schema")) return Promise.resolve(schema)
   if (p.startsWith("/assets")) return Promise.resolve({ items: [], total: 3, offset: 0, limit: 1 })
   return Promise.resolve([])
 }

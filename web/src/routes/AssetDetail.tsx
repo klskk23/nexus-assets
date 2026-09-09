@@ -121,9 +121,16 @@ export function AssetDetail() {
     queryFn: () => api.get<User[]>("/users"),
   })
 
+  // With the device's model, for the reason above: since 026 a model's fields
+  // are reached by asking about the device, not by asking its category.
   const schema = useQuery({
-    queryKey: ["schema", asset?.category_id],
-    queryFn: () => api.get<CategorySchema>(`/categories/${asset!.category_id}/schema`),
+    queryKey: ["schema", asset?.category_id, asset?.model_id],
+    queryFn: () =>
+      api.get<CategorySchema>(
+        `/categories/${asset!.category_id}/schema${
+          asset!.model_id ? `?model_id=${asset!.model_id}` : ""
+        }`,
+      ),
     enabled: !!asset,
   })
 

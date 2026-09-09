@@ -71,7 +71,7 @@ beforeEach(() => {
     if (p === "/categories") return Promise.resolve(categories)
     if (p === "/users") return Promise.resolve(users)
     if (p === "/holders") return Promise.resolve(holders)
-    if (p.endsWith("/schema")) return Promise.resolve(schema)
+    if (p.includes("/schema")) return Promise.resolve(schema)
     return Promise.resolve(page)
   })
   localStorage.clear()

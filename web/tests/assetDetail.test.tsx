@@ -84,7 +84,7 @@ function route(p: string) {
       value_history: [{ key: "sn", value: "112394521949", archived_at: "2026-08-01T00:00:00Z" }],
     })
   }
-  if (p.endsWith("/schema")) return Promise.resolve(schema)
+  if (p.includes("/schema")) return Promise.resolve(schema)
   if (p === "/categories") return Promise.resolve([schema.category])
   if (p === "/models") return Promise.resolve(models)
   if (p === "/users") {
@@ -654,7 +654,7 @@ describe("the attribute section", () => {
   // models -- the same narrowing the entry form and the server both apply.
   it("carries a model field only for a device of that model", async () => {
     get.mockReset().mockImplementation((p: string) => {
-      if (p.endsWith("/schema")) {
+      if (p.includes("/schema")) {
         return Promise.resolve({
           ...schema,
           fields: [
@@ -694,7 +694,7 @@ describe("AssetDetail empty attribute card", () => {
           value_history: [],
         })
       }
-      if (p.endsWith("/schema")) {
+      if (p.includes("/schema")) {
         return Promise.resolve({
           ...schema,
           fields: [{ id: "f9", key: "servicetag", label: "ServiceTag", type: "text",

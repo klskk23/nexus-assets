@@ -304,7 +304,6 @@ export function Assets() {
   const library = useQuery({
     queryKey: ["fields", "all"],
     queryFn: () => api.get<ListPage<FieldDefinitionRow>>("/fields?limit=500"),
-    enabled: categoryId === "",
   })
 
   const assets = useQuery({
@@ -323,9 +322,20 @@ export function Assets() {
     }
   }, [assets.data?.exact_match_id, navigate])
 
+  // The category's own fields plus every device-side field there is.
+  //
+  // A category's schema stopped carrying its models' fields in 026, so taking
+  // the pool from it alone would have quietly removed those columns the moment
+  // a category was picked -- the opposite of what this round was for. The
+  // device-side half comes from the library, where a row already says which
+  // models and vendors it is bound to, and the unlock rule below is what keeps
+  // it from becoming a column of blanks.
+  const deviceFields = ((library.data?.items ?? []) as unknown as BoundField[]).filter(
+    (f) => (f.model_ids ?? []).length > 0 || (f.vendor_ids ?? []).length > 0,
+  )
   const available = (
     categoryId !== ""
-      ? (schema.data?.fields ?? [])
+      ? [...(schema.data?.fields ?? []), ...deviceFields]
       : ((library.data?.items ?? []) as unknown as BoundField[])
   ).filter((f) => f.type !== "computed")
   // A device field's column says nothing until the rows are devices that have

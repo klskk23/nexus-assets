@@ -127,7 +127,7 @@ function route(path: string) {
       { id: "m1", name: "SDWAN-X100", vendor_name: "Acme", category_ids: ["net"], attr_defaults: {} },
     ])
   }
-  if (path.endsWith("/schema")) {
+  if (path.includes("/schema")) {
     return Promise.resolve(path.includes("/srv/") ? serverSchema : schema)
   }
   if (path.startsWith("/assets")) return Promise.resolve(page)
@@ -774,7 +774,7 @@ describe("Assets model filter", () => {
   beforeEach(() => {
     get.mockReset().mockImplementation((p: string) => {
       if (p === "/models") return Promise.resolve(models)
-      if (p.endsWith("/schema")) return Promise.resolve(withModelField)
+      if (p.includes("/schema")) return Promise.resolve(withModelField)
       return route(p)
     })
   })
@@ -937,7 +937,7 @@ describe("Assets vendor filter", () => {
           { id: "m-dell", name: "Latitude 5420", vendor_id: "v-dell", vendor_name: "Dell", category_ids: ["net"], attr_defaults: {} },
         ])
       }
-      if (p.endsWith("/schema")) return Promise.resolve(withVendorField)
+      if (p.includes("/schema")) return Promise.resolve(withVendorField)
       return route(p)
     })
 

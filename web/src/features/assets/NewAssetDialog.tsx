@@ -95,9 +95,16 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
     queryFn: () => api.get<User[]>("/users"),
     enabled: open,
   })
+  // The model is part of the question. A model's fields used to ride in on
+  // the category's schema, which is what made attaching a model to a category
+  // change that category; 026 severed it, so what a device can record is asked
+  // of the device -- and the form has to say which device it is describing.
   const schema = useQuery({
-    queryKey: ["schema", categoryId],
-    queryFn: () => api.get<CategorySchema>(`/categories/${categoryId}/schema`),
+    queryKey: ["schema", categoryId, modelId],
+    queryFn: () =>
+      api.get<CategorySchema>(
+        `/categories/${categoryId}/schema${modelId ? `?model_id=${modelId}` : ""}`,
+      ),
     enabled: open && categoryId !== "",
   })
 
