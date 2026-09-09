@@ -234,6 +234,7 @@ export const en: typeof zh = {
   },
 
   common: {
+    noMatches: "Nothing matches",
     whatIsThis: "What is this",
     searchPlaceholder: (what: string) => `Search ${what}`,
     loading: "Loading…",

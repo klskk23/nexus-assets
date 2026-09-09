@@ -220,6 +220,7 @@ export const zh = {
   },
 
   common: {
+    noMatches: "没有匹配的选项",
     whatIsThis: "这是什么",
     searchPlaceholder: (what: string) => `搜索${what}`,
     loading: "加载中…",

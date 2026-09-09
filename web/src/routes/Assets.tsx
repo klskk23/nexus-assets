@@ -40,6 +40,7 @@ import {
 import { usePermissions } from "@/features/auth/usePermissions"
 import { ExportDialog } from "@/features/assets/ExportDialog"
 import { NewAssetDialog } from "@/features/assets/NewAssetDialog"
+import { SearchSelect } from "@/features/common/SearchSelect"
 import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -396,21 +397,21 @@ export function Assets() {
             <FieldLabel htmlFor="category" className="sr-only">
               {t.assets.category}
             </FieldLabel>
-            <Select value={toNone(categoryId)} onValueChange={(v) => setCategoryId(fromNone(v))}>
-              <SelectTrigger id="category" className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value={NONE}>{t.assets.allCategories}</SelectItem>
-                  {(categories.data ?? []).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            {/* The row leads with the name and searches the path too: a
+                category's own name is short and repeats across the tree, and
+                what people remember is where it sits. */}
+            <SearchSelect
+              id="category"
+              className="w-44"
+              value={categoryId}
+              onChange={setCategoryId}
+              placeholder={t.assets.allCategories}
+              options={(categories.data ?? []).map((c) => ({
+                value: c.id,
+                label: c.name,
+                keywords: c.path,
+              }))}
+            />
           </Field>
 
           <Field className="w-auto">
@@ -438,65 +439,44 @@ export function Assets() {
             <FieldLabel htmlFor="owner" className="sr-only">
               {t.assets.owner}
             </FieldLabel>
-            <Select value={toNone(ownerId)} onValueChange={(v) => setOwnerId(fromNone(v))}>
-              <SelectTrigger id="owner" className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value={NONE}>{t.assets.allOwners}</SelectItem>
-                  {(users.data ?? [])
-                    .filter((u) => u.status === "active")
-                    .map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.name}
-                      </SelectItem>
-                    ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <SearchSelect
+              id="owner"
+              className="w-40"
+              value={ownerId}
+              onChange={setOwnerId}
+              placeholder={t.assets.allOwners}
+              options={(users.data ?? [])
+                .filter((u) => u.status === "active")
+                .map((u) => ({ value: u.id, label: u.name }))}
+            />
           </Field>
 
           <Field className="w-auto">
             <FieldLabel htmlFor="holder" className="sr-only">
               {t.assets.holderFilter}
             </FieldLabel>
-            <Select value={toNone(holderId)} onValueChange={(v) => setHolderId(fromNone(v))}>
-              <SelectTrigger id="holder" className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value={NONE}>{t.assets.allHolders}</SelectItem>
-                  {(holders.data ?? []).map((h) => (
-                    <SelectItem key={h.id} value={h.id}>
-                      {h.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <SearchSelect
+              id="holder"
+              className="w-40"
+              value={holderId}
+              onChange={setHolderId}
+              placeholder={t.assets.allHolders}
+              options={(holders.data ?? []).map((h) => ({ value: h.id, label: h.name }))}
+            />
           </Field>
 
           <Field className="w-auto">
             <FieldLabel htmlFor="vendor" className="sr-only">
               {t.assets.vendorFilter}
             </FieldLabel>
-            <Select value={toNone(vendorId)} onValueChange={(v) => setVendorId(fromNone(v))}>
-              <SelectTrigger id="vendor" className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value={NONE}>{t.assets.allVendors}</SelectItem>
-                  {vendorList.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <SearchSelect
+              id="vendor"
+              className="w-40"
+              value={vendorId}
+              onChange={setVendorId}
+              placeholder={t.assets.allVendors}
+              options={vendorList.map((v) => ({ value: v.id, label: v.name }))}
+            />
           </Field>
 
           {/* Only within a category: models belong to categories, and a picker
@@ -507,23 +487,22 @@ export function Assets() {
               <FieldLabel htmlFor="model" className="sr-only">
                 {t.assets.modelFilter}
               </FieldLabel>
-              <Select value={toNone(modelId)} onValueChange={(v) => setModelId(fromNone(v))}>
-                <SelectTrigger id="model" className="w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value={NONE}>{t.assets.allModels}</SelectItem>
-                    {modelList
-                      .filter((m) => (m.category_ids ?? []).includes(categoryId))
-                      .map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {modelLabel(m)}
-                        </SelectItem>
-                      ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              <SearchSelect
+                id="model"
+                className="w-44"
+                value={modelId}
+                onChange={setModelId}
+                placeholder={t.assets.allModels}
+                options={modelList
+                  .filter((m) => (m.category_ids ?? []).includes(categoryId))
+                  .map((m) => ({
+                    value: m.id,
+                    label: modelLabel(m),
+                    // Model names carry part numbers, and people search by the
+                    // maker as often as by the number.
+                    keywords: m.vendor_name,
+                  }))}
+              />
             </Field>
           )}
 

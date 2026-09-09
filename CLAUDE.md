@@ -39,9 +39,12 @@
   「能不能」，**不回答「对哪些设备」** —— 系统里没有任何一条查询按调用者收窄。
   **读默认全开放**，只有 `GET /audit` 要权限。
   **管理员是 `roles.is_admin` 这个标记，不是十八个勾** —— 含义是「全部，包括以后新增的」。
-  **加新开关的四个地方**：`internal/authz/permissions.go` 的常量与 `All`、
-  `internal/httpapi/permissions.go` 的名称表、`web/src/features/auth/usePermissions.ts`
-  的 `PERMISSIONS`、两份 i18n 的 `perm.names`。漏掉第三个，界面会以为谁都没有它。
+  **加新开关要动六个地方**（023 数过）：`internal/authz/permissions.go` 的常量与 `All`、
+  `internal/httpapi/permissions.go` 的名称表、**`internal/i18n/keys.go` 与 `catalog.go`**、
+  `web/src/features/auth/usePermissions.ts` 的 `PERMISSIONS`、两份前端 i18n 的 `perm.names`。
+  **其中五处漏了会响**（编译错误，或 `TestCatalogsCoverTheSameKeys`）；
+  **只有 `PERMISSIONS` 那处是静默的** —— 漏了它，界面会以为谁都没有这个权限，
+  没有任何编译错误、没有任何测试会报。
   **前端只负责禁用**，把关的永远是路由上的 `need(...)`。其余细节见 `docs/rules/auth.md`。
 - **组件必须来自 shadcn/ui。** 不存在时必须先与开发者确认才能自定义，**不接受事后补批**。
   **下拉一律用 `Select`，不写原生 `<select>`**；表单布局用 `Field`/`FieldGroup`/`FieldSet`，
