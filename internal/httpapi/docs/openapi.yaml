@@ -165,6 +165,15 @@ paths:
         - { name: model_id, in: query, schema: { type: string, description: 只看这个型号的设备（015 决策 103）；只影响行，不影响列 } }
         - { name: holder_type, in: query, schema: { type: string, enum: [user, entity] } }
         - { name: holder_id, in: query, schema: { type: string } }
+        - name: holder_include_descendants
+          in: query
+          schema: { type: boolean, default: false }
+          description: >
+            把 `holder_id` 扩到它的整棵子树（028 决策 200）。
+            **默认 false，与上面 `include_descendants` 的 true 故意相反** ——
+            既有的每一条 holder_id 链接与筛选都表示「就这一个持有方」，
+            改默认值会静默改变它们的含义。一个开关不能同时有两个默认值，
+            所以这是两个参数而不是一个。只对 `holder_type=entity` 生效：人没有下级。
         - { name: offset, in: query, schema: { type: integer, default: 0 } }
         - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
       responses:
@@ -427,6 +436,31 @@ paths:
       responses:
         "200":
           description: 类别 id 到设备数的映射
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: { type: integer, minimum: 0 }
+
+  /holders/counts:
+    get:
+      tags: [metadata]
+      summary: 每个持有方（含其子树）的设备数
+      description: >
+        键是持有方 id，值是它**及其全部下级**当前放着的设备数（028 决策 200）。
+        **口径与 `/categories/counts` 故意不同：不排除任何状态。**
+        类别问的是「有多少台能用的」，持有方问的是「这里放着多少台」——
+        报废的设备还堆在那个仓库里等着处置，盘库的人要数到它。
+        两个问题可以有两个答案；不可以的是让这两个数在同一屏上顶着同一个词出现
+        （见 docs/rules/domain.md）。
+        只数 `holder_type = 'entity'` 的设备：设备也可以由账号持有，那一侧不在这棵树上。
+        **没有设备的持有方也会出现，值为 0** —— 缺键在界面上读作「没加载出来」，不是「没有」。
+        必须与 `GET /assets?holder_id=<id>&holder_include_descendants=true` 的 `total` 相等；
+        服务端有一条测试对每一个持有方比对这两者。
+        读默认全开放，与 `GET /holders` 一致。
+      responses:
+        "200":
+          description: 持有方 id 到设备数的映射
           content:
             application/json:
               schema:

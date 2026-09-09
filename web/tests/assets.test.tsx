@@ -503,6 +503,46 @@ describe("Assets holder filter", () => {
     })
   })
 
+  /*
+   * The holders page links in with the subtree flag set, and the list has to
+   * ask for the same thing.
+   *
+   * Found by walking through it: the pane said "see the 3 devices here" and
+   * the list showed none, because this page read every other filter out of the
+   * address and dropped this one. That is 024's defect exactly -- a number and
+   * a list disagreeing, with no explanation on either screen -- and 026's
+   * lesson repeated: a contract the frontend never caught up with.
+   */
+  it("从持有方页带着「含下级」进来时，照样问服务端要含下级", async () => {
+    renderWithProviders(<Assets />, {
+      route: "/assets?holder_type=entity&holder_id=co&holder_include_descendants=true",
+    })
+    await screen.findByLabelText(/共 1 条/)
+
+    const asked = get.mock.calls.map((c) => c[0] as string).filter((p) => p.startsWith("/assets"))
+    const q = new URLSearchParams(asked[asked.length - 1].split("?")[1])
+    expect(q.get("holder_id")).toBe("co")
+    expect(q.get("holder_include_descendants")).toBe("true")
+  })
+
+  // Picking one by hand means that one. Inheriting the flag from a link would
+  // quietly widen a question the person just narrowed.
+  it("手选另一个持有方时，不继承「含下级」", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />, {
+      route: "/assets?holder_type=entity&holder_id=co&holder_include_descendants=true",
+    })
+    await screen.findByLabelText(/共 1 条/)
+
+    await chooseByLabel(user, "持有方", "上海仓库")
+    await waitFor(() => {
+      const asked = get.mock.calls.map((c) => c[0] as string).filter((p) => p.startsWith("/assets"))
+      const q = new URLSearchParams(asked[asked.length - 1].split("?")[1])
+      expect(q.get("holder_id")).toBe("loc")
+      expect(q.get("holder_include_descendants")).toBeNull()
+    })
+  })
+
   it("carries the holder into the export", async () => {
     const dl = stubDownloads()
     try {

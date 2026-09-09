@@ -347,8 +347,10 @@ func (s *Server) printOne(c *gin.Context, categoryID string, ids, numbers []stri
 	rows, err := s.importer.Rows(c.Request.Context(), LangOf(c), asset.ListFilter{
 		CategoryID:         categoryID,
 		IncludeDescendants: false,
-		IDs:                ids,
-		Limit:              len(ids),
+		// And no holder subtree either -- a print job is the labels for the
+		// devices that were ticked, never for a hierarchy above them.
+		IDs:   ids,
+		Limit: len(ids),
 	})
 	if err != nil {
 		return batch, err

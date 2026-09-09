@@ -241,3 +241,54 @@ func (s *Service) CountsByModel(ctx context.Context) (map[string]int, error) {
 	}
 	return out, rows.Err()
 }
+
+// SubtreeCountsByHolder is how many devices are standing at each holder,
+// its descendants included.
+//
+// **A different question from the category counts, on purpose.** A category is
+// asked "how many working ones do we have", so `subtreeCounts` drops the
+// statuses marked as not counting towards availability. A holder is asked
+// "how many are standing here", and a written-off device is still stacked in
+// that warehouse waiting for disposal -- so nothing is filtered out. Two
+// questions may have two answers; what they may not do is appear on one screen
+// under one word (docs/rules/domain.md).
+//
+// Recursive rather than by path: `holder_entities` has no materialised path
+// column and is not getting one. Categories have one because they are deep and
+// queried by ancestry everywhere; holders are three levels at most, and a path
+// column would mean rewriting a subtree's paths on every change of parent for
+// a table with a few dozen rows in it.
+//
+// LEFT JOIN, not JOIN: an empty warehouse has to come back with a 0 beside it.
+// A blank where a number belongs reads as "not loaded", which is a different
+// answer from "none", and the reader cannot tell them apart afterwards.
+//
+// `holder_type = 'entity'` is not optional: a device can be held by a person,
+// and holder_id alone would match an account that happened to share an id.
+func (s *Service) SubtreeCountsByHolder(ctx context.Context) (map[string]int, error) {
+	rows, err := s.db.ReadDB().QueryContext(ctx,
+		`WITH RECURSIVE tree(root, id) AS (
+		   SELECT id, id FROM holder_entities
+		   UNION ALL
+		   SELECT t.root, h.id FROM holder_entities h JOIN tree t ON h.parent_id = t.id
+		 )
+		 SELECT tree.root, count(a.id)
+		 FROM tree
+		 LEFT JOIN assets a ON a.holder_type = 'entity' AND a.holder_id = tree.id
+		 GROUP BY tree.root`)
+	if err != nil {
+		return nil, fmt.Errorf("count by holder: %w", err)
+	}
+	defer rows.Close()
+
+	out := map[string]int{}
+	for rows.Next() {
+		var id string
+		var n int
+		if err := rows.Scan(&id, &n); err != nil {
+			return nil, err
+		}
+		out[id] = n
+	}
+	return out, rows.Err()
+}

@@ -412,8 +412,6 @@ export const enMeta: typeof zhMeta = {
   },
   holders: {
     searchHint: "name, note",
-    allTypes: "All types",
-    anyStock: "Any stock point",
     title: "Holders",
     create: "New holder",
     name: "Name",
@@ -449,9 +447,20 @@ export const enMeta: typeof zhMeta = {
     blocked: "Cannot delete",
     blockedBy: "These devices are using it:",
     blockedMore: (n: number) => `and ${n} in total`,
-    setDefault: "Make default stock point",
-    defaultStockHint:
-      "Devices with no home of their own return here. The marker moves; it does not switch off.",
+    setDefaultStock: "Make this the default stock point",
+    alreadyDefaultStock:
+      "This already is the default stock point. Set another one to move the marker; it cannot be switched off.",
+    stockLocationOnly: "Only a location can be the default stock point.",
+    defaultStockIs: (name: string) => `Default stock point: ${name}`,
+    defaultStockNone:
+      "No default stock point yet: without one, returning a device with nowhere to go fails.",
+    selectHint: "The hierarchy on the left, whatever is selected on the right.",
+    notFound: "No such holder",
+    notFoundHint: "It may have been deleted. Pick one on the left.",
+    noMatches: "No holders match",
+    noMatchesHint: "Try another word, or clear the search to see the whole hierarchy.",
+    deviceCount: "Devices here",
+    viewAssets: (n: number) => `See the ${n} devices here (descendants included)`,
     empty: "No holders yet",
     emptyHint:
       "Locations, companies and departments are all holders. Check-in points at whichever location is marked the default stock point.",
@@ -557,6 +566,7 @@ export const enMeta: typeof zhMeta = {
     notFound: "No such item",
     notFoundHint: "It may have been deleted. Pick one on the left.",
     unfold: "Expand",
+    unfoldN: (n: number) => `Expand ${n}`,
     fold: "Collapse",
   },
   fieldTypes: {

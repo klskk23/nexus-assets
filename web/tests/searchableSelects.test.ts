@@ -28,7 +28,7 @@ const BOUNDED: Record<string, string> = {
   "features/users/UserEditor.tsx": "角色：由角色页配置，几个",
   "routes/Assets.tsx": "状态筛选：由状态页配置，五到十个",
   "routes/Audit.tsx": "对象类型与动作：两组常量",
-  "routes/Holders.tsx": "持有方类型三种、是否默认库存点两种",
+  "features/holders/HolderCreateDialog.tsx": "持有方类型：公司、部门、位置三种，代码里写死",
   "features/import/ImportDialog.tsx": "导入的类别选择：demo，本轮不动（026 FR-026）",
   "routes/Overview.tsx": "每页条数：常量",
   "routes/Statuses.tsx": "颜色：八个色槽",

@@ -29,13 +29,15 @@ func (s *Server) listRows(c *gin.Context) {
 		Q:                  c.Query("q"),
 		CategoryID:         c.Query("category_id"),
 		IncludeDescendants: c.DefaultQuery("include_descendants", "true") != "false",
-		Status:             c.Query("status"),
-		OwnerID:            c.Query("owner_id"),
-		HolderType:         c.Query("holder_type"),
-		HolderID:           c.Query("holder_id"),
-		AttrFilters:        map[string]string{},
-		Offset:             offset,
-		Limit:              limit,
+		// No holder_include_descendants -- a decision, not an omission. These
+		// rows are "this batch", the same judgement the export makes.
+		Status:      c.Query("status"),
+		OwnerID:     c.Query("owner_id"),
+		HolderType:  c.Query("holder_type"),
+		HolderID:    c.Query("holder_id"),
+		AttrFilters: map[string]string{},
+		Offset:      offset,
+		Limit:       limit,
 	}
 	// The selection travels as a list: "print the ones I ticked" is the whole
 	// reason this endpoint takes ids at all.

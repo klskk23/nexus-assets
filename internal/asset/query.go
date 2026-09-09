@@ -58,12 +58,22 @@ type ListFilter struct {
 	// VendorID narrows to every model from one vendor (016). It is the
 	// question "show me the Dell fleet", which used to mean picking the models
 	// off a list one at a time and remembering which ones were Dell's.
-	VendorID    string
-	HolderType  string
-	HolderID    string
-	AttrFilters map[string]string
-	Offset      int
-	Limit       int
+	VendorID   string
+	HolderType string
+	HolderID   string
+	// IncludeHolderDescendants widens the holder filter to everything below
+	// it -- a company's departments and locations, not just what the company
+	// itself is holding.
+	//
+	// Defaults to false, and that is deliberately the opposite of
+	// IncludeDescendants above. Every holder_id link and filter already in
+	// existence means "this one holder"; flipping the default would silently
+	// change what all of them ask for. Categories could default to true
+	// because that flag arrived with the filter itself.
+	IncludeHolderDescendants bool
+	AttrFilters              map[string]string
+	Offset                   int
+	Limit                    int
 }
 
 // ListResult is one page plus the total, which the list page needs in order to
@@ -342,8 +352,28 @@ func plainFilters(f ListFilter) ([]string, []any) {
 	// The kind travels with the id: an id alone would match a user and an
 	// entity that happened to share it.
 	if f.HolderType != "" && f.HolderID != "" {
-		where = append(where, `holder_type = ? AND holder_id = ?`)
-		args = append(args, f.HolderType, f.HolderID)
+		// Descendants only make sense for an entity -- a person has none, and
+		// asking for them would recurse over a table the id is not even in.
+		if f.IncludeHolderDescendants && f.HolderType == string(model.HolderTypeEntity) {
+			// The same subtree the holder counts roll up, written a second
+			// time because a filter has to be one statement that composes into
+			// a WHERE clause. Two spellings of one idea is what this codebase
+			// keeps getting burned by, so they are pinned to each other by
+			// TestHolderCountsAgreeWithTheFilteredList rather than by these
+			// comments: both being wrong is possible, both being wrong the
+			// same way is not.
+			where = append(where, `holder_type = 'entity' AND holder_id IN (
+				WITH RECURSIVE sub(id) AS (
+				  SELECT ?
+				  UNION ALL
+				  SELECT h.id FROM holder_entities h JOIN sub ON h.parent_id = sub.id
+				)
+				SELECT id FROM sub)`)
+			args = append(args, f.HolderID)
+		} else {
+			where = append(where, `holder_type = ? AND holder_id = ?`)
+			args = append(args, f.HolderType, f.HolderID)
+		}
 	}
 	for k, v := range f.AttrFilters {
 		where = append(where, `json_extract(attrs, '$.' || ?) = ?`)

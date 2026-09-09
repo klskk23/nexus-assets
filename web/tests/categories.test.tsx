@@ -313,6 +313,62 @@ describe("类别树", () => {
    * the row says how many are behind it -- so the reader knows what they are
    * not being shown, which is what both earlier attempts lacked.
    */
+  /*
+   * Paging by root, in the rail this time.
+   *
+   * 025 wired this up while extracting the shared parts and nobody wrote a
+   * guard for it -- so it went three rounds unwatched, and the demo database
+   * (four categories, three roots, largest node one child) can never reach
+   * either threshold, which is why it read as missing.
+   *
+   * The claim is 014 decision 91's: a page is N roots and everything beneath
+   * them, so no row is ever drawn without its parent. Paging the flattened
+   * rows would let page two open with a child whose parent was the last row of
+   * page one.
+   */
+  it("按根分页，翻页后每一行的父都还在同一页上", async () => {
+    const user = userEvent.setup()
+    const many = [
+      ...Array.from({ length: 13 }, (_, i) => ({
+        id: `c${String(i).padStart(2, "0")}`,
+        code: `C${i}`,
+        name: `类别 ${String(i).padStart(2, "0")}`,
+        parent_id: null,
+        path: `/c${String(i).padStart(2, "0")}/`,
+        display_key: "",
+      })),
+      {
+        id: "kid", code: "KID", name: "末位子类别",
+        parent_id: "c12", path: "/c12/kid/", display_key: "",
+      },
+    ]
+    get.mockImplementation((p: string) =>
+      p === "/categories" ? Promise.resolve(many) : route(p),
+    )
+    renderWithProviders(<Categories />, { route: "/categories", path: "/categories" })
+
+    await screen.findByRole("link", { name: /类别 00/ })
+    // Scoped to the rail: the pane on the right has links of its own.
+    const rail = () => screen.getAllByRole("list")[0]
+    expect(within(rail()).getAllByRole("link")).toHaveLength(12)
+    expect(screen.queryByText(/末位子类别/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "下一页" }))
+
+    const page2 = within(rail())
+      .getAllByRole("link")
+      .map((a) => a.textContent ?? "")
+    expect(page2.some((t) => t.includes("类别 12"))).toBe(true)
+    // The child arrives with its parent rather than stranded behind it.
+    expect(page2.some((t) => t.includes("末位子类别"))).toBe(true)
+  })
+
+  it("一页放得下就不画翻页条", async () => {
+    openAt()
+    await screen.findByRole("link", { name: /SDWAN 路由器/ })
+    expect(screen.queryByRole("button", { name: "下一页" })).not.toBeInTheDocument()
+  })
+
   it("小的父节点默认展开，且折叠控件只出现在有子类别的行上", async () => {
     openAt()
     await screen.findByRole("link", { name: /SDWAN 路由器/ })

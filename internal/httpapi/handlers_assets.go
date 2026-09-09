@@ -36,9 +36,16 @@ func (s *Server) listAssets(c *gin.Context) {
 		VendorID:           c.Query("vendor_id"),
 		HolderType:         c.Query("holder_type"),
 		HolderID:           c.Query("holder_id"),
-		AttrFilters:        map[string]string{},
-		Offset:             offset,
-		Limit:              limit,
+		// Its own parameter, and the opposite default from the category one
+		// above. It cannot share that flag: the category filter defaults to
+		// including descendants and this one must default to excluding them,
+		// because every holder_id link and saved filter already in existence
+		// means "this one holder" and a flipped default would silently change
+		// what all of them ask for. One switch cannot carry two defaults.
+		IncludeHolderDescendants: c.Query("holder_include_descendants") == "true",
+		AttrFilters:              map[string]string{},
+		Offset:                   offset,
+		Limit:                    limit,
 	}
 	// attr.<key>=<value>. An unknown key is ignored rather than rejected so a
 	// stale client schema cannot break the whole page.

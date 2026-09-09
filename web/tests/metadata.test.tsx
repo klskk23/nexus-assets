@@ -3,7 +3,6 @@ import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { Fields } from "@/routes/Fields"
-import { Holders } from "@/routes/Holders"
 import { Users } from "@/routes/Users"
 import { Categories } from "@/routes/Categories"
 import { listed } from "@/test/listing"
@@ -156,90 +155,15 @@ describe("Fields page", () => {
 })
 
 
-describe("Holders page", () => {
-  // The marker is set where everything else about a holder is set. A control
-  // inside a clickable row fired the row's handler too, so pressing it also
-  // opened the editor -- two things from one click, one of them unasked for.
-  it("offers the default stock marker only on a location, inside the editor", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Holders />)
-
-    await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
-    let dialog = await screen.findByRole("dialog")
-    expect(within(dialog).getByLabelText("设为默认库存点")).toBeInTheDocument()
-    await user.keyboard("{Escape}")
-
-    await user.click(screen.getByRole("row", { name: /XX 集团/ }))
-    dialog = await screen.findByRole("dialog")
-    expect(within(dialog).queryByLabelText("设为默认库存点")).not.toBeInTheDocument()
-  })
-
-  it("marks a location as the default stock point", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Holders />)
-
-    await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
-    const dialog = await screen.findByRole("dialog")
-    await user.click(within(dialog).getByLabelText("设为默认库存点"))
-    await user.click(within(dialog).getByRole("button", { name: "保存" }))
-
-    await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith(
-        "/holders/h1",
-        expect.objectContaining({ is_default_stock: true }),
-      ),
-    )
-  })
-
-  // The marker moves but never switches off, so the location that holds it
-  // gets a ticked, locked box -- a toggle here would only ever be refused.
-  it("locks the box on the location that already holds the marker", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Holders />)
-
-    const current = await screen.findByRole("row", { name: /北京仓库/ })
-    expect(within(current).getByText("默认库存点")).toBeInTheDocument()
-
-    await user.click(current)
-    const box = within(await screen.findByRole("dialog")).getByLabelText("设为默认库存点")
-    expect(box).toBeChecked()
-    expect(box).toBeDisabled()
-  })
-
-  // Renaming a warehouse must not carry a marker request along with it: the
-  // server refuses is_default_stock:false, so sending it on every save would
-  // turn an ordinary rename into that refusal.
-  it("sends no marker request when the box was not ticked", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Holders />)
-
-    await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
-    const dialog = await screen.findByRole("dialog")
-    await user.clear(within(dialog).getByLabelText("名称"))
-    await user.type(within(dialog).getByLabelText("名称"), "上海一号仓")
-    await user.click(within(dialog).getByRole("button", { name: "保存" }))
-
-    await waitFor(() => expect(patch).toHaveBeenCalled())
-    expect(patch.mock.calls[0][1]).not.toHaveProperty("is_default_stock")
-  })
-
-  it("surfaces a refusal from the server rather than swallowing it", async () => {
-    patch.mockRejectedValueOnce(
-      new ApiError(409, "reference_blocked", "「北京仓库」是当前默认库存点，请先转移"),
-    )
-    const user = userEvent.setup()
-    renderWithProviders(<Holders />)
-
-    await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
-    const dialog = await screen.findByRole("dialog")
-    await user.click(within(dialog).getByLabelText("设为默认库存点"))
-    await user.click(within(dialog).getByRole("button", { name: "保存" }))
-
-    // Inside the dialog, which is still open: the page behind it is
-    // aria-hidden and covered, so an alert out there reaches nobody.
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("是当前默认库存点")
-  })
-})
+/*
+ * The holders page's five marker tests moved to holdersDefaultStock.test.tsx.
+ *
+ * 028 turned this page into a rail beside a pane and took the marker out of
+ * the edit dialog, so every one of them addressed a control that no longer
+ * exists here. They were migrated rather than deleted, and the two whose
+ * premise genuinely changed -- "absent on a company", "not a row action" --
+ * say what replaced them at the point where they used to be.
+ */
 
 describe("Users page", () => {
   it("separates active from disabled accounts", async () => {
@@ -307,63 +231,17 @@ describe("Categories page", () => {
   })
 })
 
-// The server has attached the blocking devices since the first version. The
-// client parsed only `referrers` and dropped these, leaving the page with a
-// count and no way to act on it.
-it("lists the blocking devices when a holder cannot take the marker", async () => {
-  patch.mockRejectedValueOnce(
-    new ApiError(
-      409,
-      "reference_blocked",
-      "「上海仓库」仍被 7 台设备使用，请先转移或改绑后再停用",
-      undefined,
-      undefined,
-      [
-        { asset_id: "a1", name: "112394521950", reason: "holder" },
-        { asset_id: "a2", name: "112394521951", reason: "reference" },
-      ],
-      7,
-    ),
-  )
-  const user = userEvent.setup()
-  renderWithProviders(<Holders />)
-  await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
-  const dialog = await screen.findByRole("dialog")
-  await user.click(within(dialog).getByLabelText("设为默认库存点"))
-  await user.click(within(dialog).getByRole("button", { name: "保存" }))
-
-  const alert = await within(dialog).findByRole("alert")
-  expect(alert).toHaveTextContent("112394521950")
-  expect(alert).toHaveTextContent("112394521951")
-  // Two of seven were sent, so the page has to say the list is partial.
-  expect(alert).toHaveTextContent("等共 7 台")
-})
+// "lists the blocking devices when a holder cannot take the marker" also moved
+// to holdersDefaultStock.test.tsx, with the marker it was about.
 
 // The wart the dialog made unavoidable: creating never cleared the form, so
 // reopening showed the last record you made and one edited field away from a
 // near-duplicate.
 describe("create dialog resets", () => {
-  it("reopens blank after creating a holder", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Holders />)
-    await screen.findByRole("row", { name: /上海仓库/ })
-
-    await openCreate(user, "新建持有方")
-    let dialog = await screen.findByRole("dialog")
-    await user.type(within(dialog).getByLabelText("名称"), "北京仓库")
-    await user.click(within(dialog).getByRole("button", { name: "新建持有方" }))
-
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/holders", {
-        type: "location", name: "北京仓库", note: "", parent_id: null,
-      }),
-    )
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
-
-    await openCreate(user, "新建持有方")
-    dialog = await screen.findByRole("dialog")
-    expect(within(dialog).getByLabelText("名称")).toHaveValue("")
-  })
+  // "reopens blank after creating a holder" moved to holderHierarchy.test.tsx.
+  // The holders dialog is unmounted when it closes now, so the reset is by
+  // construction rather than by hand -- which is exactly why it still needs a
+  // test somewhere: construction is a thing somebody can change back.
 
   // Dismissing counts too: a half-typed record should not be waiting next time.
   it("clears what was typed when the dialog is dismissed", async () => {
@@ -382,22 +260,14 @@ describe("create dialog resets", () => {
     expect(within(dialog).getByLabelText("姓名")).toHaveValue("")
   })
 
-  // A row action's refusal has to appear next to the rows, not inside a dialog
-  // the user has to open to find out what went wrong.
-  it("shows a row-action refusal outside the create dialog", async () => {
-    patch.mockRejectedValueOnce(
-      new ApiError(409, "reference_blocked", "「上海仓库」仍被 5 台设备使用"),
-    )
-    const user = userEvent.setup()
-    renderWithProviders(<Holders />)
-    await user.click(await screen.findByRole("row", { name: /上海仓库/ }))
-    const editor = await screen.findByRole("dialog")
-    await user.click(within(editor).getByLabelText("设为默认库存点"))
-    await user.click(within(editor).getByRole("button", { name: "保存" }))
-
-    const alert = await within(editor).findByRole("alert")
-    expect(alert).toHaveTextContent("仍被 5 台设备使用")
-  })
+  /*
+   * "shows a row-action refusal outside the create dialog" is gone, premise
+   * and all. There are no row actions on the holders page any more and there
+   * is one refusal path, not two: deleting and saving both happen in the
+   * editor, the marker refuses in the pane beside the button that asked. The
+   * claim it was making -- a refusal appears where the person is looking -- is
+   * asserted in holderHierarchy.test.tsx and holdersDefaultStock.test.tsx.
+   */
 })
 
 // The field library grew two more ways to find something (016): which vendor

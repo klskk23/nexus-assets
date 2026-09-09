@@ -86,7 +86,7 @@ describe("骨架不认识任何一页的内容", () => {
   // abstraction with a single caller can only be constrained, not validated;
   // 025 is the validation, and the list is spelled out so that a fourth cannot
   // arrive without somebody reading this.
-  it("调用方就是这三页，不多不少", () => {
+  it("调用方就是这四页，不多不少", () => {
     const files: string[] = []
     const walk = (dir: string) => {
       for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -100,6 +100,7 @@ describe("骨架不认识任何一页的内容", () => {
     expect(importers.map((f) => f.slice(SRC.length + 1)).sort()).toEqual([
       "routes/Categories.tsx",
       "routes/Fields.tsx",
+      "routes/Holders.tsx",
       "routes/Models.tsx",
     ])
   })

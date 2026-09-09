@@ -1,494 +1,172 @@
-import { AlertCircleIcon } from "lucide-react"
-import { Hint } from "@/features/common/Hint"
 import { useState } from "react"
+import { Link, useParams, useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import { api, ApiError, type Blocker, blockerKey } from "@/lib/api"
-import {
-  ALLOWED_PARENTS,
-  PARENT_REQUIRED,
-  type EntityType,
-  type HolderEntity,
-  type HolderUsage,
-} from "@/lib/types"
-import { NONE, fromNone, toNone } from "@/lib/select"
-import { usePermissions } from "@/features/auth/usePermissions"
-import { t, tMeta } from "@/i18n"
-import { CrudPage, type ListPage } from "@/features/metadata/CrudPage"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { SearchSelect } from "@/features/common/SearchSelect"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
-/** What is standing in the way, as the server reported it. */
-interface Refusal {
-  message: string
-  blockers: Blocker[]
-  total: number
-}
+import { api } from "@/lib/api"
+import type { HolderEntity } from "@/lib/types"
+import { tMeta } from "@/i18n"
+import { StateBoundary } from "@/components/StateBoundary"
+import { PageHeader } from "@/features/common/PageHeader"
+import { MasterDetail } from "@/features/common/MasterDetail"
+import { useMasterSelection } from "@/features/common/useMasterSelection"
+import { HolderTree } from "@/features/holders/HolderTree"
+import { HolderDetail } from "@/features/holders/HolderDetail"
+import { HolderEditor } from "@/features/holders/HolderEditor"
+import { HolderCreateDialog } from "@/features/holders/HolderCreateDialog"
+import { refusalOf, type Refusal } from "@/features/holders/RefusalAlert"
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 
 /**
- * A refusal with the devices behind it.
+ * Holders as the tree they are, beside what each one is.
  *
- * One component because it is shown in two places -- above the table for a
- * row action, and inside the editor for a save -- and a refusal that lists its
- * blockers in one place and not the other would be the same bug twice.
+ * The fourth page to leave the table behind, and the one that needed it most:
+ * a department must hang from a company and a location may hang from either,
+ * so 上级 as a column meant reading the shape of the organisation by
+ * assembling rows in your head.
  */
-function RefusalAlert({ refusal }: { refusal: Refusal }) {
-  return (
-    <Alert variant="destructive">
-      <AlertCircleIcon />
-      <AlertTitle>{tMeta.holders.blocked}</AlertTitle>
-      <AlertDescription className="grid gap-1">
-        {refusal.message}
-        {refusal.blockers.length > 0 && (
-          <>
-            <p className="text-xs">{tMeta.holders.blockedBy}</p>
-            <ul className="grid gap-0.5 font-mono text-xs">
-              {refusal.blockers.map((b) => (
-                <li key={blockerKey(b)}>{b.name}</li>
-              ))}
-              {refusal.total > refusal.blockers.length && (
-                <li>{tMeta.holders.blockedMore(refusal.total)}</li>
-              )}
-            </ul>
-          </>
-        )}
-      </AlertDescription>
-    </Alert>
-  )
-}
-
 export function Holders() {
-  const [name, setName] = useState("")
-  const [type, setType] = useState<EntityType>("location")
-  const [parentID, setParentID] = useState("")
-  const [note, setNote] = useState("")
+  const { id } = useParams()
   const queryClient = useQueryClient()
-  const { deniedReason } = usePermissions()
-
+  // The search term lives in the address, as it does on the three other
+  // rails: replace rather than push, because a filter is not a place you went.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const search = searchParams.get("q") ?? ""
+  const setSearch = (q: string) => {
+    const next = new URLSearchParams(searchParams)
+    if (q) next.set("q", q)
+    else next.delete("q")
+    setSearchParams(next, { replace: true })
+  }
+  const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<HolderEntity | null>(null)
-  // Two refusals, deliberately separate: a row action has no dialog and shows
-  // above the table, while a save happens with the editor open -- and the page
-  // behind a dialog is aria-hidden and covered, so an alert out there is one
-  // the operator can neither see nor hear.
-  const [rowRefusal, setRowRefusal] = useState<Refusal | null>(null)
-  const [saveRefusal, setSaveRefusal] = useState<Refusal | null>(null)
+  const [stockRefusal, setStockRefusal] = useState<Refusal | null>(null)
 
-  // Read separately from CrudPage's own list so the form can offer parents and
-  // resolve names; it is the same query key, so there is one fetch.
   const all = useQuery({
     queryKey: ["holders"],
     queryFn: () => api.get<HolderEntity[]>("/holders"),
   })
+  /**
+   * How many devices are standing at each holder, subtree included.
+   *
+   * One request for the whole page. It replaced a per-holder usage call --
+   * twenty holders meant twenty requests, made at load so that a delete
+   * confirmation could be ready before anybody reached for it.
+   */
+  const counts = useQuery({
+    queryKey: ["holder-counts"],
+    queryFn: () => api.get<Record<string, number>>("/holders/counts"),
+  })
+
   const holders = all.data ?? []
-  const byID = new Map(holders.map((h) => [h.id, h]))
+  const selection = useMasterSelection(
+    // Every holder, not the ones on the current page: a selection that pages
+    // out of view is still a selection, and passing the page would have the
+    // pane declare it missing (025).
+    holders.map((h) => h.id),
+    id,
+  )
+  const current = holders.find((h) => h.id === selection.current) ?? null
+  const defaultStock = holders.find((h) => h.is_default_stock) ?? null
 
-  // A department has to belong to a company, so with no company on file the
-  // option is offered and disabled rather than silently missing -- "why is
-  // 部门 not in the list" is a worse question than a greyed-out row with a
-  // reason under it.
-  const eligibleParents = holders.filter((h) => ALLOWED_PARENTS[type].includes(h.type))
-  const hasCompany = holders.some((h) => h.type === "company")
-
-  // What a delete would cost, fetched for every holder in one pass so the
-  // confirm dialog can state it before the click rather than after.
-  const usage = useQuery({
-    queryKey: ["holders", "usage"],
-    queryFn: async () => {
-      const entries = await Promise.all(
-        holders.map(
-          async (h) => [h.id, await api.get<HolderUsage>(`/holders/${h.id}/usage`)] as const,
-        ),
-      )
-      return Object.fromEntries(entries) as Record<string, HolderUsage>
-    },
-    enabled: holders.length > 0,
-  })
-
-  const invalidate = () => {
-    setRowRefusal(null)
-    queryClient.invalidateQueries({ queryKey: ["holders"] })
-  }
-
-  const refusalOf = (e: unknown): Refusal =>
-    e instanceof ApiError
-      ? { message: e.message, blockers: e.blockers ?? [], total: e.total ?? 0 }
-      : { message: t.common.error, blockers: [], total: 0 }
-
-  const save = useMutation({
-    mutationFn: (h: HolderEntity) =>
-      api.patch(`/holders/${h.id}`, {
-        name: h.name,
-        note: h.note,
-        // Explicit null detaches; the field must be present either way, since
-        // this dialog is where a parent gets cleared.
-        parent_id: h.parent_id,
-        // Only ever sent as true. The marker moves but does not switch off, so
-        // false is refused by the server -- and sending it on every save would
-        // turn "I renamed a warehouse" into that refusal.
-        ...(h.is_default_stock ? { is_default_stock: true } : {}),
-      }),
+  const setDefaultStock = useMutation({
+    mutationFn: (holderID: string) =>
+      api.patch(`/holders/${holderID}`, { is_default_stock: true }),
     onSuccess: () => {
-      invalidate()
-      setEditing(null)
-      setSaveRefusal(null)
+      setStockRefusal(null)
+      queryClient.invalidateQueries({ queryKey: ["holders"] })
     },
-    onError: (e) => setSaveRefusal(refusalOf(e)),
-  })
-
-  const remove = useMutation({
-    mutationFn: (id: string) => api.del(`/holders/${id}`),
-    onSuccess: invalidate,
-    onError: (e) => setRowRefusal(refusalOf(e)),
+    // The server refuses this for reasons the client cannot know in advance --
+    // devices still referencing the current one, for instance. Swallowing it
+    // would leave a button that looks like it worked.
+    onError: (e) => setStockRefusal(refusalOf(e)),
   })
 
   return (
-    <>
-      <EditDialog
-        holder={editing}
-        holders={holders}
-        refusal={saveRefusal}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEditing(null)
-            setSaveRefusal(null)
-          }
-        }}
-        onSave={(h) => save.mutate(h)}
-        saving={save.isPending}
-      />
-      <CrudPage<HolderEntity>
-        title={tMeta.holders.title}
-        queryKey="holders"
-        searchHint={tMeta.holders.searchHint}
-        filterKeys={{ type: "", is_default_stock: "" }}
-        filters={(qs) => (
-          <HolderFilters
-            type={qs.filters.type}
-            stock={qs.filters.is_default_stock}
-            onType={(v) => qs.setFilter("type", v)}
-            onStock={(v) => qs.setFilter("is_default_stock", v)}
-          />
+    <div>
+      <PageHeader title={tMeta.holders.title} hint={tMeta.holders.selectHint}>
+        {/* There is exactly one default stock point in the system, and after
+            paging arrived it can be on any page -- so the answer is written
+            out rather than left to be found. A link into the rail, not a
+            control: it moves the selection, which is what clicking a name
+            does everywhere else on this page. */}
+        {defaultStock ? (
+          <Link
+            to={`/holders/${defaultStock.id}`}
+            className="text-muted-foreground hover:text-primary text-sm"
+          >
+            {tMeta.holders.defaultStockIs(defaultStock.name)}
+          </Link>
+        ) : (
+          <span className="text-muted-foreground text-sm">{tMeta.holders.defaultStockNone}</span>
         )}
-        list={(params) => api.get<ListPage<HolderEntity>>(`/holders?${params}`)}
-        createLabel={tMeta.holders.create}
-        // Setting the default stock marker is a row action, so its refusal
-        // belongs beside the rows -- not inside the create dialog.
-        notice={rowRefusal && <RefusalAlert refusal={rowRefusal} />}
-        onRowClick={(h) => setEditing(h)}
-      rowActions={[
-        { label: tMeta.holders.edit, onSelect: (h) => setEditing(h) },
-        {
-          label: tMeta.holders.delete,
-          destructive: true,
-          onSelect: (h) => remove.mutate(h.id),
-          confirm: (h) => {
-            const u = usage.data?.[h.id]
-            return {
-              title: tMeta.holders.deleteTitle,
-              description:
-                u && u.history > 0
-                  ? tMeta.holders.deleteHistoryHint(h.name, u.history)
-                  : tMeta.holders.deleteHint(h.name),
-              phrase: h.name,
+      </PageHeader>
+
+      {creating && (
+        <HolderCreateDialog holders={holders} onClose={() => setCreating(false)} />
+      )}
+      {editing && (
+        <HolderEditor
+          key={editing.id}
+          holder={editing}
+          holders={holders}
+          onClose={() => setEditing(null)}
+        />
+      )}
+
+      <div className="mt-14">
+        <StateBoundary
+          isLoading={all.isLoading}
+          error={all.error as Error | null}
+          onRetry={() => all.refetch()}
+        >
+          <MasterDetail
+            selected={Boolean(id)}
+            list={
+              <HolderTree
+                holders={holders}
+                counts={counts.data ?? {}}
+                search={search}
+                onSearch={setSearch}
+                currentID={selection.current}
+                onCreate={() => setCreating(true)}
+              />
             }
-          },
-        },
-      ]}
-      createDeniedReason={deniedReason("holder.create")}
-      createDisabled={name === "" || (PARENT_REQUIRED[type] && parentID === "")}
-        onCreated={() => {
-          setName("")
-          setType("location")
-          setParentID("")
-          setNote("")
-        }}
-        create={() => api.post("/holders", { type, name, note, parent_id: parentID || null })}
-        emptyTitle={tMeta.holders.empty}
-        emptyHint={tMeta.holders.emptyHint}
-        columns={[
-          { header: tMeta.holders.name, cell: (h) => h.name },
-          { header: tMeta.holders.type, cell: (h) => tMeta.entityTypes[h.type] ?? h.type },
-          {
-            header: tMeta.holders.parent,
-            cell: (h) =>
-              h.parent_id ? (
-                (byID.get(h.parent_id)?.name ?? h.parent_id)
-              ) : (
-                <span className="text-muted-foreground">{tMeta.holders.noParent}</span>
-              ),
-          },
-          {
-            header: tMeta.holders.note,
-            cell: (h) => <span className="text-muted-foreground text-sm">{h.note}</span>,
-          },
-          {
-            header: tMeta.holders.defaultStock,
-            // Shown, not operated. A control inside a clickable row fires the
-            // row's handler too, so pressing it also opened the editor -- two
-            // things happening from one click, one of them unasked for.
-            cell: (h) => (h.is_default_stock ? <Badge>{tMeta.holders.defaultStock}</Badge> : null),
-          },
-        ]}
-        form={
-          <FieldGroup className="sm:grid sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="h-name">{tMeta.holders.name}</FieldLabel>
-              <Input id="h-name" value={name} onChange={(e) => setName(e.target.value)} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="h-type">{tMeta.holders.type}</FieldLabel>
-              <Select
-                value={type}
-                onValueChange={(v) => {
-                  setType(v as EntityType)
-                  // The eligible parents differ per kind, so a carried-over
-                  // choice would be one the server is about to refuse.
-                  setParentID("")
-                }}
-              >
-                <SelectTrigger id="h-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {Object.entries(tMeta.entityTypes).map(([k, v]) => (
-                      <SelectItem key={k} value={k} disabled={k === "department" && !hasCompany}>
-                        {v}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              {type === "department" && !hasCompany && (
-                <FieldDescription>{tMeta.holders.noCompanyYet}</FieldDescription>
-              )}
-            </Field>
-
-            {ALLOWED_PARENTS[type].length > 0 && (
-              <Field>
-                <FieldLabel htmlFor="h-parent">{tMeta.holders.parent}</FieldLabel>
-                {/* Searchable: holders grow without bound. A department has
-                    no "no parent" option -- the rule is not a suggestion, and
-                    offering the choice would only lead to a refusal -- so the
-                    empty option is withheld by making the placeholder the
-                    prompt rather than a selectable row. */}
-                <SearchSelect
-                  id="h-parent"
-                  value={parentID}
-                  onChange={setParentID}
-                  placeholder={
-                    PARENT_REQUIRED[type] ? t.common.select : tMeta.holders.noParent
-                  }
-                  options={eligibleParents.map((h) => ({
-                    value: h.id,
-                    label: `${h.name}（${tMeta.entityTypes[h.type] ?? h.type}）`,
-                  }))}
+            detail={
+              // Nothing at all when there are no holders: the rail already
+              // says so and offers the way out, and a second copy of the same
+              // sentence beside it is the page saying it twice.
+              holders.length === 0 ? null : current ? (
+                <HolderDetail
+                  key={current.id}
+                  holder={current}
+                  holders={holders}
+                  count={counts.data?.[current.id] ?? 0}
+                  onEdit={() => setEditing(current)}
+                  onSetDefaultStock={() => {
+                    setStockRefusal(null)
+                    setDefaultStock.mutate(current.id)
+                  }}
+                  settingDefaultStock={setDefaultStock.isPending}
+                  stockRefusal={stockRefusal}
                 />
-                {PARENT_REQUIRED[type] && (
-                  <FieldDescription>
-                    {tMeta.holders.parentRequired(
-                      tMeta.entityTypes[type] ?? type,
-                      ALLOWED_PARENTS[type].map((p) => tMeta.entityTypes[p] ?? p),
-                    )}
-                  </FieldDescription>
-                )}
-              </Field>
-            )}
-
-            <Field className="sm:col-span-2">
-              <FieldLabel htmlFor="h-note">{tMeta.holders.note}</FieldLabel>
-              <Input
-                id="h-note"
-                value={note}
-                placeholder={tMeta.holders.notePlaceholder}
-                onChange={(e) => setNote(e.target.value)}
-              />
-            </Field>
-          </FieldGroup>
-        }
-      />
-    </>
-  )
-}
-
-interface EditProps {
-  holder: HolderEntity | null
-  holders: HolderEntity[]
-  refusal: Refusal | null
-  onOpenChange: (open: boolean) => void
-  onSave: (h: HolderEntity) => void
-  saving: boolean
-}
-
-/**
- * Edits one holder.
- *
- * The type is not editable: changing a company into a location would leave its
- * children pointing at a parent kind the rules forbid, and there is no answer
- * to what should happen to them that the operator has agreed to. Delete and
- * recreate says the same thing out loud.
- */
-function EditDialog({ holder, holders, refusal, onOpenChange, onSave, saving }: EditProps) {
-  const [draft, setDraft] = useState<HolderEntity | null>(holder)
-
-  // The row is the source of truth; opening on a different one replaces the
-  // draft rather than showing the last thing that was edited.
-  if (holder?.id !== draft?.id) setDraft(holder)
-  if (!draft) return null
-
-  const eligible = holders.filter(
-    (h) => h.id !== draft.id && ALLOWED_PARENTS[draft.type].includes(h.type),
-  )
-
-  return (
-    <Dialog open={holder !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{tMeta.holders.editTitle}</DialogTitle>
-        </DialogHeader>
-
-        <div className="grid gap-4">
-          <Field>
-            <FieldLabel htmlFor="he-name">{tMeta.holders.name}</FieldLabel>
-            <Input
-              id="he-name"
-              value={draft.name}
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            />
-          </Field>
-
-          {ALLOWED_PARENTS[draft.type].length > 0 && (
-            <Field>
-              <FieldLabel htmlFor="he-parent">{tMeta.holders.parent}</FieldLabel>
-              {/* Searchable: holders grow without bound. */}
-              <SearchSelect
-                id="he-parent"
-                value={draft.parent_id ?? ""}
-                onChange={(v) => setDraft({ ...draft, parent_id: v || null })}
-                placeholder={
-                  PARENT_REQUIRED[draft.type] ? t.common.select : tMeta.holders.noParent
-                }
-                options={eligible.map((h) => ({
-                  value: h.id,
-                  label: `${h.name}（${tMeta.entityTypes[h.type] ?? h.type}）`,
-                }))}
-              />
-            </Field>
-          )}
-
-          <Field>
-            <FieldLabel htmlFor="he-note">{tMeta.holders.note}</FieldLabel>
-            <Input
-              id="he-note"
-              value={draft.note}
-              placeholder={tMeta.holders.notePlaceholder}
-              onChange={(e) => setDraft({ ...draft, note: e.target.value })}
-            />
-          </Field>
-
-          {/* Only a location can hold the marker, and the one that has it has
-              nowhere to move it to -- so it is ticked and locked rather than
-              hidden, which would leave "where did it go" unanswered. */}
-          {draft.type === "location" && (
-            <Field orientation="horizontal">
-              <Checkbox
-                id="he-default"
-                checked={draft.is_default_stock}
-                disabled={holder?.is_default_stock}
-                onCheckedChange={(v) => setDraft({ ...draft, is_default_stock: v === true })}
-              />
-              <FieldLabel htmlFor="he-default">{tMeta.holders.setDefault}</FieldLabel>
-              <Hint>{tMeta.holders.defaultStockHint}</Hint>
-            </Field>
-          )}
-
-          {refusal && <RefusalAlert refusal={refusal} />}
-        </div>
-
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="ghost">{t.common.cancel}</Button>
-          </DialogClose>
-          <Button disabled={draft.name === "" || saving} onClick={() => onSave(draft)}>
-            {tMeta.holders.save}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-/** Kind, and whether it is the one place returns go to when nobody says. */
-function HolderFilters({
-  type,
-  stock,
-  onType,
-  onStock,
-}: {
-  type: string
-  stock: string
-  onType: (v: string) => void
-  onStock: (v: string) => void
-}) {
-  return (
-    <>
-      <Field className="w-auto">
-        <FieldLabel htmlFor="h-type-filter" className="sr-only">
-          {tMeta.holders.type}
-        </FieldLabel>
-        <Select value={toNone(type)} onValueChange={(v) => onType(fromNone(v))}>
-          <SelectTrigger id="h-type-filter" className="w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value={NONE}>{tMeta.holders.allTypes}</SelectItem>
-              {(["company", "department", "location"] as const).map((k) => (
-                <SelectItem key={k} value={k}>
-                  {tMeta.entityTypes[k]}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </Field>
-      <Field className="w-auto">
-        <FieldLabel htmlFor="h-stock-filter" className="sr-only">
-          {tMeta.holders.defaultStock}
-        </FieldLabel>
-        <Select value={toNone(stock)} onValueChange={(v) => onStock(fromNone(v))}>
-          <SelectTrigger id="h-stock-filter" className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value={NONE}>{tMeta.holders.anyStock}</SelectItem>
-              <SelectItem value="true">{tMeta.holders.defaultStock}</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </Field>
-    </>
+              ) : (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyTitle>
+                      {selection.missing ? tMeta.holders.notFound : tMeta.holders.empty}
+                    </EmptyTitle>
+                    <EmptyDescription>
+                      {selection.missing
+                        ? tMeta.holders.notFoundHint
+                        : tMeta.holders.emptyHint}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              )
+            }
+          />
+        </StateBoundary>
+      </div>
+    </div>
   )
 }

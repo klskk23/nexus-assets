@@ -79,6 +79,23 @@ func (s *Server) categoryCounts(c *gin.Context) {
 	c.JSON(http.StatusOK, counts)
 }
 
+// holderCounts is how many devices are standing at each holder, descendants
+// included, for the holder page's rail and its "see the N devices here" link.
+//
+// Deliberately a different reading from categoryCounts above -- that one drops
+// the written-off, this one keeps them, because a warehouse is asked what is
+// standing in it. The reason lives in SubtreeCountsByHolder and in
+// docs/rules/domain.md; it is repeated nowhere else, so that changing the mind
+// means changing one place.
+func (s *Server) holderCounts(c *gin.Context) {
+	counts, err := s.assets.SubtreeCountsByHolder(c.Request.Context())
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, counts)
+}
+
 // modelCounts is how many devices carry each model, for the model page's rail.
 func (s *Server) modelCounts(c *gin.Context) {
 	counts, err := s.assets.CountsByModel(c.Request.Context())

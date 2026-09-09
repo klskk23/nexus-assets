@@ -50,6 +50,11 @@ export const router = createBrowserRouter([
       { path: "fields/groups", element: <Navigate to="/fields" replace /> },
       { path: "statuses", lazy: async () => ({ Component: (await import("./Statuses")).Statuses }) },
       { path: "holders", lazy: async () => ({ Component: (await import("./Holders")).Holders }) },
+      // Same component as /holders, not a child route: the rail has to stay on
+      // screen, and splitting the two panes across a route boundary would mean
+      // sharing the search term, the list and the selection across it (016
+      // decision 107).
+      { path: "holders/:id", lazy: async () => ({ Component: (await import("./Holders")).Holders }) },
       { path: "roles", lazy: async () => ({ Component: (await import("./Roles")).Roles }) },
       { path: "audit", lazy: async () => ({ Component: (await import("./Audit")).Audit }) },
       {

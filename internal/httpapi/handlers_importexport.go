@@ -117,12 +117,16 @@ func (s *Server) exportCSV(c *gin.Context) {
 		Q:                  c.Query("q"),
 		CategoryID:         c.Query("category_id"),
 		IncludeDescendants: c.DefaultQuery("include_descendants", "true") != "false",
-		Status:             c.Query("status"),
-		OwnerID:            c.Query("owner_id"),
-		ModelID:            c.Query("model_id"),
-		HolderType:         c.Query("holder_type"),
-		HolderID:           c.Query("holder_id"),
-		AttrFilters:        map[string]string{},
+		// No holder_include_descendants here, and that is a decision rather
+		// than an omission: an export answers "this batch", and rolling a
+		// subtree in would quietly add a few hundred rows to a file somebody
+		// is about to send on.
+		Status:      c.Query("status"),
+		OwnerID:     c.Query("owner_id"),
+		ModelID:     c.Query("model_id"),
+		HolderType:  c.Query("holder_type"),
+		HolderID:    c.Query("holder_id"),
+		AttrFilters: map[string]string{},
 	}
 	for k, v := range c.Request.URL.Query() {
 		if key, ok := strings.CutPrefix(k, "attr."); ok && key != "" && len(v) > 0 {

@@ -122,6 +122,21 @@ export function Assets() {
   const [status, setStatus] = useState(searchParams.get("status") ?? "")
   const [ownerId, setOwnerId] = useState(searchParams.get("owner_id") ?? "")
   const [holderId, setHolderId] = useState(searchParams.get("holder_id") ?? "")
+  /**
+   * Whether the holder filter means "here" or "here and everything below".
+   *
+   * Read from the address and written back, because the holders page links in
+   * with it set -- a company's pane says "see the 42 devices here" and the
+   * list on the other end has to count the same 42. Dropping it on the way in
+   * is exactly the defect 024 closed for categories: the number and the list
+   * disagreeing with no explanation anywhere on either screen.
+   *
+   * Not surfaced as a control. The filter bar's holder picker has always meant
+   * "this one holder", and the flag arrives from a link that already decided.
+   */
+  const [holderDescendants, setHolderDescendants] = useState(
+    searchParams.get("holder_include_descendants") === "true",
+  )
   // Which model the list is looking at. In the address like every other filter
   // -- filter values are never persisted across sessions; only the choice of
   // columns is (015, decision 103). It is also what unlocks a model field's
@@ -205,6 +220,7 @@ export function Assets() {
     // without one would match a user and an entity that happened to share it.
     params.set("holder_type", "entity")
     params.set("holder_id", holderId)
+    if (holderDescendants) params.set("holder_include_descendants", "true")
   }
 
   const listParams = new URLSearchParams(params)
@@ -517,7 +533,13 @@ export function Assets() {
               id="holder"
               className="w-40"
               value={holderId}
-              onChange={setHolderId}
+              onChange={(v) => {
+                setHolderId(v)
+                // Picking one by hand means that one. The subtree flag only
+                // ever arrives from a link that already decided, so choosing
+                // a different holder here must not inherit it.
+                setHolderDescendants(false)
+              }}
               placeholder={t.assets.allHolders}
               options={(holders.data ?? []).map((h) => ({ value: h.id, label: h.name }))}
             />

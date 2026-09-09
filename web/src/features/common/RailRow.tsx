@@ -44,7 +44,14 @@ export function RailRow({
   return (
     <div className="flex items-center">
       {folded === undefined ? (
-        <span aria-hidden className="w-0 shrink-0" style={{ width: depth * 18 }} />
+        /* The fold control's width, held open on rows that have none.
+         *
+         * Without it a leaf and a foldable node at the same depth start 24px
+         * apart, and a rail whose roots are a mix of the two -- which is every
+         * holder rail, where a company has children and a standalone warehouse
+         * does not -- reads as two ragged columns. The indent is supposed to
+         * mean depth and nothing else. */
+        <span aria-hidden className="size-6 shrink-0" style={{ marginInlineStart: depth * 18 }} />
       ) : (
         <button
           type="button"

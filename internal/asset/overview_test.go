@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/klskk23/nexus-assets/internal/holder"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
 )
@@ -327,5 +328,153 @@ func TestModelCountsIncludeModelsWithNothingOnThem(t *testing.T) {
 	}
 	if n, ok := counts[m.ID]; !ok || n != 0 {
 		t.Errorf("want present at 0, got %d (present: %v)", n, ok)
+	}
+}
+
+// holderTree builds 国药集团 → 研发部 → 三楼实验室, plus an empty sibling
+// warehouse, and returns their ids.
+//
+// Three levels because that is the deepest the hierarchy rules allow and the
+// bug this guards against -- rolling up one level and stopping -- is invisible
+// at two.
+func holderTree(t *testing.T, f *fixture) (company, dept, lab, empty string) {
+	t.Helper()
+	co, err := f.holders.Create(f.ctx, holder.CreateInput{Type: model.EntityCompany, Name: "国药集团"})
+	if err != nil {
+		t.Fatalf("create company: %v", err)
+	}
+	d, err := f.holders.Create(f.ctx, holder.CreateInput{
+		Type: model.EntityDepartment, Name: "研发部", ParentID: &co.ID,
+	})
+	if err != nil {
+		t.Fatalf("create department: %v", err)
+	}
+	l, err := f.holders.Create(f.ctx, holder.CreateInput{
+		Type: model.EntityLocation, Name: "三楼实验室", ParentID: &d.ID,
+	})
+	if err != nil {
+		t.Fatalf("create lab: %v", err)
+	}
+	e, err := f.holders.Create(f.ctx, holder.CreateInput{
+		Type: model.EntityLocation, Name: "外包机房", ParentID: &co.ID,
+	})
+	if err != nil {
+		t.Fatalf("create empty location: %v", err)
+	}
+	return co.ID, d.ID, l.ID, e.ID
+}
+
+// The number beside a holder is its whole subtree, not what it is holding
+// itself.
+//
+// A company holds nothing directly -- devices sit at the locations under it --
+// so a count that stops at the node shows 0 on every company and department in
+// the tree, which reads as "we have nothing here" about the part of the
+// hierarchy people navigate by.
+func TestHolderSubtreeCountsRollUpEveryLevel(t *testing.T) {
+	f := newFixture(t)
+	company, dept, lab, empty := holderTree(t, f)
+
+	for i, at := range []string{lab, lab, dept} {
+		if _, err := f.save(t, SaveInput{
+			Attrs:  map[string]any{"mac": fmt.Sprintf("001A2B3C4D%02d", i+1)},
+			Holder: model.Holder{Type: model.HolderTypeEntity, ID: at},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	counts, err := f.svc.SubtreeCountsByHolder(f.ctx)
+	if err != nil {
+		t.Fatalf("counts: %v", err)
+	}
+	for _, c := range []struct {
+		id   string
+		name string
+		want int
+	}{
+		{company, "国药集团", 3},
+		{dept, "研发部", 3},
+		{lab, "三楼实验室", 2},
+		{empty, "外包机房", 0},
+	} {
+		if counts[c.id] != c.want {
+			t.Errorf("%s = %d, want %d", c.name, counts[c.id], c.want)
+		}
+	}
+
+	// The empty one has a key rather than being absent: a caller reading a
+	// missing key gets the zero value anyway, but a rail that has to tell
+	// "loading" from "none" cannot, and a blank where a number belongs reads
+	// as the former.
+	if _, ok := counts[empty]; !ok {
+		t.Error("a holder with nothing in it should still have an entry")
+	}
+}
+
+// The one place the two counts in this file deliberately disagree.
+//
+// A category is asked "how many working ones do we have" and drops the
+// written-off. A holder is asked "how many are standing here", and a
+// written-off device is still stacked in that warehouse waiting for disposal.
+// Same device, two questions, two right answers.
+func TestHolderCountsKeepWhatTheCategoryCountsDrop(t *testing.T) {
+	f := newFixture(t)
+	_, _, lab, _ := holderTree(t, f)
+
+	a, err := f.save(t, SaveInput{
+		Attrs:  map[string]any{"mac": "001A2B3C4D01"},
+		Holder: model.Holder{Type: model.HolderTypeEntity, ID: lab},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.save(t, SaveInput{
+		ID: a.ID, Version: a.Version, CategoryID: a.CategoryID, Status: model.StatusRetired,
+		Attrs:  map[string]any{"mac": "001A2B3C4D01"},
+		Holder: model.Holder{Type: model.HolderTypeEntity, ID: lab},
+	}); err != nil {
+		t.Fatalf("retire: %v", err)
+	}
+
+	byHolder, err := f.svc.SubtreeCountsByHolder(f.ctx)
+	if err != nil {
+		t.Fatalf("holder counts: %v", err)
+	}
+	if byHolder[lab] != 1 {
+		t.Errorf("三楼实验室 = %d, want 1 -- a written-off device is still standing there", byHolder[lab])
+	}
+
+	byCategory, err := f.svc.SubtreeCountsByCategory(f.ctx)
+	if err != nil {
+		t.Fatalf("category counts: %v", err)
+	}
+	if byCategory[f.catID] != 0 {
+		t.Errorf("category = %d, want 0 -- the distribution leaves the written-off out", byCategory[f.catID])
+	}
+}
+
+// A device held by a person is not standing at any holder entity.
+//
+// holder_id alone would match it if an account and an entity ever shared an
+// id, which is why the type travels with it everywhere else in this codebase.
+func TestHolderCountsIgnoreDevicesHeldByPeople(t *testing.T) {
+	f := newFixture(t)
+	company, _, _, _ := holderTree(t, f)
+
+	if _, err := f.save(t, SaveInput{
+		Attrs:  map[string]any{"mac": "001A2B3C4D01"},
+		Status: model.StatusInUse,
+		Holder: model.Holder{Type: model.HolderTypeUser, ID: f.userID},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	counts, err := f.svc.SubtreeCountsByHolder(f.ctx)
+	if err != nil {
+		t.Fatalf("counts: %v", err)
+	}
+	if counts[company] != 0 {
+		t.Errorf("国药集团 = %d, want 0 -- that device is with a person", counts[company])
 	}
 }

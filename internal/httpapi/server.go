@@ -166,6 +166,9 @@ func (s *Server) Router() *gin.Engine {
 	authed.GET("/status-usage", s.statusUsage)
 
 	authed.GET("/holders", s.listHolders)
+	// Static segment before the ":id" routes below, the same shape and the
+	// same reason as /categories/counts.
+	authed.GET("/holders/counts", s.holderCounts)
 	authed.POST("/holders", need(authz.HolderCreate), s.createHolder)
 	authed.PATCH("/holders/:id", s.patchHolder)
 	authed.DELETE("/holders/:id", need(authz.HolderDelete), s.deleteHolder)

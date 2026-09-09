@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
-import { Holders } from "@/routes/Holders"
+import { Users } from "@/routes/Users"
 import { Categories } from "@/routes/Categories"
 import { Audit } from "@/routes/Audit"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { listed } from "@/test/listing"
 import { chooseByLabel } from "@/test/choose"
 import { useLocation } from "react-router"
-import type { HolderEntity } from "@/lib/types"
+import type { User } from "@/lib/types"
 
 const get = vi.fn()
 vi.mock("@/lib/api", async () => {
@@ -25,10 +25,24 @@ vi.mock("@/lib/api", async () => {
   }
 })
 
-const holders: HolderEntity[] = [
-  { id: "co", type: "company", name: "XX 集团", parent_id: null, note: "总部", is_default_stock: false },
-  { id: "wh", type: "location", name: "上海仓库", parent_id: null, note: "B 座三层", is_default_stock: true },
-  { id: "bj", type: "location", name: "北京仓库", parent_id: null, note: "", is_default_stock: false },
+/**
+ * The exemplar is the accounts page, not holders.
+ *
+ * Holders used to stand in for "every table page" here. 028 turned it into a
+ * master-detail rail, so it no longer borrows the shape this file is about --
+ * and a guard whose subject has stopped being an example of the thing has to
+ * change subject, not be deleted. Accounts is the closest match: search, two
+ * filters, paging, all through CrudPage.
+ */
+const users: User[] = [
+  { id: "u1", email: "wang@example.com", name: "王五", auth_type: "local", status: "active", role_id: "r1" },
+  { id: "u2", email: "zhao@example.com", name: "赵六", auth_type: "local", status: "active", role_id: "r1" },
+  { id: "u3", email: "sun@example.com", name: "孙七", auth_type: "oidc", status: "disabled", role_id: "r2" },
+]
+
+const roles = [
+  { id: "r1", name: "管理员", is_admin: true, permissions: [] },
+  { id: "r2", name: "仓管", is_admin: false, permissions: [] },
 ]
 
 const categories = [
@@ -37,9 +51,8 @@ const categories = [
 ]
 
 function route(p: string) {
-  const usage = /^\/holders\/(.+)\/usage$/.exec(p)
-  if (usage) return Promise.resolve({ assets: 0, children: 0, history: 0 })
-  if (p.startsWith("/holders")) return Promise.resolve(listed(holders, p))
+  if (p.startsWith("/users")) return Promise.resolve(listed(users, p))
+  if (p.startsWith("/roles")) return Promise.resolve({ items: roles, total: roles.length, offset: 0, limit: 50 })
   if (p.startsWith("/categories")) return Promise.resolve(categories)
   if (p.startsWith("/audit")) return Promise.resolve({ items: [], total: 0, offset: 0, limit: 20 })
   return Promise.resolve([])
@@ -62,43 +75,43 @@ const asked = (prefix: string) =>
 describe("every table page searches, filters and pages the same way", () => {
   it("sends what was typed in the search box to the server", async () => {
     const user = userEvent.setup()
-    renderWithProviders(<Holders />)
-    await screen.findByRole("row", { name: /上海仓库/ })
+    renderWithProviders(<Users />)
+    await screen.findByRole("row", { name: /王五/ })
 
     // The box says what it searches rather than just "搜索" -- a page that
-    // searches names and notes should not have to be guessed at.
-    await user.type(screen.getByLabelText("名称、备注"), "北京")
+    // searches emails and names should not have to be guessed at.
+    await user.type(screen.getByLabelText("邮箱、姓名"), "赵")
 
-    await waitFor(() => expect(asked("/holders?").at(-1)).toContain("q=%E5%8C%97%E4%BA%AC"))
+    await waitFor(() => expect(asked("/users?").at(-1)).toContain("q=%E8%B5%B5"))
     await waitFor(() =>
-      expect(screen.queryByRole("row", { name: /上海仓库/ })).not.toBeInTheDocument(),
+      expect(screen.queryByRole("row", { name: /王五/ })).not.toBeInTheDocument(),
     )
-    expect(screen.getByRole("row", { name: /北京仓库/ })).toBeInTheDocument()
+    expect(screen.getByRole("row", { name: /赵六/ })).toBeInTheDocument()
   })
 
   it("narrows by a filter and puts it in the address", async () => {
     const user = userEvent.setup()
     renderWithProviders(
       <>
-        <Holders />
+        <Users />
         <Address />
       </>,
     )
-    await screen.findByRole("row", { name: /上海仓库/ })
+    await screen.findByRole("row", { name: /王五/ })
 
-    await chooseByLabel(user, "类型", "公司")
+    await chooseByLabel(user, "状态", "已停用")
 
-    await waitFor(() => expect(asked("/holders?").at(-1)).toContain("type=company"))
-    // In the address, so opening a holder and coming back finds the same
+    await waitFor(() => expect(asked("/users?").at(-1)).toContain("status=disabled"))
+    // In the address, so opening an account and coming back finds the same
     // question rather than the whole list again.
     await waitFor(() =>
-      expect(screen.getByTestId("address")).toHaveTextContent("type=company"),
+      expect(screen.getByTestId("address")).toHaveTextContent("status=disabled"),
     )
   })
 
   it("draws no paging controls for a list that fits on one page", async () => {
-    renderWithProviders(<Holders />)
-    await screen.findByRole("row", { name: /上海仓库/ })
+    renderWithProviders(<Users />)
+    await screen.findByRole("row", { name: /王五/ })
 
     expect(screen.queryByRole("button", { name: "上一页" })).not.toBeInTheDocument()
     // The count stays: "how many are there" is a question a short list has too.
@@ -154,11 +167,11 @@ describe("the audit log", () => {
 // Whether they are 22px apart is a question for the screenshot walkthrough.
 describe("the shape every metadata page borrows", () => {
   it("gives a title, a search box, rows and a pager -- all four, together", async () => {
-    renderWithProviders(<Holders />)
+    renderWithProviders(<Users />)
 
-    expect(await screen.findByRole("heading", { level: 1, name: "持有方" })).toBeInTheDocument()
-    expect(screen.getByLabelText("名称、备注")).toBeInTheDocument()
-    expect(await screen.findByRole("row", { name: /上海仓库/ })).toBeInTheDocument()
+    expect(await screen.findByRole("heading", { level: 1, name: "账号" })).toBeInTheDocument()
+    expect(screen.getByLabelText("邮箱、姓名")).toBeInTheDocument()
+    expect(await screen.findByRole("row", { name: /王五/ })).toBeInTheDocument()
 
     // The range line is the part of the pager that is always there. Page links
     // and the per-page picker come and go with the row count, and a list of

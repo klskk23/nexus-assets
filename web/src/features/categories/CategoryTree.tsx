@@ -26,14 +26,27 @@ interface Props {
 }
 
 /**
- * Every category, always open, with the one you are reading marked.
+ * Every category, with the one you are reading marked.
  *
- * No folding, and no chevrons to fold with. Categories are configuration
- * rather than data -- a handful to a few dozen -- so the whole tree fits, and
- * a control that hides part of the answer to "what categories are there" costs
- * more than the two lines it saves. `CollapsibleTree` was removed once already
- * for the neighbouring reason; this is the second time the same idea has not
- * paid for itself.
+ * **This comment used to say there was no folding and no chevrons to fold
+ * with, thirty lines above the chevrons.** 024 did refuse folding, twice over
+ * -- `CollapsibleTree` had been deleted for it before that -- and then 025
+ * wired both folding and paging in here while extracting the shared parts, and
+ * nobody came back to the paragraph. It went three rounds saying the opposite
+ * of the code, and was believed: the demo database has four categories, three
+ * roots and a largest node of one child, against thresholds of twelve, so
+ * neither control can appear on it and the page reads as though the claim were
+ * true.
+ *
+ * What changed between the refusals and now is not the judgement but the
+ * parts. Both earlier attempts folded **unconditionally** and said nothing
+ * about what was behind the fold -- a control that hides half the answer to
+ * "what categories are there". `useFoldable` only folds a node whose children
+ * would fill the rail on their own, and the control says how many are behind
+ * it, so the reader knows what they are not being shown. Paging was refused
+ * because page two of a flattened tree can open with a child whose parent was
+ * the last row of page one (014 decision 91); `rootPaging` pages by root and
+ * carries whole subtrees, so that cannot happen.
  *
  * Searching still flattens (014 decision 91): showing only the hits removes
  * the parents the indent was measured against, so an indented row would be
@@ -124,9 +137,13 @@ export function CategoryTree({
                     : undefined
                 }
                 onFold={() => folds.toggle(c.id, childCounts[c.id] ?? 0)}
+                /* The count rides on the control because the row's number
+                   slot means devices here -- it cannot say two things at
+                   once, and a fold that hides fifteen children without
+                   saying so is the control 024 refused twice. */
                 foldLabel={
                   folds.isFolded(c.id, childCounts[c.id] ?? 0)
-                    ? tMeta.panes.unfold
+                    ? tMeta.panes.unfoldN(childCounts[c.id] ?? 0)
                     : tMeta.panes.fold
                 }
               />
