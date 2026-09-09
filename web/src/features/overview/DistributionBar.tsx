@@ -1,5 +1,7 @@
 import type { ReactNode } from "react"
 
+import { cn } from "cn"
+
 export interface BarRow {
   id: string
   /** What the row is: a category's name, or a status chip. */
@@ -31,11 +33,13 @@ interface Props {
  * the chart's click handler used to be the only route and was invisible to a
  * keyboard.
  *
- * The track is sage whichever list it is in. In this palette sage means
- * quantity and the status palettes mean status, so a status row says its
- * status in the chip and says how many in the bar -- painting the bar with
- * the status colour too would be saying the same thing twice, in a tint that
- * measures 1.0x against the page and could not carry it anyway.
+ * Bars alternate clay and sage by position. The alternation carries no
+ * information -- it is rhythm, the same job the zebra striping of a long table
+ * does, and a reader who looks for a meaning in it will not find one.
+ *
+ * What it must not become is the status colour. A status row already says its
+ * status in the chip; painting the bar to match would say the same thing twice,
+ * in tints that measure 1.0x against this page and could not carry it anyway.
  *
  * Proportions are against the largest row, not the total. Against the
  * total, a realistic ledger draws twelve slivers and one bar: the question this
@@ -47,7 +51,7 @@ export function DistributionBar({ data, onSelect, rowLabel }: Props) {
 
   return (
     <ul className="grid gap-2">
-      {data.map((d) => (
+      {data.map((d, i) => (
         <li key={d.id}>
           <button
             type="button"
@@ -70,7 +74,14 @@ export function DistributionBar({ data, onSelect, rowLabel }: Props) {
                   which is why this only showed up once the two shared a row. */}
               {d.count > 0 && (
                 <span
-                  className="bg-accent-2 block h-full min-w-1 rounded-full"
+                  className={cn(
+                    "block h-full min-w-1 rounded-full",
+                    // Alternating, so neighbouring rows are told apart by
+                    // colour as well as by length. The alternation is by
+                    // position and says nothing about the row -- see the note
+                    // above the component.
+                    i % 2 === 0 ? "bg-primary" : "bg-accent-2",
+                  )}
                   style={{ width: `${(d.count / largest) * 100}%` }}
                 />
               )}
