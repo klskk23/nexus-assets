@@ -326,16 +326,6 @@ export function AssetDetail() {
                 </div>
               </dl>
 
-              {/* The device's own note, read where the device is read.
-                  Editable in the dialog, as everything on this page is, but
-                  reading it should not cost opening the form that changes it
-                  -- which is the same argument 015 decision 104 made about the
-                  attributes below. A sentence gets its own line rather than a
-                  cell in the band above. */}
-              {asset.note && (
-                <p className="text-muted-foreground -mt-8 text-sm">{asset.note}</p>
-              )}
-
               {/* What this device is, before what can be done to it (015,
                   decision 104). Read-only: editing is a button in the header
                   now, so this section has one job and does it without a form
@@ -349,6 +339,23 @@ export function AssetDetail() {
                   therefore not typed by anyone. */}
               <section aria-label={t.assets.attrs} className="grid content-start gap-3">
                 <h2 className="text-[21px] leading-tight font-bold">{t.assets.attrs}</h2>
+                {/* In this section, but outside the field list.
+                    A note is not a field: it has no key, no type and no
+                    binding, and putting it in the same dl would let it pass for
+                    one -- the test below counts the pairs there precisely so a
+                    field cannot go missing unnoticed, and a note among them
+                    makes that count answer a different question.
+                    Reading it should not cost opening the form that changes
+                    it, which is the argument 015 decision 104 made about the
+                    values underneath. Full width because it is prose. Absent
+                    when empty: a labelled blank claims somebody looked and had
+                    nothing to say. */}
+                {asset.note && (
+                  <div className="border-border-muted flex items-start gap-4 border-b pb-4 text-sm">
+                    <span className="text-muted-foreground w-32 shrink-0">{t.assets.note}</span>
+                    <p className="min-w-0 flex-1 break-words">{asset.note}</p>
+                  </div>
+                )}
                 {shown.length === 0 ? (
                   <div className="bg-well rounded-[28px] p-6">
                     <Empty>

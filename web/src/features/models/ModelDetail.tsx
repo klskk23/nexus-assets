@@ -82,20 +82,22 @@ export function ModelDetail({
           <Fact label={tMeta.models.defaults}>
             {Object.keys(model.attr_defaults ?? {}).length}
           </Fact>
+          {/* In the band with the rest, but across it: "已停产，改买 5430" is
+              a sentence, and a quarter of the width turns it into four short
+              lines that no longer read like one. Absent when empty -- a
+              labelled blank claims somebody looked and had nothing to say.
+
+              It was on the old table until 025 dropped it here, along with the
+              test that would have said so. */}
+          {model.note && (
+            <div className="sm:col-span-2 lg:col-span-4">
+              <dt className="text-muted-foreground mb-1 text-[13px]">{tMeta.models.note}</dt>
+              <dd className="text-[15px]">{model.note}</dd>
+            </div>
+          )}
         </>
       }
     >
-      {/* A sentence, so it gets a line of its own rather than a cell in the
-          four-column band -- "已停产，改买 5430" wrapped into a quarter of the
-          width stops reading like a sentence. Absent when there is none: a
-          labelled blank claims somebody looked and found nothing to say.
-
-          It was on the old table and 025 dropped it here, together with the
-          test that would have said so. */}
-      {model.note && (
-        <p className="text-muted-foreground -mt-2 text-sm">{model.note}</p>
-      )}
-
       <h3 className="text-[21px] font-bold">{tMeta.panes.modelFields}</h3>
       {rows.length === 0 ? (
         <Empty>

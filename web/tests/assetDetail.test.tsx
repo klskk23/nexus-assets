@@ -636,16 +636,24 @@ describe("the attribute section", () => {
     expect(attrs.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  // The six built-ins each already have their own place in this dialog;
-  // repeating them here would make two places to look and two to keep right.
-  it("leaves the built-ins where they already are", async () => {
+  // A built-in that already has a place on this page is not repeated here:
+  // two places to look is two places to keep right.
+  //
+  // The note is the exception, and it is the exception because it had no place
+  // at all -- holder, owner and status are each in the band above, while the
+  // note was only ever inside the form that edits it. Reading it should not
+  // cost opening that form, which is what 015 decision 104 said about the
+  // values below it.
+  it("leaves the built-ins where they already are, except the one that had nowhere", async () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
 
     const card = screen.getByText("设备属性").closest("section") as HTMLElement
-    for (const builtin of ["当前持有方", "当前负责人", "备注", "状态"]) {
+    for (const builtin of ["当前持有方", "当前负责人", "状态"]) {
       expect(within(card).queryByText(builtin)).not.toBeInTheDocument()
     }
+    expect(within(card).getByText("备注")).toBeInTheDocument()
+    expect(within(card).getByText("屏幕左下角有划痕")).toBeInTheDocument()
     // And the editable panel below is untouched.
     expect(screen.getByRole("button", { name: "编辑设备属性" })).toBeInTheDocument()
   })
