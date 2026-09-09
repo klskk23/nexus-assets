@@ -882,11 +882,32 @@ describe("Assets vendor filter", () => {
 
   // It is not narrowed by category: which supplier made a device is not a
   // question about a branch of the tree.
-  it("offers the vendor filter before any category is chosen", async () => {
+  // Both, with no category. The model filter used to wait for one because a
+  // model belonged to categories; 026 severed that, and "which Dell laptops do
+  // we have" stopped needing a category picked first.
+  it("offers both the vendor and the model filter before any category is chosen", async () => {
     renderWithProviders(<Assets />)
     expect(await screen.findByRole("combobox", { name: "厂商" })).toBeInTheDocument()
-    // The model filter is the one that waits for a category.
-    expect(screen.queryByRole("combobox", { name: "型号" })).not.toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "型号" })).toBeInTheDocument()
+  })
+
+  // One direction only. A control that fills itself in when you touch another
+  // one is a control that changed without being asked, and clearing the vendor
+  // would then owe an answer about whether the model clears with it.
+  it("厂商缩小型号候选，但选型号不反向填厂商", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByRole("combobox", { name: "厂商" })
+
+    await user.click(screen.getByRole("combobox", { name: "型号" }))
+    const before = screen.getAllByRole("option").length
+    await user.keyboard("{Escape}")
+
+    await user.click(screen.getByRole("combobox", { name: "厂商" }))
+    await user.click(within(screen.getByRole("listbox")).getByText("Acme"))
+
+    await user.click(screen.getByRole("combobox", { name: "型号" }))
+    expect(screen.getAllByRole("option").length).toBeLessThan(before)
   })
 
   // Expanding a group gives its fields to whatever was bound, and after that

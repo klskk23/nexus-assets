@@ -34,3 +34,19 @@ func (s *Store) MigrateDown(ctx context.Context) error {
 	}
 	return goose.DownContext(ctx, s.write, ".")
 }
+
+// MigrateDownTo rolls back until the schema is at the named version.
+//
+// Tests that need "the shape a deployment had before migration N" should name
+// N rather than count steps down from the top. Counting has broken four times
+// now: every new migration pushes the target one further away, and the failure
+// reads as the migration under test having regressed rather than as the test
+// having aimed one short.
+func (s *Store) MigrateDownTo(ctx context.Context, version int64) error {
+	goose.SetBaseFS(migrations.FS)
+	goose.SetLogger(goose.NopLogger())
+	if err := goose.SetDialect("sqlite3"); err != nil {
+		return err
+	}
+	return goose.DownToContext(ctx, s.write, ".", version)
+}

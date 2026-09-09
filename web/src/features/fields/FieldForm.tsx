@@ -27,6 +27,7 @@ export interface FieldFormValue extends BindingValue {
   label: string
   type: FieldType
   isUnique: boolean
+  searchable: boolean
   required: boolean
   options: FieldOptions
 }
@@ -166,6 +167,28 @@ export function FieldForm({
               />
               <FieldLabel htmlFor={`${p}-unique`}>{tMeta.fields.unique}</FieldLabel>
               <Hint>{creating ? tMeta.fields.uniqueScopeHint : tMeta.fields.uniqueFixed}</Hint>
+            </div>
+          </div>
+          <div>
+            {/* Unique implies it, so the box is ticked and dead rather than
+                absent: a control that vanishes leaves nobody anything to read,
+                and "why can I not turn this off" is a better question to be
+                able to answer than "where did it go". Editable otherwise --
+                whether a value is worth finding is learned by using the system,
+                not decided the minute the field is created. */}
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id={`${p}-searchable`}
+                checked={value.searchable || value.isUnique}
+                disabled={value.isUnique}
+                onCheckedChange={(v) => onChange({ searchable: v === true })}
+              />
+              <FieldLabel htmlFor={`${p}-searchable`}>{tMeta.fields.searchable}</FieldLabel>
+              <Hint>
+                {value.isUnique
+                  ? tMeta.fields.searchableByUnique
+                  : tMeta.fields.searchableHint}
+              </Hint>
             </div>
           </div>
           <div>

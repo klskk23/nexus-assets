@@ -13,6 +13,7 @@ import type {
   User,
 } from "@/lib/types"
 import { t } from "@/i18n"
+import { SearchSelect } from "@/features/common/SearchSelect"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { useAuth } from "@/features/auth/useAuth"
 import { DynamicForm } from "@/features/assets/DynamicForm"
@@ -35,7 +36,6 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -175,28 +175,20 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
         <div className="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="new-category">{t.assets.category}</FieldLabel>
-            <Select
+            {/* Searchable: categories grow without bound. */}
+            <SearchSelect
+              id="new-category"
               value={categoryId}
-              onValueChange={(v) => {
+              onChange={(v) => {
                 setCategoryId(v)
-                // A model belongs to one category chain; keeping the old choice
-                // across a category change would silently attach the wrong one.
+                // The model is cleared, but not because it belongs to the
+                // category -- 026 severed that. A model chosen for one kind of
+                // device is simply unlikely to be right for another.
                 setModelId(null)
               }}
-            >
-              <SelectTrigger id="new-category">
-                <SelectValue placeholder={t.common.select} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {(categories.data ?? []).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+              placeholder={t.common.select}
+              options={(categories.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+            />
           </Field>
 
           <Field>
@@ -219,50 +211,36 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
 
           <Field>
             <FieldLabel htmlFor="new-holder">{t.assets.holder}</FieldLabel>
-            <Select value={holder} onValueChange={setHolder}>
-              <SelectTrigger id="new-holder">
-                <SelectValue placeholder={t.common.select} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>{t.common.entityGroup}</SelectLabel>
-                  {entities.map((h) => (
-                    <SelectItem key={h.id} value={ENTITY_PREFIX + h.id}>
-                      {h.name}
-                      {h.is_default_stock ? t.common.defaultStockSuffix : ""}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-                <SelectGroup>
-                  <SelectLabel>{t.common.user}</SelectLabel>
-                  {accounts.map((u) => (
-                    <SelectItem key={u.id} value={USER_PREFIX + u.id}>
-                      {u.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            {/* Searchable: holders and accounts both grow without bound. */}
+            <SearchSelect
+              id="new-holder"
+              value={holder}
+              onChange={setHolder}
+              placeholder={t.common.select}
+              options={[
+                // The suffix marks the default stock point, which is the one
+                // row a person is looking for when they have not been told
+                // where to put the device.
+                ...entities.map((h) => ({
+                  value: ENTITY_PREFIX + h.id,
+                  label: h.name + (h.is_default_stock ? t.common.defaultStockSuffix : ""),
+                })),
+                ...accounts.map((u) => ({ value: USER_PREFIX + u.id, label: u.name })),
+              ]}
+            />
           </Field>
 
           {/* Not asked when a person is holding it: they are the answer. */}
           {!heldByAccount && (
             <Field>
               <FieldLabel htmlFor="new-owner">{t.assets.owner}</FieldLabel>
-              <Select value={ownerId} onValueChange={setOwnerId}>
-                <SelectTrigger id="new-owner">
-                  <SelectValue placeholder={t.common.select} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {accounts.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              <SearchSelect
+                id="new-owner"
+                value={ownerId}
+                onChange={setOwnerId}
+                placeholder={t.common.select}
+                options={accounts.map((u) => ({ value: u.id, label: u.name }))}
+              />
             </Field>
           )}
 

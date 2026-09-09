@@ -93,6 +93,9 @@ describe("FieldEditor", () => {
         label: "标签",
         options: { template: "attrs.mac" },
         required: false,
+        // Editable after the fact since 026: whether a value is worth finding
+        // is learned by using the system, not decided when the field is made.
+        searchable: false,
       }),
     )
     expect(post).toHaveBeenCalledWith("/fields/f1/recompute?dry_run=false", {})

@@ -736,3 +736,209 @@ func TestAssetNoteIsKeptUnlessMentioned(t *testing.T) {
 		t.Errorf("stored note = %q, want empty", got.Note)
 	}
 }
+
+// The bug this round was opened for.
+//
+// A "service tag" is worth finding by and need not be one of a kind. Before
+// 026 the only way to make a value findable was to promise it was unique, so
+// this field existed, held values, and could not be found -- with nothing on
+// screen explaining why.
+func TestSearchFindsANonUniqueSearchableField(t *testing.T) {
+	f := newFixture(t)
+	tag, err := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
+		Key: "service_tag", Label: "Service Tag", Type: model.FieldText,
+		Searchable: true, CategoryIDs: []string{f.rootID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = tag
+
+	if _, err := f.save(t, SaveInput{
+		Attrs: map[string]any{"mac": "001A2B3C4D01", "service_tag": "7XKQ9R2"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := f.svc.List(f.ctx, ListFilter{Q: "XKQ9"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Items) != 1 {
+		t.Fatalf("a searchable field must be findable by part of its value, got %d hits", len(got.Items))
+	}
+	// And it must not behave like a scan: nothing here promised to be unique.
+	if got.ExactMatchID != "" {
+		t.Error("a non-unique value must not send anyone straight to a device")
+	}
+}
+
+// The trap that decided the index gets its own table.
+//
+// exactMatch reads asset_unique_values, so a non-unique value living there
+// would fling whoever searched it into one of the devices that share it --
+// picked by nothing the reader can see.
+func TestTwoDevicesSharingASearchableValueListBoth(t *testing.T) {
+	f := newFixture(t)
+	if _, err := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
+		Key: "rack", Label: "机柜位", Type: model.FieldText,
+		Searchable: true, CategoryIDs: []string{f.rootID},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for i, mac := range []string{"001A2B3C4D01", "001A2B3C4D02"} {
+		if _, err := f.save(t, SaveInput{
+			Attrs: map[string]any{"mac": mac, "rack": "B12"},
+		}); err != nil {
+			t.Fatalf("save %d: %v", i, err)
+		}
+	}
+
+	got, err := f.svc.List(f.ctx, ListFilter{Q: "B12"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Items) != 2 {
+		t.Fatalf("both devices carry it, got %d", len(got.Items))
+	}
+	if got.ExactMatchID != "" {
+		t.Fatal("two devices share this value -- jumping into one of them is a coin toss the reader cannot see")
+	}
+}
+
+// A field nobody asked to be searchable stays out of the index.
+func TestUnsearchableFieldIsNotFound(t *testing.T) {
+	f := newFixture(t)
+	if _, err := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
+		Key: "internal_note", Label: "内部备注", Type: model.FieldText,
+		CategoryIDs: []string{f.rootID},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.save(t, SaveInput{
+		Attrs: map[string]any{"mac": "001A2B3C4D01", "internal_note": "ZZTOP"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := f.svc.List(f.ctx, ListFilter{Q: "ZZTOP"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Items) != 0 {
+		t.Errorf("not searchable, yet found: %d hits", len(got.Items))
+	}
+}
+
+// Unique implies searchable, and the existing behaviour is untouched: a whole
+// unique value still sends a scanner straight to the device.
+func TestUniqueStaysFindableAndStillJumps(t *testing.T) {
+	f := newFixture(t)
+	if _, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D01"}}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := f.svc.List(f.ctx, ListFilter{Q: "001A2B3C4D01"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ExactMatchID == "" {
+		t.Error("a whole unique value should still land on the device")
+	}
+}
+
+// An empty value in the index would be matched by every substring search --
+// the one result a search must never return.
+func TestEmptyValuesStayOutOfTheIndex(t *testing.T) {
+	f := newFixture(t)
+	if _, err := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
+		Key: "rack", Label: "机柜位", Type: model.FieldText,
+		Searchable: true, CategoryIDs: []string{f.rootID},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.save(t, SaveInput{
+		Attrs: map[string]any{"mac": "001A2B3C4D01", "rack": "   "},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := f.svc.db.ReadDB().QueryRowContext(f.ctx,
+		`SELECT count(*) FROM asset_search_values WHERE field_key = 'rack'`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("a blank value was indexed %d time(s)", n)
+	}
+}
+
+// Turning the switch on reaches devices that were saved long before it.
+//
+// The alternative -- indexing only what is written from here on -- leaves the
+// search answering for some devices and not others, with nothing on screen
+// saying which. That is the version nobody reports, because it looks like the
+// value simply is not there.
+func TestTurningSearchableOnBackfillsExistingDevices(t *testing.T) {
+	f := newFixture(t)
+	tag, err := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
+		Key: "service_tag", Label: "Service Tag", Type: model.FieldText,
+		CategoryIDs: []string{f.rootID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.save(t, SaveInput{
+		Attrs: map[string]any{"mac": "001A2B3C4D01", "service_tag": "7XKQ9R2"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	before, err := f.svc.List(f.ctx, ListFilter{Q: "XKQ9"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(before.Items) != 0 {
+		t.Fatal("not searchable yet, so nothing should be found")
+	}
+
+	on := true
+	if _, err := f.schema.UpdateField(f.ctx, tag.ID, schema.UpdateFieldInput{Searchable: &on}); err != nil {
+		t.Fatal(err)
+	}
+
+	after, err := f.svc.List(f.ctx, ListFilter{Q: "XKQ9"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after.Items) != 1 {
+		t.Errorf("the device saved before the switch must be findable after it, got %d", len(after.Items))
+	}
+}
+
+// And off leaves nothing behind.
+func TestTurningSearchableOffClearsTheIndex(t *testing.T) {
+	f := newFixture(t)
+	tag, err := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
+		Key: "service_tag", Label: "Service Tag", Type: model.FieldText,
+		Searchable: true, CategoryIDs: []string{f.rootID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.save(t, SaveInput{
+		Attrs: map[string]any{"mac": "001A2B3C4D01", "service_tag": "7XKQ9R2"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	off := false
+	if _, err := f.schema.UpdateField(f.ctx, tag.ID, schema.UpdateFieldInput{Searchable: &off}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := f.svc.List(f.ctx, ListFilter{Q: "XKQ9"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Items) != 0 {
+		t.Errorf("switched off, yet still found: %d", len(got.Items))
+	}
+}

@@ -2,11 +2,11 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 
 import { api } from "@/lib/api"
-import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category } from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
 import { modelLabel } from "@/lib/metaTypes"
 import { t } from "@/i18n"
+import { SearchSelect } from "@/features/common/SearchSelect"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -17,14 +17,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Field, FieldLabel } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 interface Props {
   categoryID: string
@@ -109,21 +101,20 @@ export function ModelPicker({ categoryID, value, onChange, values, confirmOverwr
     <>
       <Field>
         <FieldLabel htmlFor="asset-model">{t.assets.modelLabel}</FieldLabel>
-        <Select value={toNone(value)} onValueChange={(v) => select(fromNone(v))}>
-          <SelectTrigger id="asset-model">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value={NONE}>{t.assets.noModel}</SelectItem>
-              {candidates.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {modelLabel(m)}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+        {/* Searchable: models grow without bound, and since 026 the picker
+            offers every one of them rather than the handful attached to the
+            category -- which makes searching the only way through it. */}
+        <SearchSelect
+          id="asset-model"
+          value={value ?? ""}
+          onChange={select}
+          placeholder={t.assets.noModel}
+          options={candidates.map((m) => ({
+            value: m.id,
+            label: modelLabel(m),
+            keywords: m.vendor_name,
+          }))}
+        />
       </Field>
 
       <Dialog open={pending !== null} onOpenChange={(o) => !o && setPending(null)}>

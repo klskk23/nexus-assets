@@ -44,6 +44,12 @@ func runVerify(ctx context.Context, a *app) error {
 	}
 	problems += drift
 
+	clashes, err := verifyKeyConflicts(ctx, db)
+	if err != nil {
+		return err
+	}
+	problems += clashes
+
 	if problems > 0 {
 		return fmt.Errorf("verify found %d problem(s) across %d asset(s)", problems, len(snaps))
 	}
@@ -228,4 +234,44 @@ func follows(prev snapshot, status, holderType, holderID, ownerID *string) bool 
 		}
 	}
 	return true
+}
+
+// verifyKeyConflicts reports two different fields claiming one key where both
+// can reach a single device.
+//
+// The guard that should have refused these only ever asked category_fields,
+// while the resolver unions all three binding tables (026 fixed the guard).
+// Anything already in the database predates the fix, and one attrs slot with
+// two definitions makes every later answer about it -- validation, computed
+// values, uniqueness -- a different question. So the upgrade says so out loud
+// rather than letting it sit.
+func verifyKeyConflicts(ctx context.Context, db *sql.DB) (int, error) {
+	rows, err := db.QueryContext(ctx, `
+		WITH bound AS (
+		  SELECT f.id, f.key, 'category' AS side FROM category_fields b
+		    JOIN field_definitions f ON f.id = b.field_id
+		  UNION
+		  SELECT f.id, f.key, 'device' FROM model_fields b
+		    JOIN field_definitions f ON f.id = b.field_id
+		  UNION
+		  SELECT f.id, f.key, 'device' FROM vendor_fields b
+		    JOIN field_definitions f ON f.id = b.field_id
+		)
+		SELECT key, count(DISTINCT id) FROM bound GROUP BY key HAVING count(DISTINCT id) > 1`)
+	if err != nil {
+		return 0, fmt.Errorf("key conflicts: %w", err)
+	}
+	defer rows.Close()
+
+	n := 0
+	for rows.Next() {
+		var key string
+		var fields int
+		if err := rows.Scan(&key, &fields); err != nil {
+			return n, err
+		}
+		log.Printf("verify: key %q is claimed by %d different fields -- one device's attrs would hold two definitions of it", key, fields)
+		n++
+	}
+	return n, rows.Err()
 }

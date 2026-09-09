@@ -123,7 +123,7 @@ func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter
 // template already use, and a CSV whose columns move about depending on the
 // order boxes were ticked in is one nobody can write a formula against.
 func (s *Service) exportFields(ctx context.Context, categoryID string, keys []string) ([]model.BoundField, error) {
-	fields, err := s.schema.EffectiveFields(ctx, categoryID)
+	fields, err := s.schema.EveryPossibleField(ctx, categoryID)
 	if err != nil {
 		return nil, err
 	}

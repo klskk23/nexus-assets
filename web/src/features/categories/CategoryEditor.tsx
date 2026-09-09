@@ -1,5 +1,6 @@
 import { AlertCircleIcon } from "lucide-react"
 import { Hint } from "@/features/common/Hint"
+import { SearchSelect } from "@/features/common/SearchSelect"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -149,25 +150,16 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
 
           <Field>
             <FieldLabel htmlFor="ce-parent">{tMeta.categories.parent}</FieldLabel>
-            <Select value={toNone(parentId)} onValueChange={(v) => setParentId(fromNone(v))}>
-              <SelectTrigger id="ce-parent">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value={NONE}>{tMeta.categories.noParent}</SelectItem>
-                  {categories
-                    // Neither itself nor anything beneath it: a category cannot
-                    // be its own ancestor.
-                    .filter((c) => !c.path.startsWith(category.path))
-                    .map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            {/* Searchable: categories grow without bound. */}
+            <SearchSelect
+              id="ce-parent"
+              value={parentId}
+              onChange={setParentId}
+              placeholder={tMeta.categories.noParent}
+              options={categories
+                .filter((c) => c.id !== category.id && !c.path.startsWith(category.path))
+                .map((c) => ({ value: c.id, label: c.name }))}
+            />
           </Field>
 
           <Field>

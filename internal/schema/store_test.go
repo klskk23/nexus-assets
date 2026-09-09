@@ -295,13 +295,26 @@ func TestEffectiveFieldsIncludesModelBoundFields(t *testing.T) {
 	for _, f := range fields {
 		byKey[f.Key] = f
 	}
-	if len(fields) != 2 {
-		t.Fatalf("got %d fields, want mac and servicetag", len(fields))
+	// One, not two: EffectiveFields answers for the category alone since 026.
+	// The model's field is reached through FieldsForAsset, which asks the
+	// device rather than an association that may or may not exist.
+	if len(fields) != 1 {
+		t.Fatalf("got %d fields, want mac alone", len(fields))
 	}
 	// A category field carries no models: that is what says it applies to every
 	// asset here rather than to some of them.
 	if len(byKey["mac"].ModelIDs) != 0 {
 		t.Errorf("a category-bound field should carry no model ids, got %v", byKey["mac"].ModelIDs)
+	}
+	// The model's field is reached by asking the device, and it still names the
+	// model it is bound to so the interface knows when to offer it.
+	forAsset, err := s.FieldsForAsset(ctx, child.Path, dell.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byKey = map[string]model.BoundField{}
+	for _, f := range forAsset {
+		byKey[f.Key] = f
 	}
 	if got := byKey["servicetag"].ModelIDs; len(got) != 1 || got[0] != dell.ID {
 		t.Errorf("servicetag should name the model it is bound to, got %v", got)
@@ -323,10 +336,13 @@ func TestEffectiveFieldsMergesAFieldBoundToSeveralModels(t *testing.T) {
 		}
 	}
 
-	fields, err := s.EffectiveFields(ctx, child.ID)
+	// Asked for a device carrying one of them: the entry still merges every
+	// model the field reaches, which is what lets one column stand for several.
+	fields, err := s.FieldsForAsset(ctx, child.Path, a.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
+	fields = deviceOnly(fields)
 	if len(fields) != 1 {
 		t.Fatalf("got %d fields, want one merged entry", len(fields))
 	}
@@ -686,4 +702,18 @@ func TestDeleteFieldBoundToModels(t *testing.T) {
 			t.Error("the field itself should be gone")
 		}
 	}
+}
+
+// deviceOnly keeps the entries that came from a model or a vendor.
+//
+// The category's own fields ride along in FieldsForAsset, which is the point
+// of it; a test about the device side says so rather than counting both.
+func deviceOnly(fields []model.BoundField) []model.BoundField {
+	out := fields[:0]
+	for _, f := range fields {
+		if len(f.ModelIDs) > 0 {
+			out = append(out, f)
+		}
+	}
+	return out
 }

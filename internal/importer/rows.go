@@ -64,7 +64,7 @@ func (s *Service) Rows(ctx context.Context, lang i18n.Lang, f asset.ListFilter) 
 		f.Limit = rowLimit
 	}
 
-	bound, err := s.schema.EffectiveFields(ctx, f.CategoryID)
+	bound, err := s.schema.EveryPossibleField(ctx, f.CategoryID)
 	if err != nil {
 		return page, err
 	}

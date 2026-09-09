@@ -1,18 +1,10 @@
 import { useQuery } from "@tanstack/react-query"
 
 import { api } from "@/lib/api"
-import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category } from "@/lib/types"
 import { tMeta } from "@/i18n"
 import { Field, FieldLabel } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchSelect } from "@/features/common/SearchSelect"
 
 /**
  * The category dropdown three pages narrow by.
@@ -38,21 +30,15 @@ export function CategoryFilter({
       <FieldLabel htmlFor="filter-category" className="sr-only">
         {tMeta.fields.categoryFilter}
       </FieldLabel>
-      <Select value={toNone(value)} onValueChange={(v) => onChange(fromNone(v))}>
-        <SelectTrigger id="filter-category" className="w-48">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            <SelectItem value={NONE}>{tMeta.fields.allCategories}</SelectItem>
-            {(categories.data ?? []).map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
+      {/* Searchable: categories grow without bound. */}
+      <SearchSelect
+        id="filter-category"
+        className="w-44"
+        value={value}
+        onChange={onChange}
+        placeholder={tMeta.fields.allCategories}
+        options={(categories.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+      />
     </Field>
   )
 }

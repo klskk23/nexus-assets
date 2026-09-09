@@ -253,6 +253,10 @@ type change struct {
 	id     string
 	attrs  map[string]any
 	unique map[string]UniqueValue
+	// A computed field can be searchable, and recomputing is exactly when its
+	// value moves. Leaving the index behind would make the search answer with
+	// the number a device used to carry.
+	search map[string]string
 }
 
 // recomputeLookups is everything a subtree recompute needs that does not vary
@@ -365,6 +369,9 @@ func writeRecomputed(ctx context.Context, tx *sql.Tx, c change, now time.Time) e
 	}
 	// The partial unique index is the last line of defence; a violation here
 	// aborts the whole transaction, which is the intended behaviour.
+	if err := syncSearchValues(ctx, tx, c.id, c.search); err != nil {
+		return err
+	}
 	if err := syncUniqueValues(ctx, tx, c.id, c.unique, now); err != nil {
 		return fmt.Errorf("%w: %v", ErrRecomputeConflict, err)
 	}
@@ -427,7 +434,9 @@ func (s *Service) planRecompute(ctx context.Context, rootPath string,
 			claimed[at] = append(claimed[at], display)
 		}
 		if dirty {
-			changes = append(changes, change{id: id, attrs: attrs, unique: next})
+			changes = append(changes, change{
+				id: id, attrs: attrs, unique: next, search: searchValues(fields, attrs),
+			})
 		}
 	}
 	return changes, claimed, rows.Err()

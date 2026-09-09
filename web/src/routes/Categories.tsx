@@ -4,12 +4,12 @@ import { useParams, useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
-import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category } from "@/lib/types"
 import { t, tMeta } from "@/i18n"
 import { StateBoundary } from "@/components/StateBoundary"
 import { PageHeader } from "@/features/common/PageHeader"
 import { MasterDetail } from "@/features/common/MasterDetail"
+import { SearchSelect } from "@/features/common/SearchSelect"
 import { useMasterSelection } from "@/features/common/useMasterSelection"
 import { CategoryTree } from "@/features/categories/CategoryTree"
 import { CategoryDetail } from "@/features/categories/CategoryDetail"
@@ -28,14 +28,6 @@ import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 export function Categories() {
   const queryClient = useQueryClient()
@@ -130,21 +122,14 @@ export function Categories() {
               </Field>
               <Field>
                 <FieldLabel htmlFor="c-parent">{tMeta.categories.parent}</FieldLabel>
-                <Select value={toNone(parentId)} onValueChange={(v) => setParentId(fromNone(v))}>
-                  <SelectTrigger id="c-parent">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value={NONE}>{tMeta.categories.noParent}</SelectItem>
-                      {(categories.data ?? []).map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                {/* Searchable: categories grow without bound. */}
+                <SearchSelect
+                  id="c-parent"
+                  value={parentId}
+                  onChange={setParentId}
+                  placeholder={tMeta.categories.noParent}
+                  options={(categories.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                />
               </Field>
             </FieldGroup>
 

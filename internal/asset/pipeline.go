@@ -109,6 +109,14 @@ type Prepared struct {
 	// Unique holds the values that must not collide, keyed by field, each with
 	// the category subtree it must not collide inside.
 	Unique map[string]UniqueValue
+	// Search holds the values the asset search can reach, keyed by field.
+	//
+	// A superset of Unique's keys: unique implies searchable. They are kept
+	// apart because they answer different questions and, more concretely,
+	// because exactMatch reads the unique table -- a non-unique value living
+	// there would send a scanner straight into one of the devices that share
+	// it.
+	Search map[string]string
 	// DisplayKey is the category's nominated identifier, carried through so
 	// the created asset can be handed back already named.
 	DisplayKey string
@@ -133,11 +141,17 @@ func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
 	}
 	// 1. effective field set, narrowed to this device's model.
 	//
-	// The category's set is its whole vocabulary; a model-bound field belongs
-	// to this asset only when its model is one the field was bound to (015).
-	// Narrowing here is what keeps validation, computed keys and uniqueness
-	// all talking about the same fields.
-	all, err := s.schema.FieldsOfPath(ctx, cat.Path)
+	// Asked for this device, not for its category and then narrowed. Since 026
+	// a model may appear under any category, so what a device can record is its
+	// chain plus its own model plus that model's vendor -- and consulting no
+	// association means none can be missing. ForModel still runs below, because
+	// the set can carry fields from several models when one field is bound to
+	// more than one.
+	modelID := ""
+	if in.ModelID != nil {
+		modelID = *in.ModelID
+	}
+	all, err := s.schema.FieldsForAsset(ctx, cat.Path, modelID)
 	if err != nil {
 		return prep, err
 	}
@@ -185,6 +199,7 @@ func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
 
 	prep.Fields, prep.Attrs = fields, clean
 	prep.Unique = uniqueValues(fields, clean, in.CategoryID)
+	prep.Search = searchValues(fields, clean)
 	prep.DisplayKey = cat.DisplayKey
 	return prep, nil
 }
@@ -296,6 +311,9 @@ func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model
 
 		// 8. the reverse-lookup table, after the row exists so its foreign key
 		// holds. The partial unique index is the real guarantee.
+		if err := syncSearchValues(ctx, tx, id, prep.Search); err != nil {
+			return out, err
+		}
 		if err := syncUniqueValues(ctx, tx, id, prep.Unique, now); err != nil {
 			return out, err
 		}

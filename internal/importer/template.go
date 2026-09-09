@@ -56,7 +56,7 @@ func New(db *store.Store, sch *schema.Store, holders *holder.Store,
 // Columns returns the template's columns for one category: the fixed ones
 // followed by every field the category asks for, computed fields excluded.
 func (s *Service) Columns(ctx context.Context, lang i18n.Lang, categoryID string) ([]string, []string, error) {
-	fields, err := s.schema.EffectiveFields(ctx, categoryID)
+	fields, err := s.schema.EveryPossibleField(ctx, categoryID)
 	if err != nil {
 		return nil, nil, err
 	}

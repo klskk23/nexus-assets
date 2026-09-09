@@ -123,7 +123,10 @@ func TestVendorBindingReachesEveryModelIncludingLaterOnes(t *testing.T) {
 		`{"name":"Latitude 5430","vendor_id":"`+dell+`","category_ids":["`+h.catID+`"]}`))
 	secondID, _ := second["id"].(string)
 
-	sch := decode[map[string]any](t, h.get(t, "/api/categories/"+h.catID+"/schema"))
+	// Asked for a device of one of the vendor's models. A category cannot
+	// answer for a model any more (026): what a device records is asked of the
+	// device, so the schema endpoint takes the model it is about.
+	sch := decode[map[string]any](t, h.get(t, "/api/categories/"+h.catID+"/schema?model_id="+firstID))
 	fields, _ := sch["fields"].([]any)
 	var tag map[string]any
 	for _, raw := range fields {

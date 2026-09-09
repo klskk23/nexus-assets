@@ -8,6 +8,8 @@ export interface FieldDefinitionRow {
   type: FieldType
   options: FieldOptions
   is_unique: boolean
+  /** Whether the asset search reaches this field's values. Unique implies it. */
+  searchable?: boolean
   /** The categories this field is bound to; empty until it is bound to one. */
   category_ids?: string[]
   /**

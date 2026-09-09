@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -60,18 +61,19 @@ func TestBindingModesRefuseEachOther(t *testing.T) {
 	}
 }
 
-// A model field reaches the category's schema, and says which models it is for
-// so the interface can decide when to offer it.
-func TestModelFieldAppearsInTheCategorySchema(t *testing.T) {
+// A category's schema is the category's own vocabulary and nothing else.
+//
+// It used to carry the fields of every model attached to the category, which
+// is what made attaching a model change the category. 026 severed that: what a
+// device can record is asked of the device, and this endpoint answers the
+// narrower and more honest question its name implies.
+func TestCategorySchemaCarriesOnlyTheCategorysOwnFields(t *testing.T) {
 	h := newHarness(t)
-	modelID, _ := modelWithField(t, h, "Latitude 5420", "servicetag", false)
+	modelWithField(t, h, "Latitude 5420", "servicetag", false)
 
 	body := h.get(t, "/api/categories/"+h.catID+"/schema").Body.String()
-	if !strings.Contains(body, "servicetag") {
-		t.Fatalf("the category's schema should carry the model's field: %s", body)
-	}
-	if !strings.Contains(body, modelID) {
-		t.Errorf("the field should name the model it is bound to: %s", body)
+	if strings.Contains(body, "servicetag") {
+		t.Errorf("a model's field is not the category's: %s", body)
 	}
 }
 
@@ -306,8 +308,16 @@ func TestCreateFieldBoundToModels(t *testing.T) {
 	}
 	// Required rides on the field itself (018), so it comes back on the row
 	// without anyone having to ask which binding it belongs to.
-	if !strings.Contains(body, `"key":"servicetag","label":"ServiceTag","type":"text","options":{},"is_unique":true,"required":true`) {
-		t.Errorf("the field should come back required: %s", body)
+	//
+	// Asserted field by field rather than as one run of JSON: the old version
+	// pinned the exact order and broke the day a property was added between
+	// two of them, which says nothing about required.
+	row := findRow(t, body, "servicetag")
+	if row["required"] != true {
+		t.Errorf("the field should come back required: %v", row)
+	}
+	if row["is_unique"] != true {
+		t.Errorf("and unique: %v", row)
 	}
 }
 
@@ -397,4 +407,22 @@ func TestDeletingAModelFieldIsRefusedWhileDevicesHoldValues(t *testing.T) {
 	if strings.Contains(body, "从类别上解绑") {
 		t.Errorf("a model-bound field cannot be unbound from a category: %s", body)
 	}
+}
+
+// findRow digs one field out of a /api/fields envelope by key.
+func findRow(t *testing.T, body, key string) map[string]any {
+	t.Helper()
+	var page struct {
+		Items []map[string]any `json:"items"`
+	}
+	if err := json.Unmarshal([]byte(body), &page); err != nil {
+		t.Fatalf("decode fields: %v", err)
+	}
+	for _, row := range page.Items {
+		if row["key"] == key {
+			return row
+		}
+	}
+	t.Fatalf("no field %q in %s", key, body)
+	return nil
 }

@@ -25,7 +25,7 @@ func (s *Service) Get(ctx context.Context, id string) (model.Asset, error) {
 	if err != nil {
 		return a, err
 	}
-	fields, err := s.schema.EffectiveFields(ctx, a.CategoryID)
+	fields, err := s.schema.EffectiveFieldsForAsset(ctx, a.CategoryID, a.ModelID)
 	if err != nil {
 		return a, err
 	}
@@ -408,15 +408,21 @@ func (s *Service) filterClause(ctx context.Context, f ListFilter, res *ListResul
 	}
 	like := "%" + q + "%"
 	upper := "%" + normaliseScan(q) + "%"
-	// Every unique value, live or retired, is reachable through one table, so a
-	// scanner finds a device by its asset tag, its MAC or its vendor serial
-	// without any of those keys being named here.
+	// Two tables, because findability and uniqueness stopped being one idea in
+	// 026. The unique one carries retired values as well -- an old asset number
+	// is still an identity claim, and whoever is holding the old label should
+	// find the device -- while the search table holds current values only.
+	//
+	// A field is reachable here without being named, which is the point: the
+	// keys are configuration, and a query that spelled them out would answer
+	// yesterday's schema.
 	where = append(where, `(
 		id IN (SELECT asset_id FROM asset_unique_values WHERE value LIKE ? OR value LIKE ?)
+		OR id IN (SELECT asset_id FROM asset_search_values WHERE value LIKE ? OR value LIKE ?)
 		OR model_id IN (SELECT id FROM product_models WHERE name LIKE ?)
 		OR id LIKE ?
 	)`)
-	args = append(args, like, upper, like, q+"%")
+	args = append(args, like, upper, like, upper, like, q+"%")
 	return where, args, nil
 }
 

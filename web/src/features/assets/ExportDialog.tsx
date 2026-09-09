@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { Hint } from "@/features/common/Hint"
+import { SearchSelect } from "@/features/common/SearchSelect"
 import { useQuery } from "@tanstack/react-query"
 
 import { ApiError, api, download } from "@/lib/api"
@@ -25,14 +26,6 @@ import {
   FieldSet,
   FieldLegend,
 } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
@@ -182,20 +175,14 @@ export function ExportDialog({
             <>
               <Field>
                 <FieldLabel htmlFor="export-category">{tImport.exportCategory}</FieldLabel>
-                <Select value={chosen} onValueChange={(v) => (setChosen(v), setKeys(null))}>
-                  <SelectTrigger id="export-category">
-                    <SelectValue placeholder={tImport.exportPickCategory} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {(categories.data ?? []).map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                {/* Searchable: categories grow without bound. */}
+                <SearchSelect
+                  id="export-category"
+                  value={chosen}
+                  onChange={setChosen}
+                  placeholder={tImport.exportPickCategory}
+                  options={(categories.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                />
               </Field>
 
               <FieldSet>

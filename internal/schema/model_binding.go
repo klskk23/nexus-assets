@@ -46,7 +46,7 @@ type ModelBinding struct {
 // lookup -- that is the N+1 the constitution forbids.
 func (s *Store) ModelBindingsByModel(ctx context.Context) (map[string][]ModelBinding, error) {
 	q := `SELECT mf.model_id, mf.sort,
-	             f.id, f.key, f.label, f.type, f.options, f.is_unique, f.required,
+	             f.id, f.key, f.label, f.type, f.options, f.is_unique, f.searchable, f.required,
 	             f.created_at, f.updated_at
 	      FROM model_fields mf JOIN field_definitions f ON f.id = mf.field_id`
 	rows, err := s.db.ReadDB().QueryContext(ctx, q)
@@ -58,14 +58,15 @@ func (s *Store) ModelBindingsByModel(ctx context.Context) (map[string][]ModelBin
 	out := map[string][]ModelBinding{}
 	for rows.Next() {
 		var b ModelBinding
-		var required, isUnique int
+		var required, isUnique, searchable int
 		var opts, created, updated string
 		if err := rows.Scan(&b.ModelID, &b.Sort,
-			&b.Field.ID, &b.Field.Key, &b.Field.Label, &b.Field.Type, &opts, &isUnique, &required,
+			&b.Field.ID, &b.Field.Key, &b.Field.Label, &b.Field.Type, &opts, &isUnique, &searchable, &required,
 			&created, &updated); err != nil {
 			return nil, err
 		}
 		b.Field.IsUnique = isUnique == 1
+		b.Field.Searchable = searchable == 1
 		b.Field.Required = required == 1
 		if err := decodeOptions(opts, &b.Field.Options); err != nil {
 			return nil, err
@@ -163,6 +164,9 @@ func bindModelTx(ctx context.Context, tx *sql.Tx, modelID, fieldID string, sort 
 	}
 	if boundToCategory > 0 {
 		return i18n.Wrap(ErrBindingModeConflict, i18n.KeyBindingModeConflict)
+	}
+	if err := assertKeyFreeForDevice(ctx, tx, key, fieldID, modelID, ""); err != nil {
+		return err
 	}
 
 	if err := modelKeyFree(ctx, tx, modelID, fieldID, key); err != nil {

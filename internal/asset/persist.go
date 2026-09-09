@@ -274,3 +274,55 @@ func insertTransfer(ctx context.Context, tx *sql.Tx, assetID string, batchID *st
 	}
 	return nil
 }
+
+// searchValues is what the asset search can reach on this device.
+//
+// Every findable field with a value, unique or not. Empty values are left out:
+// an empty string in the index would be matched by every substring search,
+// which is the one result a search must never return.
+func searchValues(fields []model.BoundField, attrs map[string]any) map[string]string {
+	out := map[string]string{}
+	for _, f := range fields {
+		if !f.Findable() {
+			continue
+		}
+		v, ok := attrs[f.Key]
+		if !ok || v == nil {
+			continue
+		}
+		s := strings.TrimSpace(fmt.Sprintf("%v", v))
+		if s == "" {
+			continue
+		}
+		out[f.Key] = s
+	}
+	return out
+}
+
+// syncSearchValues replaces this asset's searchable values with what was just
+// written.
+//
+// Replaced wholesale rather than diffed and archived, which is what the unique
+// table does. The difference is deliberate: an old asset number is still an
+// identity claim -- somebody holding the old label should find the device --
+// while an ordinary searchable value makes no such claim, and keeping its
+// history would fill the results with what things used to be.
+func syncSearchValues(ctx context.Context, tx *sql.Tx, assetID string, want map[string]string) error {
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM asset_search_values WHERE asset_id = ?`, assetID); err != nil {
+		return fmt.Errorf("clear search values: %w", err)
+	}
+	keys := make([]string, 0, len(want))
+	for k := range want {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO asset_search_values (asset_id, field_key, value) VALUES (?, ?, ?)`,
+			assetID, k, want[k]); err != nil {
+			return fmt.Errorf("index search value %q: %w", k, err)
+		}
+	}
+	return nil
+}

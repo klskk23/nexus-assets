@@ -64,7 +64,9 @@ func TestVendorFieldReachesEveryModelOfThatVendor(t *testing.T) {
 		t.Fatalf("bind vendor: %v", err)
 	}
 
-	fields, err := s.EffectiveFields(ctx, root.ID)
+	// Asked for a device of one of the vendor's models: the entry names every
+	// model the vendor reaches, which is how one binding covers a whole range.
+	fields, err := s.FieldsForAsset(ctx, root.Path, one.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +101,7 @@ func TestVendorFieldReachesEveryModelOfThatVendor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fields, err = s.EffectiveFields(ctx, root.ID)
+	fields, err = s.FieldsForAsset(ctx, root.Path, fresh.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +113,7 @@ func TestVendorFieldReachesEveryModelOfThatVendor(t *testing.T) {
 	if err := s.UnbindVendor(ctx, dell, tag.ID); err != nil {
 		t.Fatalf("unbind vendor: %v", err)
 	}
-	fields, err = s.EffectiveFields(ctx, root.ID)
+	fields, err = s.FieldsForAsset(ctx, root.Path, one.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,10 +143,11 @@ func TestModelAndVendorBindingsOfOneFieldMergeIntoOneEntry(t *testing.T) {
 		t.Fatalf("both sides of the device half may hold one field: %v", err)
 	}
 
-	fields, err := s.EffectiveFields(ctx, root.ID)
+	fields, err := s.FieldsForAsset(ctx, root.Path, m.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
+	fields = deviceOnly(fields)
 	if n := len(fields); n != 1 {
 		t.Fatalf("one field bound twice on one device is one column, got %d: %v", n, boundKeys(fields))
 	}
@@ -207,15 +210,18 @@ func TestVendorBindingRefusesAKeyTakenOnItsModelsCategories(t *testing.T) {
 		t.Errorf("the key is taken on the chain the vendor's model sits in, got %v", err)
 	}
 
-	// A vendor with no model anywhere near that chain is unaffected.
+	// Any vendor, now -- not just one whose models sit on that chain.
+	//
+	// This assertion used to run the other way: a vendor with no model near
+	// that chain could take the key, because a model belonged to categories
+	// and could only ever appear in them. 026 severed that, so any model can
+	// appear under any category and any vendor-bound key can meet any
+	// category-bound one. Widening the guard is the price of the decoupling,
+	// and it is written here rather than only in the guard because this test
+	// is where the old assumption lived.
 	elsewhere := vendorNamed(t, s, ctx, "Lenovo")
-	if err := s.BindVendor(ctx, elsewhere, sameKey.ID, 10); err != nil {
-		t.Errorf("a vendor whose models are nowhere on that chain may take the key: %v", err)
-	}
-	// But not twice on itself.
-	third, _ := s.CreateField(ctx, CreateFieldInput{Key: "tag", Label: "第三个编码", Type: model.FieldText})
-	if err := s.BindVendor(ctx, elsewhere, third.ID, 10); !errors.Is(err, ErrKeyConflict) {
-		t.Errorf("two fields with one key on one vendor should conflict, got %v", err)
+	if err := s.BindVendor(ctx, elsewhere, sameKey.ID, 10); !errors.Is(err, ErrKeyConflict) {
+		t.Errorf("a model may now appear under any category, so this must clash too, got %v", err)
 	}
 }
 

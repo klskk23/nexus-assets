@@ -107,7 +107,19 @@ func (s *Server) categorySchema(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
-	fields, err := s.schema.EffectiveFields(ctx, id)
+	// model_id asks the narrower, more useful question: what can *this device*
+	// record. Without it the answer is the category's own vocabulary, which is
+	// what the endpoint's name says and, since 026, all it means -- a model no
+	// longer belongs to categories, so a category cannot answer for one.
+	//
+	// The entry form passes the model it has chosen; the column picker and the
+	// schema view do not, because they are asking about the category.
+	var fields []model.BoundField
+	if modelID := c.Query("model_id"); modelID != "" {
+		fields, err = s.schema.FieldsForAsset(ctx, cat.Path, modelID)
+	} else {
+		fields, err = s.schema.EffectiveFields(ctx, id)
+	}
 	if err != nil {
 		FailErr(c, err)
 		return
@@ -213,6 +225,8 @@ func (s *Server) createField(c *gin.Context) {
 		Type     model.FieldType    `json:"type" binding:"required"`
 		Options  model.FieldOptions `json:"options"`
 		IsUnique bool               `json:"is_unique"`
+		// Unique implies it, so the store need not be told twice.
+		Searchable bool `json:"searchable"`
 		// The categories to bind it to as it is created, and whether those
 		// bindings are required. A field bound nowhere is on no form, so
 		// creating one without this was always the first half of a two-step
@@ -232,7 +246,7 @@ func (s *Server) createField(c *gin.Context) {
 	}
 	out, err := s.schema.CreateField(c.Request.Context(), schema.CreateFieldInput{
 		Key: req.Key, Label: req.Label, Type: req.Type, Options: req.Options,
-		IsUnique: req.IsUnique, CategoryIDs: req.CategoryIDs, ModelIDs: req.ModelIDs,
+		IsUnique: req.IsUnique, Searchable: req.Searchable, CategoryIDs: req.CategoryIDs, ModelIDs: req.ModelIDs,
 		VendorIDs: req.VendorIDs, Required: req.Required,
 	})
 	if err != nil {
@@ -263,6 +277,10 @@ func (s *Server) patchField(c *gin.Context) {
 		// asset_unique_values for every asset holding one -- required only
 		// ever describes the next edit, so flipping it costs nothing.
 		Required *bool `json:"required"`
+		// Searchable, unlike is_unique, can be changed after the fact -- and
+		// backfilling it is cheap and cannot fail, because it promises nothing
+		// about the values. Uniqueness would have to prove they do not collide.
+		Searchable *bool `json:"searchable"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
@@ -273,6 +291,7 @@ func (s *Server) patchField(c *gin.Context) {
 
 	out, err := s.schema.UpdateField(ctx, c.Param("id"), schema.UpdateFieldInput{
 		Label: req.Label, Options: req.Options, Required: req.Required,
+		Searchable: req.Searchable,
 	})
 	if err != nil {
 		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, userText(c, err), nil)

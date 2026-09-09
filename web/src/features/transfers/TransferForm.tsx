@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { SearchSelect } from "@/features/common/SearchSelect"
 
 export type TransferAction = "checkout" | "checkin" | "transfer" | "reassign" | "status"
 
@@ -238,23 +239,16 @@ export function TransferForm({
             <FieldLabel htmlFor="td-checkin-holder">{tTransfer.actions.target}</FieldLabel>
             <Hint>{tTransfer.actions.checkinHint}</Hint>
           </div>
-          <Select value={holderID} onValueChange={setHolderID}>
-            <SelectTrigger id="td-checkin-holder">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {/* The default, and the only option that can differ per
-                    device in a batch. */}
-                <SelectItem value={HOME}>{tTransfer.actions.toHome}</SelectItem>
-                {(holders.data ?? []).map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          {/* Searchable: holders grow without bound. The first row is the
+              default, and the only option that can differ per device in a
+              batch. */}
+          <SearchSelect
+            id="td-checkin-holder"
+            value={holderID === HOME ? "" : holderID}
+            onChange={(v) => setHolderID(v === "" ? HOME : v)}
+            placeholder={tTransfer.actions.toHome}
+            options={(holders.data ?? []).map((o) => ({ value: o.id, label: o.name }))}
+          />
         </Field>
       )}
 
@@ -284,20 +278,17 @@ export function TransferForm({
             <FieldLabel htmlFor="td-holder">
               {holderType === "user" ? t.common.user : t.common.holder}
             </FieldLabel>
-            <Select value={holderID} onValueChange={setHolderID}>
-              <SelectTrigger id="td-holder">
-                <SelectValue placeholder={t.common.select} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {(holderType === "user" ? (users.data ?? []) : (holders.data ?? [])).map((o) => (
-                    <SelectItem key={o.id} value={o.id}>
-                      {o.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            {/* Searchable: both lists grow without bound. */}
+            <SearchSelect
+              id="td-holder"
+              value={holderID}
+              onChange={setHolderID}
+              placeholder={t.common.select}
+              options={(holderType === "user"
+                ? (users.data ?? [])
+                : (holders.data ?? [])
+              ).map((o) => ({ value: o.id, label: o.name }))}
+            />
           </Field>
         </>
       )}
@@ -308,45 +299,31 @@ export function TransferForm({
             <FieldLabel htmlFor="td-responsible">{tTransfer.actions.owner}</FieldLabel>
             <Hint>{tTransfer.actions.ownerHint}</Hint>
           </div>
-          <Select value={responsibleID} onValueChange={setResponsibleID}>
-            <SelectTrigger id="td-responsible">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {/* Leaving it alone has to be sayable: a warehouse-to-
-                    warehouse move need not change who is answerable. */}
-                <SelectItem value={KEEP}>{tTransfer.actions.keepOwner}</SelectItem>
-                {(users.data ?? [])
-                  .filter((u) => u.status === "active")
-                  .map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.name}
-                    </SelectItem>
-                  ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          {/* Searchable: accounts grow without bound. Leaving the owner
+              alone has to stay sayable -- a warehouse-to-warehouse move need
+              not change who is answerable -- so it is the empty option. */}
+          <SearchSelect
+            id="td-responsible"
+            value={responsibleID === KEEP ? "" : responsibleID}
+            onChange={(v) => setResponsibleID(v === "" ? KEEP : v)}
+            placeholder={tTransfer.actions.keepOwner}
+            options={(users.data ?? [])
+              .filter((u) => u.status === "active")
+              .map((u) => ({ value: u.id, label: u.name }))}
+          />
         </Field>
       )}
 
       {action === "reassign" && (
         <Field>
           <FieldLabel htmlFor="td-owner">{tTransfer.actions.owner}</FieldLabel>
-          <Select value={ownerID} onValueChange={setOwnerID}>
-            <SelectTrigger id="td-owner">
-              <SelectValue placeholder={t.common.select} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {(users.data ?? []).map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <SearchSelect
+            id="td-owner"
+            value={ownerID}
+            onChange={setOwnerID}
+            placeholder={t.common.select}
+            options={(users.data ?? []).map((u) => ({ value: u.id, label: u.name }))}
+          />
         </Field>
       )}
 

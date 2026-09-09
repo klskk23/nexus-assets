@@ -19,6 +19,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { SearchSelect } from "@/features/common/SearchSelect"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import {
@@ -287,26 +288,23 @@ export function Holders() {
             {ALLOWED_PARENTS[type].length > 0 && (
               <Field>
                 <FieldLabel htmlFor="h-parent">{tMeta.holders.parent}</FieldLabel>
-                <Select value={toNone(parentID)} onValueChange={(v) => setParentID(fromNone(v))}>
-                  <SelectTrigger id="h-parent">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {/* A department has no "no parent" option: the rule is not
-                        a suggestion, and offering the choice would only lead
-                        to a refusal. */}
-                      {!PARENT_REQUIRED[type] && (
-                        <SelectItem value={NONE}>{tMeta.holders.noParent}</SelectItem>
-                      )}
-                      {eligibleParents.map((h) => (
-                        <SelectItem key={h.id} value={h.id}>
-                          {h.name}（{tMeta.entityTypes[h.type] ?? h.type}）
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                {/* Searchable: holders grow without bound. A department has
+                    no "no parent" option -- the rule is not a suggestion, and
+                    offering the choice would only lead to a refusal -- so the
+                    empty option is withheld by making the placeholder the
+                    prompt rather than a selectable row. */}
+                <SearchSelect
+                  id="h-parent"
+                  value={parentID}
+                  onChange={setParentID}
+                  placeholder={
+                    PARENT_REQUIRED[type] ? t.common.select : tMeta.holders.noParent
+                  }
+                  options={eligibleParents.map((h) => ({
+                    value: h.id,
+                    label: `${h.name}（${tMeta.entityTypes[h.type] ?? h.type}）`,
+                  }))}
+                />
                 {PARENT_REQUIRED[type] && (
                   <FieldDescription>
                     {tMeta.holders.parentRequired(
@@ -383,26 +381,19 @@ function EditDialog({ holder, holders, refusal, onOpenChange, onSave, saving }: 
           {ALLOWED_PARENTS[draft.type].length > 0 && (
             <Field>
               <FieldLabel htmlFor="he-parent">{tMeta.holders.parent}</FieldLabel>
-              <Select
-                value={toNone(draft.parent_id ?? "")}
-                onValueChange={(v) => setDraft({ ...draft, parent_id: fromNone(v) || null })}
-              >
-                <SelectTrigger id="he-parent">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {!PARENT_REQUIRED[draft.type] && (
-                      <SelectItem value={NONE}>{tMeta.holders.noParent}</SelectItem>
-                    )}
-                    {eligible.map((h) => (
-                      <SelectItem key={h.id} value={h.id}>
-                        {h.name}（{tMeta.entityTypes[h.type] ?? h.type}）
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              {/* Searchable: holders grow without bound. */}
+              <SearchSelect
+                id="he-parent"
+                value={draft.parent_id ?? ""}
+                onChange={(v) => setDraft({ ...draft, parent_id: v || null })}
+                placeholder={
+                  PARENT_REQUIRED[draft.type] ? t.common.select : tMeta.holders.noParent
+                }
+                options={eligible.map((h) => ({
+                  value: h.id,
+                  label: `${h.name}（${tMeta.entityTypes[h.type] ?? h.type}）`,
+                }))}
+              />
             </Field>
           )}
 

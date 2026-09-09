@@ -30,15 +30,6 @@ import {
   FieldSet,
 } from "@/components/ui/field"
 import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { NONE, fromNone, toNone } from "@/lib/select"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 
 import { useParams, useSearchParams } from "react-router"
@@ -57,6 +48,7 @@ import { ModelDetail } from "@/features/models/ModelDetail"
 import { VendorDetail } from "@/features/models/VendorDetail"
 import { VendorEditor } from "@/features/models/VendorEditor"
 import { VendorCreateDialog } from "@/features/models/VendorCreateDialog"
+import { SearchSelect } from "@/features/common/SearchSelect"
 import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 
@@ -388,24 +380,14 @@ function ModelEditor({
           </Field>
           <Field>
             <FieldLabel htmlFor="me-vendor">{tMeta.models.vendor}</FieldLabel>
-            <Select
-              value={toNone(draft.vendor_id ?? "")}
-              onValueChange={(v) => setDraft({ ...draft, vendor_id: fromNone(v) })}
-            >
-              <SelectTrigger id="me-vendor">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value={NONE}>{tMeta.vendors.none}</SelectItem>
-                  {vendors.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            {/* Searchable: vendors grow without bound. */}
+            <SearchSelect
+              id="me-vendor"
+              value={draft.vendor_id ?? ""}
+              onChange={(v) => setDraft({ ...draft, vendor_id: v })}
+              placeholder={tMeta.vendors.none}
+              options={vendors.map((v) => ({ value: v.id, label: v.name }))}
+            />
           </Field>
 
           <Field className="sm:col-span-2">

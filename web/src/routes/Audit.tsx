@@ -11,6 +11,7 @@ import { NONE, fromNone, toNone } from "@/lib/select"
 import { cn } from "cn"
 import { getLang, locale, tAudit } from "@/i18n"
 import { StateBoundary } from "@/components/StateBoundary"
+import { SearchSelect } from "@/features/common/SearchSelect"
 import { ListToolbar } from "@/features/common/ListToolbar"
 import { PageHeader } from "@/features/common/PageHeader"
 import { AuditTabs } from "@/features/audit/AuditTabs"
@@ -253,24 +254,20 @@ export function Audit() {
                 <FieldLabel htmlFor="au-actor" className="sr-only">
                   {tAudit.actor}
                 </FieldLabel>
-                <Select value={toNone(actorID)} onValueChange={(v) => setActorID(fromNone(v))}>
-                  <SelectTrigger id="au-actor" className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value={NONE}>{tAudit.allActors}</SelectItem>
-                      {knownActors.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.name}
-                        </SelectItem>
-                      ))}
-                      {actorMissing && (
-                        <SelectItem value={actorID}>{actorName || actorID}</SelectItem>
-                      )}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                {/* Searchable: accounts grow without bound. An actor who no
+                    longer appears in the account list still has to be offered,
+                    or the filter in the address would silently show as "all". */}
+                <SearchSelect
+                  id="au-actor"
+                  className="w-40"
+                  value={actorID}
+                  onChange={setActorID}
+                  placeholder={tAudit.allActors}
+                  options={[
+                    ...knownActors.map((u) => ({ value: u.id, label: u.name })),
+                    ...(actorMissing ? [{ value: actorID, label: actorName || actorID }] : []),
+                  ]}
+                />
               </Field>
 
               <Popover>

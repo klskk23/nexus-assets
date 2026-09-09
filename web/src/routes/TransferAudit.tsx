@@ -10,6 +10,7 @@ import type { Transfer } from "@/lib/transferTypes"
 import { NONE } from "@/lib/select"
 import { t, tAudit, tTransfer } from "@/i18n"
 import { StateBoundary } from "@/components/StateBoundary"
+import { SearchSelect } from "@/features/common/SearchSelect"
 import { PageHeader } from "@/features/common/PageHeader"
 import { PAGE_SIZES, Pager } from "@/features/common/Pager"
 import { TableFrame } from "@/features/common/TableFrame"
@@ -147,27 +148,20 @@ export function TransferAudit() {
           <Label htmlFor="ta-actor" className="sr-only">
             {tAudit.actor}
           </Label>
-          <Select
-            value={actorID || NONE}
-            onValueChange={(v) => {
-              setActorID(v === NONE ? "" : v)
+          {/* Searchable: accounts grow without bound, which is the judgement
+              023 wrote down and then did not apply to the page it was creating
+              in the same round. */}
+          <SearchSelect
+            id="ta-actor"
+            className="w-[180px]"
+            value={actorID}
+            onChange={(v) => {
+              setActorID(v)
               setPage(0)
             }}
-          >
-            <SelectTrigger id="ta-actor" className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value={NONE}>{tAudit.allActors}</SelectItem>
-                {(users.data ?? []).map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+            placeholder={tAudit.allActors}
+            options={(users.data ?? []).map((u) => ({ value: u.id, label: u.name }))}
+          />
 
           <Label htmlFor="ta-kind" className="sr-only">
             {tAudit.kind}

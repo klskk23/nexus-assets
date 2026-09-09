@@ -215,6 +215,18 @@ type FieldDefinition struct {
 	Type     FieldType    `json:"type"`
 	Options  FieldOptions `json:"options"`
 	IsUnique bool         `json:"is_unique"`
+	// Searchable puts this field's values within reach of the asset search.
+	//
+	// Separate from IsUnique because the two answer different questions. A
+	// service tag is worth finding by and need not be one of a kind; before
+	// 026 the only way to make a value findable was to promise it was unique,
+	// which is why a field could exist, hold values, and be unfindable with
+	// nothing on screen explaining it.
+	//
+	// Unique implies searchable and cannot be turned off: a unique field is
+	// what people identify a device by, and one nobody can search for has no
+	// use. Readers should ask Findable() rather than this flag.
+	Searchable bool `json:"searchable"`
 	// Required is a write-time rule the field carries everywhere it applies
 	// (018). It used to sit on each binding, which allowed a field to be
 	// required on one category and optional on another -- a distinction the
@@ -448,4 +460,14 @@ func AssetDisplayName(id string, attrs map[string]any, displayKey string) string
 		}
 	}
 	return ShortID(id)
+}
+
+// Findable reports whether the asset search reaches this field's values.
+//
+// Unique implies it. Asking this rather than Searchable keeps the implication
+// in one place -- every caller that checked the flag directly would otherwise
+// have to remember the rule, and the one that forgets makes a unique field
+// quietly unsearchable.
+func (f FieldDefinition) Findable() bool {
+	return f.Searchable || f.IsUnique
 }

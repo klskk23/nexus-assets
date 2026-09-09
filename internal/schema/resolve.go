@@ -112,16 +112,10 @@ func ActiveFields(fields []model.BoundField) []model.BoundField {
 // category bindings do, because there are hundreds of models rather than
 // millions and a query per row is the N+1 the constitution forbids.
 func resolveModelFields(
-	path string,
+	only map[string]bool,
 	bindingsByModel map[string][]ModelBinding,
-	categoriesOfModel map[string][]string,
 	vendorsOfField map[string][]string,
 ) []model.BoundField {
-	chain := make(map[string]bool, 8)
-	for _, id := range AncestorIDs(path) {
-		chain[id] = true
-	}
-
 	// Field id -> the entry being built, so a field on four models is one
 	// column with four model ids and not four columns.
 	byField := map[string]*model.BoundField{}
@@ -134,16 +128,6 @@ func resolveModelFields(
 	sort.Strings(modelIDs)
 
 	for _, modelID := range modelIDs {
-		inChain := false
-		for _, categoryID := range categoriesOfModel[modelID] {
-			if chain[categoryID] {
-				inChain = true
-				break
-			}
-		}
-		if !inChain {
-			continue
-		}
 		bindings := append([]ModelBinding(nil), bindingsByModel[modelID]...)
 		sort.SliceStable(bindings, func(i, j int) bool { return bindings[i].Sort < bindings[j].Sort })
 
@@ -165,9 +149,24 @@ func resolveModelFields(
 		}
 	}
 
+	// Built over every model first, then filtered by which entries reach the
+	// ones asked for. ModelIDs is the field's whole reach, and the interface
+	// decides when to offer a column from it -- truncating it to the model
+	// being resolved would make a field bound to four models look like a field
+	// bound to one, and the column would then unlock for only that one.
 	out := make([]model.BoundField, 0, len(order))
 	for _, id := range order {
-		out = append(out, *byField[id])
+		f := *byField[id]
+		reaches := false
+		for _, m := range f.ModelIDs {
+			if only[m] {
+				reaches = true
+				break
+			}
+		}
+		if reaches {
+			out = append(out, f)
+		}
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Sort < out[j].Sort })
 	return out

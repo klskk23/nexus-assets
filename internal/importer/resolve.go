@@ -88,7 +88,12 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 		l.holdersByName[strings.TrimSpace(e.Name)] = e
 	}
 
-	fields, err := s.schema.EffectiveFields(ctx, categoryID)
+	// Every column the file could carry, not the category's own vocabulary:
+	// a batch is usually mixed, and each row is narrowed to its own model
+	// afterwards by appliesToModel. Asking the narrow set here would make a
+	// model-bound column unknown, and an unknown column is dropped in silence
+	// -- which is the one outcome decision 102 was written to prevent.
+	fields, err := s.schema.EveryPossibleField(ctx, categoryID)
 	if err != nil {
 		return nil, err
 	}

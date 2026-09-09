@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/api"
 import type { HolderEntity, User } from "@/lib/types"
 import type { Transfer } from "@/lib/transferTypes"
 import { t, tTransfer } from "@/i18n"
+import { SearchSelect } from "@/features/common/SearchSelect"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -94,20 +95,14 @@ export function EditEvent({ event, assetID, onClose }: Props) {
             <FieldLabel htmlFor="ee-holder">
               {holderType === "user" ? t.common.user : t.common.holder}
             </FieldLabel>
-            <Select value={holderID} onValueChange={setHolderID}>
-              <SelectTrigger id="ee-holder">
-                <SelectValue placeholder={t.common.select} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {options.map((o) => (
-                    <SelectItem key={o.id} value={o.id}>
-                      {o.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            {/* Searchable: holders and accounts both grow without bound. */}
+            <SearchSelect
+              id="ee-holder"
+              value={holderID}
+              onChange={setHolderID}
+              placeholder={t.common.select}
+              options={options.map((o) => ({ value: o.id, label: o.name }))}
+            />
           </Field>
           <Field>
             <FieldLabel htmlFor="ee-note">{tTransfer.note}</FieldLabel>

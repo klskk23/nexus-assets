@@ -14,7 +14,8 @@ import type {
   HolderEntity,
   User,
 } from "@/lib/types"
-import type { ProductModelRow, VendorRow } from "@/lib/metaTypes"
+import type { FieldDefinitionRow, ProductModelRow, VendorRow } from "@/lib/metaTypes"
+import type { ListPage } from "@/features/metadata/CrudPage"
 import { modelLabel } from "@/lib/metaTypes"
 import { cn } from "cn"
 import { t, tImport, tTransfer } from "@/i18n"
@@ -295,6 +296,16 @@ export function Assets() {
     queryFn: () => api.get<CategorySchema>(`/categories/${categoryId}/schema`),
     enabled: categoryId !== "",
   })
+  // Without a category there is still a column menu to fill. It used to be
+  // empty, because the only source of fields was a category's schema and that
+  // query did not even run -- so "show me every Dell device and its firmware
+  // version" had no way to be asked. The whole library instead; the unlock
+  // rule below is what keeps a model's field from becoming a column of blanks.
+  const library = useQuery({
+    queryKey: ["fields", "all"],
+    queryFn: () => api.get<ListPage<FieldDefinitionRow>>("/fields?limit=500"),
+    enabled: categoryId === "",
+  })
 
   const assets = useQuery({
     queryKey: ["assets", listParams.toString()],
@@ -312,7 +323,11 @@ export function Assets() {
     }
   }, [assets.data?.exact_match_id, navigate])
 
-  const available = schema.data?.fields?.filter((f) => f.type !== "computed") ?? []
+  const available = (
+    categoryId !== ""
+      ? (schema.data?.fields ?? [])
+      : ((library.data?.items ?? []) as unknown as BoundField[])
+  ).filter((f) => f.type !== "computed")
   // A device field's column says nothing until the rows are devices that have
   // the field, so it unlocks only once a filter has narrowed to those (015,
   // decision 103). Locked rather than hidden, and with the reason on it: a
@@ -479,11 +494,14 @@ export function Assets() {
             />
           </Field>
 
-          {/* Only within a category: models belong to categories, and a picker
-              listing every model in the system would offer choices that cannot
-              match the rows on screen. */}
-          {categoryId && (
-            <Field className="w-auto">
+          {/* No longer inside a category. A model belonged to categories once,
+              so a picker outside one would have offered choices that could not
+              match the rows; 026 severed that, and "which Dell laptops do we
+              have" stopped needing a category picked first.
+              The vendor narrows it instead -- one direction only, because a
+              control that fills itself in when you touch another one is a
+              control that changed without being asked. */}
+          <Field className="w-auto">
               <FieldLabel htmlFor="model" className="sr-only">
                 {t.assets.modelFilter}
               </FieldLabel>
@@ -494,7 +512,7 @@ export function Assets() {
                 onChange={setModelId}
                 placeholder={t.assets.allModels}
                 options={modelList
-                  .filter((m) => (m.category_ids ?? []).includes(categoryId))
+                  .filter((m) => vendorId === "" || m.vendor_id === vendorId)
                   .map((m) => ({
                     value: m.id,
                     label: modelLabel(m),
@@ -503,8 +521,7 @@ export function Assets() {
                     keywords: m.vendor_name,
                   }))}
               />
-            </Field>
-          )}
+          </Field>
 
           {categoryId && (
             <Field orientation="horizontal" className="w-auto">

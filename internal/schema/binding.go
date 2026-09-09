@@ -26,7 +26,7 @@ var ErrFieldDependedOn = errors.New("field is still read by something bound here
 // than a per-request join.
 func (s *Store) BindingsByCategory(ctx context.Context) (map[string][]Binding, error) {
 	q := `SELECT cf.category_id, cf.sort, ` +
-		`f.id, f.key, f.label, f.type, f.options, f.is_unique, f.required,
+		`f.id, f.key, f.label, f.type, f.options, f.is_unique, f.searchable, f.required,
 		 f.created_at, f.updated_at
 		 FROM category_fields cf JOIN field_definitions f ON f.id = cf.field_id`
 	rows, err := s.db.ReadDB().QueryContext(ctx, q)
@@ -41,13 +41,14 @@ func (s *Store) BindingsByCategory(ctx context.Context) (map[string][]Binding, e
 		var required int
 		var opts string
 		var created, updated string
-		var isUnique int
+		var isUnique, searchable int
 		if err := rows.Scan(&b.CategoryID, &b.Sort,
-			&b.Field.ID, &b.Field.Key, &b.Field.Label, &b.Field.Type, &opts, &isUnique, &required,
+			&b.Field.ID, &b.Field.Key, &b.Field.Label, &b.Field.Type, &opts, &isUnique, &searchable, &required,
 			&created, &updated); err != nil {
 			return nil, err
 		}
 		b.Field.IsUnique = isUnique == 1
+		b.Field.Searchable = searchable == 1
 		b.Field.Required = required == 1
 		if err := decodeOptions(opts, &b.Field.Options); err != nil {
 			return nil, err
@@ -96,6 +97,77 @@ func (s *Store) FieldsOfPath(ctx context.Context, path string) ([]model.BoundFie
 		return nil, err
 	}
 
+	return fields, nil
+}
+
+// EveryPossibleField is a category's chain plus every device-side field there
+// is, whatever model it belongs to.
+//
+// For the CSV columns, which have to be decided before anyone knows which
+// models the rows will name. A file is one set of columns and a batch is
+// usually mixed, so the honest column set is "everything that could apply" and
+// the per-row check is what refuses a value that does not belong to that row's
+// model -- a rule the importer already enforces.
+//
+// Before 026 this was simply EffectiveFields: a category carried the fields of
+// every model attached to it. Decoupling took that away, and the columns are
+// the one caller that genuinely wanted the wider set.
+func (s *Store) EveryPossibleField(ctx context.Context, categoryID string) ([]model.BoundField, error) {
+	cat, err := s.GetCategory(ctx, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	fields, err := s.FieldsOfPath(ctx, cat.Path)
+	if err != nil {
+		return nil, err
+	}
+	device, vendorsOfField, err := s.deviceBindings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	all := make(map[string]bool, len(device))
+	for id := range device {
+		all[id] = true
+	}
+	return append(fields, resolveModelFields(all, device, vendorsOfField)...), nil
+}
+
+// EffectiveFieldsForAsset is FieldsForAsset for a caller holding a category id
+// rather than a path.
+func (s *Store) EffectiveFieldsForAsset(
+	ctx context.Context, categoryID string, modelID *string,
+) ([]model.BoundField, error) {
+	cat, err := s.GetCategory(ctx, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	id := ""
+	if modelID != nil {
+		id = *modelID
+	}
+	return s.FieldsForAsset(ctx, cat.Path, id)
+}
+
+// FieldsForAsset is what one device can record: its category chain, its own
+// model, and that model's vendor.
+//
+// Not "the category's vocabulary narrowed to a model", which is what this used
+// to be. A model belonged to categories then, so a category's field set had to
+// contain every model that might appear under it -- which meant attaching a
+// model to a category changed that category's fields, and, worse, a device
+// whose model was *not* attached silently lost that model's fields with
+// nothing to say so (026, decisions 182-184).
+//
+// Asking per device instead makes both go away: the model is asked directly,
+// so no association is consulted and none can be missing.
+func (s *Store) FieldsForAsset(ctx context.Context, path, modelID string) ([]model.BoundField, error) {
+	fields, err := s.FieldsOfPath(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	if modelID == "" {
+		return fields, nil
+	}
 	device, vendorsOfField, err := s.deviceBindings(ctx)
 	if err != nil {
 		return nil, err
@@ -103,11 +175,8 @@ func (s *Store) FieldsOfPath(ctx context.Context, path string) ([]model.BoundFie
 	if len(device) == 0 {
 		return fields, nil
 	}
-	categoriesOfModel, err := s.CategoriesOfModel(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return append(fields, resolveModelFields(path, device, categoriesOfModel, vendorsOfField)...), nil
+	return append(fields, resolveModelFields(
+		map[string]bool{modelID: true}, device, vendorsOfField)...), nil
 }
 
 // deviceBindings is the device side of the vocabulary, keyed by model.
@@ -246,6 +315,12 @@ func bindTx(ctx context.Context, tx *sql.Tx, categoryID, fieldID string, sort in
 		return i18n.Wrap(ErrKeyConflict, i18n.KeyBindDuplicate, key, clash)
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	// And the other two tables. Asking only this one was the gap: the resolver
+	// unions all three, so a key claimed on the device side could meet this one
+	// on a single asset.
+	if err := assertKeyFreeForCategory(ctx, tx, key, fieldID); err != nil {
 		return err
 	}
 
@@ -488,6 +563,103 @@ func checkUnbindSafe(ctx context.Context, tx *sql.Tx, path, key, fieldID string)
 	if len(blockers) > 0 {
 		return i18n.Wrap(ErrFieldDependedOn, i18n.KeyUnbindBlocked,
 			i18n.Join(i18n.KeyListSeparator, blockers...), key)
+	}
+	return nil
+}
+
+// assertKeyFreeForCategory refuses a key that a device-side binding already
+// claims.
+//
+// Two bindings clash when some asset can be subject to both. Since 026 a model
+// may appear under any category, so a category binding and any model or vendor
+// binding can always meet -- which makes this check as simple as "is the key
+// bound on the device side at all", and as necessary as it now is.
+//
+// Bind() has always asked category_fields and only category_fields, while
+// EffectiveFields unions all three. That gap let two different fields carrying
+// one key both reach a single asset, whose attrs then had one slot with two
+// definitions -- the ambiguity the neighbouring check says it exists to
+// prevent. docs/rules/schema.md records the same trap for boundPaths.
+func assertKeyFreeForCategory(ctx context.Context, tx *sql.Tx, key, fieldID string) error {
+	var clash string
+	err := tx.QueryRowContext(ctx, `
+		SELECT m.name FROM model_fields mf
+		  JOIN field_definitions f ON f.id = mf.field_id
+		  JOIN product_models m ON m.id = mf.model_id
+		 WHERE f.key = ? AND f.id <> ?
+		 UNION ALL
+		SELECT v.name FROM vendor_fields vf
+		  JOIN field_definitions f ON f.id = vf.field_id
+		  JOIN vendors v ON v.id = vf.vendor_id
+		 WHERE f.key = ? AND f.id <> ?
+		 LIMIT 1`, key, fieldID, key, fieldID).Scan(&clash)
+	if err == nil {
+		return i18n.Wrap(ErrKeyConflict, i18n.KeyBindDuplicate, key, clash)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	return nil
+}
+
+// assertKeyFreeForDevice is the same question asked from the device side.
+//
+// Categories always clash, for the reason above. Two different models never
+// do -- an asset has one model, so two models can each carry their own field
+// under one key without ever meeting. A model and a vendor clash only when the
+// model is that vendor's, and two vendor bindings only when it is the same
+// vendor. Collapsing all of that into "one key, one binding, anywhere" would
+// be simpler and would forbid something legitimate.
+func assertKeyFreeForDevice(
+	ctx context.Context, tx *sql.Tx, key, fieldID, modelID, vendorID string,
+) error {
+	var clash string
+	err := tx.QueryRowContext(ctx, `
+		SELECT c.name FROM category_fields cf
+		  JOIN field_definitions f ON f.id = cf.field_id
+		  JOIN categories c ON c.id = cf.category_id
+		 WHERE f.key = ? AND f.id <> ?
+		 LIMIT 1`, key, fieldID).Scan(&clash)
+	if err == nil {
+		return i18n.Wrap(ErrKeyConflict, i18n.KeyBindDuplicate, key, clash)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	// The same model, or this model's vendor.
+	if modelID != "" {
+		err = tx.QueryRowContext(ctx, `
+			SELECT m.name FROM model_fields mf
+			  JOIN field_definitions f ON f.id = mf.field_id
+			  JOIN product_models m ON m.id = mf.model_id
+			 WHERE f.key = ? AND f.id <> ? AND mf.model_id = ?
+			 UNION ALL
+			SELECT v.name FROM vendor_fields vf
+			  JOIN field_definitions f ON f.id = vf.field_id
+			  JOIN vendors v ON v.id = vf.vendor_id
+			  JOIN product_models m ON m.vendor_id = v.id
+			 WHERE f.key = ? AND f.id <> ? AND m.id = ?
+			 LIMIT 1`, key, fieldID, modelID, key, fieldID, modelID).Scan(&clash)
+	} else {
+		// Binding to a vendor: the same vendor, or any model under it.
+		err = tx.QueryRowContext(ctx, `
+			SELECT v.name FROM vendor_fields vf
+			  JOIN field_definitions f ON f.id = vf.field_id
+			  JOIN vendors v ON v.id = vf.vendor_id
+			 WHERE f.key = ? AND f.id <> ? AND vf.vendor_id = ?
+			 UNION ALL
+			SELECT m.name FROM model_fields mf
+			  JOIN field_definitions f ON f.id = mf.field_id
+			  JOIN product_models m ON m.id = mf.model_id
+			 WHERE f.key = ? AND f.id <> ? AND m.vendor_id = ?
+			 LIMIT 1`, key, fieldID, vendorID, key, fieldID, vendorID).Scan(&clash)
+	}
+	if err == nil {
+		return i18n.Wrap(ErrKeyConflict, i18n.KeyBindDuplicate, key, clash)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
 	}
 	return nil
 }

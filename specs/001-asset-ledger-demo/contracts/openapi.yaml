@@ -486,6 +486,12 @@ paths:
   # 形状不变。这是本轮唯一一处「含义变化而形状不变」的地方，且是刻意的：上面四处判定
   # 本来就该按到达集判，一行都不用改。另外每项多带一个 vendor_ids（绑在哪些厂商）。
   /categories/{id}/schema:
+    # model_id (query, optional) asks the narrower question: what can *this
+    # device* record -- the category's chain plus that model plus its vendor.
+    # Without it the answer is the category's own vocabulary and nothing else.
+    # Before 026 a category carried the fields of every model attached to it,
+    # which meant attaching a model changed the category, and a device whose
+    # model was not attached silently lost that model's fields.
     get:
       tags: [metadata]
       summary: 该类别的有效信息项集（祖先并集、必填、排序、options）与它选定的显示编号

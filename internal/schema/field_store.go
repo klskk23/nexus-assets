@@ -14,18 +14,19 @@ import (
 	"github.com/klskk23/nexus-assets/internal/store"
 )
 
-const fieldCols = `id, key, label, type, options, is_unique, required, created_at, updated_at`
+const fieldCols = `id, key, label, type, options, is_unique, searchable, required, created_at, updated_at`
 
 func scanField(row interface{ Scan(...any) error }) (model.FieldDefinition, error) {
 	var f model.FieldDefinition
 	var opts string
 	var created, updated string
-	var isUnique, required int
-	if err := row.Scan(&f.ID, &f.Key, &f.Label, &f.Type, &opts, &isUnique, &required,
-		&created, &updated); err != nil {
+	var isUnique, searchable, required int
+	if err := row.Scan(&f.ID, &f.Key, &f.Label, &f.Type, &opts, &isUnique, &searchable,
+		&required, &created, &updated); err != nil {
 		return f, err
 	}
 	f.IsUnique = isUnique == 1
+	f.Searchable = searchable == 1
 	f.Required = required == 1
 	if err := json.Unmarshal([]byte(opts), &f.Options); err != nil {
 		return f, fmt.Errorf("decode options for field %q: %w", f.Key, err)
@@ -245,6 +246,9 @@ type CreateFieldInput struct {
 	// side (016, decision 110). It may be given together with ModelIDs -- both
 	// answer "which device" -- and never together with CategoryIDs.
 	VendorIDs []string
+	// Searchable puts the values within reach of the asset search. Unique
+	// implies it, so this is only asked of the fields that are not.
+	Searchable bool
 	// Required belongs to the field and reaches every binding it has (018).
 	// It is a write-time rule, not a data invariant: existing assets keep
 	// whatever they have, and the next edit of one is where it is asked for.
@@ -271,16 +275,18 @@ func (s *Store) CreateField(ctx context.Context, in CreateFieldInput) (model.Fie
 	now := time.Now().UTC()
 	f := model.FieldDefinition{
 		ID: store.NewID(), Key: in.Key, Label: in.Label, Type: in.Type,
-		Options: in.Options, IsUnique: in.IsUnique, Required: in.Required,
+		Options: in.Options, IsUnique: in.IsUnique, Searchable: in.Searchable,
+		Required:  in.Required,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO field_definitions
-			   (id, key, label, type, options, is_unique, required, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			   (id, key, label, type, options, is_unique, searchable, required, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			f.ID, f.Key, f.Label, string(f.Type), string(opts), boolInt(f.IsUnique),
-			boolInt(f.Required), store.FormatTime(now), store.FormatTime(now)); err != nil {
+			boolInt(f.Searchable), boolInt(f.Required),
+			store.FormatTime(now), store.FormatTime(now)); err != nil {
 			return err
 		}
 		// Bound in the same transaction, so a refused binding -- a key already
@@ -326,6 +332,10 @@ type UpdateFieldInput struct {
 	// which is a job of its own -- whereas required only ever describes the
 	// next edit, so flipping it is free.
 	Required *bool
+	// Searchable can be changed after the fact -- which is the whole point:
+	// whether a value is worth finding is learned by using the system, not
+	// decided the minute the field is created.
+	Searchable *bool
 }
 
 // UpdateField changes or archives a field. Archiving is guarded elsewhere by
@@ -355,6 +365,11 @@ func (s *Store) UpdateField(ctx context.Context, id string, in UpdateFieldInput)
 		if in.Required != nil {
 			cur.Required = *in.Required
 		}
+		searchChanged := false
+		if in.Searchable != nil && *in.Searchable != cur.Searchable {
+			cur.Searchable = *in.Searchable
+			searchChanged = true
+		}
 		now := time.Now().UTC()
 		opts, err := json.Marshal(cur.Options)
 		if err != nil {
@@ -362,10 +377,23 @@ func (s *Store) UpdateField(ctx context.Context, id string, in UpdateFieldInput)
 		}
 		cur.UpdatedAt = now
 		if _, err := tx.ExecContext(ctx,
-			`UPDATE field_definitions SET label = ?, options = ?, required = ?, updated_at = ?
-			 WHERE id = ?`,
-			cur.Label, string(opts), boolInt(cur.Required), store.FormatTime(now), id); err != nil {
+			`UPDATE field_definitions SET label = ?, options = ?, searchable = ?, required = ?,
+			     updated_at = ? WHERE id = ?`,
+			cur.Label, string(opts), boolInt(cur.Searchable), boolInt(cur.Required),
+			store.FormatTime(now), id); err != nil {
 			return err
+		}
+		// Backfill in the same transaction, so the switch and the index can
+		// never disagree.
+		//
+		// The alternative -- indexing only what is saved from now on -- leaves
+		// the search answering for some devices and not others, with nothing on
+		// screen to say which. That is the version nobody reports as a bug
+		// because it looks like the search simply missed.
+		if searchChanged {
+			if err := reindexField(ctx, tx, cur); err != nil {
+				return err
+			}
 		}
 		// Re-run the dependency gate after the write, so the check reads the
 		// new template; a failure rolls the transaction back. Editing a
@@ -487,4 +515,37 @@ func search(all []model.FieldDefinition, f FieldFilter) []model.FieldDefinition 
 		kept = append(kept, fd)
 	}
 	return kept
+}
+
+// reindexField brings the search index in line with one field's switch.
+//
+// Turning it on walks every asset that carries the key; turning it off drops
+// the rows. Both in the caller's transaction: a half-applied change here is a
+// search that answers for some devices and not others, and nothing on screen
+// distinguishes that from a value simply not being there.
+//
+// Values come out of the attrs JSON with json_extract rather than being
+// re-derived, because what is indexed must be what is stored -- deriving it a
+// second way is a second answer waiting to differ from the first.
+func reindexField(ctx context.Context, tx *sql.Tx, f model.FieldDefinition) error {
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM asset_search_values WHERE field_key = ?`, f.Key); err != nil {
+		return fmt.Errorf("clear index for %q: %w", f.Key, err)
+	}
+	if !f.Findable() {
+		return nil
+	}
+	// trim() then the emptiness check, for the same reason the write path
+	// skips blanks: an empty string in the index is matched by every search.
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO asset_search_values (asset_id, field_key, value)
+		SELECT id, ?, trim(json_extract(attrs, '$.' || ?))
+		  FROM assets
+		 WHERE json_extract(attrs, '$.' || ?) IS NOT NULL
+		   AND trim(json_extract(attrs, '$.' || ?)) <> ''`,
+		f.Key, f.Key, f.Key, f.Key)
+	if err != nil {
+		return fmt.Errorf("reindex %q: %w", f.Key, err)
+	}
+	return nil
 }

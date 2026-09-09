@@ -35,6 +35,7 @@ const emptyDraft: FieldFormValue = {
   label: "",
   type: "text",
   isUnique: false,
+  searchable: true,
   required: false,
   options: {},
   bindTo: [],
@@ -84,6 +85,7 @@ export function FieldCreateDialog({ onClose }: { onClose: () => void }) {
         label: draft.label,
         type: draft.type,
         is_unique: draft.isUnique,
+        searchable: draft.searchable,
         // One list or the other, never both -- the server refuses a mix, and
         // so does the form that produced this.
         category_ids: draft.bindMode === "category" ? draft.bindTo : [],

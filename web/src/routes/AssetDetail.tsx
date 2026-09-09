@@ -13,6 +13,7 @@ import type { Transfer } from "@/lib/transferTypes"
 import { t, tAudit, tTransfer } from "@/i18n"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
+import { SearchSelect } from "@/features/common/SearchSelect"
 import { StateBoundary } from "@/components/StateBoundary"
 import { DynamicForm } from "@/features/assets/DynamicForm"
 import { attrText, fieldsForModel } from "@/features/assets/modelFields"
@@ -53,14 +54,6 @@ import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty"
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 interface HistoricValue {
   key: string
@@ -518,41 +511,29 @@ export function AssetDetail() {
                         <FieldGroup className="grid gap-4 rounded-md border p-4 sm:grid-cols-2">
                           <Field>
                             <FieldLabel htmlFor="home-holder">{t.assets.homeHolder}</FieldLabel>
-                            <Select value={homeID} onValueChange={setHomeID}>
-                              <SelectTrigger id="home-holder">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectGroup>
-                                  <SelectItem value={NONE}>{t.assets.homeNone}</SelectItem>
-                                  {(holders.data ?? []).map((h) => (
-                                    <SelectItem key={h.id} value={h.id}>
-                                      {h.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
+                            {/* Searchable: holders grow without bound. */}
+                            <SearchSelect
+                              id="home-holder"
+                              value={homeID === NONE ? "" : homeID}
+                              onChange={(v) => setHomeID(v === "" ? NONE : v)}
+                              placeholder={t.assets.homeNone}
+                              options={(holders.data ?? []).map((h) => ({
+                                value: h.id,
+                                label: h.name,
+                              }))}
+                            />
                           </Field>
                           <Field>
                             <FieldLabel htmlFor="home-owner">{t.assets.homeOwner}</FieldLabel>
-                            <Select value={homeOwnerID} onValueChange={setHomeOwnerID}>
-                              <SelectTrigger id="home-owner">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectGroup>
-                                  <SelectItem value={NONE}>{t.common.none}</SelectItem>
-                                  {(users.data ?? [])
-                                    .filter((u) => u.status === "active")
-                                    .map((u) => (
-                                      <SelectItem key={u.id} value={u.id}>
-                                        {u.name}
-                                      </SelectItem>
-                                    ))}
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
+                            <SearchSelect
+                              id="home-owner"
+                              value={homeOwnerID === NONE ? "" : homeOwnerID}
+                              onChange={(v) => setHomeOwnerID(v === "" ? NONE : v)}
+                              placeholder={t.common.none}
+                              options={(users.data ?? [])
+                                .filter((u) => u.status === "active")
+                                .map((u) => ({ value: u.id, label: u.name }))}
+                            />
                           </Field>
                         </FieldGroup>
                       </FieldSet>

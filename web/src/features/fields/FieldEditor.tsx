@@ -43,6 +43,7 @@ export function FieldEditor({ field, onClose }: Props) {
     label: field.label,
     type: field.type,
     isUnique: field.is_unique,
+    searchable: field.searchable ?? false,
     required: field.required ?? false,
     options: field.options ?? {},
     bindTo:
@@ -229,6 +230,7 @@ export function FieldEditor({ field, onClose }: Props) {
         label: draft.label,
         options: draft.options,
         required: draft.required,
+        searchable: draft.searchable,
       })
       if (!ruleChanged) return null
 

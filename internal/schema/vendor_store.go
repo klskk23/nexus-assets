@@ -170,7 +170,7 @@ func (s *Store) DeleteVendor(ctx context.Context, id string) (int, error) {
 // the N+1 the constitution forbids, and the resolver below runs on every save.
 func (s *Store) VendorBindingsByVendor(ctx context.Context) (map[string][]ModelBinding, error) {
 	q := `SELECT vf.vendor_id, vf.sort,
-	             f.id, f.key, f.label, f.type, f.options, f.is_unique, f.required,
+	             f.id, f.key, f.label, f.type, f.options, f.is_unique, f.searchable, f.required,
 	             f.created_at, f.updated_at
 	      FROM vendor_fields vf JOIN field_definitions f ON f.id = vf.field_id`
 	rows, err := s.db.ReadDB().QueryContext(ctx, q)
@@ -183,14 +183,15 @@ func (s *Store) VendorBindingsByVendor(ctx context.Context) (map[string][]ModelB
 	for rows.Next() {
 		var b ModelBinding
 		var vendorID string
-		var required, isUnique int
+		var required, isUnique, searchable int
 		var opts, created, updated string
 		if err := rows.Scan(&vendorID, &b.Sort,
-			&b.Field.ID, &b.Field.Key, &b.Field.Label, &b.Field.Type, &opts, &isUnique, &required,
+			&b.Field.ID, &b.Field.Key, &b.Field.Label, &b.Field.Type, &opts, &isUnique, &searchable, &required,
 			&created, &updated); err != nil {
 			return nil, err
 		}
 		b.Field.IsUnique = isUnique == 1
+		b.Field.Searchable = searchable == 1
 		b.Field.Required = required == 1
 		if err := decodeOptions(opts, &b.Field.Options); err != nil {
 			return nil, err
@@ -295,6 +296,12 @@ func bindVendorTx(ctx context.Context, tx *sql.Tx, vendorID, fieldID string, sor
 	}
 
 	if err := vendorKeyFree(ctx, tx, vendorID, fieldID, key); err != nil {
+		return err
+	}
+	// The other two tables. vendorKeyFree only looks at this vendor's own
+	// models; a key claimed on a category could still meet this one on any
+	// asset, since 026 lets a model appear under any category.
+	if err := assertKeyFreeForDevice(ctx, tx, key, fieldID, "", vendorID); err != nil {
 		return err
 	}
 
