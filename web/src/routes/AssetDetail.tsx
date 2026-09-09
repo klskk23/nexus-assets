@@ -339,23 +339,6 @@ export function AssetDetail() {
                   therefore not typed by anyone. */}
               <section aria-label={t.assets.attrs} className="grid content-start gap-3">
                 <h2 className="text-[21px] leading-tight font-bold">{t.assets.attrs}</h2>
-                {/* In this section, but outside the field list.
-                    A note is not a field: it has no key, no type and no
-                    binding, and putting it in the same dl would let it pass for
-                    one -- the test below counts the pairs there precisely so a
-                    field cannot go missing unnoticed, and a note among them
-                    makes that count answer a different question.
-                    Reading it should not cost opening the form that changes
-                    it, which is the argument 015 decision 104 made about the
-                    values underneath. Full width because it is prose. Absent
-                    when empty: a labelled blank claims somebody looked and had
-                    nothing to say. */}
-                {asset.note && (
-                  <div className="border-border-muted flex items-start gap-4 border-b pb-4 text-sm">
-                    <span className="text-muted-foreground w-32 shrink-0">{t.assets.note}</span>
-                    <p className="min-w-0 flex-1 break-words">{asset.note}</p>
-                  </div>
-                )}
                 {shown.length === 0 ? (
                   <div className="bg-well rounded-[28px] p-6">
                     <Empty>
@@ -401,6 +384,23 @@ export function AssetDetail() {
                       </div>
                     ))}
                   </dl>
+                )}
+                {/* Last in this section, after the fields, and outside the
+                    field list.
+                    Not in the same dl: a note has no key, no type and no
+                    binding, so it is not a field, and there it would pass for
+                    one -- the test below counts those pairs precisely so a
+                    field cannot go missing unnoticed.
+                    Here at all because reading it should not cost opening the
+                    form that changes it, which is what 015 decision 104 said
+                    about the values above it. Full width because it is prose,
+                    and absent when empty: a labelled blank claims somebody
+                    looked and had nothing to say. */}
+                {asset.note && (
+                  <div className="flex items-start gap-4 pt-1 text-sm">
+                    <span className="text-muted-foreground w-32 shrink-0">{t.assets.note}</span>
+                    <p className="min-w-0 flex-1 break-words">{asset.note}</p>
+                  </div>
                 )}
               </section>
 
