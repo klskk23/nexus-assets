@@ -398,20 +398,30 @@ type Asset struct {
 
 // Transfer is the immutable record of one possession, ownership or status change.
 type Transfer struct {
-	ID         string       `json:"id"`
-	AssetID    string       `json:"asset_id"`
-	BatchID    *string      `json:"batch_id"`
-	Kind       TransferKind `json:"kind"`
-	FromStatus *AssetStatus `json:"from_status"`
-	FromHolder *Holder      `json:"from_holder"`
-	FromOwner  *string      `json:"from_owner_id"`
-	ToStatus   AssetStatus  `json:"to_status"`
-	ToHolder   Holder       `json:"to_holder"`
-	ToOwner    string       `json:"to_owner_id"`
-	Note       string       `json:"note,omitempty"`
-	DueAt      *time.Time   `json:"due_at"`
-	ActorID    string       `json:"-"`
-	Actor      *User        `json:"actor,omitempty"`
+	ID          string       `json:"id"`
+	AssetID     string       `json:"asset_id"`
+	BatchID     *string      `json:"batch_id"`
+	Kind        TransferKind `json:"kind"`
+	FromStatus  *AssetStatus `json:"from_status"`
+	FromHolder  *Holder      `json:"from_holder"`
+	FromOwnerID *string      `json:"from_owner_id"`
+	ToStatus    AssetStatus  `json:"to_status"`
+	ToHolder    Holder       `json:"to_holder"`
+	ToOwnerID   string       `json:"to_owner_id"`
+	// The two owners by name, resolved at read time from the same user list
+	// the holder and the actor are named from.
+	//
+	// The ids alone were what the movement log had, and a reassignment is the
+	// one event whose entire content is these two fields: without names it
+	// rendered as an unchanged holder pointing at itself, which reads as a
+	// line saying nothing happened. Named like Asset's Owner and this row's
+	// own Actor -- id for the record, user for the reader.
+	FromOwner *User      `json:"from_owner,omitempty"`
+	ToOwner   *User      `json:"to_owner,omitempty"`
+	Note      string     `json:"note,omitempty"`
+	DueAt     *time.Time `json:"due_at"`
+	ActorID   string     `json:"-"`
+	Actor     *User      `json:"actor,omitempty"`
 	// AssetDisplayName is resolved at read time, the same way the audit log
 	// resolves its target label: the number is not stored on the transfer, it
 	// is whichever attribute the asset's category nominates. Without it a

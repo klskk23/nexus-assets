@@ -1828,6 +1828,11 @@ components:
         to_status: { $ref: "#/components/schemas/AssetStatus" }
         to_holder: { $ref: "#/components/schemas/HolderRef" }
         to_owner_id: { type: string }
+        # The two owners by name, resolved at read time from the user list the
+        # holder and the actor are named from. Absent when the id is empty or
+        # names an account that is gone.
+        from_owner: { $ref: "#/components/schemas/User" }
+        to_owner: { $ref: "#/components/schemas/User" }
         note: { type: string, nullable: true }
         due_at: { type: string, format: date-time, nullable: true }
         actor: { $ref: "#/components/schemas/User" }

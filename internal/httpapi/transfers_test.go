@@ -146,3 +146,52 @@ func contains(h, n string) bool {
 	}
 	return false
 }
+
+// A reassignment's entire content is the two owners.
+//
+// The ids were all the response carried, and the movement log has no user list
+// of its own on two of the three screens that render one -- so the event that
+// changes who is responsible arrived as a pair of uuids and rendered as an
+// unchanged holder pointing at itself. Asserted on the read path, not on the
+// write: the write returns what it just built, and the names are put on by the
+// same batched lookup every read goes through.
+func TestReassignmentCarriesBothOwnersByName(t *testing.T) {
+	h := newHarness(t)
+	h.seed(t, 0, 1)
+	id := h.firstAssetID(t)
+	clerk := makeClerk(t, h, "clerk@example.com")
+
+	// Somebody is responsible first, then somebody else is.
+	if rec := h.post(t, "/api/transfers",
+		`{"asset_ids":["`+id+`"],"to_owner_id":"`+h.userID+`"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("first reassign returned %d: %s", rec.Code, rec.Body.String())
+	}
+	rec := h.post(t, "/api/transfers", `{"asset_ids":["`+id+`"],"to_owner_id":"`+clerk+`"}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("second reassign returned %d: %s", rec.Code, rec.Body.String())
+	}
+	if k := decode[transfer.Result](t, rec).Transfers[0].Kind; k != model.KindReassign {
+		t.Fatalf("expected a reassignment, got %q", k)
+	}
+
+	events := decode[[]model.Transfer](t, h.get(t, "/api/assets/"+id+"/transfers"))
+	if len(events) == 0 {
+		t.Fatal("the asset should have a history")
+	}
+	// A device's own history reads oldest first -- it is a timeline, not a feed.
+	newest := events[len(events)-1]
+	if newest.Kind != model.KindReassign {
+		t.Fatalf("expected the newest event to be the reassignment, got %q", newest.Kind)
+	}
+	if newest.FromOwner == nil || newest.FromOwner.Name == "" {
+		t.Error("the owner it moved away from should arrive named, not as a uuid")
+	}
+	if newest.ToOwner == nil || newest.ToOwner.Name == "" {
+		t.Error("the owner it moved to should arrive named, not as a uuid")
+	}
+	// The ids stay: they are what the record holds, and an account deleted
+	// later leaves the id behind with no name to print.
+	if newest.ToOwnerID != clerk {
+		t.Errorf("to_owner_id = %q, want %q", newest.ToOwnerID, clerk)
+	}
+}

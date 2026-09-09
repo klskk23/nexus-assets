@@ -115,7 +115,7 @@ func editOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, id strin
 		"to_status":      cur.ToStatus,
 		"to_holder_type": cur.ToHolder.Type,
 		"to_holder_id":   cur.ToHolder.ID,
-		"to_owner_id":    cur.ToOwner,
+		"to_owner_id":    cur.ToOwnerID,
 		"note":           cur.Note,
 	})
 	if err != nil {
@@ -129,7 +129,7 @@ func editOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, id strin
 		cur.ToHolder = *req.ToHolder
 	}
 	if req.ToOwnerID != nil {
-		cur.ToOwner = *req.ToOwnerID
+		cur.ToOwnerID = *req.ToOwnerID
 	}
 	if req.Note != nil {
 		cur.Note = *req.Note
@@ -149,7 +149,7 @@ func editOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, id strin
 		 SET to_status = ?, to_holder_type = ?, to_holder_id = ?, to_owner_id = ?, note = ?,
 		     edited_at = ?, edited_by = ?, original = `+keepOriginal+`
 		 WHERE id = ?`,
-		string(cur.ToStatus), string(cur.ToHolder.Type), cur.ToHolder.ID, cur.ToOwner, cur.Note,
+		string(cur.ToStatus), string(cur.ToHolder.Type), cur.ToHolder.ID, cur.ToOwnerID, cur.Note,
 		store.FormatTime(now), req.EditorID, string(original), id); err != nil {
 		return cur, fmt.Errorf("update transfer: %w", err)
 	}
@@ -159,7 +159,7 @@ func editOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, id strin
 		`UPDATE assets SET status = ?, holder_type = ?, holder_id = ?, owner_id = ?,
 		                   version = version + 1, updated_at = ?
 		 WHERE id = ?`,
-		string(cur.ToStatus), string(cur.ToHolder.Type), cur.ToHolder.ID, cur.ToOwner,
+		string(cur.ToStatus), string(cur.ToHolder.Type), cur.ToHolder.ID, cur.ToOwnerID,
 		store.FormatTime(now), cur.AssetID); err != nil {
 		return cur, fmt.Errorf("refresh asset snapshot: %w", err)
 	}

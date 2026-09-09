@@ -19,6 +19,16 @@ export interface Transfer {
   to_status: AssetStatus
   to_holder: Holder
   to_owner_id: string
+  /**
+   * The two owners by name, resolved by the server from the same user list the
+   * holder and the actor are named from.
+   *
+   * The ids stay because they are what the record holds; these are for the
+   * reader. Either may be absent -- an account that has since been deleted
+   * leaves its id behind and no name to print.
+   */
+  from_owner?: User | null
+  to_owner?: User | null
   note?: string
   due_at: string | null
   actor?: User

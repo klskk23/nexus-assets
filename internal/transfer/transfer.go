@@ -188,8 +188,8 @@ func applyOne(ctx context.Context, tx *sql.Tx, statuses model.StatusSet, assetID
 	fromOwner := from.OwnerID
 	return &model.Transfer{
 		ID: id, AssetID: assetID, BatchID: batchID, Kind: kind,
-		FromStatus: &fromStatus, FromHolder: &fromHolder, FromOwner: &fromOwner,
-		ToStatus: to.Status, ToHolder: to.Holder, ToOwner: to.OwnerID,
+		FromStatus: &fromStatus, FromHolder: &fromHolder, FromOwnerID: &fromOwner,
+		ToStatus: to.Status, ToHolder: to.Holder, ToOwnerID: to.OwnerID,
 		Note: req.Note, DueAt: req.DueAt, ActorID: req.ActorID, CreatedAt: now,
 	}, nil
 }

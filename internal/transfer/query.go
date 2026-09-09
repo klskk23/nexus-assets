@@ -24,7 +24,7 @@ func scan(row interface{ Scan(...any) error }) (model.Transfer, error) {
 
 	if err := row.Scan(&t.ID, &t.AssetID, &batchID, &t.Kind,
 		&fromStatus, &fromHolderType, &fromHolderID, &fromOwner,
-		&t.ToStatus, &t.ToHolder.Type, &t.ToHolder.ID, &t.ToOwner,
+		&t.ToStatus, &t.ToHolder.Type, &t.ToHolder.ID, &t.ToOwnerID,
 		&note, &dueAt, &t.ActorID, &created, &editedAt, &editedBy); err != nil {
 		return t, err
 	}
@@ -37,7 +37,7 @@ func scan(row interface{ Scan(...any) error }) (model.Transfer, error) {
 			Type: model.HolderType(fromHolderType.String),
 			ID:   fromHolderID.String,
 		}
-		t.FromOwner = store.StrPtr(fromOwner)
+		t.FromOwnerID = store.StrPtr(fromOwner)
 	}
 	t.Note = note.String
 	t.EditedBy = store.StrPtr(editedBy)

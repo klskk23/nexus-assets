@@ -190,9 +190,28 @@ func (s *Server) decorateTransfers(c *gin.Context, items []model.Transfer) error
 		return err
 	}
 
+	// An owner is always a person, so it needs no type switch -- but it does
+	// need the same batched lookup, because a reassignment's whole content is
+	// these two fields and the client has no user list of its own on two of
+	// the three screens that render one.
+	owner := func(id string) *model.User {
+		if id == "" {
+			return nil
+		}
+		u, ok := userByID[id]
+		if !ok {
+			return nil
+		}
+		return &u
+	}
+
 	for i := range items {
 		name(items[i].FromHolder)
 		name(&items[i].ToHolder)
+		if items[i].FromOwnerID != nil {
+			items[i].FromOwner = owner(*items[i].FromOwnerID)
+		}
+		items[i].ToOwner = owner(items[i].ToOwnerID)
 		if u, ok := userByID[items[i].ActorID]; ok {
 			actor := u
 			items[i].Actor = &actor
