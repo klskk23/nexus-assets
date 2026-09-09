@@ -62,7 +62,16 @@ function DialogContent({
         data-slot="dialog-content"
         onOpenAutoFocus={focusFirstControl}
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-6 rounded-2xl border bg-card p-8 shadow-lg duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
+          // grid-cols-[minmax(0,1fr)] rather than a bare grid: an auto track
+          // is at least as wide as its widest child's min-content, so one row
+          // that cannot shrink -- five toggle buttons, a long unbroken word --
+          // widens the track past the panel's own content box. Every stretched
+          // child then follows it, and the footer, the only one with negative
+          // margins reaching the panel edge, is where that becomes visible: it
+          // hangs off the rounded corner. minmax(0,...) caps the track at the
+          // space that exists, so an oversized child overflows on its own
+          // instead of moving the panel out from under everything else.
+          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] grid-cols-[minmax(0,1fr)] gap-6 rounded-2xl border bg-card p-8 shadow-lg duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
           className
         )}
         {...props}

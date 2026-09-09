@@ -194,11 +194,24 @@ export function TransferForm({
     <div className="grid gap-4">
       <Field>
         <FieldLabel htmlFor="td-action">{tTransfer.actions.action}</FieldLabel>
+        {/* Wraps, and therefore has gaps rather than shared borders.
+            The items are shrink-0 and the group is w-fit, so a joined strip
+            can only be as narrow as all five labels laid end to end: 483px
+            against the 446px this panel has to give in English. It could not
+            shrink, so instead it widened the grid track it sat in, and every
+            stretched sibling followed -- the footer, whose negative margins
+            reach the panel edge, ended up hanging off the rounded corner.
+            Which language is loaded decided whether that happened, so a
+            slightly wider dialog would only move the threshold.
+            spacing separates the items, and separated items may wrap onto a
+            second line; a wrapped joined strip cannot, because the row below
+            would start with the seam meant for the middle of the strip. */}
         <ToggleGroup
           id="td-action"
           type="single"
           variant="outline"
-          className="justify-start"
+          spacing={1}
+          className="flex-wrap justify-start"
           value={action ?? ""}
           onValueChange={(v) => {
             const next = (v || null) as TransferAction | null
