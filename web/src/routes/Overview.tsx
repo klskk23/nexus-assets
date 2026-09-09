@@ -205,7 +205,7 @@ export function Overview() {
                       <TableCell>
                         <Link
                           to={`/assets/${it.asset_id}`}
-                          className="font-heading tabular-nums hover:text-primary"
+                          className="tabular-nums hover:text-primary"
                         >
                           {it.asset_display_name ?? it.asset_id}
                         </Link>

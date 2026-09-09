@@ -191,8 +191,9 @@ export function Audit() {
 
   return (
     <div className="grid gap-14">
-      <PageHeader title={tAudit.title} hint={tAudit.hint} />
-      <MetadataTabs current="audit" />
+      <PageHeader title={tAudit.title} hint={tAudit.hint}>
+        <MetadataTabs current="audit" />
+      </PageHeader>
 
       {/* The same two rhythms as every other list on the product: 56px under
           the title, 22px between the controls, the rows and the pager. */}

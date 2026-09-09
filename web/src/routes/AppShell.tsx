@@ -14,7 +14,7 @@ import { t } from "@/i18n"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "cn"
-import { NAV_ICONS } from "@/features/common/navIcons"
+import { navIcon } from "@/features/common/navIcons"
 import { Logo } from "@/features/common/Logo"
 
 /**
@@ -38,12 +38,13 @@ function navLinks(can: (p: Permission) => boolean) {
     // The one page that is hidden rather than shown with dead buttons: it has
     // nothing on it a reader without the permission may see, and an entry that
     // only ever answers 403 is worse than no entry.
-    // Either half is enough to have somewhere to go: the entry leads to
-    // whichever audit the person can actually open. Still hidden rather than
-    // disabled, for the reason it always was -- an entry that only answers 403
-    // is worse than no entry.
+    // Either half is enough to have somewhere to go, and movements are where
+    // this entry lands when a person can open both: who has the device is asked
+    // daily, who renamed a field is asked when something has already gone
+    // wrong. Still hidden rather than disabled, for the reason it always was --
+    // an entry that only answers 403 is worse than no entry.
     ...(can("audit.read") || can("transfer.audit")
-      ? [{ to: can("audit.read") ? "/audit" : "/audit/transfers", label: t.nav.audit }]
+      ? [{ to: can("transfer.audit") ? "/audit/transfers" : "/audit", label: t.nav.audit }]
       : []),
   ]
 }
@@ -117,7 +118,13 @@ export function AppShell() {
           aria-label={t.nav.assets}
         >
           {navLinks(can).map((l) => {
-            const Icon = NAV_ICONS[l.to as keyof typeof NAV_ICONS]
+            // Through navIcon, not by indexing the table: an entry may point
+            // at a sub-route (the audit's entry opens whichever half the
+            // person can read), and a table lookup answers those with
+            // undefined, which React renders by taking the whole shell down.
+            // navIcon is the function written for exactly this -- longest
+            // prefix wins, and anything unknown looks plain rather than broken.
+            const Icon = navIcon(l.to)
             return (
               <NavLink
                 key={l.to}

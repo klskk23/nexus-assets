@@ -116,8 +116,13 @@ export function TransferAudit() {
 
   return (
     <div className="grid gap-14">
-      <PageHeader title={tAudit.movementsTitle} hint={tAudit.movementsHint} />
-      <MetadataTabs current="transfers" />
+      {/* The tab strip rides the title row, where every other paired page in
+          the product already puts it. On its own line it read as a second
+          heading under the first, and pushed the filters and the table one
+          band further down on a page whose whole job is the table. */}
+      <PageHeader title={tAudit.movementsTitle} hint={tAudit.movementsHint}>
+        <MetadataTabs current="transfers" />
+      </PageHeader>
 
       <div className="grid gap-[22px]">
         {/* One row of controls, labels read out only to screen readers: the
@@ -258,7 +263,7 @@ export function TransferAudit() {
                           then to go and look at it. */}
                       <Link
                         to={`/assets/${it.asset_id}`}
-                        className="font-heading tabular-nums hover:text-primary"
+                        className="tabular-nums hover:text-primary"
                       >
                         {it.asset_display_name ?? it.asset_id}
                       </Link>

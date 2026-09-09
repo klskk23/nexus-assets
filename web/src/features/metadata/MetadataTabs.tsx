@@ -35,14 +35,16 @@ const GROUPS: Record<string, Tab[]> = {
     { value: "fields", to: "/fields", label: () => tMeta.fieldGroups.tabFields },
     { value: "groups", to: "/fields/groups", label: () => tMeta.fieldGroups.tabGroups },
   ],
+  // Movements first, and it is the entry's destination too: who has the device
+  // is asked daily, who renamed a field is asked when something already broke.
   audit: [
-    { value: "audit", to: "/audit", label: () => tAudit.tabOperations, permission: "audit.read" },
     {
       value: "transfers",
       to: "/audit/transfers",
       label: () => tAudit.tabMovements,
       permission: "transfer.audit",
     },
+    { value: "audit", to: "/audit", label: () => tAudit.tabOperations, permission: "audit.read" },
   ],
 }
 

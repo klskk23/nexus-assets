@@ -245,12 +245,13 @@ export function AssetDetail() {
               <header className="grid gap-2">
                 {/* pe-10 leaves room for the print button and, past it, the
                     dialog's own close button. */}
-                {/* The one heading on this product that IS Latin: a device
-                    number. font-heading was taken off the Chinese page titles
-                    because Caprasimo renders none of those glyphs -- here it
-                    renders all of them, so this is where it belongs.
-                    Tabular figures because the number beside it in the list
-                    was set the same way. */}
+                {/* Plain, not font-heading. Caprasimo can render these glyphs,
+                    which is the whole argument this comment used to make -- and
+                    being able to is not a reason to. An asset number is an
+                    identifier a person reads off a label and matches against a
+                    screen, not a piece of display typography, and the display
+                    face makes that comparison slower. Tabular figures stay: the
+                    digits still have to line up with the ones in the tables. */}
                 {/* The number and the verbs share a line: the number is what
                     you came to identify, the buttons are what you came to do,
                     and on a page this wide keeping them apart left a band of
@@ -258,7 +259,7 @@ export function AssetDetail() {
                     which is the only width where the row cannot hold both. */}
                 <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
                   <h1 className="flex flex-wrap items-center gap-3 text-[40px] leading-[1.2] font-bold">
-                    <span className="font-heading tabular-nums">{asset.display_name}</span>
+                    <span className="tabular-nums">{asset.display_name}</span>
                     <StatusBadge status={asset.status} />
                   </h1>
                   {/* Everything you can DO to this device, in one row, ordered by

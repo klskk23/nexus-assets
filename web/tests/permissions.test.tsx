@@ -154,6 +154,26 @@ describe("the navigation", () => {
     renderWithProviders(<AppShell />, { permissions: ["audit.read"] })
     await waitFor(() => expect(screen.getByRole("link", { name: "审计" })).toBeInTheDocument())
   })
+
+  // Which of the two the entry opens. Whoever can read movements lands there:
+  // who has the device is asked daily, who renamed a field is asked once
+  // something has already gone wrong.
+  it("带两个权限时，审计入口开在流转审计", async () => {
+    renderWithProviders(<AppShell />, { permissions: ["audit.read", "transfer.audit"] })
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: "审计" })).toHaveAttribute(
+        "href",
+        "/audit/transfers",
+      ),
+    )
+  })
+
+  it("只有操作审计权限时，仍然开在操作审计", async () => {
+    renderWithProviders(<AppShell />, { permissions: ["audit.read"] })
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: "审计" })).toHaveAttribute("href", "/audit"),
+    )
+  })
 })
 
 describe("the roles page", () => {
