@@ -177,6 +177,19 @@ func (s *Server) decorateTransfers(c *gin.Context, items []model.Transfer) error
 		}
 	}
 
+	// One lookup for the whole batch, not one per row. Every endpoint that
+	// returns transfers comes through here, which is what makes "the number
+	// travels with the transfer" true everywhere rather than in the four or
+	// five places somebody remembered.
+	ids := make([]string, 0, len(items))
+	for i := range items {
+		ids = append(ids, items[i].AssetID)
+	}
+	numbers, err := s.assets.DisplayNames(ctx, ids)
+	if err != nil {
+		return err
+	}
+
 	for i := range items {
 		name(items[i].FromHolder)
 		name(&items[i].ToHolder)
@@ -184,6 +197,7 @@ func (s *Server) decorateTransfers(c *gin.Context, items []model.Transfer) error
 			actor := u
 			items[i].Actor = &actor
 		}
+		items[i].AssetDisplayName = numbers[items[i].AssetID]
 	}
 	return nil
 }
@@ -226,4 +240,32 @@ func indexOfString(h, n string) int {
 		}
 	}
 	return -1
+}
+
+// listTransfers answers "where did devices go", across every asset.
+//
+// The operations audit next to it answers a different question -- who renamed a
+// field, who deleted a category -- and the two are separate on purpose: they
+// come from different tables, they interest different people, and each carries
+// its own permission. Movements are never written to the audit log.
+func (s *Server) listTransfers(c *gin.Context) {
+	offset, limit := Paging(c)
+	res, err := s.transfers.List(c.Request.Context(), transfer.ListFilter{
+		ActorID:     c.Query("actor_id"),
+		AssetNumber: c.Query("asset_number"),
+		Kind:        c.Query("kind"),
+		From:        c.Query("from"),
+		To:          c.Query("to"),
+		Offset:      offset,
+		Limit:       limit,
+	})
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	if err := s.decorateTransfers(c, res.Items); err != nil {
+		FailErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, res)
 }

@@ -3,6 +3,7 @@ package asset
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -417,4 +418,76 @@ func (s *Service) filterClause(ctx context.Context, f ListFilter, res *ListResul
 	)`)
 	args = append(args, like, upper, like, q+"%")
 	return where, args, nil
+}
+
+// DisplayNames resolves the human-readable number for a set of assets.
+//
+// The number is not a column: it is whichever attribute the asset's category
+// nominates as its display key, falling back to a short form of the id when a
+// category nominates none. So "show me the number" is a join plus a lookup,
+// and doing it per row would mean two statements per row.
+//
+// One pass instead: the ids in, one query for their attrs and categories, one
+// map of display keys for the whole set. This mirrors what List already does
+// for a page of assets -- the statement count stays constant however many
+// transfers a page holds.
+//
+// Ids with no surviving asset are simply absent from the result. Transfers
+// cascade with their asset, so in practice that only happens if one is deleted
+// between the two queries.
+func (s *Service) DisplayNames(ctx context.Context, ids []string) (map[string]string, error) {
+	if len(ids) == 0 {
+		return map[string]string{}, nil
+	}
+	seen := make(map[string]struct{}, len(ids))
+	args := make([]any, 0, len(ids))
+	holes := make([]byte, 0, len(ids)*2)
+	for _, id := range ids {
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		args = append(args, id)
+		if len(holes) > 0 {
+			holes = append(holes, ',')
+		}
+		holes = append(holes, '?')
+	}
+
+	rows, err := s.db.ReadDB().QueryContext(ctx,
+		`SELECT id, category_id, attrs FROM assets WHERE id IN (`+string(holes)+`)`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("load assets for display names: %w", err)
+	}
+	defer rows.Close()
+
+	type row struct {
+		id, categoryID string
+		attrs          map[string]any
+	}
+	var found []row
+	for rows.Next() {
+		var r row
+		var attrsJSON string
+		if err := rows.Scan(&r.id, &r.categoryID, &attrsJSON); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal([]byte(attrsJSON), &r.attrs); err != nil {
+			return nil, fmt.Errorf("parse attrs of %s: %w", r.id, err)
+		}
+		found = append(found, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	keys, err := s.schema.DisplayKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]string, len(found))
+	for _, r := range found {
+		out[r.id] = model.AssetDisplayName(r.id, r.attrs, keys[r.categoryID])
+	}
+	return out, nil
 }

@@ -400,10 +400,16 @@ type Transfer struct {
 	DueAt      *time.Time   `json:"due_at"`
 	ActorID    string       `json:"-"`
 	Actor      *User        `json:"actor,omitempty"`
-	CreatedAt  time.Time    `json:"created_at"`
-	EditedAt   *time.Time   `json:"edited_at"`
-	EditedBy   *string      `json:"edited_by"`
-	Original   string       `json:"-"`
+	// AssetDisplayName is resolved at read time, the same way the audit log
+	// resolves its target label: the number is not stored on the transfer, it
+	// is whichever attribute the asset's category nominates. Without it a
+	// transfer can only say which asset it belongs to as a uuid, which is
+	// exactly what made the overview's recent movements unreadable.
+	AssetDisplayName string     `json:"asset_display_name,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	EditedAt         *time.Time `json:"edited_at"`
+	EditedBy         *string    `json:"edited_by"`
+	Original         string     `json:"-"`
 }
 
 // AssetState is the triple that drives transfer events.

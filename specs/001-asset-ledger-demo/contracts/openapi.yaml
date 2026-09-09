@@ -293,6 +293,41 @@ paths:
 
   # ---------------- transfers ----------------
   /transfers:
+    get:
+      tags: [transfers]
+      summary: >-
+        全系统流转，最新在前。与 /audit 是两栏而非一栏：流转不写审计流水，
+        它们在自己的表里，各带各的权限（023 决策 142）
+      parameters:
+        - { in: query, name: actor_id, schema: { type: string } }
+        - in: query
+          name: asset_number
+          schema: { type: string }
+          description: 资产编号的片段，包含匹配且不分大小写
+        - in: query
+          name: kind
+          schema:
+            type: string
+            enum: [create, checkout, checkin, transfer, reassign, status_change]
+        - { in: query, name: from, schema: { type: string, format: date-time } }
+        - { in: query, name: to, schema: { type: string, format: date-time } }
+        - { in: query, name: offset, schema: { type: integer } }
+        - { in: query, name: limit, schema: { type: integer } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Transfer" }
+                  total: { type: integer }
+                  offset: { type: integer }
+                  limit: { type: integer }
+        "403": { $ref: "#/components/responses/Error" }
     post:
       tags: [transfers]
       summary: 单台或批量流转。多台时生成共享 batch_id，单事务写入

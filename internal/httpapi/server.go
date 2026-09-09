@@ -126,9 +126,17 @@ func (s *Server) Router() *gin.Engine {
 	// at eighteen, and a vendor exists here to be bound to rather than to be
 	// catalogued. Reads stay open, like every other list.
 	authed.GET("/vendors", s.listVendors)
-	authed.POST("/vendors", need(authz.SchemaManage), s.createVendor)
-	authed.PATCH("/vendors/:id", need(authz.SchemaManage), s.patchVendor)
-	authed.DELETE("/vendors/:id", need(authz.SchemaManage), s.deleteVendor)
+	// A vendor is a grouping of models, so managing models is what it takes to
+	// manage one. 016 put the whole of it under SchemaManage, which read as
+	// tidy and was wrong by half: naming a manufacturer is not a change to the
+	// shape of anything.
+	authed.POST("/vendors", need(authz.ModelManage), s.createVendor)
+	authed.PATCH("/vendors/:id", need(authz.ModelManage), s.patchVendor)
+	authed.DELETE("/vendors/:id", need(authz.ModelManage), s.deleteVendor)
+	// Bindings stay with SchemaManage, and that is the whole of the split:
+	// hanging a field on a vendor makes every model under it inherit that
+	// field, which is a change to the shape of the data. Creating the vendor
+	// is not.
 	authed.POST("/vendors/:id/bindings", need(authz.SchemaManage), s.bindVendorField)
 	authed.DELETE("/vendors/:id/bindings/:field_id", need(authz.SchemaManage), s.unbindVendorField)
 	authed.GET("/vendors/:id/required-impact", s.vendorRequiredImpact)
@@ -189,6 +197,10 @@ func (s *Server) Router() *gin.Engine {
 	authed.POST("/print/refresh-source", need(authz.Print), s.refreshPrintSource)
 
 	authed.GET("/audit", need(authz.AuditRead), s.listAudit)
+	// Its own permission, because "where did devices go" is the ledger's own
+	// subject matter and is useful to anyone who keeps stock, while the
+	// operations log above it is administrative.
+	authed.GET("/transfers", need(authz.TransferAudit), s.listTransfers)
 	authed.GET("/overview", s.overview)
 
 	authed.POST("/transfers", need(authz.TransferCreate), s.createTransfer)

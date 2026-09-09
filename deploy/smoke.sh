@@ -119,6 +119,12 @@ VENDOR=$(curl -fsS -X POST "http://127.0.0.1:$PORT/api/vendors" \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"name":"Smoke Vendor"}' | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
 test -n "$VENDOR"
+# The movement log is its own endpoint with its own permission -- the operations
+# audit next to it reads a different table. Admin holds both, so this only
+# proves the route is wired; the split itself is covered by the Go tests.
+curl -fsS "http://127.0.0.1:$PORT/api/transfers?limit=1" -H "Authorization: Bearer $TOKEN" \
+  | grep -q '"items"'
+
 curl -fsS "http://127.0.0.1:$PORT/api/vendors" -H "Authorization: Bearer $TOKEN" \
   | grep -q 'Smoke Vendor'
 curl -fsS "http://127.0.0.1:$PORT/api/vendors/$VENDOR/required-impact" \
