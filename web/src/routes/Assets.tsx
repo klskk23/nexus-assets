@@ -42,6 +42,7 @@ import { usePermissions } from "@/features/auth/usePermissions"
 import { ExportDialog } from "@/features/assets/ExportDialog"
 import { NewAssetDialog } from "@/features/assets/NewAssetDialog"
 import { SearchSelect } from "@/features/common/SearchSelect"
+import { FOLD_ABOVE } from "@/features/common/useFoldable"
 import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -59,6 +60,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
+  DropdownMenuItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuLabel,
@@ -108,6 +110,9 @@ export function Assets() {
   // initial state rather than the page opening blank and then jumping.
   const [searchParams, setSearchParams] = useSearchParams()
   const [q, setQ] = useState(searchParams.get("q") ?? "")
+  // Not in the address: how much of a menu is open is a posture in one
+  // visit, not a place to share. Same judgement 025 made about folding.
+  const [showAllFields, setShowAllFields] = useState(false)
   const [categoryId, setCategoryId] = useState(searchParams.get("category_id") ?? "")
   const [includeDescendants, setIncludeDescendants] = useState(
     searchParams.get("include_descendants") !== "false",
@@ -348,9 +353,25 @@ export function Assets() {
   // only by picking one Dell model at a time -- with the vendor chosen, every
   // row on screen is one of its devices, which is exactly the condition this
   // rule is about.
+  // The fields the chosen category's chain carries. Empty with no category,
+  // which is the point: without one, the rows come from everywhere.
+  const chainKeys = new Set((schema.data?.fields ?? []).map((f) => f.key))
+
   const unlocked = (f: BoundField) => {
     const models = f.model_ids ?? []
-    if (models.length === 0) return true
+    if (models.length === 0) {
+      // A category-bound field belongs to some categories, not all -- so it
+      // unlocks on the same terms a model-bound one does: once the list is
+      // narrowed to rows that have it.
+      //
+      // This used to be an unconditional yes, and was right while the pool of
+      // fields came from the chosen category's own schema: everything in it
+      // was on that chain by construction. 026 made the pool the whole library
+      // so that a vendor filter alone could offer its columns, and left this
+      // line standing on an invariant that had gone -- which put every
+      // category's fields on offer over a list of every category's devices.
+      return categoryId !== "" && chainKeys.has(f.key)
+    }
     if (modelId !== "") return models.includes(modelId)
     if (vendorId === "") return false
     // Bound to this vendor: every row the filter leaves has the field. Or
@@ -579,18 +600,42 @@ export function Assets() {
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>{t.assets.fieldColumns}</DropdownMenuLabel>
                   <DropdownMenuGroup>
-                    {available.map((f) => (
+                    {/* Long lists fold. The library grows without bound and
+                        this menu is read by scanning it, which stops working
+                        somewhere around the point where it fills its own
+                        height. Same threshold and the same argument as the
+                        rails in 025 -- and the same condition on it: the row
+                        that opens the rest says how many are behind it, so
+                        nobody is left guessing whether their field is missing
+                        or merely hidden. */}
+                    {(showAllFields ? available : available.slice(0, FOLD_ABOVE)).map((f) => (
                       <DropdownMenuCheckboxItem
                         key={f.key}
                         checked={extraColumns.includes(f.key)}
                         disabled={!unlocked(f)}
-                        title={unlocked(f) ? undefined : t.assets.modelColumnLocked}
+                        title={
+                          unlocked(f)
+                            ? undefined
+                            : (f.model_ids ?? []).length > 0
+                              ? t.assets.modelColumnLocked
+                              : t.assets.categoryColumnLocked
+                        }
                         onSelect={(e) => e.preventDefault()}
                         onCheckedChange={() => toggle(f.key)}
                       >
                         {f.label}
                       </DropdownMenuCheckboxItem>
                     ))}
+                    {!showAllFields && available.length > FOLD_ABOVE && (
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault()
+                          setShowAllFields(true)
+                        }}
+                      >
+                        {t.assets.showAllColumns(available.length)}
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuGroup>
                 </>
               )}

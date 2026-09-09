@@ -170,6 +170,8 @@ export const en: typeof zh = {
     vendorFilter: "Vendor",
     allVendors: "All vendors",
     modelFilter: "Model",
+    categoryColumnLocked: "Pick a category first: this field belongs only to some of them",
+    showAllColumns: (n: number) => `Show all ${n}`,
     modelColumnLocked: "Filter by model or vendor first: this column belongs only to those devices",
     holderFilter: "Holder",
     sn: "Number",

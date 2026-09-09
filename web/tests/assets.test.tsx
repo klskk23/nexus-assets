@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import { Assets } from "@/routes/Assets"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { FOLD_ABOVE } from "@/features/common/useFoldable"
 import { chooseFromMenu, openMenu } from "@/test/menu"
 import { statusRoute } from "./fixtures/statuses"
 import { chooseByLabel } from "@/test/choose"
@@ -120,6 +121,17 @@ function route(path: string) {
   if (path === "/capabilities") return Promise.resolve({ printing: true })
   if (path === "/print/presets") return Promise.resolve({ presets: [] })
   if (path === "/categories") return Promise.resolve(categories)
+  // The whole library, which is what the column picker reads when no category
+  // narrows the list. Absent from this mock, the picker had nothing to offer
+  // and the test below could not see what it was asserting about.
+  if (path.startsWith("/fields")) {
+    return Promise.resolve({
+      items: [...schema.fields, ...serverSchema.fields],
+      total: 3,
+      offset: 0,
+      limit: 500,
+    })
+  }
   if (path === "/holders") return Promise.resolve(holders)
   if (path === "/users") return Promise.resolve(users)
   if (path === "/models") {
@@ -183,7 +195,7 @@ describe("Assets list", () => {
     expect(await screen.findByRole("columnheader", { name: "固件版本" })).toBeInTheDocument()
   })
 
-  it("shows no field columns at all with the category filter off", async () => {
+  it("locks a category's field columns when the list is not narrowed to one", async () => {
     const user = userEvent.setup()
     renderWithProviders(<Assets />)
     await screen.findByLabelText(/共 1 条/)
@@ -198,14 +210,46 @@ describe("Assets list", () => {
     await waitFor(() =>
       expect(screen.queryByRole("columnheader", { name: "固件版本" })).not.toBeInTheDocument(),
     )
-    // The picker stays: the built-in columns exist whatever the filter says,
-    // so there is still something to choose. What is gone is the field group,
-    // because with no category there are no fields to offer.
+    // Offered, and locked, and saying why. A field bound to some categories
+    // belongs to some of the rows, so over a list of every category it would
+    // be a column of blanks -- the same argument 015 decision 103 makes about
+    // a model's field, applied to the case 026 created by widening the pool.
+    //
+    // Locked rather than absent, which is this product's rule everywhere: a
+    // control that vanishes leaves nobody anything to read.
     await user.click(screen.getByRole("button", { name: "显示列" }))
-    expect(
-      screen.queryByRole("menuitemcheckbox", { name: "固件版本" }),
-    ).not.toBeInTheDocument()
+    const locked = screen.getByRole("menuitemcheckbox", { name: "固件版本" })
+    expect(locked).toHaveAttribute("aria-disabled", "true")
+    expect(locked).toHaveAttribute("title", expect.stringContaining("先选一个类别"))
     expect(screen.getByRole("menuitemcheckbox", { name: "持有方" })).toBeInTheDocument()
+  })
+
+  // The library grows without bound and this menu is read by scanning it.
+  // Same threshold and the same condition as the rails in 025: the row that
+  // opens the rest says how many are behind it, so nobody is left wondering
+  // whether their field is missing or merely hidden.
+  it("字段列过多时折叠，并给一个展开全部", async () => {
+    const many = Array.from({ length: FOLD_ABOVE + 4 }, (_, i) => ({
+      id: `x${i}`, key: `k${i}`, label: `字段${i}`, type: "text",
+      options: {}, is_unique: false, required: false, sort: i,
+    }))
+    get.mockImplementation((p: string) =>
+      p.startsWith("/fields")
+        ? Promise.resolve({ items: many, total: many.length, offset: 0, limit: 500 })
+        : route(p),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await screen.findByLabelText(/共 1 条/)
+
+    await user.click(await screen.findByRole("button", { name: "显示列" }))
+    expect(screen.queryByRole("menuitemcheckbox", { name: `字段${FOLD_ABOVE}` })).not.toBeInTheDocument()
+
+    const more = screen.getByRole("menuitem", { name: new RegExp(String(many.length)) })
+    await user.click(more)
+    expect(
+      await screen.findByRole("menuitemcheckbox", { name: `字段${FOLD_ABOVE}` }),
+    ).toBeInTheDocument()
   })
 
   it("shows the total and the fixed columns", async () => {
