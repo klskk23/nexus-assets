@@ -214,3 +214,51 @@ func (s *Service) List(ctx context.Context, f ListFilter) (ListResult, error) {
 	}
 	return res, rows.Err()
 }
+
+// BatchSizes counts how many devices moved in each of the given batches.
+//
+// One grouped query for the whole page, in the shape the display names use:
+// the alternative is the client counting the rows it happens to be holding,
+// which is right on a device's own history, harmless on the overview, and a
+// lie on the movement log -- a page showing five rows of a twenty-device
+// shipment would label it "5". A count that is wrong only on the paged screen
+// is worse than no count, because the two screens disagree and neither says
+// which to believe.
+func (s *Service) BatchSizes(ctx context.Context, ids []string) (map[string]int, error) {
+	out := map[string]int{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	seen := make(map[string]struct{}, len(ids))
+	args := make([]any, 0, len(ids))
+	holes := make([]byte, 0, len(ids)*2)
+	for _, id := range ids {
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		args = append(args, id)
+		if len(holes) > 0 {
+			holes = append(holes, ',')
+		}
+		holes = append(holes, '?')
+	}
+
+	rows, err := s.db.ReadDB().QueryContext(ctx,
+		`SELECT batch_id, count(*) FROM asset_transfers
+		 WHERE batch_id IN (`+string(holes)+`) GROUP BY batch_id`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("count batches: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id string
+		var n int
+		if err := rows.Scan(&id, &n); err != nil {
+			return nil, err
+		}
+		out[id] = n
+	}
+	return out, rows.Err()
+}

@@ -427,11 +427,24 @@ type Transfer struct {
 	// is whichever attribute the asset's category nominates. Without it a
 	// transfer can only say which asset it belongs to as a uuid, which is
 	// exactly what made the overview's recent movements unreadable.
-	AssetDisplayName string     `json:"asset_display_name,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-	EditedAt         *time.Time `json:"edited_at"`
-	EditedBy         *string    `json:"edited_by"`
-	Original         string     `json:"-"`
+	AssetDisplayName string    `json:"asset_display_name,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	// BatchSize is how many devices moved in this one action.
+	//
+	// Counted server-side over the whole batch, not over the rows a screen
+	// happens to be holding: the overview folds a batch to one row and the
+	// movement log pages through it, so a client-side count would disagree
+	// with itself between two screens showing the same shipment. Absent when
+	// the action moved one device.
+	BatchSize int        `json:"batch_size,omitempty"`
+	EditedAt  *time.Time `json:"edited_at"`
+	EditedBy  *string    `json:"edited_by"`
+	// Editor is who corrected this record, named at read time. A movement can
+	// be corrected only while it is the newest one on its device, and the row
+	// has to say so: a note or an owner that somebody rewrote afterwards is
+	// still the record, but it is not what happened at the time.
+	Editor   *User  `json:"editor,omitempty"`
+	Original string `json:"-"`
 }
 
 // AssetState is the triple that drives transfer events.

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { screen } from "@testing-library/react"
 
-import { TransferChange } from "@/features/transfers/TransferChange"
+import { MovementCell } from "@/features/transfers/MovementCell"
 import type { Transfer } from "@/lib/transferTypes"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { statusRoute } from "./fixtures/statuses"
@@ -45,7 +45,7 @@ const base: Transfer = {
 }
 
 function show(event: Transfer) {
-  return renderWithProviders(<TransferChange event={event} />)
+  return renderWithProviders(<MovementCell event={event} />)
 }
 
 /**
@@ -142,5 +142,52 @@ describe("流转的变更内容", () => {
     })
 
     expect(screen.getByText("u-gone")).toBeInTheDocument()
+  })
+})
+
+/**
+ * 023 replaced the timeline with three tables and kept only the arrow.
+ *
+ * The action's name, the note, the correction mark and the batch went with the
+ * component, and nothing was left watching them -- the movement log can still
+ * filter by an action name it never prints, and the form still asks for a
+ * reason nothing ever showed. These four assert that the cell says what the
+ * event was, not only what it changed.
+ */
+describe("一条流转说得出自己是什么", () => {
+  it("每一行都写出动作名", () => {
+    show({ ...base, kind: "checkin" })
+    expect(screen.getByText("归还")).toBeInTheDocument()
+  })
+
+  // Write-only until now: the form asks for "这一次移动的缘由" and no screen
+  // printed the answer.
+  it("写出这次移动的备注", () => {
+    show({ ...base, note: "借给市场部试用" })
+    expect(screen.getByText(/借给市场部试用/)).toBeInTheDocument()
+  })
+
+  // A correction is part of the record. What it can change -- the note and the
+  // owner -- is in this cell, so the mark is too.
+  it("被更正过就说出来，并说是谁", () => {
+    show({
+      ...base,
+      edited_at: "2026-09-02T10:00:00Z",
+      edited_by: "u-li",
+      editor: li as never,
+    })
+    expect(screen.getByText(/已修订/)).toBeInTheDocument()
+    expect(screen.getByText(/李四/)).toBeInTheDocument()
+  })
+
+  // The overview folds a batch into one row, so without this the other
+  // nineteen devices are mentioned nowhere at all.
+  it("批次写出台数，一台的不写", () => {
+    const many = show({ ...base, batch_id: "b1", batch_size: 20 })
+    expect(screen.getByText("共 20 台")).toBeInTheDocument()
+    many.unmount()
+
+    show({ ...base, batch_id: null, batch_size: 1 })
+    expect(screen.queryByText(/共 .* 台/)).not.toBeInTheDocument()
   })
 })

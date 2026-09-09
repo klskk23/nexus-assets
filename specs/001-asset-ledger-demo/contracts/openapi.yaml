@@ -1837,5 +1837,11 @@ components:
         due_at: { type: string, format: date-time, nullable: true }
         actor: { $ref: "#/components/schemas/User" }
         created_at: { type: string, format: date-time }
+        # How many devices moved in this one action, counted over the whole
+        # batch rather than over the rows a screen is holding. Absent when the
+        # action moved one device.
+        batch_size: { type: integer }
         edited_at: { type: string, format: date-time, nullable: true }
         edited_by: { type: string, nullable: true }
+        # Who corrected the record, named at read time.
+        editor: { $ref: "#/components/schemas/User" }

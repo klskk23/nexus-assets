@@ -225,6 +225,7 @@ export const en: typeof zh = {
     homeNone: "None (the default stock point)",
     homeHolder: "Home holder",
     homeOwner: "Home owner",
+    homeOwnerIs: (who: string) => `Home owner: ${who}`,
     currentHolder: "Currently held by",
     createdAt: "Created",
     currentOwner: "Currently responsible",
@@ -565,7 +566,6 @@ export const enMeta: typeof zhMeta = {
 }
 
 export const enTransfer: typeof zhTransfer = {
-  current: "Current",
   empty: "No transfers yet",
   emptyHint: "Check this device out, return it or move it, and the record appears here.",
   kind: {
@@ -577,12 +577,13 @@ export const enTransfer: typeof zhTransfer = {
     status_change: "Status changed",
   },
   note: "Note",
+  noteIs: (text: string) => `Note: ${text}`,
+  batch: (n: number) => `${n} devices`,
+  edited: (who: string) => `Corrected by ${who}`,
   editTail: "Correct this record",
   editHint: "Only the newest record can be corrected; a later transfer locks this one.",
   cancel: "Cancel",
   save: "Save correction",
-  from: "from",
-  to: "to",
 
   actions: {
     selected: (n: number) => `${n} selected`,

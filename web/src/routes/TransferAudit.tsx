@@ -15,7 +15,7 @@ import { PageHeader } from "@/features/common/PageHeader"
 import { PAGE_SIZES, Pager } from "@/features/common/Pager"
 import { TableFrame } from "@/features/common/TableFrame"
 import { AuditTabs } from "@/features/audit/AuditTabs"
-import { TransferChange } from "@/features/transfers/TransferChange"
+import { MovementCell } from "@/features/transfers/MovementCell"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
@@ -263,7 +263,7 @@ export function TransferAudit() {
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <TransferChange event={it} />
+                      <MovementCell event={it} />
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       {it.actor?.name ?? t.common.none}

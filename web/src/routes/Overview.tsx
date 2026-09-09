@@ -14,7 +14,7 @@ import { DistributionBar } from "@/features/overview/DistributionBar"
 import { PageHeader } from "@/features/common/PageHeader"
 import { ImportDialog } from "@/features/import/ImportDialog"
 import { usePermissions } from "@/features/auth/usePermissions"
-import { TransferChange } from "@/features/transfers/TransferChange"
+import { MovementCell } from "@/features/transfers/MovementCell"
 import { TableFrame } from "@/features/common/TableFrame"
 import {
   Table,
@@ -228,7 +228,7 @@ export function Overview() {
                         </Link>
                       </TableCell>
                       <TableCell>
-                        <TransferChange event={it} />
+                        <MovementCell event={it} />
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {it.actor?.name ?? t.common.none}

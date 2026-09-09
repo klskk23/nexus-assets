@@ -17,7 +17,7 @@ import { SearchSelect } from "@/features/common/SearchSelect"
 import { StateBoundary } from "@/components/StateBoundary"
 import { DynamicForm } from "@/features/assets/DynamicForm"
 import { attrText, fieldsForModel } from "@/features/assets/modelFields"
-import { TransferChange } from "@/features/transfers/TransferChange"
+import { MovementCell } from "@/features/transfers/MovementCell"
 import { TableFrame } from "@/features/common/TableFrame"
 import {
   ContextMenu,
@@ -318,7 +318,23 @@ export function AssetDetail() {
                 </div>
                 <div>
                   <dt className="text-muted-foreground text-[13px]">{t.assets.home}</dt>
-                  <dd className="mt-1">{asset.home_holder?.name ?? t.assets.homeNone}</dd>
+                  {/* Both halves of the home, not just the place.
+                   *
+                   * The home owner decides who becomes responsible when this
+                   * device is returned -- `destination()` hands it over with the
+                   * device -- and it was editable in the form below while being
+                   * printed nowhere. A person who has been made responsible by a
+                   * setting nobody can see has no way to find out that they were.
+                   * Under the place rather than in a fifth cell: it is the same
+                   * fact, and the band answers four questions. */}
+                  <dd className="mt-1">
+                    {asset.home_holder?.name ?? t.assets.homeNone}
+                    {asset.home_owner && (
+                      <span className="text-muted-foreground block text-[13px]">
+                        {t.assets.homeOwnerIs(asset.home_owner.name)}
+                      </span>
+                    )}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground text-[13px]">{t.assets.createdAt}</dt>
@@ -445,7 +461,7 @@ export function AssetDetail() {
                                   {new Date(ev.created_at).toLocaleString()}
                                 </TableCell>
                                 <TableCell>
-                                  <TransferChange event={ev} />
+                                  <MovementCell event={ev} />
                                 </TableCell>
                                 <TableCell className="whitespace-nowrap">
                                   {ev.actor?.name ?? t.common.none}

@@ -195,3 +195,54 @@ func TestReassignmentCarriesBothOwnersByName(t *testing.T) {
 		t.Errorf("to_owner_id = %q, want %q", newest.ToOwnerID, clerk)
 	}
 }
+
+// Twenty devices shipped together are one action, and the overview shows that
+// action once -- so the row has to say how many came with it or the other
+// nineteen are mentioned nowhere. Counted over the whole batch on the server:
+// the movement log pages through the same rows, and a count taken from the
+// rows in hand would label the same shipment differently on the two screens.
+func TestBatchAndCorrectionArriveNamed(t *testing.T) {
+	h := newHarness(t)
+	h.seed(t, 0, 2)
+	ids := h.assetIDs(t)
+	if len(ids) < 2 {
+		t.Fatalf("need two assets, got %d", len(ids))
+	}
+
+	rec := h.post(t, "/api/transfers", `{
+		"asset_ids": ["`+ids[0]+`","`+ids[1]+`"],
+		"to_status": "in_use",
+		"to_holder_type": "user",
+		"to_holder_id": "`+h.userID+`",
+		"note": "两台一起借出"
+	}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("batch returned %d: %s", rec.Code, rec.Body.String())
+	}
+	moved := decode[transfer.Result](t, rec).Transfers
+	if len(moved) != 2 {
+		t.Fatalf("expected two events, got %d", len(moved))
+	}
+	for _, m := range moved {
+		if m.BatchSize != 2 {
+			t.Errorf("batch_size = %d, want 2 -- the row cannot say how many moved together", m.BatchSize)
+		}
+	}
+
+	// Correcting the newest event is part of the record, so the reader has to
+	// be able to see that it happened and who did it.
+	if rec := h.patch(t, "/api/transfers/"+moved[0].ID, `{"note":"其实是给市场部的"}`); rec.Code != http.StatusOK {
+		t.Fatalf("correction returned %d: %s", rec.Code, rec.Body.String())
+	}
+	events := decode[[]model.Transfer](t, h.get(t, "/api/assets/"+moved[0].AssetID+"/transfers"))
+	newest := events[len(events)-1]
+	if newest.EditedAt == nil {
+		t.Fatal("the corrected event should carry when it was corrected")
+	}
+	if newest.Editor == nil || newest.Editor.Name == "" {
+		t.Error("the corrected event should name who corrected it, not just carry an id")
+	}
+	if newest.Note != "其实是给市场部的" {
+		t.Errorf("note = %q, want the corrected one", newest.Note)
+	}
+}

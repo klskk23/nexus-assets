@@ -37,6 +37,7 @@ export function EditEvent({ event, assetID, onClose }: Props) {
   const queryClient = useQueryClient()
   const [holderType, setHolderType] = useState(event.to_holder.type)
   const [holderID, setHolderID] = useState(event.to_holder.id)
+  const [ownerID, setOwnerID] = useState(event.to_owner_id ?? "")
   const [note, setNote] = useState(event.note ?? "")
   const [banner, setBanner] = useState<string | null>(null)
 
@@ -51,6 +52,7 @@ export function EditEvent({ event, assetID, onClose }: Props) {
       api.patch<Transfer[]>(`/transfers/${event.id}`, {
         to_holder_type: holderType,
         to_holder_id: holderID,
+        to_owner_id: ownerID,
         note,
       }),
     onSuccess: () => {
@@ -102,6 +104,21 @@ export function EditEvent({ event, assetID, onClose }: Props) {
               onChange={setHolderID}
               placeholder={t.common.select}
               options={options.map((o) => ({ value: o.id, label: o.name }))}
+            />
+          </Field>
+          <Field>
+            {/* The owner was the one thing the server would accept here and the
+                form never sent, so a movement filed against the wrong person
+                could only be answered with a second movement -- inventing an
+                event that never happened in order to fix one that did. Empty is
+                a real answer: a device may be nobody's to look after. */}
+            <FieldLabel htmlFor="ee-owner">{t.assets.owner}</FieldLabel>
+            <SearchSelect
+              id="ee-owner"
+              value={ownerID}
+              onChange={setOwnerID}
+              placeholder={t.common.none}
+              options={(users.data ?? []).map((u) => ({ value: u.id, label: u.name }))}
             />
           </Field>
           <Field>

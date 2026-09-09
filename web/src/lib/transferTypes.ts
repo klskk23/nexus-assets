@@ -42,10 +42,19 @@ export interface Transfer {
    */
   asset_display_name?: string
   created_at: string
+  /**
+   * How many devices moved in this one action.
+   *
+   * Counted by the server over the whole batch. The client cannot do it: the
+   * overview folds a batch into one row and the movement log pages through it,
+   * so counting the rows in hand would label the same shipment "20" on one
+   * screen and "5" on the other.
+   */
+  batch_size?: number
   edited_at: string | null
   edited_by: string | null
-  /** Filled in by the client from the user list, for display only. */
-  edited_by_name?: string
+  /** Who corrected the record, named by the server like every other person. */
+  editor?: User | null
 }
 
 export interface TransferResult {

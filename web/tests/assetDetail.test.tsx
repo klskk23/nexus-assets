@@ -112,6 +112,34 @@ describe("AssetDetail", () => {
     expect(await screen.findByText("屏幕左下角有划痕")).toBeInTheDocument()
   })
 
+  /**
+   * 默认归属有两半，属性带只写了地点那一半。
+   *
+   * 默认负责人决定这台设备归还之后责任落到谁头上（`destination()` 会把它一起
+   * 带过去），而它在下面的表单里可改、在页面上不可见 —— 被一个看不见的设置
+   * 指派了责任的人，没有任何办法知道自己被指派了。
+   */
+  it("默认归属把负责人也写出来", async () => {
+    get.mockImplementation((p: string) =>
+      p === "/assets/a1"
+        ? Promise.resolve({
+            asset: {
+              ...asset,
+              home_holder: { type: "entity", id: "loc", name: "上海仓库" },
+              home_owner: { id: "u2", name: "张三" },
+            },
+            value_history: [],
+          })
+        : route(p),
+    )
+    renderWithProviders(<AssetDetail />)
+
+    // 当前持有方也是上海仓库，所以按名字找会命中两处 —— 要的是归属那一格。
+    expect(await screen.findByText("默认负责人：张三")).toBeInTheDocument()
+    const home = screen.getByText("默认归属").closest("div")!
+    expect(within(home).getByText("上海仓库")).toBeInTheDocument()
+  })
+
   beforeEach(() => {
     navigate.mockReset()
     get.mockReset().mockImplementation(route)

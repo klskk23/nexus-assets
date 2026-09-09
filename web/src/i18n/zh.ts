@@ -211,6 +211,9 @@ export const zh = {
     homeNone: "无（回到默认库存点）",
     homeHolder: "默认持有方",
     homeOwner: "默认负责人",
+    // Carries its own punctuation: a fullwidth colon written into the
+    // component would follow the English label around too.
+    homeOwnerIs: (who: string) => `默认负责人：${who}`,
     currentHolder: "当前持有方",
     createdAt: "建档时间",
     currentOwner: "当前负责人",
@@ -539,7 +542,6 @@ export const zhMeta = {
 }
 
 export const zhTransfer = {
-  current: "当前",
   empty: "还没有流转记录",
   emptyHint: "签出、归还或转移这台设备后，记录会出现在这里。",
   kind: {
@@ -551,12 +553,15 @@ export const zhTransfer = {
     status_change: "状态变更",
   } as Record<string, string>,
   note: "备注",
+  noteIs: (text: string) => `备注：${text}`,
+  // One action on many devices. The overview shows that action once, so
+  // without this line the other nineteen are mentioned nowhere.
+  batch: (n: number) => `共 ${n} 台`,
+  edited: (who: string) => `已修订（${who}）`,
   editTail: "修改这条记录",
   editHint: "只能修改最新的一条；产生新的流转后这条就锁定了。",
   cancel: "取消",
   save: "保存修改",
-  from: "自",
-  to: "至",
 
   actions: {
     selected: (n: number) => `已选 ${n} 台`,

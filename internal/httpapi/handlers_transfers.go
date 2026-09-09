@@ -182,19 +182,27 @@ func (s *Server) decorateTransfers(c *gin.Context, items []model.Transfer) error
 	// travels with the transfer" true everywhere rather than in the four or
 	// five places somebody remembered.
 	ids := make([]string, 0, len(items))
+	batches := make([]string, 0, len(items))
 	for i := range items {
 		ids = append(ids, items[i].AssetID)
+		if items[i].BatchID != nil {
+			batches = append(batches, *items[i].BatchID)
+		}
 	}
 	numbers, err := s.assets.DisplayNames(ctx, ids)
 	if err != nil {
 		return err
 	}
+	sizes, err := s.transfers.BatchSizes(ctx, batches)
+	if err != nil {
+		return err
+	}
 
-	// An owner is always a person, so it needs no type switch -- but it does
-	// need the same batched lookup, because a reassignment's whole content is
-	// these two fields and the client has no user list of its own on two of
-	// the three screens that render one.
-	owner := func(id string) *model.User {
+	// The owners and the editor are always people, so they need no type switch
+	// -- but they do need the same batched lookup, because a reassignment's
+	// whole content is those two fields and the client has no user list of its
+	// own on two of the three screens that render one.
+	named := func(id string) *model.User {
 		if id == "" {
 			return nil
 		}
@@ -209,12 +217,18 @@ func (s *Server) decorateTransfers(c *gin.Context, items []model.Transfer) error
 		name(items[i].FromHolder)
 		name(&items[i].ToHolder)
 		if items[i].FromOwnerID != nil {
-			items[i].FromOwner = owner(*items[i].FromOwnerID)
+			items[i].FromOwner = named(*items[i].FromOwnerID)
 		}
-		items[i].ToOwner = owner(items[i].ToOwnerID)
+		items[i].ToOwner = named(items[i].ToOwnerID)
 		if u, ok := userByID[items[i].ActorID]; ok {
 			actor := u
 			items[i].Actor = &actor
+		}
+		if items[i].EditedBy != nil {
+			items[i].Editor = named(*items[i].EditedBy)
+		}
+		if items[i].BatchID != nil {
+			items[i].BatchSize = sizes[*items[i].BatchID]
 		}
 		items[i].AssetDisplayName = numbers[items[i].AssetID]
 	}
