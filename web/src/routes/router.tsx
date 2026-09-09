@@ -45,6 +45,13 @@ export const router = createBrowserRouter([
       { path: "holders", lazy: async () => ({ Component: (await import("./Holders")).Holders }) },
       { path: "roles", lazy: async () => ({ Component: (await import("./Roles")).Roles }) },
       { path: "audit", lazy: async () => ({ Component: (await import("./Audit")).Audit }) },
+      {
+        // Its own route, not a tab over /audit: both lists filter and both
+        // page, and two of those behind one address trample each other's
+        // query string (016, decision 107).
+        path: "audit/transfers",
+        lazy: async () => ({ Component: (await import("./TransferAudit")).TransferAudit }),
+      },
       { path: "import", lazy: async () => ({ Component: (await import("./Import")).Import }) },
       { path: "users", lazy: async () => ({ Component: (await import("./Users")).Users }) },
     ],

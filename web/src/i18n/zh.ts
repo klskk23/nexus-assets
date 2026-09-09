@@ -509,7 +509,6 @@ export const zhMeta = {
 }
 
 export const zhTransfer = {
-  timeline: "流转历史",
   current: "当前",
   empty: "还没有流转记录",
   emptyHint: "签出、归还或转移这台设备后，记录会出现在这里。",
@@ -521,10 +520,7 @@ export const zhTransfer = {
     reassign: "变更负责人",
     status_change: "状态变更",
   } as Record<string, string>,
-  batch: (n: number) => `批量操作（${n} 台）`,
-  by: "操作人",
   note: "备注",
-  edited: (who: string) => `已由 ${who} 修改`,
   editTail: "修改这条记录",
   editHint: "只能修改最新的一条；产生新的流转后这条就锁定了。",
   cancel: "取消",
@@ -643,6 +639,18 @@ export const zhImport = {
 }
 
 export const zhAudit = {
+  tabOperations: "操作审计",
+  tabMovements: "流转审计",
+  movementsTitle: "流转审计",
+  movementsHint: "全系统的设备流转。上面那一栏记的是配置变更，两者来自不同的表。",
+  movementsEmpty: "还没有流转记录",
+  movementsEmptyFiltered: "当前筛选下没有流转，换个条件或清除筛选。",
+  assetNumber: "资产编号",
+  assetNumberPlaceholder: "编号的一部分即可",
+  allKinds: "全部动作",
+  kind: "动作",
+  anyTime: "全部时间",
+  change: "变更内容",
   title: "变更审计",
   hint: "资产流转有自己的时间线；这里记录的是类别、字段、型号、持有方与账号的配置变更。",
   targetType: "对象类型",

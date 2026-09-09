@@ -5,7 +5,6 @@ import userEvent from "@testing-library/user-event"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { DynamicForm } from "@/features/assets/DynamicForm"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
-import { Timeline } from "@/features/transfers/Timeline"
 import { StateBoundary } from "@/components/StateBoundary"
 import { Button } from "@/components/ui/button"
 import type { BoundField, FieldType } from "@/lib/types"
@@ -95,32 +94,11 @@ describe("keyboard reachability and labelling", () => {
     expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument()
   })
 
-  it("names the timeline and each of its entries", () => {
-    renderWithProviders(
-      <Timeline
-        events={[
-          {
-            id: "e1",
-            asset_id: "a1",
-            batch_id: null,
-            kind: "checkout",
-            from_status: "in_stock",
-            from_holder: { type: "entity", id: "loc", name: "上海仓库" },
-            from_owner_id: "u1",
-            to_status: "in_use",
-            to_holder: { type: "user", id: "u2", name: "张三" },
-            to_owner_id: "u1",
-            due_at: null,
-            created_at: "2026-08-28T09:00:00Z",
-            edited_at: null,
-            edited_by: null,
-          },
-        ]}
-      />,
-    )
-    expect(screen.getByRole("list", { name: "流转历史" })).toBeInTheDocument()
-    expect(screen.getByRole("listitem", { name: "签出" })).toBeInTheDocument()
-  })
+  // The timeline this used to check is gone: 023 turned both places that
+  // rendered it into tables, which reach the accessibility tree through
+  // table roles rather than through a named list. What it was protecting --
+  // that a movement says what kind it is -- now lives with the tables that
+  // show one, in assetDetail and the movement log.
 
   it("gives the retry control a reachable name", async () => {
     const user = userEvent.setup()

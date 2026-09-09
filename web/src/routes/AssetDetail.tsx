@@ -10,13 +10,28 @@ import type { Asset, CategorySchema, HolderEntity, User } from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
 import { NONE } from "@/lib/select"
 import type { Transfer } from "@/lib/transferTypes"
-import { t, tTransfer } from "@/i18n"
+import { t, tAudit, tTransfer } from "@/i18n"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { StateBoundary } from "@/components/StateBoundary"
 import { DynamicForm } from "@/features/assets/DynamicForm"
 import { attrText, fieldsForModel } from "@/features/assets/modelFields"
-import { Timeline } from "@/features/transfers/Timeline"
+import { TransferChange } from "@/features/transfers/TransferChange"
+import { TableFrame } from "@/features/common/TableFrame"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { EditEvent } from "@/features/transfers/EditEvent"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { ModelPicker } from "@/features/assets/ModelPicker"
@@ -383,16 +398,54 @@ export function AssetDetail() {
                   {editing && (
                     <EditEvent event={editing} assetID={id} onClose={() => setEditing(null)} />
                   )}
-                  {/* The last few answer nearly every question anybody opens this
-                  for. Forty events in a dialog is a page inside a box, with
-                  one scrollbar inside another. */}
-                  <Timeline
-                    events={events}
-                    isLoading={timeline.isLoading}
-                    error={timeline.error as Error | null}
-                    editableId={tailID}
-                    onEdit={setEditing}
-                  />
+                  {/* A table, like every other list here. No asset column: the
+                      whole page is one device, and a column repeating its
+                      number forty times says nothing forty times.
+
+                      Correcting goes in the right-click menu rather than a
+                      button in the cell -- a control inside a row fires with
+                      the row, and one click gives two results. Only the last
+                      event can be corrected, and the item for the others is
+                      disabled rather than absent: somebody who cannot see it
+                      cannot learn it exists. */}
+                  <TableFrame>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{tAudit.when}</TableHead>
+                          <TableHead>{tAudit.change}</TableHead>
+                          <TableHead>{tAudit.actor}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {events.map((ev) => (
+                          <ContextMenu key={ev.id}>
+                            <ContextMenuTrigger asChild>
+                              <TableRow>
+                                <TableCell className="whitespace-nowrap">
+                                  {new Date(ev.created_at).toLocaleString()}
+                                </TableCell>
+                                <TableCell>
+                                  <TransferChange event={ev} />
+                                </TableCell>
+                                <TableCell className="whitespace-nowrap">
+                                  {ev.actor?.name ?? t.common.none}
+                                </TableCell>
+                              </TableRow>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent>
+                              <ContextMenuItem
+                                disabled={ev.id !== tailID}
+                                onSelect={() => setEditing(ev)}
+                              >
+                                {tTransfer.editTail}
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          </ContextMenu>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableFrame>
                 </div>
               </section>
 

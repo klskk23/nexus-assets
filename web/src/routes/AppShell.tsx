@@ -38,7 +38,13 @@ function navLinks(can: (p: Permission) => boolean) {
     // The one page that is hidden rather than shown with dead buttons: it has
     // nothing on it a reader without the permission may see, and an entry that
     // only ever answers 403 is worse than no entry.
-    ...(can("audit.read") ? [{ to: "/audit", label: t.nav.audit }] : []),
+    // Either half is enough to have somewhere to go: the entry leads to
+    // whichever audit the person can actually open. Still hidden rather than
+    // disabled, for the reason it always was -- an entry that only answers 403
+    // is worse than no entry.
+    ...(can("audit.read") || can("transfer.audit")
+      ? [{ to: can("audit.read") ? "/audit" : "/audit/transfers", label: t.nav.audit }]
+      : []),
   ]
 }
 

@@ -49,6 +49,28 @@ const overview = {
       created_at: "2026-08-28T09:00:00Z",
       edited_at: null,
       edited_by: null,
+      asset_display_name: "NX-0001",
+    },
+    {
+      // Same batch as the one above: twenty devices moved at once produce
+      // twenty movements, and this fixture holds two of them so the row count
+      // means something. The old fixture held one, so the test that claimed to
+      // check folding could not have seen it either way.
+      id: "t2",
+      asset_id: "a2",
+      batch_id: "b1",
+      kind: "checkout",
+      from_status: "in_stock",
+      from_holder: { type: "entity", id: "loc", name: "上海仓库" },
+      from_owner_id: "u1",
+      to_status: "in_use",
+      to_holder: { type: "entity", id: "cust", name: "XX 集团" },
+      to_owner_id: "u1",
+      due_at: null,
+      created_at: "2026-08-28T09:00:00Z",
+      edited_at: null,
+      edited_by: null,
+      asset_display_name: "NX-0002",
     },
   ],
 }
@@ -157,13 +179,21 @@ describe("Overview", () => {
     expect(navigate).toHaveBeenCalledWith("/assets?category_id=net&include_descendants=true")
   })
 
-  it("folds a batch in the recent list", async () => {
+  // 023 stopped folding, and the reason is the column that replaced it.
+  //
+  // The old card showed "moved 20 devices" as one entry, which reads well until
+  // you ask which twenty -- and that question is the whole reason this card
+  // exists. A row per device answers it, at the cost of a large batch filling
+  // the card. Accepted: the card shows a chosen number of most recent
+  // movements, and a batch of twenty genuinely IS the twenty most recent.
+  it("gives a batch one row per device, each naming its own", async () => {
     renderWithProviders(<Overview />)
-    // Scoped to the timeline: the category distribution is a list too.
-    const timeline = await screen.findByRole("list", { name: "流转历史" })
-    const rows = within(timeline).getAllByRole("listitem")
-    expect(rows).toHaveLength(1)
-    expect(within(rows[0]).getByText("XX 集团", { exact: false })).toBeInTheDocument()
+    const table = await screen.findByRole("table")
+    // Header plus one row per movement, rather than one folded entry.
+    expect(within(table).getAllByRole("row")).toHaveLength(3)
+    // And each names its own device, which is the point of not folding.
+    expect(within(table).getByText("NX-0001")).toBeInTheDocument()
+    expect(within(table).getByText("NX-0002")).toBeInTheDocument()
   })
 
   // Entering a device is the page's action, not a section of it. It used to

@@ -22,6 +22,15 @@ export interface Transfer {
   note?: string
   due_at: string | null
   actor?: User
+  /**
+   * The asset's readable number, resolved by the server at read time.
+   *
+   * Not stored on the transfer: the number is whichever attribute the asset's
+   * category nominates, so it is a join away rather than a column. Without it
+   * a movement can only name its asset as a uuid, which is exactly what made
+   * the overview's recent movements unreadable.
+   */
+  asset_display_name?: string
   created_at: string
   edited_at: string | null
   edited_by: string | null

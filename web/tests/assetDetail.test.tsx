@@ -393,8 +393,9 @@ it("shows every movement, with nowhere else to go for the rest", async () => {
   await screen.findByText("112394521950")
 
   // Six events, six rows -- the slice to five is what this asserts is gone.
-  const timeline = await screen.findByRole("list", { name: tTransfer.timeline })
-  expect(within(timeline).getAllByRole("listitem")).toHaveLength(6)
+  // A table now, so the rows are rows: the header counts as one, hence +1.
+  const table = await screen.findByRole("table")
+  expect(within(table).getAllByRole("row")).toHaveLength(7)
 
   // And no way out to a longer version of the same thing.
   expect(
@@ -435,6 +436,67 @@ describe("标题下面那一行", () => {
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
     expect(screen.queryByText(/推导/)).not.toBeInTheDocument()
+  })
+})
+
+// The correction window closes as soon as the device moves again, so only the
+// last event can be corrected. These three moved here from editEvent.test.tsx
+// when 023 turned the timeline into a table: a table may not put a control in
+// a cell -- it fires with the row, and one click gives two results -- so the
+// correction is a right-click item.
+describe("更正一条流转", () => {
+  const ev = (id: string, at: string) => ({
+    id,
+    asset_id: "a1",
+    batch_id: null,
+    kind: "transfer",
+    from_status: "in_stock",
+    from_holder: { type: "entity", id: "loc", name: "上海仓库" },
+    from_owner_id: null,
+    to_status: "in_stock",
+    to_holder: { type: "entity", id: "loc", name: "上海仓库" },
+    to_owner_id: "u1",
+    due_at: null,
+    created_at: at,
+    edited_at: null,
+    edited_by: null,
+  })
+
+  async function rows() {
+    get.mockReset().mockImplementation((p: string) =>
+      p === "/assets/a1/transfers"
+        ? Promise.resolve([ev("old", "2026-08-01T00:00:00Z"), ev("newest", "2026-08-28T00:00:00Z")])
+        : route(p),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+    const table = await screen.findByRole("table")
+    return { user, rows: within(table).getAllByRole("row") }
+  }
+
+  it("最后一条可以更正", async () => {
+    const { user, rows: r } = await rows()
+    // Header is row 0; the tail is the last one.
+    await user.pointer({ keys: "[MouseRight>]", target: r[r.length - 1] })
+    const menu = await screen.findByRole("menu")
+    // Radix marks a menu item with aria-disabled rather than the HTML
+    // attribute, so that is what "enabled" means here.
+    expect(within(menu).getByRole("menuitem", { name: /修改这条记录/ })).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
+  })
+
+  // Disabled, not absent: somebody who cannot use it can still learn it exists.
+  it("其余各条的菜单项禁用而不是消失", async () => {
+    const { user, rows: r } = await rows()
+    await user.pointer({ keys: "[MouseRight>]", target: r[1] })
+    const menu = await screen.findByRole("menu")
+    expect(within(menu).getByRole("menuitem", { name: /修改这条记录/ })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
   })
 })
 

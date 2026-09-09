@@ -535,7 +535,6 @@ export const enMeta: typeof zhMeta = {
 }
 
 export const enTransfer: typeof zhTransfer = {
-  timeline: "Transfer history",
   current: "Current",
   empty: "No transfers yet",
   emptyHint: "Check this device out, return it or move it, and the record appears here.",
@@ -547,10 +546,7 @@ export const enTransfer: typeof zhTransfer = {
     reassign: "Owner changed",
     status_change: "Status changed",
   },
-  batch: (n: number) => `Batch (${n} devices)`,
-  by: "By",
   note: "Note",
-  edited: (who: string) => `Corrected by ${who}`,
   editTail: "Correct this record",
   editHint: "Only the newest record can be corrected; a later transfer locks this one.",
   cancel: "Cancel",
@@ -676,6 +672,18 @@ export const enImport: typeof zhImport = {
 }
 
 export const enAudit: typeof zhAudit = {
+  tabOperations: "Operations",
+  tabMovements: "Movements",
+  movementsTitle: "Movement log",
+  movementsHint: "Every device movement in the system. The tab beside it records configuration changes; the two come from different tables.",
+  movementsEmpty: "No movements yet",
+  movementsEmptyFiltered: "Nothing matches these filters. Change one, or clear them.",
+  assetNumber: "Asset number",
+  assetNumberPlaceholder: "Part of the number is enough",
+  allKinds: "Any action",
+  kind: "Action",
+  anyTime: "Any time",
+  change: "What changed",
   title: "Change audit",
   hint:
     "Asset transfers have their own timeline; this records configuration changes to categories, fields, models, holders and accounts.",

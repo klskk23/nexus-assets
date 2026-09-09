@@ -1,18 +1,27 @@
 import { ChartColumnIcon, PlusIcon } from "lucide-react"
 import { useState } from "react"
-import { useNavigate } from "react-router"
+import { Link, useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 
 import { api } from "@/lib/api"
 import type { AssetStatus, Category } from "@/lib/types"
 import type { Transfer } from "@/lib/transferTypes"
-import { t, tOverview } from "@/i18n"
+import { t, tAudit, tOverview } from "@/i18n"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { StateBoundary } from "@/components/StateBoundary"
 import { DistributionBar } from "@/features/overview/DistributionBar"
 import { PageHeader } from "@/features/common/PageHeader"
-import { Timeline } from "@/features/transfers/Timeline"
+import { TransferChange } from "@/features/transfers/TransferChange"
+import { TableFrame } from "@/features/common/TableFrame"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import {
   Empty,
@@ -171,7 +180,47 @@ export function Overview() {
                 </Select>
               </Field>
             </div>
-            <Timeline events={overview.data?.recent_transfers ?? []} />
+            {/* A table, not the device page's timeline. That component is
+                right where it lives -- the whole page is one device, so every
+                row repeating its number would be noise -- and wrong here,
+                where the rows come from all over the ledger and the first
+                thing anybody wants to know is which device. Same component,
+                same correct code, a premise that stopped holding. */}
+            <TableFrame>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{tAudit.when}</TableHead>
+                    <TableHead>{t.assets.title}</TableHead>
+                    <TableHead>{tAudit.change}</TableHead>
+                    <TableHead>{tAudit.actor}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(overview.data?.recent_transfers ?? []).map((it) => (
+                    <TableRow key={it.id}>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(it.created_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          to={`/assets/${it.asset_id}`}
+                          className="font-heading tabular-nums hover:text-primary"
+                        >
+                          {it.asset_display_name ?? it.asset_id}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <TransferChange event={it} />
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {it.actor?.name ?? t.common.none}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableFrame>
           </section>
         </div>
       </StateBoundary>
