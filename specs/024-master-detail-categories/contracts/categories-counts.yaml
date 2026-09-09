@@ -1,0 +1,31 @@
+# GET /categories/counts — 每个类别的子树设备数
+#
+# 与概览类别分布同一份结果：概览的根类别数字取自这里的根条目，
+# 所以两处不是「口径一致」，是同一个数字被读了两次（024 FR-007）。
+paths:
+  /categories/counts:
+    get:
+      summary: 每个类别（含其子树）的设备数
+      description: >
+        键是类别 id，值是该类别子树下的设备数，含子类别、排除标记为
+        「不计入类别分布」（counts_as_available = 0）的状态。
+        没有设备的类别也会出现，值为 0 —— 缺键与 0 在界面上会被读成不同的意思。
+        读默认全开放，与 GET /categories 一致，不设权限守卫。
+        不分页、不筛选：类别是配置不是数据。
+      operationId: categoryCounts
+      tags: [categories]
+      responses:
+        "200":
+          description: 类别 id 到设备数的映射
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                  minimum: 0
+              example:
+                67ce19e7-fa06-4148-8b88-e7242fa0aa50: 40
+                6f344826-7900-4427-a15f-ac59acdc2c2d: 12
+        "401":
+          description: 未登录

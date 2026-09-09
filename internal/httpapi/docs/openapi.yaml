@@ -411,6 +411,28 @@ paths:
         "200": { description: OK }
     post: { tags: [metadata], summary: 新建类别, responses: { "201": { description: Created } } }
 
+  /categories/counts:
+    get:
+      tags: [metadata]
+      summary: 每个类别（含其子树）的设备数
+      description: >
+        键是类别 id，值是该类别子树下的设备数（024 决策 155）。
+        含子类别，排除标记为「不计入类别分布」（`counts_as_available = 0`）的状态 ——
+        与 `/overview` 的 `category_distribution` **同一份结果**：概览的根类别数字
+        就是这里根类别的那几条。两处不是「口径一致」，是同一个数字被读了两次，
+        所以构造上不可能不等。
+        **没有设备的类别也会出现，值为 0** —— 缺键与 0 在界面上读起来不是一回事：
+        树上该有数字的地方留白，读作「没加载出来」，不是「没有」。
+        读默认全开放，与 `GET /categories` 一致。不分页不筛选：类别是配置不是数据。
+      responses:
+        "200":
+          description: 类别 id 到设备数的映射
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: { type: integer, minimum: 0 }
+
   /categories/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }

@@ -29,7 +29,13 @@ export const router = createBrowserRouter([
         path: "assets/:id",
         lazy: async () => ({ Component: (await import("./AssetDetail")).AssetDetail }),
       },
+      // Two paths, one component. Not a parent with an <Outlet />: the tree
+      // has to stay put while the right pane changes, and splitting it across
+      // a route boundary would mean the search term, the category list and the
+      // selection all live above a child that needs all three -- the shape 016
+      // decision 107 warns about.
       { path: "categories", lazy: async () => ({ Component: (await import("./Categories")).Categories }) },
+      { path: "categories/:id", lazy: async () => ({ Component: (await import("./Categories")).Categories }) },
       { path: "fields", lazy: async () => ({ Component: (await import("./Fields")).Fields }) },
       { path: "models", lazy: async () => ({ Component: (await import("./Models")).Models }) },
       // Its own route, not a tab inside /models: a CrudPage keeps its search

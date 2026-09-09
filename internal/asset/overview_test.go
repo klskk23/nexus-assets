@@ -1,6 +1,7 @@
 package asset
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/klskk23/nexus-assets/internal/model"
@@ -122,5 +123,132 @@ func TestOverviewOnAnEmptyDatabase(t *testing.T) {
 	}
 	if len(ov.CategoryDistribution) != 1 || ov.CategoryDistribution[0].Count != 0 {
 		t.Errorf("a configured but empty category should read zero, got %+v", ov.CategoryDistribution)
+	}
+}
+
+// The tree count is what the categories page puts beside every node, and it
+// has to agree with the overview exactly (024 FR-007). These four tests pin
+// the two ways it can be wrong without looking wrong.
+
+// Every level on the chain gets the device, and gets it once. AncestorIDs
+// already includes the category itself, so an implementation that appends the
+// id again doubles every leaf -- and leaves the root looking roughly right,
+// which is the hardest version to spot from the numbers.
+func TestSubtreeCountsAddOncePerLevel(t *testing.T) {
+	f := newFixture(t)
+	grand, err := f.schema.CreateCategory(f.ctx, schema.CreateCategoryInput{
+		Code: "EDGE", Name: "边缘型", ParentID: &f.catID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.save(t, SaveInput{
+		CategoryID: grand.ID, Attrs: map[string]any{"mac": "001A2B3C4D01"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	counts, err := f.svc.SubtreeCountsByCategory(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		id   string
+		what string
+	}{{f.rootID, "root"}, {f.catID, "middle"}, {grand.ID, "leaf"}} {
+		if counts[c.id] != 1 {
+			t.Errorf("%s = %d, want 1 (one device, counted once at each level)", c.what, counts[c.id])
+		}
+	}
+}
+
+// A category counts what hangs off it directly, not only what its children
+// hold. The mirror image of the bug above: drop the category itself from the
+// chain and every parent under-reports by exactly its own devices.
+func TestSubtreeCountsIncludeTheCategoryItself(t *testing.T) {
+	f := newFixture(t)
+	if _, err := f.save(t, SaveInput{
+		CategoryID: f.rootID, Attrs: map[string]any{"mac": "001A2B3C4D01"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.save(t, SaveInput{
+		CategoryID: f.rootID, Attrs: map[string]any{"mac": "001A2B3C4D02"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D03"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	counts, err := f.svc.SubtreeCountsByCategory(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counts[f.rootID] != 3 {
+		t.Errorf("root = %d, want 3 (its own two plus the child's one)", counts[f.rootID])
+	}
+	if counts[f.catID] != 1 {
+		t.Errorf("child = %d, want 1", counts[f.catID])
+	}
+}
+
+// The same statuses the overview leaves out. "How many of these do we have"
+// is a question about usable stock at both ends of the system.
+func TestSubtreeCountsLeaveOutWhatTheDistributionLeavesOut(t *testing.T) {
+	f := newFixture(t)
+	a, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D01"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.save(t, SaveInput{
+		ID: a.ID, Version: a.Version, Status: model.StatusRetired,
+		Attrs: map[string]any{"mac": "001A2B3C4D01"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	counts, err := f.svc.SubtreeCountsByCategory(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counts[f.rootID] != 0 || counts[f.catID] != 0 {
+		t.Errorf("retired counts nowhere, got root=%d child=%d", counts[f.rootID], counts[f.catID])
+	}
+}
+
+// The two numbers are compared against each other, not each against a
+// constant. Two tests asserting `== 3` would both pass on the day the two
+// paths start disagreeing, because a fixture change moves both constants and
+// nothing notices the drift.
+func TestOverviewAndSubtreeCountsAgreeByConstruction(t *testing.T) {
+	f := newFixture(t)
+	grand, err := f.schema.CreateCategory(f.ctx, schema.CreateCategoryInput{
+		Code: "EDGE", Name: "边缘型", ParentID: &f.catID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, cat := range []string{f.rootID, f.catID, grand.ID, grand.ID} {
+		if _, err := f.save(t, SaveInput{
+			CategoryID: cat, Attrs: map[string]any{"mac": fmt.Sprintf("001A2B3C4D0%d", i+1)},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	ov, err := f.svc.Overview(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	counts, err := f.svc.SubtreeCountsByCategory(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cc := range ov.CategoryDistribution {
+		if counts[cc.CategoryID] != cc.Count {
+			t.Errorf("%s: overview says %d, the tree says %d -- one category cannot have two answers",
+				cc.Name, cc.Count, counts[cc.CategoryID])
+		}
 	}
 }

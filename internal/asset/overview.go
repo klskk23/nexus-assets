@@ -71,37 +71,74 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 		return out, err
 	}
 
-	perCategory, err := s.availableByCategory(ctx, statuses)
+	// The roots' numbers are read out of the same map the categories page
+	// shows beside every node -- not computed a second time here. Two callers
+	// of one helper can still drift, because each does its own rolling up; one
+	// map read twice cannot. That is what FR-007 asks for, and the reason the
+	// rollup that used to live here is gone.
+	subtree, err := s.subtreeCounts(ctx, statuses, categories)
 	if err != nil {
 		return out, err
 	}
 
-	// Roll each category up to the root of its chain, in memory.
-	roots := map[string]*CategoryCount{}
-	order := []string{}
-	pathByID := make(map[string]string, len(categories))
-	nameByID := make(map[string]string, len(categories))
+	out.CategoryDistribution = make([]CategoryCount, 0, len(categories))
 	for _, c := range categories {
-		pathByID[c.ID] = c.Path
-		nameByID[c.ID] = c.Name
 		if c.ParentID == nil {
-			roots[c.ID] = &CategoryCount{CategoryID: c.ID, Name: c.Name}
-			order = append(order, c.ID)
+			out.CategoryDistribution = append(out.CategoryDistribution,
+				CategoryCount{CategoryID: c.ID, Name: c.Name, Count: subtree[c.ID]})
 		}
 	}
-	for id, n := range perCategory {
-		ids := schema.AncestorIDs(pathByID[id])
-		if len(ids) == 0 {
-			continue
-		}
-		if root, ok := roots[ids[0]]; ok {
-			root.Count += n
-		}
+	return out, nil
+}
+
+// SubtreeCountsByCategory answers "how many devices are in this category",
+// for every category, once.
+//
+// Every category is present, including the ones holding nothing: a missing key
+// and a zero read differently on screen, and a tree row with a blank where a
+// number belongs says "not loaded", not "none".
+func (s *Service) SubtreeCountsByCategory(ctx context.Context) (map[string]int, error) {
+	statuses, err := s.schema.StatusSet(ctx)
+	if err != nil {
+		return nil, err
+	}
+	categories, err := s.schema.ListCategories(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.subtreeCounts(ctx, statuses, categories)
+}
+
+// subtreeCounts adds each category's own devices to itself and to every
+// ancestor above it.
+//
+// AncestorIDs returns the whole chain *including the category itself*, so this
+// loop already credits both. Appending the id again is the bug this is written
+// to avoid: it doubles every leaf while leaving roots looking roughly right,
+// which is the version nobody catches by reading the numbers.
+func (s *Service) subtreeCounts(
+	ctx context.Context, statuses model.StatusSet, categories []model.Category,
+) (map[string]int, error) {
+	direct, err := s.availableByCategory(ctx, statuses)
+	if err != nil {
+		return nil, err
 	}
 
-	out.CategoryDistribution = make([]CategoryCount, 0, len(order))
-	for _, id := range order {
-		out.CategoryDistribution = append(out.CategoryDistribution, *roots[id])
+	pathByID := make(map[string]string, len(categories))
+	out := make(map[string]int, len(categories))
+	for _, c := range categories {
+		pathByID[c.ID] = c.Path
+		out[c.ID] = 0
+	}
+	for id, n := range direct {
+		for _, anc := range schema.AncestorIDs(pathByID[id]) {
+			// A category deleted between the two reads leaves counts with no
+			// row to sit on; dropping them beats inventing a key for a
+			// category the caller has never heard of.
+			if _, known := out[anc]; known {
+				out[anc] += n
+			}
+		}
 	}
 	return out, nil
 }

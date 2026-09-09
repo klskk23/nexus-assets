@@ -60,3 +60,21 @@ func (s *Server) overview(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, overviewResponse{Overview: summary, RecentTransfers: recent})
 }
+
+// categoryCounts is how many devices sit in each category, subtree included.
+//
+// Beside the overview's handler rather than with the category CRUD, because it
+// is the same number the overview shows and it comes from the same map. Put it
+// next to the categories and the next person adds a second way to count.
+//
+// No permission: reading is open by default, as GET /categories is. No paging
+// and no filter either -- it answers "how many in each", and categories are
+// configuration, not data.
+func (s *Server) categoryCounts(c *gin.Context) {
+	counts, err := s.assets.SubtreeCountsByCategory(c.Request.Context())
+	if err != nil {
+		FailErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, counts)
+}

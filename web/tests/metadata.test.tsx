@@ -68,6 +68,7 @@ const schema = {
 
 function route(p: string) {
   if (p === "/categories") return Promise.resolve(categories)
+  if (p === "/categories/counts") return Promise.resolve({ net: 2, rt: 2 })
   if (p === "/models") return Promise.resolve(productModels)
   // The library is paged and filterable now, so it answers with an envelope.
   if (p.startsWith("/fields")) {
@@ -407,21 +408,32 @@ describe("Users page", () => {
 })
 
 describe("Categories page", () => {
-  it("lists a category's fields and shows which ancestor each came from", async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Categories />)
+  // No dialog. This is the whole point of 024: what a category records used to
+  // be visible only inside the edit dialog, so answering the question for two
+  // categories meant opening and closing one per category, comparing from
+  // memory because the dialog hid the tree behind it.
+  it("lists a category's fields, and where each one came from, without opening anything", async () => {
+    renderWithProviders(<Categories />, { route: "/categories/rt", path: "/categories/:id" })
 
-    await user.click(await screen.findByRole("row", { name: /^SDWAN 路由器/ }))
-
-    // The label also appears in the bind dropdown, so scope to the field row.
     const inherited = await screen.findByRole("row", { name: /基准 MAC/ })
     expect(within(inherited).getByText("网络设备")).toBeInTheDocument()
     expect(within(inherited).getByText("必填")).toBeInTheDocument()
 
     const own = screen.getByRole("row", { name: /固件版本/ })
     expect(within(own).queryByText("网络设备")).not.toBeInTheDocument()
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
+  // Binding is answered on the field, where "where does this belong" is the
+  // question being asked (v6 decision 72). The pane says so and stops there.
+  it("字段那一块只读：没有解绑，也没有排序手柄", async () => {
+    renderWithProviders(<Categories />, { route: "/categories/rt", path: "/categories/:id" })
+    const row = await screen.findByRole("row", { name: /基准 MAC/ })
+
+    expect(within(row).queryByRole("button")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /解绑/ })).not.toBeInTheDocument()
+  })
 })
 
 // The server has attached the blocking devices since the first version. The

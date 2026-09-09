@@ -25,9 +25,9 @@ func TestOrdinaryUserCanWorkButNotConfigure(t *testing.T) {
 	// Reads are open to anyone signed in: the ledger's value is that everybody
 	// can look things up (decision 78).
 	for _, path := range []string{
-		"/api/assets", "/api/assets/" + id, "/api/categories", "/api/fields",
-		"/api/models", "/api/statuses", "/api/holders", "/api/users", "/api/roles",
-		"/api/overview",
+		"/api/assets", "/api/assets/" + id, "/api/categories", "/api/categories/counts",
+		"/api/fields", "/api/models", "/api/statuses", "/api/holders", "/api/users",
+		"/api/roles", "/api/overview",
 	} {
 		if rec := h.doAs(t, tok, http.MethodGet, path, ""); rec.Code != http.StatusOK {
 			t.Errorf("GET %s should be open to everyone, got %d", path, rec.Code)

@@ -94,6 +94,10 @@ func (s *Server) Router() *gin.Engine {
 	authed.POST("/categories", need(authz.SchemaManage), s.createCategory)
 	authed.PATCH("/categories/:id", need(authz.SchemaManage), s.patchCategory)
 	authed.DELETE("/categories/:id", need(authz.SchemaManage), s.deleteCategory)
+	// Static segment beside the "/categories/:id/..." routes below. Registered
+	// before them so the conflict, if the router ever stops allowing both, is a
+	// panic at boot rather than a category whose id happens to be "counts".
+	authed.GET("/categories/counts", s.categoryCounts)
 	authed.GET("/categories/:id/schema", s.categorySchema)
 
 	authed.GET("/fields", s.listFields)

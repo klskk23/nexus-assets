@@ -489,6 +489,7 @@ export const enMeta: typeof zhMeta = {
     searchHint: "name, code",
     title: "Categories",
     create: "New category",
+    codeShort: "Code",
     code: "Code (usable in templates)",
     name: "Name",
     parent: "Parent category",
@@ -496,9 +497,6 @@ export const enMeta: typeof zhMeta = {
     delete: "Delete category",
     edit: "Edit category",
     editTitle: "Edit category",
-    createChild: "New child category",
-    expand: "Show children",
-    collapse: "Hide children",
     displayKey: "Number field",
     printPreset: "Labels it can print",
     printPresetHint:
@@ -520,6 +518,12 @@ export const enMeta: typeof zhMeta = {
       `${n} devices are already recorded here. They are not re-checked, but the next edit of any ` +
       `of them will not save until this field is filled in.`,
     unbind: "Unbind",
+    noMatches: "No category matches",
+    noMatchesHint: "Searches names and codes; try another word.",
+    noFields: "This category has no fields yet",
+    notFound: "No such category",
+    notFoundHint: "It may have been deleted. Pick one on the left.",
+    seeAssets: (n: number) => `See this category's ${n} devices, subcategories included`,
     bindElsewhere: "Bindings are made on the Fields page: open a field and bind it to a category.",
     unbindTitle: "Unbind from this category",
     unbindHint: (label: string) =>

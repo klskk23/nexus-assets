@@ -1,19 +1,21 @@
-import { AlertCircleIcon, PlusIcon } from "lucide-react"
+import { AlertCircleIcon } from "lucide-react"
 import { useState } from "react"
+import { useParams, useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category } from "@/lib/types"
-import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
 import { StateBoundary } from "@/components/StateBoundary"
-import { ListToolbar } from "@/features/common/ListToolbar"
 import { PageHeader } from "@/features/common/PageHeader"
-import { useListQuery } from "@/features/common/useListQuery"
-import { CategoryTable } from "@/features/categories/CategoryTable"
+import { MasterDetail } from "@/features/common/MasterDetail"
+import { useMasterSelection } from "@/features/common/useMasterSelection"
+import { CategoryTree } from "@/features/categories/CategoryTree"
+import { CategoryDetail } from "@/features/categories/CategoryDetail"
 import { CategoryEditor } from "@/features/categories/CategoryEditor"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import {
   Dialog,
   DialogClose,
@@ -21,7 +23,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
@@ -41,8 +42,19 @@ export function Categories() {
   // No paging here: page two of a tree can begin with a child whose parent was
   // on page one, and the indent would then be measured against nothing. See
   // decision 91.
-  const listQuery = useListQuery()
-  const { deniedReason } = usePermissions()
+  const { id } = useParams()
+  // The search term stays in the address, the way it did when useListQuery was
+  // doing it as a side effect. Dropping to useState here would have lost that
+  // silently -- nothing would fail, the term would simply stop surviving a
+  // refresh or a paste. replace, not push: a filter is not a place you went.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const search = searchParams.get("q") ?? ""
+  const setSearch = (q: string) => {
+    const next = new URLSearchParams(searchParams)
+    if (q) next.set("q", q)
+    else next.delete("q")
+    setSearchParams(next, { replace: true })
+  }
   const [code, setCode] = useState("")
   const [name, setName] = useState("")
   const [parentId, setParentId] = useState("")
@@ -54,6 +66,12 @@ export function Categories() {
   const categories = useQuery({
     queryKey: ["categories"],
     queryFn: () => api.get<Category[]>("/categories"),
+  })
+  // The same map the overview reads -- one system, one answer to "how many of
+  // these do we have".
+  const counts = useQuery({
+    queryKey: ["category-counts"],
+    queryFn: () => api.get<Record<string, number>>("/categories/counts"),
   })
 
   const create = useMutation({
@@ -72,27 +90,30 @@ export function Categories() {
     create.reset()
   }
 
+  const items = categories.data ?? []
+  const selection = useMasterSelection(
+    items.map((c) => c.id),
+    id,
+  )
+  const current = items.find((c) => c.id === selection.current) ?? null
+
+
   return (
     <div>
-      {/* The list is what the page is for; creating a category is occasional,
-          so the form waits behind a button. */}
-      <PageHeader title={tMeta.categories.title} hint={tMeta.categories.selectHint}>
-        <Dialog
-          open={createOpen}
-          onOpenChange={(next) => {
-            setCreateOpen(next)
-            if (!next) resetCreateForm()
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button
-              disabled={deniedReason("schema.manage") !== undefined}
-              title={deniedReason("schema.manage")}
-            >
-              <PlusIcon />
-              {tMeta.categories.create}
-            </Button>
-          </DialogTrigger>
+      <PageHeader title={tMeta.categories.title} hint={tMeta.categories.selectHint} />
+
+      {/* The trigger lives at the foot of the tree, not up here: creating a
+          category is something you do while looking at the ones that exist,
+          and the page header is where a *page* action goes. Controlled from
+          there rather than wrapped around it, so the button stays part of the
+          list it belongs to. */}
+      <Dialog
+        open={createOpen}
+        onOpenChange={(next) => {
+          setCreateOpen(next)
+          if (!next) resetCreateForm()
+        }}
+      >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{tMeta.categories.create}</DialogTitle>
@@ -149,29 +170,56 @@ export function Categories() {
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
-      </PageHeader>
+      </Dialog>
 
-      {/* 56px below the title, 22px inside the list -- and stated here rather
-          than as one gap on the root, whose other children are dialogs. */}
-      <div className="mt-14 grid gap-[22px]">
-        <ListToolbar q={listQuery.q} onQ={listQuery.setQ} searchHint={tMeta.categories.searchHint} />
-
+      {/* 56px below the title. The two panes state their own inner gap. */}
+      <div className="mt-14">
         <StateBoundary
           isLoading={categories.isLoading}
           error={categories.error as Error | null}
-          isEmpty={categories.data?.length === 0}
-          emptyTitle={tMeta.categories.empty}
-          emptyHint={tMeta.categories.emptyHint}
+          onRetry={() => categories.refetch()}
         >
-          <CategoryTable
-            categories={categories.data ?? []}
-            search={listQuery.q}
-            onOpen={setEditing}
-            onCreateChild={(c) => {
-              setParentId(c.id)
-              setCreateOpen(true)
-            }}
+          <MasterDetail
+            selected={Boolean(id)}
+            list={
+              <CategoryTree
+                categories={items}
+                counts={counts.data ?? {}}
+                search={search}
+                onSearch={setSearch}
+                currentID={selection.current}
+                onCreate={() => setCreateOpen(true)}
+              />
+            }
+            detail={
+              // Nothing at all when there are no categories: the rail already
+              // says so and offers the way out, and a second copy of the same
+              // sentence beside it is the page saying it twice.
+              items.length === 0 ? null : current ? (
+                <CategoryDetail
+                  key={current.id}
+                  category={current}
+                  categories={items}
+                  count={counts.data?.[current.id] ?? 0}
+                  onEdit={() => setEditing(current)}
+                />
+              ) : (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyTitle>
+                      {selection.missing
+                        ? tMeta.categories.notFound
+                        : tMeta.categories.empty}
+                    </EmptyTitle>
+                    <EmptyDescription>
+                      {selection.missing
+                        ? tMeta.categories.notFoundHint
+                        : tMeta.categories.emptyHint}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              )
+            }
           />
         </StateBoundary>
       </div>

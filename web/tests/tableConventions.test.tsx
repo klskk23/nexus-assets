@@ -107,21 +107,22 @@ describe("every table page searches, filters and pages the same way", () => {
 })
 
 describe("the category tree", () => {
-  it("flattens to full paths while searching, and folds back after", async () => {
+  // Rows rather than table rows now (024): the tree is the page's left rail.
+  // What survives from 014 decision 91 is the reason -- showing only the hits
+  // removes the parents the indent was measured against, so a match states its
+  // whole path instead of claiming a position under nothing.
+  it("flattens to full paths while searching, and goes back to a tree after", async () => {
     const user = userEvent.setup()
-    renderWithProviders(<Categories />)
-    await screen.findByRole("row", { name: /SDWAN 路由器/ })
+    renderWithProviders(<Categories />, { route: "/categories/rt", path: "/categories/:id" })
+    await screen.findByRole("link", { name: /SDWAN 路由器/ })
 
     await user.type(screen.getByLabelText("名称、编码"), "SDWAN")
 
-    // Only the hit is left, so the indent has nothing to be measured against
-    // -- the row says where it sits instead.
-    const row = await screen.findByRole("row", { name: /网络设备 \/ SDWAN 路由器/ })
-    expect(row).toBeInTheDocument()
-    expect(screen.queryByRole("row", { name: /^网络设备$/ })).not.toBeInTheDocument()
+    expect(await screen.findByRole("link", { name: /网络设备 \/ SDWAN 路由器/ })).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: /^网络设备$/ })).not.toBeInTheDocument()
 
     await user.clear(screen.getByLabelText("名称、编码"))
-    await screen.findByRole("row", { name: /^网络设备/ })
+    await screen.findByRole("link", { name: /^网络设备/ })
   })
 })
 

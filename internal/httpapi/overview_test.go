@@ -221,3 +221,28 @@ func TestOverviewRecentLimitIsAdjustableAndClamped(t *testing.T) {
 		}
 	}
 }
+
+// A category with nothing in it still gets a key.
+//
+// The tree puts this number beside every node, and a missing key renders as a
+// blank where a digit belongs -- which reads as "not loaded yet", not as
+// "none". The two are different answers and the interface cannot tell them
+// apart after the fact, so the endpoint decides here.
+func TestCategoryCountsIncludeTheEmptyOnes(t *testing.T) {
+	h := newHarness(t)
+	counts := decode[map[string]int](t, h.get(t, "/api/categories/counts"))
+
+	n, ok := counts[h.catID]
+	if !ok {
+		t.Fatalf("the configured category is missing entirely: %+v", counts)
+	}
+	if n != 0 {
+		t.Errorf("no devices yet, got %d", n)
+	}
+
+	h.seed(t, 0, 2)
+	counts = decode[map[string]int](t, h.get(t, "/api/categories/counts"))
+	if counts[h.catID] != 2 {
+		t.Errorf("after seeding two, got %d", counts[h.catID])
+	}
+}

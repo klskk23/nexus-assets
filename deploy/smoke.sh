@@ -81,6 +81,13 @@ test -n "$TOKEN"
 say "an authenticated request"
 curl -fsS "http://127.0.0.1:$PORT/api/categories" -H "Authorization: Bearer $TOKEN" >/dev/null
 
+# The categories page puts one of these beside every node, and the overview
+# reads the same map. A JSON object is what it must be -- an array here would
+# render as blanks where the counts go, which reads as "not loaded".
+say "category counts answer as an object"
+curl -fsS "http://127.0.0.1:$PORT/api/categories/counts" -H "Authorization: Bearer $TOKEN" \
+  | grep -q '^{' 
+
 # Printing is off unless an address is configured, and the interface asks this
 # endpoint whether to show anything printing-related at all. A deployment that
 # answered "true" here with no service behind it would put dead buttons on the
