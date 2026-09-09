@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event"
 import { Models } from "@/routes/Models"
 import { listed } from "@/test/listing"
 import { renderWithProviders } from "@/test/renderWithProviders"
+import { tMeta } from "@/i18n"
 
 const get = vi.fn()
 const post = vi.fn()
@@ -109,6 +110,26 @@ describe("型号页的厂商与型号", () => {
 
     openAt("m1")
     expect(await screen.findByRole("heading", { name: "Latitude 5420" })).toBeInTheDocument()
+  })
+
+  /**
+   * The note is why the pane is worth opening.
+   *
+   * "已停产，改买 5430" is the one thing you need before choosing this model,
+   * and it was on the old table. 025 rewrote this page and dropped it -- along
+   * with the test that would have said so, because the test was rewritten in
+   * the same pass. A feature and its guard can only be deleted together by the
+   * same hand.
+   */
+  it("型号详情显示备注", async () => {
+    openAt("m1")
+    expect(await screen.findByText(/已停产，改买 5430/)).toBeInTheDocument()
+  })
+
+  it("没有备注时不画一个空的备注区", async () => {
+    openAt("m2")
+    await screen.findByRole("heading", { name: "无牌机" })
+    expect(screen.queryByText(tMeta.models.note)).not.toBeInTheDocument()
   })
 
   it("新建厂商", async () => {

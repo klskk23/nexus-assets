@@ -100,7 +100,18 @@ function route(p: string) {
   return Promise.resolve([])
 }
 
+/**
+ * The device's own note, on the page rather than only in the form that edits
+ * it. "螺丝滑牙，拆机小心" is written for whoever opens this page next, and
+ * until now the only way to read it was to open the editor -- which is the
+ * shape 015 decision 104 removed everywhere else on this page.
+ */
 describe("AssetDetail", () => {
+  it("显示这台设备自己的备注", async () => {
+    renderWithProviders(<AssetDetail />)
+    expect(await screen.findByText("屏幕左下角有划痕")).toBeInTheDocument()
+  })
+
   beforeEach(() => {
     navigate.mockReset()
     get.mockReset().mockImplementation(route)

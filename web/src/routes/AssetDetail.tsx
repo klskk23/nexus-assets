@@ -319,6 +319,16 @@ export function AssetDetail() {
                 </div>
               </dl>
 
+              {/* The device's own note, read where the device is read.
+                  Editable in the dialog, as everything on this page is, but
+                  reading it should not cost opening the form that changes it
+                  -- which is the same argument 015 decision 104 made about the
+                  attributes below. A sentence gets its own line rather than a
+                  cell in the band above. */}
+              {asset.note && (
+                <p className="text-muted-foreground -mt-8 text-sm">{asset.note}</p>
+              )}
+
               {/* What this device is, before what can be done to it (015,
                   decision 104). Read-only: editing is a button in the header
                   now, so this section has one job and does it without a form
