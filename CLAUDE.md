@@ -1,10 +1,12 @@
 <!-- SPECKIT START -->
-当前计划：`specs/024-master-detail-categories/plan.md`
+当前计划：`specs/028-master-detail-holders/plan.md`
 <!-- SPECKIT END -->
 
 必读：`.specify/memory/constitution.md`（五项原则、七条合并门禁）与当前 spec。
-历史决策（1–160）在 `specs/001-*` ~ `specs/024-*` 与 `docs/archive/design-baseline*.md`，
-**冲突时以最新一版为准**。001 的 `contracts/openapi.yaml` 仍是全量端点清单。
+历史决策（1–199）在 `specs/001-*` ~ `specs/026-*` 与 `docs/archive/design-baseline*.md`，
+**冲突时以最新一版为准**。**027 那一轮（决策 196–199）没有 spec 目录**，
+它的决定只写在 `docs/rules/` 里 —— 找不到 `specs/027-*` 不是漏了。
+001 的 `contracts/openapi.yaml` 仍是全量端点清单。
 
 **详细规则按目录分开放，不在这里。** 动某个包之前读对应的那一份：
 
