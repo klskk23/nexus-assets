@@ -3,6 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      The mark from the rail, in the tab.
+
+      SVG first, because the mark is three circles and stays exact at any size
+      a browser asks for. The .ico is not a fallback nobody needs: a browser
+      requests /favicon.ico whether or not anything declares it, and this app
+      had none, so every visit logged a 404 at the server.
+
+      All three files come from public/logo.svg -- see the note inside it about
+      the palette being copied rather than referenced.
+    -->
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="icon" sizes="16x16 32x32" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Nexus Assets</title>
   </head>
   <body>

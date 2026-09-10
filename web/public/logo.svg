@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <!--
+    The same mark as features/common/Logo.tsx, with the palette baked in.
+
+    That component uses var(&#45;&#45;primary) and friends so recolouring the product
+    carries the mark with it. A favicon cannot: it is a separate document with
+    no access to the application's stylesheet, so these three values are
+    literal copies of the primary, background and accent-2 tokens in
+    index.css. Change the palette and this file has to be changed by hand.
+    Nothing in the build would notice, which is why it is said here.
+
+    No dark variant: 017 settled on a single ground and index.css redefines
+    none of these under prefers-color-scheme. The terracotta disc carries the
+    mark against a light or a dark tab strip either way.
+  -->
+  <circle cx="20" cy="20" r="20" fill="#c67139"/>
+  <circle cx="15.4" cy="16.2" r="10.2" fill="#f9f4ed"/>
+  <circle cx="23.6" cy="24.6" r="7.2" fill="#8fa073"/>
+</svg>
