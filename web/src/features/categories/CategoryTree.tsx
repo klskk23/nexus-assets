@@ -5,6 +5,7 @@ import { tMeta } from "@/i18n"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { flattenCategories, rootIDOf, searchCategories } from "./categoryRows"
 import { useFoldable } from "@/features/common/useFoldable"
+import { useComposedInput } from "@/features/common/useComposedInput"
 import { TreePager } from "@/features/common/TreePager"
 import { clampPage, pageCount, pageOfRoots } from "@/features/common/rootPaging"
 import { RailRow } from "@/features/common/RailRow"
@@ -74,6 +75,7 @@ export function CategoryTree({
   const { deniedReason } = usePermissions()
   const folds = useFoldable()
   const [page, setPage] = useState(0)
+  const composed = useComposedInput(search, onSearch)
 
   // Paged by root, so no category is ever shown without its parent: page two
   // of a flattened tree can open with a child whose parent was the last row of
@@ -106,10 +108,11 @@ export function CategoryTree({
       {/* An Input rather than ListToolbar: that one is built for the strip
           above a table -- full width, room for filter controls -- and putting
           it in a 300px rail brings its assumptions along with it. */}
+      {/* Spread, so the IME's composition events arrive too -- see
+          useComposedInput for what happens when they do not. */}
       <Input
         id="ct-search"
-        value={search}
-        onChange={(e) => onSearch(e.target.value)}
+        {...composed}
         placeholder={tMeta.categories.searchHint}
         className="bg-background"
       />

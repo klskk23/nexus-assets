@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useComposedInput } from "./useComposedInput"
 
 interface Props {
   searchID: string
@@ -36,18 +37,17 @@ export function Rail({
   pager,
   actions,
 }: Props) {
+  const composed = useComposedInput(search, onSearch)
+
   return (
     <div className="bg-well grid gap-2.5 rounded-[28px] p-3">
       <Label htmlFor={searchID} className="sr-only">
         {searchHint}
       </Label>
-      <Input
-        id={searchID}
-        value={search}
-        onChange={(e) => onSearch(e.target.value)}
-        placeholder={searchHint}
-        className="bg-background"
-      />
+      {/* Spread rather than value+onChange: an IME needs the composition
+          events too, or a half-typed pinyin goes into the address bar and
+          comes back on top of the word being written. */}
+      <Input id={searchID} {...composed} placeholder={searchHint} className="bg-background" />
       {/* min-w-0 on the list and on every row.
        *
        * A grid item defaults to min-width:auto, so a row holding anything

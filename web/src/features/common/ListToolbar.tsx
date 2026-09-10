@@ -4,6 +4,7 @@ import type { ReactNode, Ref } from "react"
 import { t } from "@/i18n"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import { useComposedInput } from "./useComposedInput"
 
 interface Props {
   q: string
@@ -32,6 +33,8 @@ interface Props {
  * have one" is a question nobody can answer by looking.
  */
 export function ListToolbar({ q, onQ, searchHint, filters, actions, inputRef }: Props) {
+  const composed = useComposedInput(q, onQ)
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* The search box takes the row's slack up to 640px, rather than a fixed
@@ -53,12 +56,14 @@ export function ListToolbar({ q, onQ, searchHint, filters, actions, inputRef }: 
           <InputGroupAddon>
             <SearchIcon />
           </InputGroupAddon>
+          {/* Spread, composition events included: without them a pinyin IME
+              writes its half-finished spelling into the address bar and gets
+              it written back on top of the word. See useComposedInput. */}
           <InputGroupInput
             id="list-q"
             ref={inputRef}
-            value={q}
+            {...composed}
             placeholder={t.common.searchPlaceholder(searchHint)}
-            onChange={(e) => onQ(e.target.value)}
           />
         </InputGroup>
       </Field>
