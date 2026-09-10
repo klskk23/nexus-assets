@@ -209,7 +209,9 @@ export function Overview() {
                   <TableRow>
                     <TableHead>{tAudit.when}</TableHead>
                     <TableHead>{t.assets.title}</TableHead>
-                    <TableHead>{tAudit.change}</TableHead>
+                    {/* The only column whose content varies takes the slack;
+                        the three around it shrink to the short values they hold. */}
+                    <TableHead className="w-full">{tAudit.change}</TableHead>
                     <TableHead>{tAudit.actor}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -219,7 +221,7 @@ export function Overview() {
                       <TableCell className="whitespace-nowrap">
                         {new Date(it.created_at).toLocaleString()}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         <Link
                           to={`/assets/${it.asset_id}`}
                           className="tabular-nums hover:text-primary"

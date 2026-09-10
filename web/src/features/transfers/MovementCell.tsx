@@ -50,8 +50,15 @@ export function MovementCell({ event }: { event: Transfer }) {
   const reassigned = (event.from_owner_id ?? "") !== (event.to_owner_id ?? "")
 
   return (
-    <span className="grid gap-1">
-      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+    /* Everything flows, and wraps only when it has to.
+     *
+     * Each part used to be a row of its own, which made a reassignment with a
+     * note and a correction four lines tall in a cell five hundred pixels
+     * wide -- the width was there and the cell refused to use it. The parts
+     * are still parts: each group below wraps as a unit, so an arrow never
+     * ends up separated from the name it points at. */
+    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span className="flex shrink-0 items-center gap-2">
         {/* The action's name, on --well behind a muted outline. Colour in this
             product means status, and "checked out" the verb must not borrow the
             look of 已签出 the state. It is also the only thing on the row that
@@ -65,24 +72,25 @@ export function MovementCell({ event }: { event: Transfer }) {
         {(event.batch_size ?? 0) > 1 && (
           <Badge variant="outline">{tTransfer.batch(event.batch_size ?? 0)}</Badge>
         )}
-        {(heldElsewhere || restated) && (
-          <>
-            {from && (
-              <>
-                <span className="text-muted-foreground">{fromName}</span>
-                {event.from_status && <StatusBadge status={event.from_status} />}
-                <ArrowRightIcon aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
-              </>
-            )}
-            <span>{toName}</span>
-            <StatusBadge status={event.to_status} />
-          </>
-        )}
       </span>
+      {(heldElsewhere || restated) && (
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          {from && (
+            <>
+              <span className="text-muted-foreground">{fromName}</span>
+              {event.from_status && <StatusBadge status={event.from_status} />}
+              <ArrowRightIcon aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
+            </>
+          )}
+          <span>{toName}</span>
+          <StatusBadge status={event.to_status} />
+        </span>
+      )}
       {reassigned && (
         /* Labelled, because a name on its own in this cell reads as a holder --
            the column is full of them. The label is what tells the reader the
-           two names are answering a different question. */
+           two names are answering a different question, and it does that job
+           whether this sits on its own line or beside the rest. */
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-muted-foreground text-[13px]">{t.assets.owner}</span>
           {fromOwner && (
@@ -96,9 +104,10 @@ export function MovementCell({ event }: { event: Transfer }) {
       )}
       {/* Why it moved, in the words of whoever moved it. The form asks for it
           under "记这一次移动的缘由" and nothing printed it, which made every
-          answer write-only. */}
+          answer write-only. Prose of any length, so it is the one part allowed
+          to break inside itself. */}
       {event.note && (
-        <span className="text-muted-foreground text-[13px]">
+        <span className="text-muted-foreground min-w-0 text-[13px] break-words">
           {tTransfer.noteIs(event.note)}
         </span>
       )}
@@ -107,7 +116,7 @@ export function MovementCell({ event }: { event: Transfer }) {
           is the note and the owner -- both of them in this cell, which is why
           the mark belongs here rather than beside the person who moved it. */}
       {event.edited_at && (
-        <span className="text-muted-foreground text-[13px]">
+        <span className="text-muted-foreground shrink-0 text-[13px]">
           {tTransfer.edited(event.editor?.name ?? event.edited_by ?? t.common.none)}
         </span>
       )}

@@ -241,7 +241,11 @@ export function TransferAudit() {
                 <TableRow>
                   <TableHead>{tAudit.when}</TableHead>
                   <TableHead>{t.assets.title}</TableHead>
-                  <TableHead>{tAudit.change}</TableHead>
+                  {/* The only column whose content varies takes the slack;
+                      the three around it shrink to the short values they hold.
+                      Auto layout otherwise hands a timestamp column twice the
+                      width its timestamp needs and squeezes this one. */}
+                  <TableHead className="w-full">{tAudit.change}</TableHead>
                   <TableHead>{tAudit.actor}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -251,7 +255,7 @@ export function TransferAudit() {
                     <TableCell className="whitespace-nowrap">
                       {new Date(it.created_at).toLocaleString()}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       {/* The number, and a way to the device it names -- this
                           list is most often read to find out which one, and
                           then to go and look at it. */}

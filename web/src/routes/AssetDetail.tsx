@@ -448,7 +448,8 @@ export function AssetDetail() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>{tAudit.when}</TableHead>
-                          <TableHead>{tAudit.change}</TableHead>
+                          {/* Takes the slack; the two around it are short. */}
+                          <TableHead className="w-full">{tAudit.change}</TableHead>
                           <TableHead>{tAudit.actor}</TableHead>
                         </TableRow>
                       </TableHeader>
