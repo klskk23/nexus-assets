@@ -1,4 +1,10 @@
-import { ArrowRightLeftIcon, InfoIcon, MoreVerticalIcon, PrinterIcon, SearchIcon } from "lucide-react"
+import {
+  ArrowRightLeftIcon,
+  InfoIcon,
+  MoreVerticalIcon,
+  PrinterIcon,
+  SearchIcon,
+} from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -22,6 +28,7 @@ import { t, tImport, tTransfer } from "@/i18n"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { useStatuses } from "@/features/statuses/useStatuses"
 import { StateBoundary } from "@/components/StateBoundary"
+import { Ellipsis } from "@/features/common/Ellipsis"
 import {
   BUILTIN_COLUMNS,
   useBuiltinColumns,
@@ -195,7 +202,6 @@ export function Assets() {
     },
     onError: (e) => setDone(e instanceof ApiError ? e.message : t.common.error),
   })
-
 
   // A barcode scanner types into whatever has focus. Without this the operator
   // has to click the box first, and "the scanner just works" stops being true.
@@ -567,25 +573,25 @@ export function Assets() {
               control that fills itself in when you touch another one is a
               control that changed without being asked. */}
           <Field className="w-auto">
-              <FieldLabel htmlFor="model" className="sr-only">
-                {t.assets.modelFilter}
-              </FieldLabel>
-              <SearchSelect
-                id="model"
-                className="w-44"
-                value={modelId}
-                onChange={setModelId}
-                placeholder={t.assets.allModels}
-                options={modelList
-                  .filter((m) => vendorId === "" || m.vendor_id === vendorId)
-                  .map((m) => ({
-                    value: m.id,
-                    label: modelLabel(m),
-                    // Model names carry part numbers, and people search by the
-                    // maker as often as by the number.
-                    keywords: m.vendor_name,
-                  }))}
-              />
+            <FieldLabel htmlFor="model" className="sr-only">
+              {t.assets.modelFilter}
+            </FieldLabel>
+            <SearchSelect
+              id="model"
+              className="w-44"
+              value={modelId}
+              onChange={setModelId}
+              placeholder={t.assets.allModels}
+              options={modelList
+                .filter((m) => vendorId === "" || m.vendor_id === vendorId)
+                .map((m) => ({
+                  value: m.id,
+                  label: modelLabel(m),
+                  // Model names carry part numbers, and people search by the
+                  // maker as often as by the number.
+                  keywords: m.vendor_name,
+                }))}
+            />
           </Field>
 
           {categoryId && (
@@ -725,7 +731,9 @@ export function Assets() {
                       <TableHead key={k}>{t.assets.columnLabels[k]}</TableHead>
                     ))}
                     {extraColumns.map((k) => (
-                      <TableHead key={k}>{available.find((f) => f.key === k)?.label ?? k}</TableHead>
+                      <TableHead key={k}>
+                        {available.find((f) => f.key === k)?.label ?? k}
+                      </TableHead>
                     ))}
                     {/* The row actions. No heading text: three icon buttons that
                         appear on hover are not a column of data, and a label over
@@ -750,7 +758,12 @@ export function Assets() {
                             were not. */}
                         <TableRow
                           className="group/row cursor-pointer"
-                          onClick={() => navigate({ pathname: `/assets/${a.id}`, search: searchParams.toString() })}
+                          onClick={() =>
+                            navigate({
+                              pathname: `/assets/${a.id}`,
+                              search: searchParams.toString(),
+                            })
+                          }
                         >
                           <TableCell
                             className="bg-well group-hover/row:bg-accent sticky left-0 z-[1]"
@@ -780,15 +793,20 @@ export function Assets() {
                           {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
                             <TableCell
                               key={k}
-                              // A note is a sentence: truncated, with the whole
-                              // of it on hover, or one long one sets the width of
-                              // every column beside it.
-                              className={cn(
-                                k === "note" && "text-muted-foreground max-w-48 truncate",
-                              )}
-                              title={k === "note" ? a.note : undefined}
+                              // A note is a sentence, so it is cut off or one
+                              // long one sets the width of every column beside
+                              // it. The whole of it is on hover -- mouse only,
+                              // since a cell is not a tab stop and giving fifty
+                              // rows one each is a worse trade. Whoever needs it
+                              // without a mouse opens the device, where the note
+                              // is written out in full.
+                              className={cn(k === "note" && "text-muted-foreground max-w-48")}
                             >
-                              {builtinCell(k, a)}
+                              {k === "note" && a.note ? (
+                                <Ellipsis text={a.note} />
+                              ) : (
+                                builtinCell(k, a)
+                              )}
                             </TableCell>
                           ))}
                           {extraColumns.map((k) => (
@@ -835,7 +853,12 @@ export function Assets() {
                                 variant="ghost"
                                 size="icon-sm"
                                 aria-label={t.assets.rowDetail}
-                                onClick={() => navigate({ pathname: `/assets/${a.id}`, search: searchParams.toString() })}
+                                onClick={() =>
+                                  navigate({
+                                    pathname: `/assets/${a.id}`,
+                                    search: searchParams.toString(),
+                                  })
+                                }
                               >
                                 <InfoIcon />
                               </Button>
@@ -893,7 +916,6 @@ export function Assets() {
                 onSelectAll={selection.add}
               />
             )}
-
           </>
         </StateBoundary>
       </div>

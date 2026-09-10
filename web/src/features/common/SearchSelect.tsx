@@ -13,6 +13,7 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Ellipsis, TruncatedTip, useTruncated } from "./Ellipsis"
 
 export interface SearchOption {
   value: string
@@ -68,26 +69,42 @@ export function SearchSelect({
 }: Props) {
   const [open, setOpen] = useState(false)
   const chosen = options.find((o) => o.value === value)
+  const { ref: triggerText, isTruncated: triggerTruncated } = useTruncated<HTMLSpanElement>()
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          id={id}
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          disabled={disabled}
-          className={cn("justify-between font-normal", className)}
-        >
-          <span className={cn("truncate", !chosen && "text-muted-foreground")}>
-            {chosen?.label ?? placeholder}
-          </span>
-          <ChevronDownIcon className="opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+      <TruncatedTip text={chosen?.label ?? placeholder} isTruncated={triggerTruncated}>
+        <PopoverTrigger asChild>
+          <Button
+            id={id}
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            disabled={disabled}
+            className={cn("justify-between font-normal", className)}
+          >
+            <span ref={triggerText} className={cn("truncate", !chosen && "text-muted-foreground")}>
+              {chosen?.label ?? placeholder}
+            </span>
+            <ChevronDownIcon className="opacity-50" />
+          </Button>
+        </PopoverTrigger>
+      </TruncatedTip>
+      {/* Wide enough for what is in it, never narrower than the control it
+          hangs off.
+       *
+       * It used to be exactly the trigger's width, which is the shadcn
+       * combobox default rather than a decision anybody made here -- and the
+       * asset filter bar's triggers are w-40, so every model came out as
+       * `Dell E...`. A tooltip would have made each one readable one hover at
+       * a time, in a list whose whole job is to be scanned; and a finger gets
+       * no hover at all. The cap keeps a pathological name from throwing a
+       * panel across the screen, and anything past it still has its tooltip. */}
+      <PopoverContent
+        className="max-w-[min(24rem,calc(100vw-2rem))] min-w-(--radix-popover-trigger-width) p-0"
+        align="start"
+      >
         <Command
           filter={(itemValue, search, keywords) => {
             const hay = [itemValue, ...(keywords ?? [])].join(" ").toLowerCase()
@@ -126,7 +143,11 @@ export function SearchSelect({
                   }}
                 >
                   <CheckIcon className={cn(value === o.value ? "opacity-100" : "opacity-0")} />
-                  <span className="truncate">{o.label}</span>
+                  {/* Mouse only, and knowingly: cmdk keeps DOM focus on the
+                      search box and moves a highlight with aria-activedescendant,
+                      so there is no focus here for a tooltip to open on. The
+                      panel above is what makes this rare. */}
+                  <Ellipsis text={o.label} />
                 </CommandItem>
               ))}
             </CommandGroup>

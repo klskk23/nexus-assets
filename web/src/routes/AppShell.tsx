@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "cn"
 import { navIcon } from "@/features/common/navIcons"
 import { Logo } from "@/features/common/Logo"
+import { TruncatedTip, useTruncated } from "@/features/common/Ellipsis"
 
 /**
  * The nav, built on each render.
@@ -96,6 +97,8 @@ export function AppShell() {
     queryFn: () => api.get<ListPage<Role>>("/roles"),
   })
   const roleName = (roles.data?.items ?? []).find((r) => r.id === user?.role_id)?.name ?? ""
+  const { ref: nameText, isTruncated: nameTruncated } = useTruncated<HTMLSpanElement>()
+  const { ref: roleText, isTruncated: roleTruncated } = useTruncated<HTMLSpanElement>()
 
   if (isLoading) {
     return (
@@ -230,24 +233,36 @@ export function AppShell() {
          * is --foreground, not sage: sage on a sage tint measures 2.1:1, and
          * this is text even when it is one character. */}
         <div className="mt-auto flex items-center justify-center gap-2 max-md:mt-0 max-md:ml-auto max-md:justify-end">
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            title={t.settings.open}
-            className="hover:bg-accent flex min-w-0 flex-1 items-center gap-2.5 rounded-full py-1.5 pr-2 pl-1.5 text-left transition-colors max-md:flex-none"
+          <TruncatedTip
+            text={[user.name, roleName].filter(Boolean).join(" · ")}
+            isTruncated={() => nameTruncated() || roleTruncated()}
           >
-            <span
-              aria-hidden
-              className="bg-accent-2/25 text-foreground grid size-9 shrink-0 place-items-center rounded-full text-base font-semibold"
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              title={t.settings.open}
+              className="hover:bg-accent flex min-w-0 flex-1 items-center gap-2.5 rounded-full py-1.5 pr-2 pl-1.5 text-left transition-colors max-md:flex-none"
             >
-              {[...user.name.trim()][0] ?? "?"}
-            </span>
-            <span className="grid min-w-0 max-md:hidden">
-              <span className="truncate text-sm font-semibold">{user.name}</span>
-              <span className="text-muted-foreground truncate text-xs">{roleName}</span>
-            </span>
-            <span className="sr-only">{t.settings.open}</span>
-          </button>
+              <span
+                aria-hidden
+                className="bg-accent-2/25 text-foreground grid size-9 shrink-0 place-items-center rounded-full text-base font-semibold"
+              >
+                {[...user.name.trim()][0] ?? "?"}
+              </span>
+              <span className="grid min-w-0 max-md:hidden">
+                {/* Both lines are measured, and the tooltip names both -- one
+                  control holds them, so one tooltip answers for it. The trigger
+                  is the button below, which is a tab stop already. */}
+                <span ref={nameText} className="truncate text-sm font-semibold">
+                  {user.name}
+                </span>
+                <span ref={roleText} className="text-muted-foreground truncate text-xs">
+                  {roleName}
+                </span>
+              </span>
+              <span className="sr-only">{t.settings.open}</span>
+            </button>
+          </TruncatedTip>
 
           <Button
             variant="outline"

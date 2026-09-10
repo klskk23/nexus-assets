@@ -3,6 +3,7 @@ import { Link } from "react-router"
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react"
 
 import { cn } from "cn"
+import { TruncatedTip, useTruncated } from "./Ellipsis"
 
 interface Props {
   to: string
@@ -41,6 +42,8 @@ export function RailRow({
   onFold,
   foldLabel,
 }: Props) {
+  const { ref, isTruncated } = useTruncated<HTMLSpanElement>()
+
   return (
     <div className="flex items-center">
       {folded === undefined ? (
@@ -61,27 +64,36 @@ export function RailRow({
           className="text-muted-foreground hover:text-foreground grid size-6 shrink-0 place-items-center rounded-full"
           style={{ marginInlineStart: depth * 18 }}
         >
-          {folded ? <ChevronRightIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
+          {folded ? (
+            <ChevronRightIcon className="size-3.5" />
+          ) : (
+            <ChevronDownIcon className="size-3.5" />
+          )}
         </button>
       )}
-      <Link
-        to={to}
-        aria-current={selected ? "true" : undefined}
-        className={cn(
-          "flex min-w-0 flex-1 items-center gap-2.5 rounded-full py-[9px] pr-3.5 pl-3 text-sm transition-colors",
-          selected
-            ? "bg-accent text-accent-foreground font-semibold"
-            : "hover:bg-accent hover:text-accent-foreground",
-          !selected && depth > 0 && "text-muted-foreground",
-        )}
-      >
-        <span className="min-w-0 flex-1 truncate" title={label}>
-          {label}
-        </span>
-        {count !== undefined && (
-          <span className="shrink-0 text-[13px] tabular-nums">{count}</span>
-        )}
-      </Link>
+      <TruncatedTip text={label} isTruncated={isTruncated}>
+        <Link
+          to={to}
+          aria-current={selected ? "true" : undefined}
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-2.5 rounded-full py-[9px] pr-3.5 pl-3 text-sm transition-colors",
+            selected
+              ? "bg-accent text-accent-foreground font-semibold"
+              : "hover:bg-accent hover:text-accent-foreground",
+            !selected && depth > 0 && "text-muted-foreground",
+          )}
+        >
+          {/* The trigger is the link, not this span: a span is not a tab stop,
+              so a keyboard would never open a tooltip hung on it -- and giving
+              it one would put a stop on every row of the rail. */}
+          <span ref={ref} className="min-w-0 flex-1 truncate">
+            {label}
+          </span>
+          {count !== undefined && (
+            <span className="shrink-0 text-[13px] tabular-nums">{count}</span>
+          )}
+        </Link>
+      </TruncatedTip>
     </div>
   )
 }

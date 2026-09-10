@@ -1,5 +1,7 @@
 import type { ReactNode } from "react"
 
+import { TruncatedTip, useTruncated } from "@/features/common/Ellipsis"
+
 import { cn } from "cn"
 
 export interface BarRow {
@@ -53,43 +55,85 @@ export function DistributionBar({ data, onSelect, rowLabel }: Props) {
     <ul className="grid gap-2">
       {data.map((d, i) => (
         <li key={d.id}>
-          <button
-            type="button"
-            onClick={() => onSelect(d.id)}
-            aria-label={rowLabel(d)}
-            className="grid w-full grid-cols-[104px_1fr_46px] items-center gap-4 rounded-full py-1.5 text-left text-sm transition-opacity hover:opacity-[.72]"
+          <Row
+            label={typeof d.label === "string" ? d.label : rowLabel(d)}
+            onSelect={() => onSelect(d.id)}
+            ariaLabel={rowLabel(d)}
+            alternate={i % 2 === 0}
+            count={d.count}
+            largest={largest}
           >
-            <span className="flex min-w-0 items-center">
-              <span className="truncate">{d.label}</span>
-            </span>
-            {/* aria-hidden: the button's own label already says the name and the
-                count, and a track read out as well would say it a second time. */}
-            <span aria-hidden className="bg-background h-[18px] overflow-hidden rounded-full">
-              {/* display:block, not inline: a percentage width on an inline box
+            {d.label}
+          </Row>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * One bar, and the tooltip that says the whole name when it does not fit.
+ *
+ * A category called 「超长名称用来把左栏撑破的测试对象名」 is 104px of track
+ * away from being readable at all. The trigger is the button rather than the
+ * name inside it, so tabbing along the chart opens them too.
+ */
+function Row({
+  label,
+  ariaLabel,
+  onSelect,
+  alternate,
+  count,
+  largest,
+  children,
+}: {
+  label: string
+  ariaLabel: string
+  onSelect: () => void
+  alternate: boolean
+  count: number
+  largest: number
+  children: ReactNode
+}) {
+  const { ref, isTruncated } = useTruncated<HTMLSpanElement>()
+  return (
+    <TruncatedTip text={label} isTruncated={isTruncated}>
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-label={ariaLabel}
+        className="grid w-full grid-cols-[104px_1fr_46px] items-center gap-4 rounded-full py-1.5 text-left text-sm transition-opacity hover:opacity-[.72]"
+      >
+        <span className="flex min-w-0 items-center">
+          <span ref={ref} className="truncate">
+            {children}
+          </span>
+        </span>
+        {/* aria-hidden: the button's own label already says the name and the
+            count, and a track read out as well would say it a second time. */}
+        <span aria-hidden className="bg-background h-[18px] overflow-hidden rounded-full">
+          {/* display:block, not inline: a percentage width on an inline box
                   is ignored and every bar would come out the width of nothing.
                   min-width so a row with one device is still a mark rather than
                   a hairline that looks like zero -- but not at zero itself,
                   where a mark would be claiming there is a little of something
                   there. Statuses are commonly zero; categories rarely are,
                   which is why this only showed up once the two shared a row. */}
-              {d.count > 0 && (
-                <span
-                  className={cn(
-                    "block h-full min-w-1 rounded-full",
-                    // Alternating, so neighbouring rows are told apart by
-                    // colour as well as by length. The alternation is by
-                    // position and says nothing about the row -- see the note
-                    // above the component.
-                    i % 2 === 0 ? "bg-primary" : "bg-accent-2",
-                  )}
-                  style={{ width: `${(d.count / largest) * 100}%` }}
-                />
+          {count > 0 && (
+            <span
+              className={cn(
+                "block h-full min-w-1 rounded-full",
+                // Alternating, so neighbouring rows are told apart by colour as
+                // well as by length. The alternation is by position and says
+                // nothing about the row -- see the note above the component.
+                alternate ? "bg-primary" : "bg-accent-2",
               )}
-            </span>
-            <span className="font-heading text-right tabular-nums">{d.count}</span>
-          </button>
-        </li>
-      ))}
-    </ul>
+              style={{ width: `${(count / largest) * 100}%` }}
+            />
+          )}
+        </span>
+        <span className="font-heading text-right tabular-nums">{count}</span>
+      </button>
+    </TruncatedTip>
   )
 }
