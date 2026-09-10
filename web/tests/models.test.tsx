@@ -185,3 +185,63 @@ describe("型号页的厂商与型号", () => {
     expect(screen.queryByRole("button", { name: /删除/ })).not.toBeInTheDocument()
   })
 })
+
+/*
+ * A field can reach one model by two routes at once: bound to the model, and
+ * bound to that model's vendor.
+ *
+ * Reported from real use -- the pane listed it twice, once under each heading,
+ * with the same React key on both rows, which is how two rows for one field
+ * went unnoticed. It is one field: the entry form asks for it once and the
+ * server's schema returns it once.
+ *
+ * Keeping one and dropping the other would not do, because the label is
+ * load-bearing. "厂商" alone tells somebody that unbinding the vendor takes the
+ * field off this model, and it does not -- the direct binding keeps it. So the
+ * row names every route it took.
+ */
+describe("同一个字段既绑型号又绑厂商", () => {
+  const dual = [
+    {
+      id: "f-dual", key: "service_tag", label: "Service Tag", type: "text",
+      options: {}, is_unique: false, category_ids: [],
+      model_ids: ["m1"], vendor_ids: ["v-dell"],
+    },
+    {
+      id: "f-vendor", key: "warranty", label: "保修期", type: "text",
+      options: {}, is_unique: false, category_ids: [], model_ids: [], vendor_ids: ["v-dell"],
+    },
+  ]
+
+  beforeEach(() => {
+    get.mockImplementation((p: string) =>
+      p.startsWith("/fields") ? Promise.resolve(listed(dual, p)) : route(p),
+    )
+  })
+
+  it("只列一行，不是两行", async () => {
+    renderWithProviders(<Models />, { route: "/models/m1", path: "/models/:id" })
+
+    const table = await screen.findByRole("table")
+    const rows = within(table).getAllByRole("row").slice(1)
+    expect(rows.filter((r) => r.textContent?.includes("service_tag"))).toHaveLength(1)
+    // The other field is untouched: one route, one row.
+    expect(rows).toHaveLength(2)
+  })
+
+  it("那一行把两条来路都写出来", async () => {
+    renderWithProviders(<Models />, { route: "/models/m1", path: "/models/:id" })
+
+    const row = await screen.findByRole("row", { name: "Service Tag" })
+    expect(within(row).getByText("厂商")).toBeInTheDocument()
+    expect(within(row).getByText("本型号")).toBeInTheDocument()
+  })
+
+  it("只有一条来路的字段仍然只写那一条", async () => {
+    renderWithProviders(<Models />, { route: "/models/m1", path: "/models/:id" })
+
+    const row = await screen.findByRole("row", { name: "保修期" })
+    expect(within(row).getByText("厂商")).toBeInTheDocument()
+    expect(within(row).queryByText("本型号")).not.toBeInTheDocument()
+  })
+})

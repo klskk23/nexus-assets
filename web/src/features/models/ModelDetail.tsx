@@ -46,14 +46,40 @@ export function ModelDetail({
   const { deniedReason } = usePermissions()
   const denied = deniedReason("model.manage")
 
-  const own = fields.filter((f) => (f.model_ids ?? []).includes(model.id))
-  const inherited = model.vendor_id
-    ? fields.filter((f) => (f.vendor_ids ?? []).includes(model.vendor_id as string))
-    : []
-  const rows = [
-    ...inherited.map((f) => ({ f, from: tMeta.panes.fromVendor })),
-    ...own.map((f) => ({ f, from: tMeta.panes.fromModel })),
-  ]
+  /**
+   * One row per field, however many ways it got here.
+   *
+   * A field bound to this model **and** to its vendor used to be listed twice,
+   * once under each heading -- two rows for one field, with the same React key
+   * on both, which is how it went unnoticed. It is one field: the entry form
+   * asks for it once, and the server's schema returns it once.
+   *
+   * But it is not enough to keep one and drop the other, because the label is
+   * load-bearing. Saying only 厂商 tells somebody that unbinding the vendor
+   * takes this field off the model, and it does not -- the direct binding
+   * keeps it. Saying only 本型号 lies the other way. So the row names every
+   * route the field took, and unbinding one of them is visibly not the whole
+   * story.
+   *
+   * Different from the field pane, which lists each binding target on its own
+   * row (025): there the rows are different targets. Here they would be the
+   * same field twice.
+   */
+  const from = new Map<string, { f: FieldDefinitionRow; sources: string[] }>()
+  const reached = (f: FieldDefinitionRow, source: string) => {
+    const seen = from.get(f.id)
+    if (seen) seen.sources.push(source)
+    else from.set(f.id, { f, sources: [source] })
+  }
+  if (model.vendor_id) {
+    for (const f of fields) {
+      if ((f.vendor_ids ?? []).includes(model.vendor_id)) reached(f, tMeta.panes.fromVendor)
+    }
+  }
+  for (const f of fields) {
+    if ((f.model_ids ?? []).includes(model.id)) reached(f, tMeta.panes.fromModel)
+  }
+  const rows = [...from.values()]
 
   return (
     <Pane
@@ -118,7 +144,7 @@ export function ModelDetail({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map(({ f, from }) => (
+              {rows.map(({ f, sources }) => (
                 <TableRow key={f.id} aria-label={f.label}>
                   <TableCell>{f.label}</TableCell>
                   <TableCell className="text-muted-foreground font-mono text-[13px]">
@@ -126,9 +152,16 @@ export function ModelDetail({
                   </TableCell>
                   <TableCell>{tMeta.fieldTypes[f.type] ?? f.type}</TableCell>
                   <TableCell>
-                    <Badge variant={from === tMeta.panes.fromVendor ? "secondary" : "outline"}>
-                      {from}
-                    </Badge>
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      {sources.map((source) => (
+                        <Badge
+                          key={source}
+                          variant={source === tMeta.panes.fromVendor ? "secondary" : "outline"}
+                        >
+                          {source}
+                        </Badge>
+                      ))}
+                    </span>
                   </TableCell>
                 </TableRow>
               ))}
