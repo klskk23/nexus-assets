@@ -160,3 +160,52 @@ describe("字段页的树", () => {
     expect(screen.queryByRole("button", { name: /删除/ })).not.toBeInTheDocument()
   })
 })
+
+/*
+ * Whether the asset search can find a device by this field.
+ *
+ * The pane has to print the **effective** answer, not the stored flag:
+ * `Findable()` on the server is `Searchable || IsUnique`, and the field form
+ * ticks the box and locks it for a unique field. Reading the raw flag would
+ * put 否 on a field the search does find -- the worst kind of wrong, because
+ * the reader would go looking for why their search is broken.
+ */
+describe("字段详情里的可搜索", () => {
+  const searchable = [
+    { ...fields[0], searchable: false }, // 唯一，开关为假 —— 仍然可搜
+    { ...fields[1], searchable: true },
+    { ...fields[2], searchable: false },
+  ]
+
+  beforeEach(() => {
+    get.mockImplementation((p: string) =>
+      p.startsWith("/fields")
+        ? Promise.resolve({ items: searchable, total: searchable.length, offset: 0, limit: 500 })
+        : route(p),
+    )
+  })
+
+  it("自己勾了就写「是」", async () => {
+    openAt("f2")
+    const label = await screen.findByText("可搜索")
+    expect(label.parentElement).toHaveTextContent("是")
+  })
+
+  it("没勾就写「否」", async () => {
+    openAt("f3")
+    const label = await screen.findByText("可搜索")
+    expect(label.parentElement).toHaveTextContent("否")
+  })
+
+  /*
+   * The one worth having. A unique field is findable whatever its own switch
+   * says, and the pane says which of the two it is -- somebody who drops
+   * uniqueness on this field would otherwise watch it quietly stop being
+   * findable with nothing on screen having warned them.
+   */
+  it("唯一字段即使开关为假，也写「是（唯一字段自带）」", async () => {
+    openAt("f1")
+    const label = await screen.findByText("可搜索")
+    expect(label.parentElement).toHaveTextContent("是（唯一字段自带）")
+  })
+})

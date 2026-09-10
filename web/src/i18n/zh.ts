@@ -271,6 +271,7 @@ export const zhMeta = {
     type: "类型",
     unique: "唯一",
     searchable: "可搜索",
+    searchableWithUnique: "是（唯一字段自带）",
     searchableHint: "勾上之后，资产搜索能按这个字段的值找到设备。改动会立刻对已有设备生效。",
     searchableByUnique: "唯一字段一定可搜 —— 一个搜不到的唯一字段没有用处。",
     uniqueScopeHint: "类别子树内或所绑型号内不重复",

@@ -82,6 +82,22 @@ export function FieldDetail({ field, groups, categories, models, vendors, onEdit
                 : tMeta.fields.uniqueInCategory
               : t.common.no}
           </Fact>
+          {/* The effective answer, not the flag. `Findable()` on the server is
+              `Searchable || IsUnique`, and the field form ticks the box and
+              locks it for a unique field -- so reading the raw flag here would
+              print 否 on a field the search does find.
+
+              And it says which of the two, the way the uniqueness fact says
+              which scope rather than just 是: somebody who drops uniqueness on
+              a field whose own switch is off would otherwise watch it quietly
+              stop being findable. */}
+          <Fact label={tMeta.fields.searchable}>
+            {field.is_unique
+              ? tMeta.fields.searchableWithUnique
+              : field.searchable
+                ? t.common.yes
+                : t.common.no}
+          </Fact>
           <Fact label={tMeta.categories.required}>
             {field.required ? t.common.yes : t.common.no}
           </Fact>

@@ -282,6 +282,7 @@ export const enMeta: typeof zhMeta = {
     type: "Type",
     unique: "Unique",
     searchable: "Searchable",
+    searchableWithUnique: "Yes (with uniqueness)",
     searchableHint: "Ticked, the asset search finds devices by this field's value. Changing it takes effect on existing devices at once.",
     searchableByUnique: "A unique field is always searchable -- one nobody can search for has no use.",
     uniqueScopeHint: "No duplicates within the category subtree, or across the models it binds to",
