@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -135,52 +136,48 @@ func (s *Server) listAssetTransfers(c *gin.Context) {
 	c.JSON(http.StatusOK, items)
 }
 
-// decorateTransfers fills in display names with one batched lookup per kind,
-// never one per row.
-func (s *Server) decorateTransfers(c *gin.Context, items []model.Transfer) error {
-	if len(items) == 0 {
-		return nil
-	}
-	ctx := c.Request.Context()
+// transferLookups is everything a page of transfers needs looked up, gathered
+// once.
+//
+// Split from the filling-in below because the two halves fail for different
+// reasons and change for different reasons: this half talks to four stores and
+// can return an error, the other half is arithmetic on fields that are already
+// in memory.
+type transferLookups struct {
+	userByID   map[string]model.User
+	entityByID map[string]model.HolderEntity
+	// numbers is the asset's readable number, which is not stored on the
+	// transfer -- it is whichever attribute the asset's category nominates.
+	numbers map[string]string
+	// sizes is how many devices moved in each batch.
+	sizes map[string]int
+}
+
+// One lookup for the whole page, not one per row. Every endpoint that returns
+// transfers comes through here, which is what makes "the number travels with
+// the transfer" true everywhere rather than in the four or five places
+// somebody remembered.
+func (s *Server) loadTransferLookups(ctx context.Context, items []model.Transfer) (transferLookups, error) {
+	var lk transferLookups
 
 	users, err := s.users.List(ctx)
 	if err != nil {
-		return err
+		return lk, err
 	}
-	userByID := make(map[string]model.User, len(users))
+	lk.userByID = make(map[string]model.User, len(users))
 	for _, u := range users {
-		userByID[u.ID] = u
+		lk.userByID[u.ID] = u
 	}
+
 	entities, err := s.holders.List(ctx)
 	if err != nil {
-		return err
+		return lk, err
 	}
-	entityByID := make(map[string]model.HolderEntity, len(entities))
+	lk.entityByID = make(map[string]model.HolderEntity, len(entities))
 	for _, e := range entities {
-		entityByID[e.ID] = e
+		lk.entityByID[e.ID] = e
 	}
 
-	name := func(h *model.Holder) {
-		if h == nil {
-			return
-		}
-		switch h.Type {
-		case model.HolderTypeUser:
-			if u, ok := userByID[h.ID]; ok {
-				h.Name = u.Name
-			}
-		case model.HolderTypeEntity:
-			if e, ok := entityByID[h.ID]; ok {
-				h.Name = e.Name
-				h.EntityType = e.Type
-			}
-		}
-	}
-
-	// One lookup for the whole batch, not one per row. Every endpoint that
-	// returns transfers comes through here, which is what makes "the number
-	// travels with the transfer" true everywhere rather than in the four or
-	// five places somebody remembered.
 	ids := make([]string, 0, len(items))
 	batches := make([]string, 0, len(items))
 	for i := range items {
@@ -189,48 +186,80 @@ func (s *Server) decorateTransfers(c *gin.Context, items []model.Transfer) error
 			batches = append(batches, *items[i].BatchID)
 		}
 	}
-	numbers, err := s.assets.DisplayNames(ctx, ids)
+	if lk.numbers, err = s.assets.DisplayNames(ctx, ids); err != nil {
+		return lk, err
+	}
+	if lk.sizes, err = s.transfers.BatchSizes(ctx, batches); err != nil {
+		return lk, err
+	}
+	return lk, nil
+}
+
+// nameHolder fills in who or what a holder is, in place.
+func (lk transferLookups) nameHolder(h *model.Holder) {
+	if h == nil {
+		return
+	}
+	switch h.Type {
+	case model.HolderTypeUser:
+		if u, ok := lk.userByID[h.ID]; ok {
+			h.Name = u.Name
+		}
+	case model.HolderTypeEntity:
+		if e, ok := lk.entityByID[h.ID]; ok {
+			h.Name = e.Name
+			h.EntityType = e.Type
+		}
+	}
+}
+
+// person is the account behind an id, or nil when there is none to name.
+//
+// The owners, the actor and the editor are always people, so they need no type
+// switch -- but they do need the same batched lookup, because a reassignment's
+// whole content is two of those fields and the client has no user list of its
+// own on two of the three screens that render one.
+func (lk transferLookups) person(id string) *model.User {
+	if id == "" {
+		return nil
+	}
+	u, ok := lk.userByID[id]
+	if !ok {
+		return nil
+	}
+	return &u
+}
+
+// apply writes everything looked up onto one transfer.
+func (lk transferLookups) apply(t *model.Transfer) {
+	lk.nameHolder(t.FromHolder)
+	lk.nameHolder(&t.ToHolder)
+	if t.FromOwnerID != nil {
+		t.FromOwner = lk.person(*t.FromOwnerID)
+	}
+	t.ToOwner = lk.person(t.ToOwnerID)
+	t.Actor = lk.person(t.ActorID)
+	if t.EditedBy != nil {
+		t.Editor = lk.person(*t.EditedBy)
+	}
+	if t.BatchID != nil {
+		t.BatchSize = lk.sizes[*t.BatchID]
+	}
+	t.AssetDisplayName = lk.numbers[t.AssetID]
+}
+
+// decorateTransfers fills in display names with one batched lookup per kind,
+// never one per row.
+func (s *Server) decorateTransfers(c *gin.Context, items []model.Transfer) error {
+	if len(items) == 0 {
+		return nil
+	}
+	lk, err := s.loadTransferLookups(c.Request.Context(), items)
 	if err != nil {
 		return err
 	}
-	sizes, err := s.transfers.BatchSizes(ctx, batches)
-	if err != nil {
-		return err
-	}
-
-	// The owners and the editor are always people, so they need no type switch
-	// -- but they do need the same batched lookup, because a reassignment's
-	// whole content is those two fields and the client has no user list of its
-	// own on two of the three screens that render one.
-	named := func(id string) *model.User {
-		if id == "" {
-			return nil
-		}
-		u, ok := userByID[id]
-		if !ok {
-			return nil
-		}
-		return &u
-	}
-
 	for i := range items {
-		name(items[i].FromHolder)
-		name(&items[i].ToHolder)
-		if items[i].FromOwnerID != nil {
-			items[i].FromOwner = named(*items[i].FromOwnerID)
-		}
-		items[i].ToOwner = named(items[i].ToOwnerID)
-		if u, ok := userByID[items[i].ActorID]; ok {
-			actor := u
-			items[i].Actor = &actor
-		}
-		if items[i].EditedBy != nil {
-			items[i].Editor = named(*items[i].EditedBy)
-		}
-		if items[i].BatchID != nil {
-			items[i].BatchSize = sizes[*items[i].BatchID]
-		}
-		items[i].AssetDisplayName = numbers[items[i].AssetID]
+		lk.apply(&items[i])
 	}
 	return nil
 }
