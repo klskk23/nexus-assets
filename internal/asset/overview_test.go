@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/klskk23/nexus-assets/internal/auth"
 	"github.com/klskk23/nexus-assets/internal/holder"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
@@ -476,5 +477,96 @@ func TestHolderCountsIgnoreDevicesHeldByPeople(t *testing.T) {
 	}
 	if counts[company] != 0 {
 		t.Errorf("国药集团 = %d, want 0 -- that device is with a person", counts[company])
+	}
+}
+
+/*
+The owner distribution answers the same question the category one does.
+
+They sit side by side on the landing page, so a reader takes them for the same
+devices sliced two ways -- and they are, which means both have to drop the
+written-off. If one counted them and the other did not, the two columns would
+add up to totals differing by an amount nothing on that page explains, and the
+person who noticed would have no way to find out which one was lying.
+
+Deliberately the opposite judgement from SubtreeCountsByHolder, and for a
+reason that is about the screen rather than the domain: a warehouse is asked
+what is standing in it, and these two are asked how much of the working fleet
+each slice holds.
+*/
+func TestOwnerDistributionDropsWhatTheCategoryDistributionDrops(t *testing.T) {
+	f := newFixture(t)
+
+	a, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D01"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D02"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.save(t, SaveInput{
+		ID: a.ID, Version: a.Version, CategoryID: a.CategoryID, Status: model.StatusRetired,
+		Attrs: map[string]any{"mac": "001A2B3C4D01"},
+	}); err != nil {
+		t.Fatalf("retire: %v", err)
+	}
+
+	ov, err := f.svc.Overview(f.ctx)
+	if err != nil {
+		t.Fatalf("overview: %v", err)
+	}
+	if len(ov.OwnerDistribution) != 1 {
+		t.Fatalf("expected one owner, got %+v", ov.OwnerDistribution)
+	}
+	if got := ov.OwnerDistribution[0].Count; got != 1 {
+		t.Errorf("owner count = %d, want 1 -- the written-off one is not part of the working fleet", got)
+	}
+
+	// The two slices of the same fleet add up to each other.
+	byCategory := 0
+	for _, c := range ov.CategoryDistribution {
+		byCategory += c.Count
+	}
+	byOwner := 0
+	for _, o := range ov.OwnerDistribution {
+		byOwner += o.Count
+	}
+	if byOwner != byCategory {
+		t.Errorf("owners total %d and categories total %d -- one screen, two totals", byOwner, byCategory)
+	}
+	// And the page's own Total is the other number, every asset there is.
+	if ov.Total != 2 {
+		t.Errorf("total = %d, want 2 -- that one counts the written-off", ov.Total)
+	}
+}
+
+// Every asset has an owner (NOT NULL, referencing users), so a device moving
+// between people never falls out of this distribution.
+func TestOwnerDistributionFollowsAReassignment(t *testing.T) {
+	f := newFixture(t)
+	other, err := f.users.Create(f.ctx, auth.CreateInput{
+		Email: "clerk@example.com", Name: "仓管", AuthType: model.AuthLocal, Password: "correct-horse",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	a, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D01"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.save(t, SaveInput{
+		ID: a.ID, Version: a.Version, CategoryID: a.CategoryID, OwnerID: other.ID,
+		Attrs: map[string]any{"mac": "001A2B3C4D01"},
+	}); err != nil {
+		t.Fatalf("reassign: %v", err)
+	}
+
+	ov, err := f.svc.Overview(f.ctx)
+	if err != nil {
+		t.Fatalf("overview: %v", err)
+	}
+	if len(ov.OwnerDistribution) != 1 || ov.OwnerDistribution[0].OwnerID != other.ID {
+		t.Fatalf("expected the device to be under the new owner, got %+v", ov.OwnerDistribution)
 	}
 }

@@ -1,7 +1,9 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -46,6 +48,10 @@ func (s *Server) overview(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
+	if err := s.nameOwners(ctx, summary.OwnerDistribution); err != nil {
+		FailErr(c, err)
+		return
+	}
 	recent, err := s.transfers.Recent(ctx, recentLimit(c))
 	if err != nil {
 		FailErr(c, err)
@@ -77,6 +83,46 @@ func (s *Server) categoryCounts(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, counts)
+}
+
+// nameOwners fills in the people behind the owner distribution and orders it
+// by size.
+//
+// Here rather than in the asset service, which can see the ledger and not the
+// accounts. One lookup for the whole list, the way every other place in this
+// file names its people.
+//
+// Sorted largest first because the question this answers is "who is carrying
+// the most", and ties broken by name so the order does not shuffle between two
+// reads of an unchanged ledger. An owner whose account has somehow gone keeps
+// its id as the label: a row with a blank name reads as a bug, and the number
+// beside it is real either way.
+func (s *Server) nameOwners(ctx context.Context, rows []asset.OwnerCount) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	users, err := s.users.List(ctx)
+	if err != nil {
+		return err
+	}
+	byID := make(map[string]model.User, len(users))
+	for _, u := range users {
+		byID[u.ID] = u
+	}
+	for i := range rows {
+		if u, ok := byID[rows[i].OwnerID]; ok {
+			rows[i].Name = u.Name
+		} else {
+			rows[i].Name = rows[i].OwnerID
+		}
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].Count != rows[j].Count {
+			return rows[i].Count > rows[j].Count
+		}
+		return rows[i].Name < rows[j].Name
+	})
+	return nil
 }
 
 // holderCounts is how many devices are standing at each holder, descendants

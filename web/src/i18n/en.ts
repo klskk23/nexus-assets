@@ -773,6 +773,11 @@ export const enOverview: typeof zhOverview = {
   unit: "devices",
   categoryTitle: "By category",
   categoryHint: "Includes subcategories, excludes retired",
+  ownerTitle: "By owner",
+  ownerHint: "Counted as the category split is: the written-off are left out",
+  emptyOwners: "No devices yet",
+  moreOwners: (people: number, devices: number) =>
+    `${people} more people, ${devices} devices between them`,
   recentTitle: "Recent transfers",
   recentCount: "Show",
   recentCountUnit: (n: number) => `${n}`,

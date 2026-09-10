@@ -145,6 +145,22 @@ paths:
                         category_id: { type: string }
                         name: { type: string }
                         count: { type: integer }
+                  owner_distribution:
+                    type: array
+                    description: >
+                      按负责人聚合，**与 `category_distribution` 同一口径**（同样排除
+                      `counts_as_available = 0` 的状态，今天是 retired），按台数从多到少，
+                      同数按姓名排。两者是同一支可用机队的两种切法，
+                      并排显示在概览上，所以加起来必须相等 —— 一个算报废另一个不算，
+                      会在同一屏留下两个总数，而页面上没有任何东西解释那个差额。
+                      每台设备都有负责人（`owner_id` 非空且外键指向 users），
+                      所以没有「未指派」这一档。
+                    items:
+                      type: object
+                      properties:
+                        owner_id: { type: string }
+                        name: { type: string, description: 读取时解析；账号不存在时退回 id }
+                        count: { type: integer }
                   recent_transfers:
                     type: array
                     maxItems: 10

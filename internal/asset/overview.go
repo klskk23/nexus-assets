@@ -3,6 +3,7 @@ package asset
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
@@ -21,6 +22,18 @@ type CategoryCount struct {
 	Count      int    `json:"count"`
 }
 
+// OwnerCount is one person and how many devices they answer for.
+//
+// The name is filled in at the HTTP boundary, not here: this package can see
+// the assets and the schema, not the accounts, and the alternative -- handing
+// it a user store so one field can be populated -- buys a dependency for a
+// display string. Transfers already resolve their people the same way.
+type OwnerCount struct {
+	OwnerID string `json:"owner_id"`
+	Name    string `json:"name"`
+	Count   int    `json:"count"`
+}
+
 // Overview is the landing page's summary.
 type Overview struct {
 	// StatusCounts covers every status, including the ones at zero, so the
@@ -31,6 +44,15 @@ type Overview struct {
 	// stock: "how many SDWAN routers do we have" is a question about usable
 	// stock, and counting written-off units gives a misleadingly large answer.
 	CategoryDistribution []CategoryCount `json:"category_distribution"`
+	// OwnerDistribution is how the fleet is spread across the people
+	// answering for it, largest first.
+	//
+	// Filtered exactly as CategoryDistribution is, and that matters more here
+	// than it looks: the two sit side by side on one screen, so a person
+	// reading them expects the same devices sliced two ways. Counting
+	// written-off units in one and not the other would leave two totals that
+	// differ by an amount nothing on the page explains.
+	OwnerDistribution []OwnerCount `json:"owner_distribution"`
 	// Total counts every asset, retired included.
 	Total int `json:"total"`
 }
@@ -80,6 +102,20 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 	if err != nil {
 		return out, err
 	}
+
+	byOwner, err := s.availableByOwner(ctx, statuses)
+	if err != nil {
+		return out, err
+	}
+	out.OwnerDistribution = make([]OwnerCount, 0, len(byOwner))
+	for id, n := range byOwner {
+		out.OwnerDistribution = append(out.OwnerDistribution, OwnerCount{OwnerID: id, Count: n})
+	}
+	// Ordered by id here only so the result is stable; the caller re-sorts by
+	// count once it has the names to break ties with.
+	sort.Slice(out.OwnerDistribution, func(i, j int) bool {
+		return out.OwnerDistribution[i].OwnerID < out.OwnerDistribution[j].OwnerID
+	})
 
 	out.CategoryDistribution = make([]CategoryCount, 0, len(categories))
 	for _, c := range categories {
@@ -169,6 +205,35 @@ func (s *Service) countByStatus(ctx context.Context) (map[model.AssetStatus]int,
 //
 // Which statuses count towards usable stock is a column now, so the filter is
 // applied here rather than as a hardcoded `status != 'retired'`.
+// availableByOwner counts the devices each person answers for, dropping the
+// statuses the distribution leaves out.
+//
+// Every asset has an owner -- the column is NOT NULL and references users --
+// so there is no "unassigned" bucket to invent, and a row here always has a
+// person behind it.
+func (s *Service) availableByOwner(ctx context.Context, statuses model.StatusSet) (map[string]int, error) {
+	rows, err := s.db.ReadDB().QueryContext(ctx,
+		`SELECT owner_id, status, count(*) FROM assets GROUP BY owner_id, status`)
+	if err != nil {
+		return nil, fmt.Errorf("count by owner: %w", err)
+	}
+	defer rows.Close()
+
+	out := map[string]int{}
+	for rows.Next() {
+		var id string
+		var st model.AssetStatus
+		var n int
+		if err := rows.Scan(&id, &st, &n); err != nil {
+			return nil, err
+		}
+		if statuses.CountsAsAvailable(st) {
+			out[id] += n
+		}
+	}
+	return out, rows.Err()
+}
+
 func (s *Service) availableByCategory(ctx context.Context, statuses model.StatusSet) (map[string]int, error) {
 	rows, err := s.db.ReadDB().QueryContext(ctx,
 		`SELECT category_id, status, count(*) FROM assets GROUP BY category_id, status`)

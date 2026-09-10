@@ -53,6 +53,11 @@ interface OverviewData {
     name: string
     count: number
   }[]
+  owner_distribution: {
+    owner_id: string
+    name: string
+    count: number
+  }[]
   total: number
   recent_transfers: Transfer[]
 }
@@ -78,6 +83,21 @@ export function Overview() {
   })
 
   const distribution = overview.data?.category_distribution ?? []
+  const owners = overview.data?.owner_distribution ?? []
+  /**
+   * How many people get a bar of their own.
+   *
+   * The other two cards list everything they have -- statuses are five, root
+   * categories are a handful -- but people are not bounded that way, and a
+   * card that grows a row per account would tower over its two neighbours in
+   * an organisation of fifty. Eight answers "who is carrying the most", which
+   * is what this card is for; the rest are counted in the line under the
+   * title, so nobody has to wonder whether they are being shown everything.
+   */
+  const OWNER_ROWS = 8
+  const shownOwners = owners.slice(0, OWNER_ROWS)
+  const restOwners = owners.slice(OWNER_ROWS)
+  const restDevices = restOwners.reduce((n, o) => n + o.count, 0)
   const hasCategories = (categories.data ?? []).length > 0
 
   return (
@@ -112,11 +132,15 @@ export function Overview() {
         onRetry={() => overview.refetch()}
       >
         <div className="grid gap-14">
-          {/* Two lists of the same shape, side by side: how many of each
-              status, how many in each category. They used to be a row of five
-              big cards and a chart, which made the same kind of fact look like
-              two different kinds. */}
-          <div className="grid gap-10 lg:grid-cols-2">
+          {/* Three lists of the same shape, side by side: how many of each
+              status, how many in each category, how many under each person.
+              They used to be a row of five big cards and a chart, which made
+              the same kind of fact look like two different kinds.
+
+              Two across until there is room for three: at 1024px a third
+              column leaves each bar about ninety pixels of track, which is a
+              chart that has stopped saying anything. */}
+          <div className="grid gap-10 lg:grid-cols-2 xl:grid-cols-3">
             <section
               aria-label={tOverview.statusTitle}
               className="bg-well grid content-start gap-3 rounded-[28px] px-[26px] py-[22px]"
@@ -170,6 +194,48 @@ export function Overview() {
               </div>
             </section>
 
+            {/* Who is answering for what.
+             *
+             * The same fleet as the card beside it, sliced by person instead
+             * of by kind -- so it is filtered the same way, and the two
+             * columns add up to each other. Getting that wrong would leave two
+             * totals on one screen differing by an amount nothing here
+             * explains. */}
+            <section
+              aria-label={tOverview.ownerTitle}
+              className="bg-well grid content-start gap-3 rounded-[28px] px-[26px] py-[22px]"
+            >
+              <div className="grid gap-1">
+                <h2 className="text-[21px] leading-tight font-bold">{tOverview.ownerTitle}</h2>
+                <p className="text-muted-foreground text-sm">
+                  {restOwners.length > 0
+                    ? tOverview.moreOwners(restOwners.length, restDevices)
+                    : tOverview.ownerHint}
+                </p>
+              </div>
+              <div>
+                {owners.length === 0 ? (
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <ChartColumnIcon />
+                      </EmptyMedia>
+                      <EmptyDescription>{tOverview.emptyOwners}</EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <DistributionBar
+                    data={shownOwners.map((o) => ({
+                      id: o.owner_id,
+                      label: o.name,
+                      count: o.count,
+                    }))}
+                    rowLabel={(r) => `${r.label} ${r.count} ${tOverview.unit}`}
+                    onSelect={(id) => navigate(`/assets?owner_id=${id}`)}
+                  />
+                )}
+              </div>
+            </section>
           </div>
 
           <section aria-label={tOverview.recentTitle} className="grid gap-3">

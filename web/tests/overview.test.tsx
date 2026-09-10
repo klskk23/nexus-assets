@@ -32,6 +32,13 @@ const overview = {
     { status: "retired", count: 8 },
   ],
   category_distribution: [{ category_id: "net", name: "网络设备", count: 62 }],
+  // Same 62 devices, sliced by person instead of by kind. The two cards sit
+  // side by side, so the fixture is built the way the server builds it: one
+  // filtered fleet, two ways of adding it up.
+  owner_distribution: [
+    { owner_id: "u2", name: "张三", count: 40 },
+    { owner_id: "u1", name: "管理员", count: 22 },
+  ],
   total: 70,
   recent_transfers: [
     {
@@ -278,4 +285,78 @@ it("keeps every status in one list", async () => {
 
   const list = row.closest("ul")!
   expect(within(list).getAllByRole("button")).toHaveLength(5)
+})
+
+/*
+ * The third card: who is answering for what.
+ *
+ * It is the same fleet as the card beside it, sliced by person instead of by
+ * kind. Everything here follows from that -- the same filter, so the two
+ * columns add up to each other; a bar per person, so the way in is the asset
+ * list filtered to them; and a cap, because people are not bounded the way
+ * five statuses and a handful of root categories are.
+ */
+describe("负责人名下", () => {
+  it("每人一条，按台数从多到少", async () => {
+    renderWithProviders(<Overview />)
+
+    const first = await screen.findByRole("button", { name: /张三 40 台/ })
+    const list = first.closest("ul")!
+    const names = within(list)
+      .getAllByRole("button")
+      .map((b) => b.getAttribute("aria-label"))
+    expect(names).toEqual(["张三 40 台", "管理员 22 台"])
+  })
+
+  // Two slices of one fleet. A reader takes them for the same devices counted
+  // two ways, and on this page they are -- so if these ever stop adding up,
+  // the page is telling two stories with no way to tell which is true.
+  it("与类别分布加起来是同一个数", async () => {
+    renderWithProviders(<Overview />)
+    await screen.findByRole("button", { name: /张三 40 台/ })
+
+    const sum = (label: RegExp) => {
+      const list = screen.getByRole("button", { name: label }).closest("ul")!
+      return within(list)
+        .getAllByRole("button")
+        .reduce((n, b) => n + Number(b.getAttribute("aria-label")!.match(/(\d+) 台/)![1]), 0)
+    }
+    expect(sum(/张三 40 台/)).toBe(sum(/网络设备 62 台/))
+  })
+
+  it("点一个人就去他名下的设备列表", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Overview />)
+
+    await user.click(await screen.findByRole("button", { name: /张三 40 台/ }))
+    expect(navigate).toHaveBeenCalledWith("/assets?owner_id=u2")
+  })
+
+  /*
+   * Eight bars, and the rest counted in a line under the title.
+   *
+   * A card that grows a row per account would tower over its two neighbours in
+   * an organisation of fifty, and the question it answers -- who is carrying
+   * the most -- is answered by the top of the list. What it must not do is
+   * hide the remainder silently: the reader has to know they are looking at
+   * part of it, which is the same rule the folded rails follow.
+   */
+  it("超过八人时只画八条，其余在标题下说明", async () => {
+    const many = Array.from({ length: 11 }, (_, i) => ({
+      owner_id: `u${i}`,
+      name: `同事 ${String(i).padStart(2, "0")}`,
+      count: 20 - i,
+    }))
+    get.mockImplementation((p: string) =>
+      p.startsWith("/overview")
+        ? Promise.resolve({ ...overview, owner_distribution: many })
+        : route(p),
+    )
+    renderWithProviders(<Overview />)
+
+    const first = await screen.findByRole("button", { name: /同事 00 20 台/ })
+    expect(within(first.closest("ul")!).getAllByRole("button")).toHaveLength(8)
+    // 11 - 8 = 3 people, holding 12 + 11 + 10 devices between them.
+    expect(screen.getByText(/另有 3 人共 33 台/)).toBeInTheDocument()
+  })
 })
