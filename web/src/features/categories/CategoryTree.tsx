@@ -55,6 +55,10 @@ interface Props {
  *
  * Each row is a link. The row *is* the control -- nothing clickable sits
  * inside it, so the count beside the name is text, not a second destination.
+ *
+ * The list and its rows carry min-w-0 for the reason Rail.tsx states at
+ * length: a grid item that will not shrink sizes itself to its content and
+ * walks out of a 300px rail, taking the truncation with it.
  */
 /** Root categories per page. A page is N roots and all their descendants. */
 const ROOTS_PER_PAGE = 12
@@ -122,7 +126,7 @@ export function CategoryTree({
           </EmptyHeader>
         </Empty>
       ) : (
-        <ul className="grid gap-0.5">
+        <ul className="grid min-w-0 gap-0.5 [&>li]:min-w-0">
           {rows.map(({ category: c, depth, hasChildren, path }) => (
             <li key={c.id}>
               <RailRow

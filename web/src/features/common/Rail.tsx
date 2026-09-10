@@ -48,7 +48,16 @@ export function Rail({
         placeholder={searchHint}
         className="bg-background"
       />
-      <ul className="grid gap-0.5">{children}</ul>
+      {/* min-w-0 on the list and on every row.
+       *
+       * A grid item defaults to min-width:auto, so a row holding anything
+       * that refuses to shrink sizes itself to its content and walks straight
+       * out of a 300px rail -- taking the truncation with it, because the name
+       * inside has no boundary left to truncate against. That is what a badge
+       * and a type label did to the holders rail: rows 346px wide in a 300px
+       * card. The rule belongs here rather than in each caller: "a row never
+       * exceeds the rail" is the frame's business. */}
+      <ul className="grid min-w-0 gap-0.5 [&>li]:min-w-0">{children}</ul>
       {pager}
       {actions && <div className="flex gap-1">{actions}</div>}
     </div>

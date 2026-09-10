@@ -9,7 +9,6 @@ import { Rail } from "@/features/common/Rail"
 import { RailRow } from "@/features/common/RailRow"
 import { TreePager } from "@/features/common/TreePager"
 import { clampPage, pageCount, pageOfRoots } from "@/features/common/rootPaging"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 
@@ -134,15 +133,16 @@ export function HolderTree({ holders, counts, search, onSearch, currentID, onCre
             {/* The kind, said on the row rather than by which section it sits
                 in. A company and a location can both be roots, so position
                 alone cannot tell them apart -- and the difference decides what
-                may hang underneath. */}
+                may hang underneath.
+
+                No default-stock badge beside it any more. There is exactly one
+                in the system and the page header already names it and takes
+                you to it, so the badge was the same fact twice -- and it cost
+                73px of a 300px rail, which is what squeezed 「Mixwan-库存点」
+                down to 「Mixwan-库存...」 and pushed the row out of the card. */}
             <span className="text-muted-foreground shrink-0 pr-1 text-[11px]">
               {tMeta.entityTypes[h.type] ?? h.type}
             </span>
-            {h.is_default_stock && (
-              <Badge variant="secondary" className="shrink-0 text-[11px]">
-                {tMeta.holders.defaultStock}
-              </Badge>
-            )}
           </li>
         ))
       )}

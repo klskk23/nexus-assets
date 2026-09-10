@@ -215,6 +215,25 @@ describe("页头那一行", () => {
     expect(await screen.findByRole("heading", { name: "北京仓库" })).toBeInTheDocument()
   })
 
+  /*
+   * The header names it; the row does not repeat it.
+   *
+   * The row used to carry a 默认库存点 badge as well. There is exactly one in
+   * the system and the header already names it and takes you to it, so the
+   * badge was the same fact twice -- and it cost 73px of a 300px rail, which
+   * squeezed the name to an ellipsis and pushed the whole row out of the card.
+   * Layout is a question for the walkthrough; that the row does not say it
+   * twice is a question for here.
+   */
+  it("左栏的行上不再重复默认库存点", async () => {
+    renderWithProviders(<Holders />, { route: "/holders", ...AT })
+
+    const row = await screen.findByRole("link", { name: /^北京仓库/ })
+    expect(within(row.closest("li")!).queryByText("默认库存点")).not.toBeInTheDocument()
+    // Said once, in the header.
+    expect(screen.getByRole("link", { name: /默认库存点：北京仓库/ })).toBeInTheDocument()
+  })
+
   // Without one, returning a device that names no destination fails. That is a
   // thing to say on the page rather than to discover at the counter.
   it("一个都没有时，说明归还会因此失败", async () => {
