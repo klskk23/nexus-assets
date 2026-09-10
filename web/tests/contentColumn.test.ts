@@ -26,6 +26,8 @@ const ROOT = join(import.meta.dirname, "..", "src")
 const ALLOWED: Record<string, string> = {
   "features/common/ListToolbar.tsx": "搜索框，是控件宽度不是内容列",
   "routes/Assets.tsx": "备注列的截断宽度，是单元格",
+  "routes/Login.tsx":
+    "登录卡片的宽度，是卡片不是内容列 —— 这一页没有外壳，卡片自己就是那块面板",
   "features/common/SearchSelect.tsx":
     "下拉面板的上限，是浮层不是内容列 —— 面板按内容撑开，这个数只拦住病态的长名字",
 }
