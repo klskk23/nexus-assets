@@ -206,10 +206,7 @@ export const en: typeof zh = {
     modelChangeApply: "Apply and overwrite",
     modelChangeSkip: "Change the model only",
     valueHistory: "Previous numbers",
-    valueHistoryHint: "Old values still match a search but no longer hold their uniqueness slot.",
     archivedFields: "Retired fields",
-    archivedHint:
-      "These fields no longer belong to this category. They are kept visible and are not validated.",
     save: "Save",
     saving: "Saving…",
     saved: "Saved",
@@ -591,7 +588,6 @@ export const enTransfer: typeof zhTransfer = {
   batch: (n: number) => `${n} devices`,
   edited: (who: string) => `Corrected by ${who}`,
   editTail: "Correct this record",
-  editHint: "Only the newest record can be corrected; a later transfer locks this one.",
   cancel: "Cancel",
   save: "Save correction",
 
@@ -664,12 +660,8 @@ export const enImport: typeof zhImport = {
   title: "Bulk import",
   steps: "Import steps",
   step1: "Download the template",
-  step1Hint:
-    "The first row is prose for whoever fills the sheet in; the second is the machine key. Only the key row is read back, so renaming a display name never breaks a template already downloaded.",
   download: "Download template",
   step2: "Upload and preview",
-  step2Hint:
-    "The preview validates every row with exactly the rules manual entry uses, and writes nothing.",
   category: "Import into category",
   file: "CSV file",
   preview: "Preview",
@@ -772,9 +764,7 @@ export const enOverview: typeof zhOverview = {
   total: (n: number) => `${n} in total`,
   unit: "devices",
   categoryTitle: "By category",
-  categoryHint: "Includes subcategories, excludes retired",
   ownerTitle: "By owner",
-  ownerHint: "Counted as the category split is: the written-off are left out",
   emptyOwners: "No devices yet",
   moreOwners: (people: number, devices: number) =>
     `${people} more people, ${devices} devices between them`,

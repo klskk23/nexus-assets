@@ -136,13 +136,18 @@ describe("Overview", () => {
     expect(navigate).toHaveBeenCalledWith("/assets?status=in_repair")
   })
 
-  it("says the distribution leaves retired devices out", async () => {
-    renderWithProviders(<Overview />)
-    // The caveat is the card's description now, beside its title rather than
-    // inside it.
-    await screen.findByText("类别分布")
-    expect(screen.getByText("含子类别，不含已报废")).toBeInTheDocument()
-  })
+  /*
+   * "says the distribution leaves retired devices out" is gone with the
+   * sentence it asserted.
+   *
+   * It was guarding a line of prose under the card's title, and the prose went
+   * with every other line on the product that only explained the system to
+   * somebody who reads it once. **The behaviour it described still holds and
+   * is still guarded**, in the two places that can actually catch it changing:
+   * TestOwnerDistributionDropsWhatTheCategoryDistributionDrops on the server,
+   * and 「与类别分布加起来是同一个数」 below -- both of which compare numbers
+   * rather than read a caption.
+   */
 
   // Whatever draws it has to carry the same two things the list it replaced
   // did: which category, and how many.

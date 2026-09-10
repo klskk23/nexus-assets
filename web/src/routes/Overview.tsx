@@ -166,10 +166,7 @@ export function Overview() {
               aria-label={tOverview.categoryTitle}
               className="bg-well grid content-start gap-3 rounded-[28px] px-[26px] py-[22px]"
             >
-              <div className="grid gap-1">
-                <h2 className="text-[21px] leading-tight font-bold">{tOverview.categoryTitle}</h2>
-                <p className="text-sm text-muted-foreground">{tOverview.categoryHint}</p>
-              </div>
+              <h2 className="text-[21px] leading-tight font-bold">{tOverview.categoryTitle}</h2>
               <div>
                 {distribution.length === 0 ? (
                   <Empty>
@@ -207,11 +204,15 @@ export function Overview() {
             >
               <div className="grid gap-1">
                 <h2 className="text-[21px] leading-tight font-bold">{tOverview.ownerTitle}</h2>
-                <p className="text-muted-foreground text-sm">
-                  {restOwners.length > 0
-                    ? tOverview.moreOwners(restOwners.length, restDevices)
-                    : tOverview.ownerHint}
-                </p>
+                {/* Only when there is a remainder. This line carries a number,
+                    not an explanation -- the card said "counted the way the
+                    category card is" under the title, which is a sentence a
+                    reader reads once and then steps over for good. */}
+                {restOwners.length > 0 && (
+                  <p className="text-muted-foreground text-sm">
+                    {tOverview.moreOwners(restOwners.length, restDevices)}
+                  </p>
+                )}
               </div>
               <div>
                 {owners.length === 0 ? (

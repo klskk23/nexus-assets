@@ -104,7 +104,16 @@ function Step({
 }: {
   n: number
   title: string
-  hint: string
+  /**
+   * What pressing on costs, when it costs something.
+   *
+   * Not a description of how the step works -- those went, along with every
+   * other line of prose sitting under a heading explaining the system to
+   * somebody who reads it once. Only step three has one left, because "the
+   * whole file or none of it" is a consequence of the button below it rather
+   * than an explanation of the screen.
+   */
+  hint?: string
   state: "done" | "current" | "waiting"
   children: ReactNode
 }) {
@@ -133,7 +142,7 @@ function Step({
           </span>
           <h2 className="text-[21px] leading-tight font-bold">{title}</h2>
         </div>
-        <p className="text-muted-foreground text-sm">{hint}</p>
+        {hint && <p className="text-muted-foreground text-sm">{hint}</p>}
       </div>
       {children}
     </li>
@@ -214,7 +223,6 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       <Step
         n={1}
         title={tImport.step1}
-        hint={tImport.step1Hint}
         state={categoryID === "" ? "current" : "done"}
       >
         <div className="grid gap-4">
@@ -275,7 +283,6 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       <Step
         n={2}
         title={tImport.step2}
-        hint={tImport.step2Hint}
         state={categoryID === "" ? "waiting" : report ? "done" : "current"}
       >
         <div className="grid gap-4">

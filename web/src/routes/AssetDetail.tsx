@@ -639,10 +639,7 @@ export function AssetDetail() {
 
               {(detail.data?.value_history ?? []).length > 0 && (
                 <section aria-label={t.assets.valueHistory} className="grid content-start gap-3">
-                  <div className="grid gap-1">
-                    <h2 className="text-[21px] leading-tight font-bold">{t.assets.valueHistory}</h2>
-                    <p className="text-sm text-muted-foreground">{t.assets.valueHistoryHint}</p>
-                  </div>
+                  <h2 className="text-[21px] leading-tight font-bold">{t.assets.valueHistory}</h2>
                   <div className="bg-well rounded-[20px] p-6">
                     <ul className="grid gap-1 font-mono text-sm">
                       {(detail.data?.value_history ?? []).map((h, i) => (
@@ -666,10 +663,7 @@ export function AssetDetail() {
                   aria-label={t.assets.archivedFields}
                   className="bg-card grid content-start gap-3 rounded-[28px] px-8 py-6"
                 >
-                  <div className="grid gap-1">
-                    <h2 className="text-base font-bold">{t.assets.archivedFields}</h2>
-                    <p className="text-muted-foreground text-sm">{t.assets.archivedHint}</p>
-                  </div>
+                  <h2 className="text-base font-bold">{t.assets.archivedFields}</h2>
                   <ul className="flex flex-wrap gap-2">
                     {archived.map(([k, v]) => (
                       <li key={k} className="bg-background rounded-full border px-3 py-1.5 text-sm">

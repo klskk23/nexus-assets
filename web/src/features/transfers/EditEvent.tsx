@@ -67,10 +67,7 @@ export function EditEvent({ event, assetID, onClose }: Props) {
 
   return (
     <section aria-label={tTransfer.editTail} className="grid content-start gap-3">
-      <div className="grid gap-1">
-        <h2 className="text-[21px] leading-tight font-bold">{tTransfer.editTail}</h2>
-        <p className="text-sm text-muted-foreground">{tTransfer.editHint}</p>
-      </div>
+      <h2 className="text-[21px] leading-tight font-bold">{tTransfer.editTail}</h2>
       <div className="grid gap-4">
         <div className="flex flex-wrap items-end gap-4">
           <Field>
