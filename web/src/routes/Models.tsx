@@ -1,7 +1,8 @@
+import { AlertCircleIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import { api } from "@/lib/api"
+import { api, ApiError } from "@/lib/api"
 import type { ProductModelRow, VendorRow } from "@/lib/metaTypes"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
@@ -27,6 +28,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 import { useParams, useSearchParams } from "react-router"
 
@@ -106,6 +108,12 @@ export function Models() {
   const countMap = counts.data ?? {}
   const searching = search.trim() !== ""
 
+  // One place for every refusal the editor can provoke. Saving had none at
+  // all: a duplicate name came back 409 and the dialog simply sat there, which
+  // is the same silence the vendor dry-run used to produce on creation.
+  const [error, setError] = useState<string | null>(null)
+  const fail = (e: unknown) => setError(e instanceof ApiError ? e.message : t.common.error)
+
   const save = useMutation({
     mutationFn: (m: ProductModelRow) =>
       api.patch(`/models/${m.id}`, {
@@ -119,6 +127,7 @@ export function Models() {
       queryClient.invalidateQueries({ queryKey: ["model-counts"] })
       setEditing(null)
     },
+    onError: fail,
   })
 
   const add = useMutation({
@@ -134,6 +143,20 @@ export function Models() {
       queryClient.invalidateQueries({ queryKey: ["model-counts"] })
       setCreating(null)
     },
+    onError: fail,
+  })
+
+  // Refused while any device is still of this model, and the refusal says how
+  // many. That is the safety net, so the button stays live and the answer
+  // arrives in the dialog the person is already looking at.
+  const remove = useMutation({
+    mutationFn: (id: string) => api.del(`/models/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["models"] })
+      queryClient.invalidateQueries({ queryKey: ["model-counts"] })
+      setEditing(null)
+    },
+    onError: fail,
   })
 
   // Paged by vendor, so no model is ever shown without the vendor above it
@@ -289,14 +312,28 @@ export function Models() {
       <ModelEditor
         model={editing}
         vendors={vendorList}
-        onOpenChange={(open) => !open && setEditing(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditing(null)
+            setError(null)
+          }
+        }}
         onSave={(m) => save.mutate(m)}
         saving={save.isPending}
+        error={error}
+        onDelete={(id) => remove.mutate(id)}
+        deleting={remove.isPending}
       />
       <ModelEditor
         model={creating}
         vendors={vendorList}
-        onOpenChange={(open) => !open && setCreating(null)}
+        error={error}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCreating(null)
+            setError(null)
+          }
+        }}
         onSave={(m) => add.mutate(m)}
         saving={add.isPending}
         title={tMeta.models.create}
@@ -315,6 +352,11 @@ interface EditProps {
   onOpenChange: (open: boolean) => void
   onSave: (m: ProductModelRow) => void
   saving: boolean
+  /** Whatever the server last refused, in the words it used. */
+  error?: string | null
+  /** Absent while creating: there is nothing to delete yet. */
+  onDelete?: (id: string) => void
+  deleting?: boolean
   /** Creating rather than editing says so; the form itself is the same one. */
   title?: string
 }
@@ -326,6 +368,9 @@ function ModelEditor({
   onOpenChange,
   onSave,
   saving,
+  error,
+  onDelete,
+  deleting,
   title,
 }: EditProps) {
   const [draft, setDraft] = useState<ProductModelRow | null>(model)
@@ -394,7 +439,33 @@ function ModelEditor({
           </div>
         </FieldGroup>
 
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircleIcon />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         <DialogFooter>
+          {/* Only when there is something to delete. 025 lifted the models
+              page into this shape and left the delete behind: the endpoint,
+              its refusal and both languages of the copy all stayed, and
+              nothing on screen referenced any of them. */}
+          {onDelete && (
+            <ConfirmDialog
+              trigger={
+                <Button variant="destructive" className="mr-auto" disabled={deleting}>
+                  {tMeta.models.delete}
+                </Button>
+              }
+              title={tMeta.models.deleteTitle}
+              description={tMeta.models.deleteHint(draft.name)}
+              confirmLabel={tMeta.models.delete}
+              tone="danger"
+              requirePhrase={draft.name}
+              onConfirm={() => onDelete(draft.id)}
+            />
+          )}
           <DialogClose asChild>
             <Button variant="ghost">{t.common.cancel}</Button>
           </DialogClose>

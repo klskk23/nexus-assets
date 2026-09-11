@@ -6,6 +6,7 @@ import { Models } from "@/routes/Models"
 import { listed } from "@/test/listing"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { tMeta } from "@/i18n"
+import { ApiError } from "@/lib/api"
 
 const get = vi.fn()
 const post = vi.fn()
@@ -183,6 +184,72 @@ describe("型号页的厂商与型号", () => {
     openAt("m1")
     await screen.findByRole("heading", { name: "Latitude 5420" })
     expect(screen.queryByRole("button", { name: /删除/ })).not.toBeInTheDocument()
+  })
+
+  /*
+   * Deleting a model, and a vendor.
+   *
+   * Both endpoints exist, both refusals are written, and both languages of the
+   * copy were still in the dictionary -- with nothing on screen referencing any
+   * of it since 025 rewrote this page. The orphan-copy guard did not catch it
+   * because it matches bare key names, and `delete` / `deleteTitle` /
+   * `deleteHint` are names half the other editors use too.
+   *
+   * In the editor dialog rather than the pane: the pane is a read-only board
+   * (024 decision 12) and switching models there is one click, so a
+   * destructive control sitting in it is one slip from gone.
+   */
+  it("型号的删除在编辑对话框里，要先打出名字", async () => {
+    const user = userEvent.setup()
+    openAt("m1")
+
+    await user.click(await screen.findByRole("button", { name: tMeta.models.edit }))
+    await user.click(await screen.findByRole("button", { name: tMeta.models.delete }))
+
+    const dialog = await screen.findByRole("alertdialog")
+    await user.type(screen.getByLabelText(/请输入/), "Latitude 5420")
+    await user.click(within(dialog).getByRole("button", { name: tMeta.models.delete }))
+
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/models/m1"))
+  })
+
+  it("新建对话框里没有删除", async () => {
+    const user = userEvent.setup()
+    openAt()
+
+    await user.click(await screen.findByRole("button", { name: /新建型号/ }))
+    await screen.findByLabelText(tMeta.models.name)
+    expect(screen.queryByRole("button", { name: tMeta.models.delete })).not.toBeInTheDocument()
+  })
+
+  // The refusal is the safety net, so it has to be visible. Saving had no
+  // error path at all: a duplicate name came back 409 and the dialog sat there.
+  it("服务端拒绝时，话说在同一个对话框里", async () => {
+    const user = userEvent.setup()
+    del.mockRejectedValueOnce(new ApiError(409, "model_in_use", "还有 12 台设备是这个型号"))
+    openAt("m1")
+
+    await user.click(await screen.findByRole("button", { name: tMeta.models.edit }))
+    await user.click(await screen.findByRole("button", { name: tMeta.models.delete }))
+    const dialog = await screen.findByRole("alertdialog")
+    await user.type(screen.getByLabelText(/请输入/), "Latitude 5420")
+    await user.click(within(dialog).getByRole("button", { name: tMeta.models.delete }))
+
+    expect(await screen.findByText("还有 12 台设备是这个型号")).toBeInTheDocument()
+  })
+
+  it("厂商的删除也在它的编辑对话框里", async () => {
+    const user = userEvent.setup()
+    openAt("v-dell")
+
+    await user.click(await screen.findByRole("button", { name: tMeta.vendors.edit }))
+    await user.click(await screen.findByRole("button", { name: tMeta.vendors.delete }))
+
+    const dialog = await screen.findByRole("alertdialog")
+    await user.type(screen.getByLabelText(/请输入/), "Dell")
+    await user.click(within(dialog).getByRole("button", { name: tMeta.vendors.delete }))
+
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/vendors/v-dell"))
   })
 
   /*

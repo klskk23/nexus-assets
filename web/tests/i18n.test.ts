@@ -102,6 +102,14 @@ describe("user-facing copy stays in one place", () => {
 
   // A string nothing references is a leftover: either the feature went and the
   // copy stayed, or the copy was written for a feature that never landed.
+  //
+  // **It matches bare key names, not paths, and that is a real hole.** Half the
+  // editors have a `delete` / `deleteTitle` / `deleteHint`, so one `.deleteHint`
+  // anywhere in the code keeps every other group's alive. 025 dropped the whole
+  // delete entrance from the models page and both sets of copy sat here unused
+  // for four rounds without this saying a word. Matching by path would need the
+  // call sites to be spelled out in full (`tMeta.models.deleteHint`), which they
+  // usually are -- worth doing the day somebody has a reason to.
   it("has no entry that nothing in the application references", () => {
     const source = readFileSync(join(I18N, "zh.ts"), "utf8")
     const keys = new Set<string>()
