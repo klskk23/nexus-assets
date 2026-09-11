@@ -184,6 +184,58 @@ describe("型号页的厂商与型号", () => {
     await screen.findByRole("heading", { name: "Latitude 5420" })
     expect(screen.queryByRole("button", { name: /删除/ })).not.toBeInTheDocument()
   })
+
+  /*
+   * Creating a model that names its vendor.
+   *
+   * The create form and the edit form are one component, and "the vendor
+   * changed" was read off the draft alone -- true on creation the moment
+   * anybody picked one. So Save ran the dry-run that says what changing a
+   * vendor costs, for a model with no id: GET /models//vendor-change-impact,
+   * 404, and a confirmation that never arrived. Save did nothing at all, with
+   * nothing on screen to say why, and a new model could only be saved by
+   * leaving the vendor empty.
+   *
+   * The assertion is on the request rather than on the outcome, because the
+   * mock below answers anything under /models/ -- including the path with the
+   * hole in it. A test that only watched the dialog close would have passed
+   * against a server that 404s, which is the whole shape of the 026 lesson.
+   */
+  it("新建型号时不问「换厂商的代价」，直接存", async () => {
+    const user = userEvent.setup()
+    openAt()
+
+    await user.click(await screen.findByRole("button", { name: /新建型号/ }))
+    await user.type(await screen.findByLabelText(tMeta.models.name), "E54C")
+    await user.click(screen.getByRole("combobox", { name: tMeta.models.vendor }))
+    await user.click(await screen.findByRole("option", { name: "Dell" }))
+    await user.click(screen.getByRole("button", { name: tMeta.models.save }))
+
+    await waitFor(() => expect(post).toHaveBeenCalled())
+    expect(post.mock.calls[0][0]).toBe("/models")
+    expect(post.mock.calls[0][1]).toMatchObject({ name: "E54C", vendor_id: "v-dell" })
+    expect(get.mock.calls.flat().filter((p) => String(p).includes("vendor-change-impact"))).toEqual(
+      [],
+    )
+  })
+
+  // The other half: on a model that exists, the warning is still owed.
+  it("改已有型号的厂商，仍然先问代价", async () => {
+    const user = userEvent.setup()
+    openAt("m1")
+
+    await user.click(await screen.findByRole("button", { name: tMeta.models.edit }))
+    await user.click(await screen.findByRole("combobox", { name: tMeta.models.vendor }))
+    await user.click(await screen.findByRole("option", { name: "Lenovo" }))
+    await user.click(screen.getByRole("button", { name: tMeta.models.save }))
+
+    await waitFor(() =>
+      expect(
+        get.mock.calls.flat().filter((p) => String(p).includes("vendor-change-impact")),
+      ).not.toEqual([]),
+    )
+    expect(patch).not.toHaveBeenCalled()
+  })
 })
 
 /*

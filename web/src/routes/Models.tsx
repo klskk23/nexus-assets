@@ -360,7 +360,13 @@ function ModelEditor({
   if (!draft) return null
 
   const ids = draft.category_ids ?? []
-  const vendorChanged = (draft.vendor_id ?? "") !== (model?.vendor_id ?? "")
+  // Only an existing model can *change* vendor. A new one has no old vendor to
+  // lose fields from and no devices to lose them on, so there is nothing to
+  // warn about -- and asking anyway spelt the id into the path as nothing at
+  // all: GET /models//vendor-change-impact, a 404 the dry-run never recovered
+  // from. Save then sat there doing nothing, with no message, for every new
+  // model that named its vendor.
+  const vendorChanged = draft.id !== "" && (draft.vendor_id ?? "") !== (model?.vendor_id ?? "")
 
   return (
     <Dialog open={model !== null} onOpenChange={onOpenChange}>
@@ -487,7 +493,9 @@ function VendorChangeConfirm({
       api.get<{ total: number; fields: string[] }>(
         `/models/${modelID}/vendor-change-impact?vendor_id=${encodeURIComponent(vendorID)}`,
       ),
-    enabled: open,
+    // Belt as well as braces: this question has no meaning without a model,
+    // and the id reaches the path unescaped.
+    enabled: open && modelID !== "",
   })
   const lost = impact.data?.fields ?? []
 
