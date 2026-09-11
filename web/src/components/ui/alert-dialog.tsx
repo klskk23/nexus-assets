@@ -5,6 +5,7 @@ import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
 import { cn } from "cn"
 import { focusFirstControl } from "@/lib/dialogFocus"
+import { InsideDialogContext } from "@/lib/insideDialog"
 import { Button } from "@/components/ui/button"
 
 function AlertDialog({
@@ -85,7 +86,9 @@ function AlertDialogContent({
             )}
           />
         </span>
-        {children}
+        {/* Same scroll lock as Dialog, so the same signal -- see
+            lib/insideDialog.ts. */}
+        <InsideDialogContext.Provider value={true}>{children}</InsideDialogContext.Provider>
       </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   )

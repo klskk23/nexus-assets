@@ -4,6 +4,7 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "cn"
 import { focusFirstControl } from "@/lib/dialogFocus"
+import { InsideDialogContext } from "@/lib/insideDialog"
 import { t } from "@/i18n"
 import { Button } from "@/components/ui/button"
 
@@ -95,7 +96,11 @@ function DialogContent({
         >
           <span className="bg-accent-2/22 absolute -top-[72px] -right-14 block size-[190px] rounded-full" />
         </span>
-        {children}
+        {/* Anything opened from in here needs to know it is in here: the panel
+            holds the page's scroll lock, and a floating panel portalled out of
+            it cannot be scrolled until it takes a lock of its own. See
+            lib/insideDialog.ts. */}
+        <InsideDialogContext.Provider value={true}>{children}</InsideDialogContext.Provider>
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"

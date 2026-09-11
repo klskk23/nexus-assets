@@ -288,3 +288,36 @@ lucide 把宽度画成 SVG 的 presentation attribute，任何 CSS 规则都压�
 `tests/dialogTrack.test.ts` 守这两条，**是源码不变量**：
 jsdom 不做布局，任何关于「超出多少」的断言都会无论 CSS 怎样都通过。
 真实对齐在浏览器里量，中英各一遍，十个对话框底栏对面板都是 ±1px（那 1px 是面板的边框）。
+
+### 对话框里的浮层要自己再锁一次滚动（028 决策 212）
+
+**`Popover` 在对话框里必须是 `modal` 的，我们的 `ui/popover.tsx` 自己判断，
+调用方不用管。** 判断来自 `lib/insideDialog.ts` 的 context，
+由 `DialogContent` 与 `AlertDialogContent` 提供。
+
+对话框不只是盖住页面，它**把页面的滚动拿走了**：Radix 用 react-remove-scroll 上锁，
+在 document 上挂一个 non-passive 的 `wheel` 监听，凡是落点不在对话框面板里
+（也不在它登记过的 shard 里）的滚轮**一律 `preventDefault`**。这是对的 ——
+后面那张表不该跟着鼠标动。
+
+**而浮层的面板是 portal 到 `<body>` 末尾的，于是被算作「外面」。**
+后果：流转对话框里的持有方下拉**能开、能打字、能点**，就是**滚不动** ——
+六十个持有方只够到前八个，没有滚动条跳动，也没有任何报错提示这是怎么回事。
+
+react-remove-scroll 的锁是**一个栈，只有最新的那个处理事件**。所以出路是
+让浮层自己在打开期间也持一把锁 —— Radix 的 `modal` 给的就是这个。
+**`Select` 与 `DropdownMenu` 一直没这个毛病**，正因为它们本来就是 modal 的，
+自带一把锁；只有 `Popover` 默认非 modal。
+
+**为什么不是一律 modal**：`modal` 还会让对话框外的点击**到不了它落在的那个控件**。
+资产筛选栏是六个 `SearchSelect` 排成一行，开着一个直接点下一个是日常动作 ——
+一律 modal 会让它从一次点击变成两次（实机量过）。对话框里没有这一排，
+而且后面本来就点不到，代价为零。
+
+**试过而不能用的另一条路**：把浮层 portal 进对话框面板里（这样它就在锁的里面）。
+面板上有 `overflow-y-auto` 的对话框有十来个（录入设备、类别、字段、设置……），
+**浮层会被面板的下边缘裁掉** —— 实机验过，下拉在对话框底边被切断。
+
+`tests/popoverInDialog.test.tsx` 守这条决策：**jsdom 不滚也不做布局**，
+所以断的不是滚轮，而是 modal 在 DOM 上的指纹（modal 浮层会把文档其余部分标成
+`aria-hidden`，非 modal 的永远不会）。滚轮本身归实机走查。
