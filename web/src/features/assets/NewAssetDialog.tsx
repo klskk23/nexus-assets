@@ -270,7 +270,6 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
             <div className="grid gap-4">
               <p className="text-sm text-muted-foreground">{t.assets.generatedSN}</p>
               <ModelPicker
-                categoryID={categoryId}
                 value={modelId}
                 values={values}
                 onChange={(id, patch) => {

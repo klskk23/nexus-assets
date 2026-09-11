@@ -7,98 +7,64 @@ import (
 	"testing"
 )
 
-// One device can genuinely be both an SDWAN router and a spare. Forcing a
-// choice between two correct answers only leads to the model being entered
-// twice, and then to two copies of its defaults drifting apart.
-func TestModelServesEveryCategoryItIsAssociatedWith(t *testing.T) {
+// Every model is offered under every category.
+//
+// Two tests stood here, both encoding the association 026 decided against and
+// 029 removed. One pinned that a model served exactly the categories it was
+// associated with; the other that the association inherited downwards only --
+// a model on an ancestor reached its descendants, a model on a child did not
+// climb back up. The rule they described is gone: a device of any category may
+// be of any model, so there is one candidate list and it is all of them.
+//
+// Flipped rather than deleted, because the old behaviour is the one somebody
+// would re-derive from the shape of the tables. Archived is the one thing that
+// still takes a model off the list, and that is a property of the model.
+func TestEveryModelIsACandidateEverywhere(t *testing.T) {
 	s, ctx := newStore(t)
-	root, child := tree(t, s, ctx)
+	tree(t, s, ctx)
 
-	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID, child.ID},
-	})
-	if err != nil {
-		t.Fatalf("create model: %v", err)
-	}
-	got, err := s.GetModel(ctx, m.ID)
+	a, err := s.CreateModel(ctx, CreateModelInput{Name: "通用机"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got.CategoryIDs) != 2 {
-		t.Fatalf("category_ids = %v, want both", got.CategoryIDs)
-	}
-
-	for _, c := range []struct {
-		name string
-		path string
-	}{{"root", root.Path}, {"child", child.Path}} {
-		cands, err := s.CandidateModels(ctx, c.path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(cands) != 1 || cands[0].ID != m.ID {
-			t.Errorf("%s should offer the model, got %+v", c.name, cands)
-		}
-	}
-}
-
-// Inheritance runs one way. A model on an ancestor reaches its descendants,
-// matching how bound fields behave; a model attached to a child does not climb
-// back up. With many-to-many available, making a model visible somewhere is an
-// explicit act rather than an inference.
-func TestModelCandidatesInheritDownwardsOnly(t *testing.T) {
-	s, ctx := newStore(t)
-	root, child := tree(t, s, ctx)
-
-	onRoot, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "通用机", CategoryIDs: []string{root.ID},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	onChild, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "专用机", CategoryIDs: []string{child.ID},
+	b, err := s.CreateModel(ctx, CreateModelInput{
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	fromChild, err := s.CandidateModels(ctx, child.Path)
+	cands, err := s.CandidateModels(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(fromChild) != 2 {
-		t.Errorf("the child should see both, got %d", len(fromChild))
+	ids := map[string]bool{}
+	for _, m := range cands {
+		ids[m.ID] = true
 	}
-
-	fromRoot, err := s.CandidateModels(ctx, root.Path)
-	if err != nil {
-		t.Fatal(err)
+	if !ids[a.ID] || !ids[b.ID] {
+		t.Errorf("both models should be offered, got %+v", cands)
 	}
-	if len(fromRoot) != 1 || fromRoot[0].ID != onRoot.ID {
-		t.Errorf("the parent must not see a model attached to its child, got %+v", fromRoot)
-	}
-	_ = onChild
 }
 
 // A model name lives in its vendor's namespace: two vendors may both ship an
 // X100, but one vendor never ships two.
 func TestModelNameIsScopedToItsVendor(t *testing.T) {
 	s, ctx := newStore(t)
-	root, _ := tree(t, s, ctx)
+	tree(t, s, ctx)
 
 	if _, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"),
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Beta"), CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Beta"),
 	}); err != nil {
 		t.Fatalf("two vendors may share a product name: %v", err)
 	}
 	if _, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"),
 	}); err == nil {
 		t.Fatal("the same vendor must not ship two products with one name")
 	}
@@ -111,21 +77,25 @@ func TestModelNameIsScopedToItsVendor(t *testing.T) {
 	}
 }
 
-// A model may exist before it is placed anywhere. It simply appears in no
-// entry form until it is associated with a category.
-func TestModelWithNoCategoryIsNeverACandidate(t *testing.T) {
+// The flip side, kept because it is the exact thing that changed.
+//
+// This used to read "a model with no category is never a candidate" -- created
+// fine, offered nowhere until somebody placed it. Since there is nothing to
+// place it in, a model that names nothing is offered everywhere, like the rest.
+func TestModelWithNoVendorIsStillACandidate(t *testing.T) {
 	s, ctx := newStore(t)
-	root, _ := tree(t, s, ctx)
+	tree(t, s, ctx)
 
-	if _, err := s.CreateModel(ctx, CreateModelInput{Name: "草稿"}); err != nil {
-		t.Fatalf("a model with no category must still be creatable: %v", err)
+	m, err := s.CreateModel(ctx, CreateModelInput{Name: "草稿"})
+	if err != nil {
+		t.Fatalf("a model with no vendor must still be creatable: %v", err)
 	}
-	cands, err := s.CandidateModels(ctx, root.Path)
+	cands, err := s.CandidateModels(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cands) != 0 {
-		t.Errorf("an unassociated model must not be offered, got %+v", cands)
+	if len(cands) != 1 || cands[0].ID != m.ID {
+		t.Errorf("it must be offered, got %+v", cands)
 	}
 }
 
@@ -133,15 +103,15 @@ func TestModelWithNoCategoryIsNeverACandidate(t *testing.T) {
 // can fix it, so they have to be told what to fix.
 func TestDuplicateModelIsReportedNotCrashed(t *testing.T) {
 	s, ctx := newStore(t)
-	root, _ := tree(t, s, ctx)
+	tree(t, s, ctx)
 
 	if _, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"),
 	}); err != nil {
 		t.Fatal(err)
 	}
 	_, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"),
 	})
 	if !errors.Is(err, ErrModelDuplicate) {
 		t.Fatalf("want ErrModelDuplicate, got %v", err)
@@ -152,10 +122,10 @@ func TestDuplicateModelIsReportedNotCrashed(t *testing.T) {
 
 	// An unnamed vendor is still a namespace, and the message has to make sense
 	// without a name to show.
-	if _, err := s.CreateModel(ctx, CreateModelInput{Name: "S24", CategoryIDs: []string{root.ID}}); err != nil {
+	if _, err := s.CreateModel(ctx, CreateModelInput{Name: "S24"}); err != nil {
 		t.Fatal(err)
 	}
-	_, err = s.CreateModel(ctx, CreateModelInput{Name: "S24", CategoryIDs: []string{root.ID}})
+	_, err = s.CreateModel(ctx, CreateModelInput{Name: "S24"})
 	if !errors.Is(err, ErrModelDuplicate) {
 		t.Fatalf("want ErrModelDuplicate for the empty vendor too, got %v", err)
 	}
@@ -197,11 +167,10 @@ func vendorNamed(t *testing.T, s *Store, ctx context.Context, name string) strin
 // them together.
 func TestModelNoteIsSetOnCreateAndLeftAloneByAnEditThatOmitsIt(t *testing.T) {
 	s, ctx := newStore(t)
-	root, _ := tree(t, s, ctx)
+	tree(t, s, ctx)
 
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "Latitude 5420", VendorID: vendorNamed(t, s, ctx, "Dell"),
-		CategoryIDs: []string{root.ID}, Note: "已停产，改买 5430",
+		Name: "Latitude 5420", VendorID: vendorNamed(t, s, ctx, "Dell"), Note: "已停产，改买 5430",
 	})
 	if err != nil {
 		t.Fatal(err)

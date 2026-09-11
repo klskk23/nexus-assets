@@ -768,7 +768,6 @@ paths:
         - { $ref: "#/components/parameters/ListQ" }
         - { $ref: "#/components/parameters/ListOffset" }
         - { $ref: "#/components/parameters/ListLimit" }
-        - { name: category_id, in: query, schema: { type: string } }
       responses:
         "200": { description: OK }
     post:
@@ -789,7 +788,6 @@ paths:
                 vendor_id: { type: string }
                 note: { type: string }
                 image_url: { type: string }
-                category_ids: { type: array, items: { type: string } }
                 attr_defaults: { type: object }
       responses:
         "201": { description: Created }
@@ -800,17 +798,17 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     patch:
       tags: [metadata]
-      summary: 修改型号。字段可省略，省略即不动；category_ids 给了则整体替换
+      summary: 修改型号。字段可省略，省略即不动
       description: >
         `note` 三态与设备备注一致（v2）：**字段缺席 = 不动**，给空串才是清空 ——
-        一次只改类别的编辑不该把别人写的那句话抹掉。
+        一次只改厂商的编辑不该把别人写的那句话抹掉。
       responses:
         "200": { description: OK }
         "409": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
     delete:
       tags: [metadata]
-      summary: 删除型号。仍有设备是该型号时拒绝（带 total）；类别关联一并解除
+      summary: 删除型号。仍有设备是该型号时拒绝（带 total）
       responses:
         "204": { description: Deleted }
         "409": { $ref: "#/components/responses/Error" }
@@ -1825,12 +1823,6 @@ components:
         id: { type: string }
         name: { type: string }
         vendor: { type: string, description: 非 null，可为空串。与 name 一起构成重名判定 }
-        category_ids:
-          type: array
-          items: { type: string }
-          description: >
-            该型号出现在哪些类别的录入表单里。候选范围是「关联到本类别或其任一祖先」，
-            与字段继承同一套心智模型；关联在子孙上的型号，父类的资产看不见
         attr_defaults: { type: object, additionalProperties: true }
         archived_at: { type: string, nullable: true }
 

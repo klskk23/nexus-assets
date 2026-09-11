@@ -208,9 +208,8 @@ func TestCreateFieldRejectsInvalidTemplate(t *testing.T) {
 
 func TestModelDefaultsRoundTrip(t *testing.T) {
 	s, ctx := newStore(t)
-	_, child := tree(t, s, ctx)
-	m, err := s.CreateModel(ctx, CreateModelInput{
-		CategoryIDs: []string{child.ID}, Name: "SDWAN-X100", VendorID: vendorNamed(t, s, ctx, "Acme"),
+	tree(t, s, ctx)
+	m, err := s.CreateModel(ctx, CreateModelInput{Name: "SDWAN-X100", VendorID: vendorNamed(t, s, ctx, "Acme"),
 		AttrDefaults: map[string]any{"ports": float64(8)},
 	})
 	if err != nil {
@@ -222,10 +221,6 @@ func TestModelDefaultsRoundTrip(t *testing.T) {
 	}
 	if got.AttrDefaults["ports"] != float64(8) {
 		t.Errorf("defaults did not round-trip, got %#v", got.AttrDefaults)
-	}
-
-	if len(got.CategoryIDs) != 1 || got.CategoryIDs[0] != child.ID {
-		t.Errorf("the association did not round-trip, got %v", got.CategoryIDs)
 	}
 
 	// Import resolves models by name rather than id.
@@ -240,11 +235,11 @@ func TestModelDefaultsRoundTrip(t *testing.T) {
 
 func TestListFieldsAndModelsReturnEverything(t *testing.T) {
 	s, ctx := newStore(t)
-	_, child := tree(t, s, ctx)
+	tree(t, s, ctx)
 	if _, err := s.CreateField(ctx, CreateFieldInput{Key: "a", Label: "A", Type: model.FieldText}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.CreateModel(ctx, CreateModelInput{CategoryIDs: []string{child.ID}, Name: "M1"}); err != nil {
+	if _, err := s.CreateModel(ctx, CreateModelInput{Name: "M1"}); err != nil {
 		t.Fatal(err)
 	}
 	fields, err := s.ListFields(ctx)
@@ -257,11 +252,15 @@ func TestListFieldsAndModelsReturnEverything(t *testing.T) {
 	}
 }
 
-// modelOn creates a product model registered under the given categories.
-func modelOn(t *testing.T, s *Store, ctx context.Context, name string, categoryIDs ...string) model.ProductModel {
+// modelOn creates a product model.
+//
+// It kept a categoryIDs parameter long after a model stopped belonging to
+// categories; callers pass nothing now, and the name survives because it reads
+// the same at every call site.
+func modelOn(t *testing.T, s *Store, ctx context.Context, name string) model.ProductModel {
 	t.Helper()
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: name, VendorID: vendorNamed(t, s, ctx, "Dell"), CategoryIDs: categoryIDs,
+		Name: name, VendorID: vendorNamed(t, s, ctx, "Dell"),
 	})
 	if err != nil {
 		t.Fatalf("create model %s: %v", name, err)
@@ -274,7 +273,7 @@ func modelOn(t *testing.T, s *Store, ctx context.Context, name string, categoryI
 func TestEffectiveFieldsIncludesModelBoundFields(t *testing.T) {
 	s, ctx := newStore(t)
 	root, child := tree(t, s, ctx)
-	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+	dell := modelOn(t, s, ctx, "Latitude 5420")
 
 	mac, _ := s.CreateField(ctx, CreateFieldInput{
 		Key: "mac", Label: "MAC", Type: model.FieldMAC, Required: true,
@@ -326,8 +325,8 @@ func TestEffectiveFieldsIncludesModelBoundFields(t *testing.T) {
 func TestEffectiveFieldsMergesAFieldBoundToSeveralModels(t *testing.T) {
 	s, ctx := newStore(t)
 	_, child := tree(t, s, ctx)
-	a := modelOn(t, s, ctx, "Latitude 5420", child.ID)
-	b := modelOn(t, s, ctx, "OptiPlex 7090", child.ID)
+	a := modelOn(t, s, ctx, "Latitude 5420")
+	b := modelOn(t, s, ctx, "OptiPlex 7090")
 
 	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
 	for _, m := range []model.ProductModel{a, b} {
@@ -351,15 +350,17 @@ func TestEffectiveFieldsMergesAFieldBoundToSeveralModels(t *testing.T) {
 	}
 }
 
-// A model registered somewhere else contributes nothing here.
-func TestEffectiveFieldsIgnoresModelsOutsideTheChain(t *testing.T) {
+// EffectiveFields answers for the category chain and nothing else.
+//
+// It used to be "a model registered somewhere else contributes nothing here",
+// which was true of a world where a model was registered somewhere. 026 made
+// this the plain rule -- a model binding never appears in a category's schema,
+// whichever model it is -- and "what can this one device record" is
+// FieldsForAsset's question, with the model named.
+func TestEffectiveFieldsAnswersTheCategoryChainOnly(t *testing.T) {
 	s, ctx := newStore(t)
 	root, child := tree(t, s, ctx)
-	other, err := s.CreateCategory(ctx, CreateCategoryInput{Code: "SW", Name: "交换机"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	elsewhere := modelOn(t, s, ctx, "Catalyst", other.ID)
+	elsewhere := modelOn(t, s, ctx, "Catalyst")
 
 	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
 	if err := s.BindModel(ctx, elsewhere.ID, tag.ID, 10); err != nil {
@@ -372,7 +373,7 @@ func TestEffectiveFieldsIgnoresModelsOutsideTheChain(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(fields) != 0 {
-			t.Errorf("category %s picked up a field from a model registered elsewhere: %v", id, fields)
+			t.Errorf("category %s picked up a model's field: %v", id, fields)
 		}
 	}
 }
@@ -381,7 +382,7 @@ func TestEffectiveFieldsIgnoresModelsOutsideTheChain(t *testing.T) {
 func TestBindingModesAreExclusive(t *testing.T) {
 	s, ctx := newStore(t)
 	root, child := tree(t, s, ctx)
-	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+	dell := modelOn(t, s, ctx, "Latitude 5420")
 
 	byCategory, _ := s.CreateField(ctx, CreateFieldInput{Key: "mac", Label: "MAC", Type: model.FieldMAC})
 	if err := s.Bind(ctx, root.ID, byCategory.ID, 10); err != nil {
@@ -405,7 +406,7 @@ func TestBindingModesAreExclusive(t *testing.T) {
 func TestUnbindModelLeavesTheDefinitionAlone(t *testing.T) {
 	s, ctx := newStore(t)
 	_, child := tree(t, s, ctx)
-	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+	dell := modelOn(t, s, ctx, "Latitude 5420")
 	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
 	if err := s.BindModel(ctx, dell.ID, tag.ID, 10); err != nil {
 		t.Fatal(err)
@@ -433,9 +434,9 @@ func TestUnbindModelLeavesTheDefinitionAlone(t *testing.T) {
 // ModelsOfField is what tells the interface which models a field is for.
 func TestModelsOfFieldNamesEveryBinding(t *testing.T) {
 	s, ctx := newStore(t)
-	_, child := tree(t, s, ctx)
-	a := modelOn(t, s, ctx, "Latitude 5420", child.ID)
-	b := modelOn(t, s, ctx, "OptiPlex 7090", child.ID)
+	tree(t, s, ctx)
+	a := modelOn(t, s, ctx, "Latitude 5420")
+	b := modelOn(t, s, ctx, "OptiPlex 7090")
 	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
 	for _, m := range []model.ProductModel{a, b} {
 		if err := s.BindModel(ctx, m.ID, tag.ID, 10); err != nil {
@@ -457,8 +458,8 @@ func TestModelsOfFieldNamesEveryBinding(t *testing.T) {
 // definitions cannot share one key.
 func TestModelBindingRefusesAKeyTakenOnTheCategory(t *testing.T) {
 	s, ctx := newStore(t)
-	root, child := tree(t, s, ctx)
-	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+	root, _ := tree(t, s, ctx)
+	dell := modelOn(t, s, ctx, "Latitude 5420")
 
 	onCategory, _ := s.CreateField(ctx, CreateFieldInput{Key: "sn", Label: "编号", Type: model.FieldText})
 	if err := s.Bind(ctx, root.ID, onCategory.ID, 10); err != nil {
@@ -471,7 +472,7 @@ func TestModelBindingRefusesAKeyTakenOnTheCategory(t *testing.T) {
 	}
 
 	// And one taken by another field on the same model.
-	other := modelOn(t, s, ctx, "OptiPlex 7090", child.ID)
+	other := modelOn(t, s, ctx, "OptiPlex 7090")
 	first, _ := s.CreateField(ctx, CreateFieldInput{Key: "tag", Label: "标签", Type: model.FieldText})
 	second, _ := s.CreateField(ctx, CreateFieldInput{Key: "tag", Label: "另一个标签", Type: model.FieldText})
 	if err := s.BindModel(ctx, other.ID, first.ID, 10); err != nil {
@@ -485,8 +486,8 @@ func TestModelBindingRefusesAKeyTakenOnTheCategory(t *testing.T) {
 // Binding to something that does not exist is a miss, not a panic.
 func TestModelBindingRefusesUnknownIDs(t *testing.T) {
 	s, ctx := newStore(t)
-	_, child := tree(t, s, ctx)
-	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+	tree(t, s, ctx)
+	dell := modelOn(t, s, ctx, "Latitude 5420")
 	tag, _ := s.CreateField(ctx, CreateFieldInput{Key: "servicetag", Label: "ServiceTag", Type: model.FieldText})
 
 	if err := s.BindModel(ctx, dell.ID, "no-such-field", 10); !errors.Is(err, ErrNotFound) {
@@ -527,8 +528,8 @@ func TestForModelNarrowsToTheDeviceInFront(t *testing.T) {
 // others -- the same promise the category side makes, aimed narrower.
 func TestModelRequiredImpactCountsThisModelOnly(t *testing.T) {
 	s, ctx := newStore(t)
-	_, child := tree(t, s, ctx)
-	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+	tree(t, s, ctx)
+	dell := modelOn(t, s, ctx, "Latitude 5420")
 
 	n, err := s.ModelRequiredImpact(ctx, dell.ID)
 	if err != nil {
@@ -545,7 +546,7 @@ func TestModelRequiredImpactCountsThisModelOnly(t *testing.T) {
 func TestDisplayKeyRefusesModelBoundFields(t *testing.T) {
 	s, ctx := newStore(t)
 	_, child := tree(t, s, ctx)
-	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+	dell := modelOn(t, s, ctx, "Latitude 5420")
 
 	tag, _ := s.CreateField(ctx, CreateFieldInput{
 		Key: "servicetag", Label: "ServiceTag", Type: model.FieldText, IsUnique: true,
@@ -573,8 +574,8 @@ func TestDisplayKeyRefusesModelBoundFields(t *testing.T) {
 // still take the field down with it: half a result is not worth keeping.
 func TestCreateFieldBindsModelsInTheSameTransaction(t *testing.T) {
 	s, ctx := newStore(t)
-	_, child := tree(t, s, ctx)
-	dell := modelOn(t, s, ctx, "Latitude 5420", child.ID)
+	tree(t, s, ctx)
+	dell := modelOn(t, s, ctx, "Latitude 5420")
 
 	f, err := s.CreateField(ctx, CreateFieldInput{
 		Key: "servicetag", Label: "ServiceTag", Type: model.FieldText,
@@ -671,9 +672,9 @@ func TestRequiredBelongsToTheFieldAndReachesEveryBinding(t *testing.T) {
 // those rows, so SQLite refused the whole statement.
 func TestDeleteFieldBoundToModels(t *testing.T) {
 	s, ctx := newStore(t)
-	_, child := tree(t, s, ctx)
-	a := modelOn(t, s, ctx, "EDGE620", child.ID)
-	b := modelOn(t, s, ctx, "EDGE640", child.ID)
+	tree(t, s, ctx)
+	a := modelOn(t, s, ctx, "EDGE620")
+	b := modelOn(t, s, ctx, "EDGE640")
 
 	f, err := s.CreateField(ctx, CreateFieldInput{
 		Key: "servicetag", Label: "ServiceTag", Type: model.FieldText,

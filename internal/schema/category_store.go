@@ -268,27 +268,25 @@ func validateDisplayKey(ctx context.Context, tx *sql.Tx, path, key string) error
 	err := tx.QueryRowContext(ctx, q, key, path).Scan(&label, &isUnique)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Bound, but to the device side -- a model, or a vendor whose models
-		// are here (015 decision 100, widened by 016). Refused for its own
+		// carry it (015 decision 100, widened by 016). Refused for its own
 		// reason: a device field covers only some of the category's assets, so
 		// the rest would fall back to the UUID prefix for good. Saying
 		// "unbound" here would send somebody looking for a binding that is
 		// already there -- and visible to them in this very category's schema.
+		//
+		// No path in the condition: a model reaches every category, so a
+		// device-side binding of this key is reachable from this one. It used
+		// to be narrowed by product_model_categories, which made the message
+		// say "unbound" about a field the schema right there was listing.
 		var n int
 		if err := tx.QueryRowContext(ctx, `
-			SELECT (SELECT count(*)
-			        FROM model_fields mf
+			SELECT (SELECT count(*) FROM model_fields mf
 			        JOIN field_definitions f ON f.id = mf.field_id
-			        JOIN product_model_categories pmc ON pmc.model_id = mf.model_id
-			        JOIN categories c ON c.id = pmc.category_id
-			        WHERE f.key = ? AND (? LIKE c.path || '%' OR c.path LIKE ? || '%'))
-			     + (SELECT count(*)
-			        FROM vendor_fields vf
+			        WHERE f.key = ?)
+			     + (SELECT count(*) FROM vendor_fields vf
 			        JOIN field_definitions f ON f.id = vf.field_id
-			        JOIN product_models m ON m.vendor_id = vf.vendor_id
-			        JOIN product_model_categories pmc ON pmc.model_id = m.id
-			        JOIN categories c ON c.id = pmc.category_id
-			        WHERE f.key = ? AND (? LIKE c.path || '%' OR c.path LIKE ? || '%'))`,
-			key, path, path, key, path, path).Scan(&n); err != nil {
+			        WHERE f.key = ?)`,
+			key, key).Scan(&n); err != nil {
 			return err
 		}
 		if n > 0 {
@@ -377,9 +375,8 @@ func (s *Store) DeleteCategory(ctx context.Context, id string) ([]CategoryBlocke
 
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		for _, q := range []string{
-			// Both belong to this category and point nowhere else.
+			// It belongs to this category and points nowhere else.
 			`DELETE FROM category_fields WHERE category_id = ?`,
-			`DELETE FROM product_model_categories WHERE category_id = ?`,
 			`DELETE FROM categories WHERE id = ?`,
 		} {
 			if _, err := tx.ExecContext(ctx, q, id); err != nil {
@@ -442,17 +439,6 @@ func (s *Store) assetsUnder(ctx context.Context, path string) ([]CategoryBlocker
 		out = append(out, b)
 	}
 	return out, total, rows.Err()
-}
-
-// ModelsAttached lists the models a category delete would detach.
-//
-// Deleting does not refuse on them, so the interface has to be able to say
-// what will happen before it happens rather than after.
-func (s *Store) ModelsAttached(ctx context.Context, categoryID string) ([]CategoryBlocker, error) {
-	return s.blockers(ctx,
-		`SELECT m.id, m.name FROM product_models m
-		 JOIN product_model_categories pmc ON pmc.model_id = m.id
-		 WHERE pmc.category_id = ? ORDER BY m.vendor, m.name`, "model", categoryID)
 }
 
 // sameParent reports whether two optional parent ids name the same place.

@@ -51,29 +51,27 @@ func (r Referrer) String() string { return r.Message().Error() }
 // therefore limited to the trees this field is actually part of, and a field
 // bound nowhere blocks nothing.
 func (s *Store) boundPaths(ctx context.Context, fieldID string) ([]string, error) {
-	// All three kinds of binding (015, widened by 016). A device-bound field
-	// reaches the categories its models are registered under, and asking only
-	// category_fields answered "nowhere" for it -- which quietly switched off
-	// every guard scoped by these paths, including the one that refuses to
-	// delete a field forty devices still hold a value for.
+	// All three kinds of binding (015, widened by 016). Asking only
+	// category_fields answered "nowhere" for a device-bound field -- which
+	// quietly switched off every guard scoped by these paths, including the one
+	// that refuses to delete a field forty devices still hold a value for.
 	//
-	// The vendor arm reaches the same way, one join further out: a field on
-	// Dell is on every Dell model, so it is in every category those models sit
-	// in.
+	// A device-side binding reaches **every** category. A model is recorded
+	// under whichever category its device is in, so a field on a model, or on a
+	// vendor whose models it is, can turn up anywhere.
+	//
+	// This used to reach through product_model_categories instead, which was
+	// the same silence in a subtler place: a model associated with nothing
+	// answered "nowhere" again. Before 026 that was rare; after it, a model is
+	// associated with nothing by definition, and the table is gone (029).
 	rows, err := s.db.ReadDB().QueryContext(ctx,
 		`SELECT c.path FROM category_fields cf JOIN categories c ON c.id = cf.category_id
 		 WHERE cf.field_id = ?
 		 UNION
-		 SELECT c.path FROM model_fields mf
-		   JOIN product_model_categories pmc ON pmc.model_id = mf.model_id
-		   JOIN categories c ON c.id = pmc.category_id
-		  WHERE mf.field_id = ?
-		 UNION
-		 SELECT c.path FROM vendor_fields vf
-		   JOIN product_models m ON m.vendor_id = vf.vendor_id
-		   JOIN product_model_categories pmc ON pmc.model_id = m.id
-		   JOIN categories c ON c.id = pmc.category_id
-		  WHERE vf.field_id = ?`, fieldID, fieldID, fieldID)
+		 SELECT c.path FROM categories c
+		  WHERE EXISTS (SELECT 1 FROM model_fields mf WHERE mf.field_id = ?)
+		     OR EXISTS (SELECT 1 FROM vendor_fields vf WHERE vf.field_id = ?)`,
+		fieldID, fieldID, fieldID)
 	if err != nil {
 		return nil, fmt.Errorf("load bound categories: %w", err)
 	}
@@ -142,8 +140,24 @@ func (s *Store) ReferrersOf(ctx context.Context, fieldID, key string) ([]Referre
 	return out, nil
 }
 
-// fieldsInScope lists the field definitions bound anywhere on the chains the
-// given paths belong to.
+// fieldsInScope lists the field definitions that can reach an asset the given
+// paths can reach.
+//
+// Category bindings carry a path, so they answer by chain. **Device-side
+// bindings carry none** -- a model is recorded under any category, so a field
+// on a model, or on a vendor whose models it is, is in scope of every question
+// asked here. They used to be left out of this list entirely, which made a
+// computed field bound to a model invisible as a referrer: two fields on one
+// model, one computed over the other, and deleting the dependency went
+// straight through, leaving every device of that model unsaveable at the next
+// edit. Nothing said so until somebody tried to save one.
+//
+// Two device bindings that cannot actually meet -- fields on two different
+// models -- are both returned anyway. That over-refuses, and over-refusing
+// here costs a rename while under-refusing costs a category nobody can save
+// into. The same trade is already made by assertKeyFreeForCategory, which
+// stopped asking which categories a device binding reaches for the same
+// reason.
 func (s *Store) fieldsInScope(ctx context.Context, paths []string) ([]model.FieldDefinition, error) {
 	all, err := s.ListFields(ctx)
 	if err != nil {
@@ -154,8 +168,11 @@ func (s *Store) fieldsInScope(ctx context.Context, paths []string) ([]model.Fiel
 		byID[f.ID] = f
 	}
 
+	// A path of "" marks a binding with no path of its own: in scope always.
 	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT cf.field_id, c.path FROM category_fields cf JOIN categories c ON c.id = cf.category_id`)
+		`SELECT cf.field_id, c.path FROM category_fields cf JOIN categories c ON c.id = cf.category_id
+		 UNION ALL SELECT field_id, '' FROM model_fields
+		 UNION ALL SELECT field_id, '' FROM vendor_fields`)
 	if err != nil {
 		return nil, fmt.Errorf("load bindings in scope: %w", err)
 	}
@@ -168,7 +185,7 @@ func (s *Store) fieldsInScope(ctx context.Context, paths []string) ([]model.Fiel
 		if err := rows.Scan(&id, &path); err != nil {
 			return nil, err
 		}
-		if seen[id] || !inScope(paths, path) {
+		if seen[id] || (path != "" && !inScope(paths, path)) {
 			continue
 		}
 		if f, ok := byID[id]; ok {

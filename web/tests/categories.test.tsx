@@ -237,20 +237,24 @@ describe("Categories delete", () => {
   })
 })
 
-// Deleting detaches attached models instead of refusing on them -- nothing in
-// the interface can detach one, so a refusal would have been a dead end. What
-// it must not be is silent.
-it("names the models that will be detached before asking to confirm", async () => {
+// Deleting a category says nothing about models, because it does nothing to
+// them.
+//
+// The test that stood here named the models a delete would detach: deleting
+// detached them instead of refusing on them -- nothing in the interface could
+// detach one, so a refusal would have been a dead end -- and what it must not
+// be is silent. 029 removed the association, so there is nothing to detach and
+// nothing to warn about. Kept as its own assertion rather than deleted, since
+// the line it used to print is exactly the kind that outlives its behaviour.
+it("删类别时不再提任何型号", async () => {
   const user = userEvent.setup()
   openAt()
   await openEditor(user)
   await user.click(await screen.findByRole("button", { name: "删除类别" }))
 
   const dialog = await screen.findByRole("alertdialog")
-  expect(dialog).toHaveTextContent("以下型号将不再关联到该类别")
-  expect(dialog).toHaveTextContent("X100")
-  // A model attached elsewhere is not this category's business.
-  expect(dialog).not.toHaveTextContent("别的机")
+  expect(dialog).not.toHaveTextContent("X100")
+  expect(dialog).not.toHaveTextContent("型号")
 })
 
 // The tree is the page's left-hand rail now. Order and indent still carry the

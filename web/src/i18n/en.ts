@@ -386,13 +386,10 @@ export const enMeta: typeof zhMeta = {
     vendor: "Vendor",
     note: "Note",
     notePlaceholder: "One line about the model itself -- discontinued, a revision to avoid",
-    category: "Categories",
-    noCategory: "No category",
-    categoryHint:
-      "Several may be ticked. The model appears in the entry form of each chosen category and its subcategories.",
+    hint: "A model comes from a vendor, not from a category. A device of any category may be of any model.",
     defaults: "Defaults",
     defaultsHint:
-      "Used to prefill fields left empty when this model is chosen. Keys the category does not have are skipped.",
+      "Used to prefill fields left empty when this model is chosen. Keys the device does not have are skipped.",
     defaultKey: "Key",
     defaultValue: "Value",
     addDefault: "Add one",
@@ -403,10 +400,9 @@ export const enMeta: typeof zhMeta = {
     delete: "Delete",
     deleteTitle: "Delete model",
     deleteHint: (name: string) =>
-      `${name} will be deleted, along with its links to every category. Refused while any device is assigned to it.`,
+      `${name} will be deleted. Refused while any device is assigned to it.`,
     empty: "No models yet",
-    emptyHint:
-      "A model can belong to several categories and supply default values, prefilled during entry.",
+    emptyHint: "A model comes from a vendor and supplies default values, prefilled during entry.",
   },
   holders: {
     searchHint: "name, note",
@@ -517,8 +513,6 @@ export const enMeta: typeof zhMeta = {
     deleteTitle: "Delete category",
     deleteHint: (name: string) =>
       `${name} and its field bindings will be deleted. Refused while it has subcategories or assets beneath it — you will be told which.`,
-    deleteDetaches: (names: string) =>
-      `These models will no longer be attached to it (the models themselves survive): ${names}.`,
     fields: "Fields on this category",
     inheritedFrom: "Inherited from",
     bind: "Bind a field",

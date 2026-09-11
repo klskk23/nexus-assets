@@ -90,9 +90,7 @@ func newFixture(t *testing.T) *fixture {
 	if _, err := sch.UpdateCategory(ctx, cat.ID, schema.UpdateCategoryInput{DisplayKey: &displayKey}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sch.CreateModel(ctx, schema.CreateModelInput{
-		CategoryIDs: []string{cat.ID}, Name: "SDWAN-X100", VendorID: vendorID(t, sch, ctx, "Acme"),
-	}); err != nil {
+	if _, err := sch.CreateModel(ctx, schema.CreateModelInput{Name: "SDWAN-X100", VendorID: vendorID(t, sch, ctx, "Acme")}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -513,7 +511,7 @@ func TestVendorColumnSettlesModelsThatShareAName(t *testing.T) {
 
 	// A second X100, from someone else, reachable from the same category.
 	if _, err := f.schema.CreateModel(f.ctx, schema.CreateModelInput{
-		Name: "SDWAN-X100", VendorID: vendorID(t, f.schema, f.ctx, "Beta"), CategoryIDs: []string{f.catID},
+		Name: "SDWAN-X100", VendorID: vendorID(t, f.schema, f.ctx, "Beta"),
 	}); err != nil {
 		t.Fatalf("create model: %v", err)
 	}
@@ -571,9 +569,7 @@ func TestPreviewRefusesAValueThatDoesNotBelongToTheRowsModel(t *testing.T) {
 	f := newFixture(t)
 
 	// A second model in the same category, with a field of its own.
-	dell, err := f.schema.CreateModel(f.ctx, schema.CreateModelInput{
-		CategoryIDs: []string{f.catID}, Name: "Latitude 5420", VendorID: vendorID(t, f.schema, f.ctx, "Dell"),
-	})
+	dell, err := f.schema.CreateModel(f.ctx, schema.CreateModelInput{Name: "Latitude 5420", VendorID: vendorID(t, f.schema, f.ctx, "Dell")})
 	if err != nil {
 		t.Fatal(err)
 	}

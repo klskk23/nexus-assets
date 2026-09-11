@@ -2,7 +2,6 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 
 import { api } from "@/lib/api"
-import type { Category } from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
 import { modelLabel } from "@/lib/metaTypes"
 import { t } from "@/i18n"
@@ -19,7 +18,6 @@ import {
 import { Field, FieldLabel } from "@/components/ui/field"
 
 interface Props {
-  categoryID: string
   value: string | null
   /** Called with the chosen model and the attribute values to merge in. */
   onChange: (modelID: string | null, patch: Record<string, unknown>) => void
@@ -43,42 +41,31 @@ interface Overwrite {
 /**
  * Chooses the device model and applies its default attribute values.
  *
- * The model list is limited to the asset's own category and its ancestors: a
- * model defined on a sibling branch has nothing to do with this device, and
- * offering it only invites a mis-selection.
+ * Every model is offered, whatever the category. It took the category as a
+ * prop for as long as the list was narrowed by it -- first as a filter, then
+ * as an order -- and neither survives 026's ruling that a model belongs to no
+ * category: a device of any category may be of any model.
  */
-export function ModelPicker({ categoryID, value, onChange, values, confirmOverwrite }: Props) {
+export function ModelPicker({ value, onChange, values, confirmOverwrite }: Props) {
   const [pending, setPending] = useState<{ id: string; overwrites: Overwrite[] } | null>(null)
 
-  const categories = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => api.get<Category[]>("/categories"),
-  })
   const models = useQuery({
     queryKey: ["models"],
     queryFn: () => api.get<ProductModelRow[]>("/models"),
   })
 
-  // A model reaches every category below the ones it is associated with, the
-  // same way bound fields are inherited. It does not climb back up: a model
-  // attached to a child is not offered to the parent. Now that a model can
-  // carry several categories, making it visible somewhere is an explicit act.
-  const self = (categories.data ?? []).find((c) => c.id === categoryID)
-  const chain = new Set((self?.path ?? "").split("/").filter(Boolean))
-  // Every model, with the ones registered under this category first.
+  // Every model there is, in one order: a model belongs to no category (026),
+  // so there is no "nearer" half of the list to float to the top.
   //
-  // The association stopped being a restriction in 026 -- a model belongs to a
-  // vendor, not to a category -- but it is still the best guess at what
-  // somebody is looking for, so it decides the order rather than the contents.
-  // Filtering by it is what made a device silently lose its model's fields
-  // when the two disagreed.
+  // It used to sort the ones registered under this category first. 026 had
+  // already stopped that association deciding the *contents* -- filtering by it
+  // is what made a device silently lose its model's fields when the two
+  // disagreed -- and kept it as the order. 029 removed the association itself,
+  // and with it the only thing that ordering was reading. Searching is what
+  // narrows this list now, which is why it is a SearchSelect.
   const candidates = (models.data ?? [])
     .filter((m) => !m.archived_at)
-    .sort((a, b) => {
-      const near = (m: ProductModelRow) =>
-        (m.category_ids ?? []).some((id) => chain.has(id)) ? 0 : 1
-      return near(a) - near(b) || a.name.localeCompare(b.name)
-    })
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   const defaultsOf = (id: string) => candidates.find((m) => m.id === id)?.attr_defaults ?? {}
 

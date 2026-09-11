@@ -96,64 +96,34 @@ func TestDeleteCategoryRefusedWhileAssetsExistAnywhereBeneath(t *testing.T) {
 	}
 }
 
-// Attached models are detached rather than blocking. Refusing on them looked
-// consistent with everything else, but nothing in the interface can detach a
-// model from a category, so it was a refusal with no way to act on it.
-func TestDeleteCategoryDetachesModelsRatherThanRefusing(t *testing.T) {
-	s, ctx := newStore(t)
-	root, child := tree(t, s, ctx)
-
-	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID, child.ID},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// The interface has to be able to say what will happen before it happens.
-	attached, err := s.ModelsAttached(ctx, child.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(attached) != 1 || attached[0].ID != m.ID || attached[0].Kind != "model" {
-		t.Fatalf("ModelsAttached = %+v", attached)
-	}
-
-	if _, _, err := s.DeleteCategory(ctx, child.ID); err != nil {
-		t.Fatalf("an attached model must not block the delete: %v", err)
-	}
-
-	// The model survives, minus that one association.
-	got, err := s.GetModel(ctx, m.ID)
-	if err != nil {
-		t.Fatalf("the model itself must survive: %v", err)
-	}
-	if len(got.CategoryIDs) != 1 || got.CategoryIDs[0] != root.ID {
-		t.Errorf("only the deleted category should be detached, got %v", got.CategoryIDs)
-	}
-}
-
-// A model attached to nothing is an ordinary state -- the one it sits in
-// before it is placed anywhere -- so losing its last category is allowed.
-func TestDeleteCategoryMayLeaveAModelUnattached(t *testing.T) {
+// Models are not part of a category delete at all.
+//
+// Two tests used to live here. The first pinned that an attached model was
+// detached rather than blocking -- refusing on one looked consistent with
+// everything else, but nothing in the interface could detach a model from a
+// category, so it was a refusal with no way to act on it. The second pinned
+// that losing the last association was allowed.
+//
+// Both were about an association that no longer exists (029, finishing what
+// 026 decided): a model is recorded under whatever category its device is in,
+// so there is nothing for a category delete to detach. What survives of them is
+// the promise a model never blocked a category, which is what this asserts.
+func TestDeleteCategoryLeavesModelsAlone(t *testing.T) {
 	s, ctx := newStore(t)
 	_, child := tree(t, s, ctx)
 
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{child.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if _, _, err := s.DeleteCategory(ctx, child.ID); err != nil {
-		t.Fatal(err)
+		t.Fatalf("a model must not block a category delete: %v", err)
 	}
-	got, err := s.GetModel(ctx, m.ID)
-	if err != nil {
-		t.Fatalf("the model must survive: %v", err)
-	}
-	if len(got.CategoryIDs) != 0 {
-		t.Errorf("category_ids = %v, want empty", got.CategoryIDs)
+	if _, err := s.GetModel(ctx, m.ID); err != nil {
+		t.Fatalf("the model itself must survive: %v", err)
 	}
 }
 

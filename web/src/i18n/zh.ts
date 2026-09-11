@@ -369,11 +369,9 @@ export const zhMeta = {
     vendor: "厂商",
     note: "备注",
     notePlaceholder: "关于这款型号本身的一句话，例如已停产、某个版本别买",
-    category: "所属类别",
-    noCategory: "未关联类别",
-    categoryHint: "可多选。型号会出现在所选类别及其子类别的录入表单里。",
+    hint: "型号属于厂商，不属于类别。任何类别的设备都可以是任何型号。",
     defaults: "默认值",
-    defaultsHint: "录入设备选中该型号时，用来预填尚未填写的字段。当前类别没有的键会被跳过。",
+    defaultsHint: "录入设备选中该型号时，用来预填尚未填写的字段。这台设备没有的键会被跳过。",
     defaultKey: "键名",
     defaultValue: "值",
     addDefault: "添加一条",
@@ -384,9 +382,9 @@ export const zhMeta = {
     delete: "删除",
     deleteTitle: "删除型号",
     deleteHint: (name: string) =>
-      `「${name}」将被删除，它与各类别的关联一并解除。仍有设备是这个型号时会被拒绝。`,
+      `「${name}」将被删除。仍有设备是这个型号时会被拒绝。`,
     empty: "还没有任何型号",
-    emptyHint: "型号可同时归属多个类别，并为字段提供默认值，录入时预填。",
+    emptyHint: "型号来自厂商，并为字段提供默认值，录入时预填。",
   },
   holders: {
     searchHint: "名称、备注",
@@ -494,8 +492,6 @@ export const zhMeta = {
     deleteTitle: "删除类别",
     deleteHint: (name: string) =>
       `「${name}」及其字段绑定将被删除。有子类别、或子树下有资产时会被拒绝，届时会列出是哪些。`,
-    deleteDetaches: (names: string) =>
-      `以下型号将不再关联到该类别（型号本身保留）：${names}。`,
     fields: "本类别的字段",
     inheritedFrom: "继承自",
     bind: "绑定字段",

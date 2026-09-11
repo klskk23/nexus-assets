@@ -585,7 +585,6 @@ export function AssetDetail() {
                         <FieldLegend variant="label">{t.assets.attrs}</FieldLegend>
                         <FieldGroup className="grid gap-4 rounded-md border p-4">
                           <ModelPicker
-                            categoryID={asset.category_id}
                             value={modelId}
                             values={values}
                             confirmOverwrite

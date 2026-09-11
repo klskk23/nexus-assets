@@ -39,19 +39,19 @@ func TestVendorFieldReachesEveryModelOfThatVendor(t *testing.T) {
 	dell := vendorNamed(t, s, ctx, "Dell")
 	lenovo := vendorNamed(t, s, ctx, "Lenovo")
 	one, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R640", VendorID: dell, CategoryIDs: []string{root.ID},
+		Name: "R640", VendorID: dell,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	two, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R650", VendorID: dell, CategoryIDs: []string{root.ID},
+		Name: "R650", VendorID: dell,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	other, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "SR650", VendorID: lenovo, CategoryIDs: []string{root.ID},
+		Name: "SR650", VendorID: lenovo,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +96,7 @@ func TestVendorFieldReachesEveryModelOfThatVendor(t *testing.T) {
 	// Registered afterwards, nothing else done. This is the live half of live
 	// inheritance -- expanding at bind time would leave this model without it.
 	fresh, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R660", VendorID: dell, CategoryIDs: []string{root.ID},
+		Name: "R660", VendorID: dell,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -128,7 +128,7 @@ func TestModelAndVendorBindingsOfOneFieldMergeIntoOneEntry(t *testing.T) {
 	root, _ := tree(t, s, ctx)
 	dell := vendorNamed(t, s, ctx, "Dell")
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R640", VendorID: dell, CategoryIDs: []string{root.ID},
+		Name: "R640", VendorID: dell,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +162,7 @@ func TestCategoryAndDeviceBindingsStayExclusive(t *testing.T) {
 	root, _ := tree(t, s, ctx)
 	dell := vendorNamed(t, s, ctx, "Dell")
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R640", VendorID: dell, CategoryIDs: []string{root.ID},
+		Name: "R640", VendorID: dell,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -193,10 +193,10 @@ func TestCategoryAndDeviceBindingsStayExclusive(t *testing.T) {
 // is every category its models sit in.
 func TestVendorBindingRefusesAKeyTakenOnItsModelsCategories(t *testing.T) {
 	s, ctx := newStore(t)
-	root, child := tree(t, s, ctx)
+	root, _ := tree(t, s, ctx)
 	dell := vendorNamed(t, s, ctx, "Dell")
 	if _, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R640", VendorID: dell, CategoryIDs: []string{child.ID},
+		Name: "R640", VendorID: dell,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -229,10 +229,10 @@ func TestVendorBindingRefusesAKeyTakenOnItsModelsCategories(t *testing.T) {
 // omission that returned 500 for model-bound fields until v0.8.3.
 func TestDeletingAVendorBoundFieldTakesTheBindingWithIt(t *testing.T) {
 	s, ctx := newStore(t)
-	root, _ := tree(t, s, ctx)
+	tree(t, s, ctx)
 	dell := vendorNamed(t, s, ctx, "Dell")
 	if _, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R640", VendorID: dell, CategoryIDs: []string{root.ID},
+		Name: "R640", VendorID: dell,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +259,7 @@ func TestDisplayKeyRefusesAVendorFieldByName(t *testing.T) {
 	root, _ := tree(t, s, ctx)
 	dell := vendorNamed(t, s, ctx, "Dell")
 	if _, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R640", VendorID: dell, CategoryIDs: []string{root.ID},
+		Name: "R640", VendorID: dell,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -284,7 +284,7 @@ func TestDisplayKeyRefusesAVendorFieldByName(t *testing.T) {
 // at -- the same rule categories, statuses and holders follow.
 func TestVendorCrudAndDeleteGuard(t *testing.T) {
 	s, ctx := newStore(t)
-	root, _ := tree(t, s, ctx)
+	tree(t, s, ctx)
 
 	v, err := s.CreateVendor(ctx, "  Dell  ")
 	if err != nil {
@@ -301,7 +301,7 @@ func TestVendorCrudAndDeleteGuard(t *testing.T) {
 	}
 
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R640", VendorID: v.ID, CategoryIDs: []string{root.ID},
+		Name: "R640", VendorID: v.ID,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -348,11 +348,11 @@ func TestVendorCrudAndDeleteGuard(t *testing.T) {
 // half the field list shows.
 func TestVendorsOfFieldReportsWhereTheBindingWasMade(t *testing.T) {
 	s, ctx := newStore(t)
-	root, _ := tree(t, s, ctx)
+	tree(t, s, ctx)
 	dell := vendorNamed(t, s, ctx, "Dell")
 	lenovo := vendorNamed(t, s, ctx, "Lenovo")
 	if _, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R640", VendorID: dell, CategoryIDs: []string{root.ID},
+		Name: "R640", VendorID: dell,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -422,11 +422,11 @@ func TestVendorBindingRefusesUnknownEnds(t *testing.T) {
 // model, and how many of its devices hold a value under one of them.
 func TestVendorChangeImpactNamesOnlyWhatIsLost(t *testing.T) {
 	s, ctx := newStore(t)
-	root, _ := tree(t, s, ctx)
+	tree(t, s, ctx)
 	dell := vendorNamed(t, s, ctx, "Dell")
 	lenovo := vendorNamed(t, s, ctx, "Lenovo")
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R640", VendorID: dell, CategoryIDs: []string{root.ID},
+		Name: "R640", VendorID: dell,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -469,7 +469,7 @@ func TestVendorChangeImpactNamesOnlyWhatIsLost(t *testing.T) {
 
 	// A model whose vendor provides nothing has nothing to lose.
 	bare, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "SR650", VendorID: lenovo, CategoryIDs: []string{root.ID},
+		Name: "SR650", VendorID: lenovo,
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -168,6 +168,60 @@ func TestDeleteFieldRefusedWhileReferenced(t *testing.T) {
 	}
 }
 
+// The same refusal when the field reaches its devices through a model.
+//
+// This is the hole 029 closed. The scope came from product_model_categories --
+// the categories a field's models were "registered under" -- so a model bound
+// field whose model was associated with nothing answered "bound nowhere", and
+// every guard scoped by that answer switched itself off in silence. Before 026
+// that was an edge; after it, a model is associated with nothing by definition.
+//
+// What it cost: deleting mac here would go straight through and leave every
+// asset of that model unsaveable, because the expression key over it can no
+// longer be evaluated -- discovered by whoever next tried to save one.
+//
+// A device-side binding now reaches every category, which is the plain reading
+// of "a device of any category may be of any model".
+func TestDeleteFieldRefusedWhenOnlyAModelBindsIt(t *testing.T) {
+	s, ctx := newStore(t)
+	tree(t, s, ctx)
+	m := modelOn(t, s, ctx, "R640")
+
+	mac, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "mac", Label: "基准 MAC", Type: model.FieldMAC,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sn, err := s.CreateField(ctx, CreateFieldInput{
+		Key: "sn", Label: "设备编号", Type: model.FieldComputed, IsUnique: true,
+		Options: model.FieldOptions{Template: "hex2dec(attrs.mac)"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// mac reaches devices through the model; sn through the category. The two
+	// meet on any device of that model recorded under that category -- which
+	// is the whole point, and what the old scoping could not see.
+	if err := s.BindModel(ctx, m.ID, mac.ID, 10); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.BindModel(ctx, m.ID, sn.ID, 20); err != nil {
+		t.Fatal(err)
+	}
+
+	refs, _, _, err := s.DeleteField(ctx, mac.ID)
+	if !errors.Is(err, ErrFieldReferenced) {
+		t.Fatalf("want ErrFieldReferenced, got %v", err)
+	}
+	if len(refs) == 0 {
+		t.Error("the caller needs the referrer list to show what is in the way")
+	}
+	if _, err := s.GetField(ctx, mac.ID); err != nil {
+		t.Errorf("the field must still exist after a refused delete: %v", err)
+	}
+}
+
 func TestDeleteFieldSucceedsOnceNothingReadsIt(t *testing.T) {
 	s, ctx := newStore(t)
 	f, err := s.CreateField(ctx, CreateFieldInput{Key: "spare", Label: "备用", Type: model.FieldText})

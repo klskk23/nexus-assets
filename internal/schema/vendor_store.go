@@ -313,13 +313,9 @@ func bindVendorTx(ctx context.Context, tx *sql.Tx, vendorID, fieldID string, sor
 	return err
 }
 
-// vendorKeyFree refuses a key already reachable by the assets this binding
-// would cover.
-//
-// The reach of a vendor binding is every model from that vendor, so the
-// categories those models sit in -- with their ancestors and subtrees -- are
-// where the key has to be free. Same question modelKeyFree asks, one join
-// further out.
+// vendorKeyFree refuses a key another field already carries on this same
+// vendor. The category side is assertKeyFreeForDevice's, and unconditional --
+// see modelKeyFree for why this stopped asking a narrower version of it.
 func vendorKeyFree(ctx context.Context, tx *sql.Tx, vendorID, fieldID, key string) error {
 	// Another field already on this vendor.
 	var owner string
@@ -330,27 +326,6 @@ func vendorKeyFree(ctx context.Context, tx *sql.Tx, vendorID, fieldID, key strin
 		JOIN vendors v ON v.id = vf.vendor_id
 		WHERE vf.vendor_id = ? AND vf.field_id <> ? AND f.key = ?
 		LIMIT 1`, vendorID, fieldID, key).Scan(&owner)
-	if err == nil {
-		return i18n.Wrap(ErrKeyConflict, i18n.KeyBindDuplicate, key, owner)
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-
-	// Anything bound on a category one of this vendor's models belongs to.
-	err = tx.QueryRowContext(ctx, `
-		SELECT c.name
-		FROM category_fields cf
-		JOIN field_definitions f ON f.id = cf.field_id
-		JOIN categories c ON c.id = cf.category_id
-		WHERE f.key = ? AND cf.field_id <> ? AND EXISTS (
-			SELECT 1 FROM product_models m
-			JOIN product_model_categories pmc ON pmc.model_id = m.id
-			JOIN categories mc ON mc.id = pmc.category_id
-			WHERE m.vendor_id = ?
-			  AND (mc.path LIKE c.path || '%' OR c.path LIKE mc.path || '%')
-		)
-		LIMIT 1`, key, fieldID, vendorID).Scan(&owner)
 	if err == nil {
 		return i18n.Wrap(ErrKeyConflict, i18n.KeyBindDuplicate, key, owner)
 	}

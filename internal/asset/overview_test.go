@@ -266,7 +266,7 @@ func TestOverviewAndSubtreeCountsAgreeByConstruction(t *testing.T) {
 func TestModelCountsAndCategoryCountsAgreeOnWhatCounts(t *testing.T) {
 	f := newFixture(t)
 	m, err := f.schema.CreateModel(f.ctx, schema.CreateModelInput{
-		Name: "R640", CategoryIDs: []string{f.catID},
+		Name: "R640",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -318,7 +318,7 @@ func TestModelCountsAndCategoryCountsAgreeOnWhatCounts(t *testing.T) {
 func TestModelCountsIncludeModelsWithNothingOnThem(t *testing.T) {
 	f := newFixture(t)
 	m, err := f.schema.CreateModel(f.ctx, schema.CreateModelInput{
-		Name: "Unused", CategoryIDs: []string{f.catID},
+		Name: "Unused",
 	})
 	if err != nil {
 		t.Fatal(err)

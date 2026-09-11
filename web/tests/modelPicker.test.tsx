@@ -22,13 +22,11 @@ const categories = [
 ]
 
 const models = [
-  { id: "m1", category_ids: ["rt"], name: "X100", vendor_name: "Acme", attr_defaults: { firmware: "3.0.0", ports: "8" } },
-  { id: "m2", category_ids: ["net"], name: "通用机", vendor_name: "", attr_defaults: {} },
-  { id: "m3", category_ids: ["sw"], name: "S24", vendor_name: "Acme", attr_defaults: {} },
-  { id: "m4", category_ids: ["rt"], name: "旧款", vendor_name: "", attr_defaults: {}, archived_at: "2026-01-01T00:00:00Z" },
-  // Serves two unrelated branches at once -- the thing a single category_id
-  // could not express without entering the same device twice.
-  { id: "m5", category_ids: ["rt", "sw"], name: "两用机", vendor_name: "Acme", attr_defaults: {} },
+  { id: "m1", name: "X100", vendor_name: "Acme", attr_defaults: { firmware: "3.0.0", ports: "8" } },
+  { id: "m2", name: "通用机", vendor_name: "", attr_defaults: {} },
+  { id: "m3", name: "S24", vendor_name: "Acme", attr_defaults: {} },
+  { id: "m4", name: "旧款", vendor_name: "", attr_defaults: {}, archived_at: "2026-01-01T00:00:00Z" },
+  { id: "m5", name: "两用机", vendor_name: "Acme", attr_defaults: {} },
 ]
 
 beforeEach(() => {
@@ -39,19 +37,19 @@ beforeEach(() => {
 
 describe("ModelPicker", () => {
   /**
-   * Every model, with this category's first.
+   * Every model, in one order.
    *
-   * The association used to filter the list -- a model from a sibling branch
-   * was withheld -- and 026 turned it into an ordering instead. Filtering was
-   * what made a device silently lose its model's fields when the two
-   * disagreed, and the association was never a fact about the model anyway: a
-   * model comes from a vendor.
+   * The association used to filter this list -- a model from a sibling branch
+   * was withheld -- which is what made a device silently lose its model's
+   * fields when the two disagreed. 026 turned it into an ordering, and 029
+   * removed the association itself: a model comes from a vendor and belongs to
+   * no category, so there is no nearer half of the list to float to the top.
    *
    * Archived models stay out, which is a different question and unchanged.
    */
-  it("offers every model, this category's first, and no archived ones", async () => {
+  it("offers every model, in name order, and no archived ones", async () => {
     renderWithProviders(
-      <ModelPicker categoryID="rt" value={null} values={{}} onChange={vi.fn()} />,
+      <ModelPicker value={null} values={{}} onChange={vi.fn()} />,
     )
     // The listbox exists only while it is open, so the options are read there.
     const user = userEvent.setup()
@@ -61,9 +59,9 @@ describe("ModelPicker", () => {
     expect(labels).toContain("Acme X100")
     expect(labels).toContain("通用机")
     expect(labels).toContain("Acme 两用机")
-    // The sibling branch's model is offered now, and last.
     expect(labels).toContain("Acme S24")
-    expect(labels.indexOf("Acme S24")).toBeGreaterThan(labels.indexOf("Acme X100"))
+    // One order for all of them, and it is the name.
+    expect(labels.indexOf("Acme S24")).toBeLessThan(labels.indexOf("Acme X100"))
     // Archived models are not choices either.
     expect(labels.some((l) => l?.includes("旧款"))).toBe(false)
   })
@@ -73,7 +71,6 @@ describe("ModelPicker", () => {
     const user = userEvent.setup()
     renderWithProviders(
       <ModelPicker
-        categoryID="rt"
         value={null}
         values={{ firmware: "2.1.3" }}
         onChange={onChange}
@@ -92,7 +89,6 @@ describe("ModelPicker", () => {
     const user = userEvent.setup()
     renderWithProviders(
       <ModelPicker
-        categoryID="rt"
         value={null}
         values={{ firmware: "2.1.3" }}
         confirmOverwrite
@@ -116,7 +112,6 @@ describe("ModelPicker", () => {
     const user = userEvent.setup()
     renderWithProviders(
       <ModelPicker
-        categoryID="rt"
         value={null}
         values={{ firmware: "2.1.3" }}
         confirmOverwrite
@@ -134,7 +129,7 @@ describe("ModelPicker", () => {
     const onChange = vi.fn()
     const user = userEvent.setup()
     renderWithProviders(
-      <ModelPicker categoryID="rt" value={null} values={{}} confirmOverwrite onChange={onChange} />,
+      <ModelPicker value={null} values={{}} confirmOverwrite onChange={onChange} />,
     )
     await chooseByLabel(user, "设备型号", "通用机")
 
@@ -143,36 +138,9 @@ describe("ModelPicker", () => {
   })
 })
 
-// The association orders the list; it no longer decides what is in it (026).
-//
-// Which direction it reaches is therefore a question about ordering rather than
-// about availability: a model attached to a child is not "this category's", so
-// it sorts after the ones that are -- but it is still offered, because the
-// person choosing it knows something the association does not.
-describe("ModelPicker ordering", () => {
-  it("puts a child category's model after this category's own", async () => {
-    renderWithProviders(
-      <ModelPicker categoryID="net" value={null} values={{}} onChange={vi.fn()} />,
-    )
-    const user = userEvent.setup()
-    await user.click(screen.getByRole("combobox", { name: "设备型号" }))
-    const labels = (await screen.findAllByRole("option")).map((o) => o.textContent)
-
-    expect(labels).toContain("通用机")
-    expect(labels).toContain("Acme X100")
-    expect(labels.indexOf("Acme X100")).toBeGreaterThan(labels.indexOf("通用机"))
-  })
-
-  it("offers a model associated with several categories under each of them", async () => {
-    for (const cat of ["rt", "sw"]) {
-      const view = renderWithProviders(
-        <ModelPicker categoryID={cat} value={null} values={{}} onChange={vi.fn()} />,
-      )
-      const user = userEvent.setup()
-      await user.click(screen.getByRole("combobox", { name: "设备型号" }))
-      await screen.findByRole("option", { name: "Acme 两用机" })
-      await user.keyboard("{Escape}")
-      view.unmount()
-    }
-  })
-})
+// The "ModelPicker ordering" block stood here, with two tests about which way
+// the association reached: a model attached to a child sorted after this
+// category's own, and a model attached to two branches appeared under both.
+// 029 removed the association, so both are describing a rule that no longer
+// exists -- what remains of them is the assertion above that every model is
+// offered, whatever the category.

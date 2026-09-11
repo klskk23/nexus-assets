@@ -314,15 +314,13 @@ type FieldGroup struct {
 
 // ProductModel groups devices of the same make.
 //
-// It belongs to any number of categories: one device can genuinely be both an
-// SDWAN router and a spare, and forcing a choice between two correct answers
-// only leads to the same model being entered twice.
+// It belongs to no category. 026 settled that a device's fields come from its
+// category chain, its model and that model's vendor, independently of each
+// other, and 029 removed the association that had survived as a hint -- so a
+// model of any make may be recorded under any category there is.
 type ProductModel struct {
-	ID string `json:"id"`
-	// CategoryIDs lists the categories whose entry forms offer this model. It
-	// may be empty: a model can be prepared before it is placed anywhere.
-	CategoryIDs []string `json:"category_ids"`
-	Name        string   `json:"name"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
 	// VendorID is the vendor this model comes from, or empty for one that has
 	// none -- a white-box or self-built device genuinely has no vendor, so the
 	// reference is nullable.

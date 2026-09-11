@@ -21,7 +21,7 @@ func TestMigrateUpAndDown(t *testing.T) {
 
 	want := []string{
 		"users", "holder_entities", "categories", "field_definitions",
-		"category_fields", "product_models", "product_model_categories",
+		"category_fields", "product_models",
 		"assets", "asset_unique_values", "asset_transfers", "audit_log",
 		"statuses", "sessions", "api_keys",
 	}
@@ -128,7 +128,7 @@ func TestMigrateUpAndDown(t *testing.T) {
 	// fails here -- which is what happened when 021 arrived, and is better than
 	// the alternative: each step below would silently roll back one revision
 	// too few and report the wrong shape as a regression.
-	for _, rev := range []string{"022", "021", "020", "019", "018", "017", "016", "015", "014", "013", "012", "011", "010", "009"} {
+	for _, rev := range []string{"023", "022", "021", "020", "019", "018", "017", "016", "015", "014", "013", "012", "011", "010", "009"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -336,7 +336,7 @@ func TestMigrateConvertsEnumAndReferenceFieldsToText(t *testing.T) {
 	}
 	// Back past the withdrawal, so the rows can be written in the shape that
 	// revision allowed.
-	for _, rev := range []string{"022", "021", "020", "019", "018", "017", "016", "015", "014", "013", "012", "011", "010"} {
+	for _, rev := range []string{"023", "022", "021", "020", "019", "018", "017", "016", "015", "014", "013", "012", "011", "010"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -397,7 +397,7 @@ func TestMigrateMovesRequiredOntoTheField(t *testing.T) {
 	// Back to before the move, so the rows can be written the way that
 	// revision allowed: required on the binding. Two steps, because 019 sits
 	// on top of it now.
-	for _, rev := range []string{"022", "021", "020", "019", "018"} {
+	for _, rev := range []string{"023", "022", "021", "020", "019", "018"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -441,7 +441,7 @@ func TestMigrateMovesRequiredOntoTheField(t *testing.T) {
 
 	// And going back down puts it where the older code reads it. Two steps
 	// again: the Migrate above went all the way up to 019.
-	for _, rev := range []string{"022", "021", "020", "019", "018"} {
+	for _, rev := range []string{"023", "022", "021", "020", "019", "018"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -477,7 +477,7 @@ func TestMigrateVendorsBackfillVerbatim(t *testing.T) {
 	}
 	// Down to below 019, one migration at a time. Every revision added after
 	// it lengthens this walk, which is the whole reason it is a loop.
-	for _, rev := range []string{"022", "021", "020", "019"} {
+	for _, rev := range []string{"023", "022", "021", "020", "019"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}

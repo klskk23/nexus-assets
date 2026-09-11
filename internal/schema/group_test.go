@@ -60,7 +60,7 @@ func TestGroupBindingIsAllOrNothing(t *testing.T) {
 	root, _ := tree(t, s, ctx)
 	dell := vendorNamed(t, s, ctx, "Dell")
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R640", VendorID: dell, CategoryIDs: []string{root.ID},
+		Name: "R640", VendorID: dell,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -179,10 +179,10 @@ func TestGroupCrudAndMembership(t *testing.T) {
 // asks for the intersection.
 func TestFieldListNarrowsByVendorAndGroup(t *testing.T) {
 	s, ctx := newStore(t)
-	root, _ := tree(t, s, ctx)
+	tree(t, s, ctx)
 	dell := vendorNamed(t, s, ctx, "Dell")
 	if _, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R640", VendorID: dell, CategoryIDs: []string{root.ID},
+		Name: "R640", VendorID: dell,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +256,7 @@ func TestCreatingAGroupBoundSomewhereIsOneAct(t *testing.T) {
 	// not the binding, and not the group.
 	dell := vendorNamed(t, s, ctx, "Dell")
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "R640", VendorID: dell, CategoryIDs: []string{root.ID},
+		Name: "R640", VendorID: dell,
 	})
 	if err != nil {
 		t.Fatal(err)

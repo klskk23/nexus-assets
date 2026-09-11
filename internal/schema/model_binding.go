@@ -100,26 +100,6 @@ func (s *Store) ModelsOfField(ctx context.Context) (map[string][]string, error) 
 	return out, rows.Err()
 }
 
-// CategoriesOfModel maps each model to the categories it is registered under.
-func (s *Store) CategoriesOfModel(ctx context.Context) (map[string][]string, error) {
-	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT model_id, category_id FROM product_model_categories`)
-	if err != nil {
-		return nil, fmt.Errorf("load model categories: %w", err)
-	}
-	defer rows.Close()
-
-	out := map[string][]string{}
-	for rows.Next() {
-		var modelID, categoryID string
-		if err := rows.Scan(&modelID, &categoryID); err != nil {
-			return nil, err
-		}
-		out[modelID] = append(out[modelID], categoryID)
-	}
-	return out, rows.Err()
-}
-
 // BindModel attaches a field to a model.
 //
 // Refused when the field already has a category binding: the two modes are
@@ -183,9 +163,13 @@ func bindModelTx(ctx context.Context, tx *sql.Tx, modelID, fieldID string, sort 
 	return err
 }
 
-// modelKeyFree refuses a key already reachable by the assets this binding
-// would cover: the categories this model sits in, their ancestors and their
-// subtrees, plus anything else bound to the model itself.
+// modelKeyFree refuses a key another field already carries on this same model.
+//
+// The category side of the question is assertKeyFreeForDevice's, above, and it
+// is answered without a WHERE: since 026 a model appears under any category, so
+// a category binding and a model binding can always meet. This used to ask the
+// narrower version of it through product_model_categories -- redundant once
+// that check existed, and wrong once the table went.
 func modelKeyFree(ctx context.Context, tx *sql.Tx, modelID, fieldID, key string) error {
 	// Another field already on this model. The message names where the key is
 	// taken, which is what tells somebody what to rename.
@@ -197,27 +181,6 @@ func modelKeyFree(ctx context.Context, tx *sql.Tx, modelID, fieldID, key string)
 		JOIN product_models m ON m.id = mf.model_id
 		WHERE mf.model_id = ? AND mf.field_id <> ? AND f.key = ?
 		LIMIT 1`, modelID, fieldID, key).Scan(&owner)
-	if err == nil {
-		return i18n.Wrap(ErrKeyConflict, i18n.KeyBindDuplicate, key, owner)
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-
-	// Anything bound on a category this model belongs to -- ancestors and
-	// descendants both, the same reach Bind checks for a category binding.
-	err = tx.QueryRowContext(ctx, `
-		SELECT c.name
-		FROM category_fields cf
-		JOIN field_definitions f ON f.id = cf.field_id
-		JOIN categories c ON c.id = cf.category_id
-		WHERE f.key = ? AND cf.field_id <> ? AND EXISTS (
-			SELECT 1 FROM product_model_categories pmc
-			JOIN categories mc ON mc.id = pmc.category_id
-			WHERE pmc.model_id = ?
-			  AND (mc.path LIKE c.path || '%' OR c.path LIKE mc.path || '%')
-		)
-		LIMIT 1`, key, fieldID, modelID).Scan(&owner)
 	if err == nil {
 		return i18n.Wrap(ErrKeyConflict, i18n.KeyBindDuplicate, key, owner)
 	}

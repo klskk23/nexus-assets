@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"slices"
 
 	"github.com/gin-gonic/gin"
 
@@ -373,11 +372,6 @@ func (s *Server) listModels(c *gin.Context) {
 		FailErr(c, err)
 		return
 	}
-	if want := c.Query("category_id"); want != "" {
-		items = keep(items, func(m model.ProductModel) bool {
-			return slices.Contains(m.CategoryIDs, want)
-		})
-	}
 	respondList(c, items, func(m model.ProductModel, q string) bool {
 		// The note is searched too: a note nobody can find again is a note
 		// nobody writes twice. Same as the holder list, which has always
@@ -388,7 +382,6 @@ func (s *Server) listModels(c *gin.Context) {
 
 func (s *Server) createModel(c *gin.Context) {
 	var req struct {
-		CategoryIDs  []string       `json:"category_ids"`
 		Name         string         `json:"name" binding:"required"`
 		VendorID     string         `json:"vendor_id"`
 		Note         string         `json:"note"`
@@ -400,7 +393,7 @@ func (s *Server) createModel(c *gin.Context) {
 		return
 	}
 	out, err := s.schema.CreateModel(c.Request.Context(), schema.CreateModelInput{
-		CategoryIDs: req.CategoryIDs, Name: req.Name, VendorID: req.VendorID,
+		Name: req.Name, VendorID: req.VendorID,
 		Note: req.Note, ImageURL: req.ImageURL, AttrDefaults: req.AttrDefaults,
 	})
 	if err != nil {
@@ -418,10 +411,9 @@ func (s *Server) patchModel(c *gin.Context) {
 		Name     *string `json:"name"`
 		VendorID *string `json:"vendor_id"`
 		// Absent leaves the note alone; an empty string clears it. An edit that
-		// changes the categories must not wipe what somebody wrote here.
+		// changes the vendor must not wipe what somebody wrote here.
 		Note         *string         `json:"note"`
 		ImageURL     *string         `json:"image_url"`
-		CategoryIDs  *[]string       `json:"category_ids"`
 		AttrDefaults *map[string]any `json:"attr_defaults"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -437,7 +429,7 @@ func (s *Server) patchModel(c *gin.Context) {
 
 	out, err := s.schema.UpdateModel(ctx, c.Param("id"), schema.UpdateModelInput{
 		Name: req.Name, VendorID: req.VendorID, Note: req.Note, ImageURL: req.ImageURL,
-		CategoryIDs: req.CategoryIDs, AttrDefaults: req.AttrDefaults,
+		AttrDefaults: req.AttrDefaults,
 	})
 	if err != nil {
 		FailErr(c, err)

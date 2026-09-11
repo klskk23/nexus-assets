@@ -10,40 +10,17 @@ import (
 	"github.com/klskk23/nexus-assets/internal/store"
 )
 
-func TestUpdateModelReplacesItsCategories(t *testing.T) {
-	s, ctx := newStore(t)
-	root, child := tree(t, s, ctx)
-
-	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Replaced wholesale: the join table carries nothing a diff would keep.
-	ids := []string{child.ID}
-	name := "X200"
-	out, err := s.UpdateModel(ctx, m.ID, UpdateModelInput{Name: &name, CategoryIDs: &ids})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if out.Name != "X200" {
-		t.Errorf("name = %q", out.Name)
-	}
-	got, _ := s.GetModel(ctx, m.ID)
-	if len(got.CategoryIDs) != 1 || got.CategoryIDs[0] != child.ID {
-		t.Errorf("category_ids = %v, want only the child", got.CategoryIDs)
-	}
-}
-
 // A form that sends only what it changed must not blank the rest.
+//
+// TestUpdateModelReplacesItsCategories used to stand above this one, pinning
+// that a patch replaced the category list wholesale. 029 removed the list --
+// a model belongs to no category -- so there is nothing left of that test to
+// keep.
 func TestUpdateModelLeavesUnsentFieldsAlone(t *testing.T) {
 	s, ctx := newStore(t)
-	root, _ := tree(t, s, ctx)
 
 	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
+		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"),
 		AttrDefaults: map[string]any{"firmware": "1.0"},
 	})
 	if err != nil {
@@ -64,9 +41,6 @@ func TestUpdateModelLeavesUnsentFieldsAlone(t *testing.T) {
 	}
 	if got.AttrDefaults["firmware"] != "1.0" {
 		t.Errorf("defaults should be untouched, got %v", got.AttrDefaults)
-	}
-	if len(got.CategoryIDs) != 1 {
-		t.Errorf("categories should be untouched, got %v", got.CategoryIDs)
 	}
 }
 
@@ -120,30 +94,6 @@ func TestDeleteModelRefusedWhileAssetsUseIt(t *testing.T) {
 	setModel(t, s, ctx, "", "a1")
 	if _, err := s.DeleteModel(ctx, m.ID); err != nil {
 		t.Fatalf("once nothing uses it: %v", err)
-	}
-}
-
-func TestDeleteModelTakesItsCategoryLinks(t *testing.T) {
-	s, ctx := newStore(t)
-	root, _ := tree(t, s, ctx)
-
-	m, err := s.CreateModel(ctx, CreateModelInput{
-		Name: "X100", VendorID: vendorNamed(t, s, ctx, "Acme"), CategoryIDs: []string{root.ID},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.DeleteModel(ctx, m.ID); err != nil {
-		t.Fatal(err)
-	}
-
-	var n int
-	if err := s.db.ReadDB().QueryRowContext(ctx,
-		`SELECT count(*) FROM product_model_categories WHERE model_id = ?`, m.ID).Scan(&n); err != nil {
-		t.Fatal(err)
-	}
-	if n != 0 {
-		t.Errorf("the join rows should be gone, %d left", n)
 	}
 }
 

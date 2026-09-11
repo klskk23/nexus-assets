@@ -2,7 +2,6 @@ import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api } from "@/lib/api"
-import type { Category } from "@/lib/types"
 import type { ProductModelRow, VendorRow } from "@/lib/metaTypes"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { t, tMeta } from "@/i18n"
@@ -26,10 +25,7 @@ import {
   Field,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
 } from "@/components/ui/field"
-import { Checkbox } from "@/components/ui/checkbox"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 
 import { useParams, useSearchParams } from "react-router"
@@ -99,10 +95,6 @@ export function Models() {
     queryKey: ["model-counts"],
     queryFn: () => api.get<Record<string, number>>("/models/counts"),
   })
-  const categories = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => api.get<Category[]>("/categories"),
-  })
   const fields = useQuery({
     queryKey: ["fields", "all"],
     queryFn: () => api.get<ListPage<FieldDefinitionRow>>("/fields?limit=500"),
@@ -120,7 +112,6 @@ export function Models() {
         name: m.name,
         vendor_id: m.vendor_id ?? "",
         note: m.note ?? "",
-        category_ids: m.category_ids ?? [],
         attr_defaults: m.attr_defaults ?? {},
       }),
     onSuccess: () => {
@@ -133,7 +124,6 @@ export function Models() {
   const add = useMutation({
     mutationFn: (m: ProductModelRow) =>
       api.post("/models", {
-        category_ids: m.category_ids ?? [],
         name: m.name,
         vendor_id: m.vendor_id ?? "",
         note: m.note ?? "",
@@ -171,7 +161,7 @@ export function Models() {
 
   return (
     <div>
-      <PageHeader title={tMeta.models.title} hint={tMeta.models.categoryHint} />
+      <PageHeader title={tMeta.models.title} hint={tMeta.models.hint} />
 
       <div className="mt-14">
         <StateBoundary
@@ -214,7 +204,6 @@ export function Models() {
                         setCreating({
                           id: "",
                           name: "",
-                          category_ids: [],
                           attr_defaults: {},
                         })
                       }
@@ -276,7 +265,6 @@ export function Models() {
                   key={currentModel.id}
                   model={currentModel}
                   vendorName={currentModel.vendor_name ?? ""}
-                  categories={categories.data ?? []}
                   fields={fieldList}
                   count={countMap[currentModel.id] ?? 0}
                   onEdit={() => setEditing(currentModel)}
@@ -300,7 +288,6 @@ export function Models() {
 
       <ModelEditor
         model={editing}
-        categories={categories.data ?? []}
         vendors={vendorList}
         onOpenChange={(open) => !open && setEditing(null)}
         onSave={(m) => save.mutate(m)}
@@ -308,7 +295,6 @@ export function Models() {
       />
       <ModelEditor
         model={creating}
-        categories={categories.data ?? []}
         vendors={vendorList}
         onOpenChange={(open) => !open && setCreating(null)}
         onSave={(m) => add.mutate(m)}
@@ -325,7 +311,6 @@ export function Models() {
 
 interface EditProps {
   model: ProductModelRow | null
-  categories: Category[]
   vendors: VendorRow[]
   onOpenChange: (open: boolean) => void
   onSave: (m: ProductModelRow) => void
@@ -334,10 +319,9 @@ interface EditProps {
   title?: string
 }
 
-/** Edits one product model: its name, vendor, categories and defaults. */
+/** Edits one product model: its name, vendor, note and defaults. */
 function ModelEditor({
   model,
-  categories,
   vendors,
   onOpenChange,
   onSave,
@@ -359,7 +343,6 @@ function ModelEditor({
   }
   if (!draft) return null
 
-  const ids = draft.category_ids ?? []
   // Only an existing model can *change* vendor. A new one has no old vendor to
   // lose fields from and no devices to lose them on, so there is nothing to
   // warn about -- and asking anyway spelt the id into the path as nothing at
@@ -405,28 +388,6 @@ function ModelEditor({
               onChange={(e) => setDraft({ ...draft, note: e.target.value })}
             />
           </Field>
-
-          <FieldSet className="sm:col-span-2">
-            <FieldLegend variant="label">{tMeta.models.category}</FieldLegend>
-            <FieldGroup className="flex flex-row flex-wrap items-center gap-4">
-              {categories.map((c) => (
-                <Field key={c.id} orientation="horizontal" className="w-auto">
-                  <Checkbox
-                    id={`me-cat-${c.id}`}
-                    checked={ids.includes(c.id)}
-                    onCheckedChange={(v) =>
-                      setDraft({
-                        ...draft,
-                        category_ids:
-                          v === true ? [...ids, c.id] : ids.filter((id) => id !== c.id),
-                      })
-                    }
-                  />
-                  <FieldLabel htmlFor={`me-cat-${c.id}`}>{c.name}</FieldLabel>
-                </Field>
-              ))}
-            </FieldGroup>
-          </FieldSet>
 
           <div className="sm:col-span-2">
             <AttrDefaultsEditor rows={rows} onChange={setRows} />

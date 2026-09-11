@@ -49,10 +49,13 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 	}
 	l.displayKey = cat.DisplayKey
 
-	// Only the models this category can actually offer. That also cuts down on
-	// ambiguity: two vendors sharing a product name matter only if both models
-	// are reachable from here.
-	models, err := s.schema.CandidateModels(ctx, cat.Path)
+	// Every model, not only ones "registered under" this category: since 026 a
+	// device of any category may be of any model, and the association that used
+	// to narrow this is gone (029). It narrowed the wrong thing anyway -- a file
+	// naming a model the category had not been associated with had that column
+	// reported as unknown, which is the import refusing a device the entry form
+	// would have accepted.
+	models, err := s.schema.CandidateModels(ctx)
 	if err != nil {
 		return nil, err
 	}

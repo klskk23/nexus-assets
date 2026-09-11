@@ -7,7 +7,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, ApiError, blockerKey, type Blocker } from "@/lib/api"
 import { NONE, fromNone, toNone } from "@/lib/select"
 import type { Category, CategorySchema } from "@/lib/types"
-import type { ProductModelRow } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { usePresets, usePrinting } from "@/features/print/usePrinting"
@@ -83,20 +82,10 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
     queryKey: ["schema", category.id],
     queryFn: () => api.get<CategorySchema>(`/categories/${category.id}/schema`),
   })
-  const models = useQuery({
-    queryKey: ["models"],
-    queryFn: () => api.get<ProductModelRow[]>("/models"),
-  })
-
   const bound = schema.data?.fields ?? []
   // Only unique fields are offered as the number: one two devices can share is
   // not an identifier, and the server refuses the rest anyway.
   const numberCandidates = bound.filter((f) => f.is_unique)
-  // Deleting detaches these instead of refusing on them, so the confirmation
-  // names them beforehand rather than reporting them after.
-  const detaching = (models.data ?? []).filter((m) =>
-    (m.category_ids ?? []).includes(category.id),
-  )
 
   const fail = (e: unknown) => {
     if (e instanceof ApiError) {
@@ -323,12 +312,7 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
               </Button>
             }
             title={tMeta.categories.deleteTitle}
-            description={
-              tMeta.categories.deleteHint(category.name) +
-              (detaching.length > 0
-                ? tMeta.categories.deleteDetaches(detaching.map((m) => m.name).join("、"))
-                : "")
-            }
+            description={tMeta.categories.deleteHint(category.name)}
             confirmLabel={tMeta.categories.delete}
             tone="danger"
             requirePhrase={category.name}

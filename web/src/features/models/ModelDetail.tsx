@@ -1,4 +1,3 @@
-import type { Category } from "@/lib/types"
 import type { FieldDefinitionRow, ProductModelRow } from "@/lib/metaTypes"
 import { t, tMeta } from "@/i18n"
 import { usePermissions } from "@/features/auth/usePermissions"
@@ -31,14 +30,12 @@ import {
 export function ModelDetail({
   model,
   vendorName,
-  categories,
   fields,
   count,
   onEdit,
 }: {
   model: ProductModelRow
   vendorName: string
-  categories: Category[]
   fields: FieldDefinitionRow[]
   count: number
   onEdit: () => void
@@ -94,15 +91,6 @@ export function ModelDetail({
         <>
           <Fact label={tMeta.models.vendor}>
             {vendorName || <span className="text-muted-foreground">{tMeta.panes.noVendor}</span>}
-          </Fact>
-          <Fact label={tMeta.models.category}>
-            {model.category_ids.length > 0 ? (
-              model.category_ids
-                .map((id) => categories.find((c) => c.id === id)?.name ?? id)
-                .join("、")
-            ) : (
-              <span className="text-muted-foreground">{tMeta.models.noCategory}</span>
-            )}
           </Fact>
           <Fact label={t.assets.title}>{tMeta.panes.devicesOn(count)}</Fact>
           <Fact label={tMeta.models.defaults}>

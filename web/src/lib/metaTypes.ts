@@ -39,8 +39,6 @@ export interface FieldDefinitionRow {
 
 export interface ProductModelRow {
   id: string
-  /** Every category whose entry form offers this model; may be empty. */
-  category_ids: string[]
   name: string
   /** The vendor it comes from, empty for a model that has none (016). */
   vendor_id?: string
