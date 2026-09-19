@@ -68,21 +68,23 @@ export function Login() {
 
   return (
     /* Handoff §1, and the prototype's own numbers where the handoff gives
-     * none -- mirrored. The prototype hugs the left edge; the developer
-     * (2026-09-19) asked for the form on the right, where sign-in forms are
-     * usually found, so the bloom, the two hairline circles (the smaller one
-     * carrying an 80px glow) and the fading rule all moved to the left and
-     * the 420px card sits at the right edge. Same pieces, same numbers.
+     * none -- rearranged. The prototype hugs the left edge; the developer
+     * (2026-09-19) chose the form centred, with the decoration pushed out of
+     * its way: the bloom at the top centre, the large circle breaking the
+     * left edge, the small glowing one at the upper right, and the fading
+     * rule coming in from the right and stopping 50px short of the card
+     * (its width is half the viewport minus the card's half plus that gap,
+     * so it never reaches the form at any window size). Same pieces.
      *
      * This is the one screen with nothing of the reader's own on it, which is
      * what earns it the space to be looked at. The decoration goes below md:
      * on a phone the circles would sit behind the card and read as a fault,
      * and the 36px mark inside the card is still there. */
-    <div className="bg-background relative grid min-h-screen items-center justify-items-end overflow-hidden bg-[radial-gradient(1200px_600px_at_15%_30%,var(--color-accent-900)_0%,transparent_60%)] p-[clamp(24px,5vw,72px)]">
+    <div className="bg-background relative grid min-h-screen items-center justify-items-center overflow-hidden bg-[radial-gradient(1200px_600px_at_50%_0%,var(--color-accent-900)_0%,transparent_60%)] p-[clamp(24px,5vw,72px)]">
       <div aria-hidden className="pointer-events-none absolute inset-0 max-md:hidden">
-        <span className="border-accent-800 absolute top-[22%] left-[14%] aspect-square w-[min(38vw,520px)] rounded-full border" />
-        <span className="border-accent-700 absolute top-[12%] left-[24%] aspect-square w-[min(20vw,260px)] rounded-full border shadow-[0_0_80px_color-mix(in_srgb,var(--primary)_18%,transparent)]" />
-        <span className="absolute top-1/2 left-0 h-px w-[min(50vw,640px)] bg-[linear-gradient(to_right,transparent,var(--primary)_48px,var(--primary)_calc(100%-48px),transparent)] opacity-50" />
+        <span className="border-accent-800 absolute top-[30%] -left-[6%] aspect-square w-[min(38vw,520px)] rounded-full border" />
+        <span className="border-accent-700 absolute top-[14%] right-[8%] aspect-square w-[min(20vw,260px)] rounded-full border shadow-[0_0_80px_color-mix(in_srgb,var(--primary)_18%,transparent)]" />
+        <span className="absolute top-[62%] right-0 h-px w-[max(0px,calc(50vw-260px))] bg-[linear-gradient(to_right,transparent,var(--primary)_48px,var(--primary)_calc(100%-48px),transparent)] opacity-50" />
       </div>
 
       <div className="relative grid w-full max-w-[420px] gap-7">
