@@ -183,131 +183,123 @@ export function Models() {
   const deniedModel = deniedReason("model.manage")
 
   return (
-    <div>
-      <PageHeader title={tMeta.models.title} hint={tMeta.models.hint} />
-
-      <div className="mt-14">
-        <StateBoundary
-          isLoading={models.isLoading || vendors.isLoading}
-          error={(models.error ?? vendors.error) as Error | null}
-          onRetry={() => {
-            models.refetch()
-            vendors.refetch()
-          }}
+    <div className="grid gap-[22px]">
+      {/* Both creating verbs in the header (030, handoff §7): the vendor
+          first and quiet, the model last and primary. */}
+      <PageHeader title={tMeta.models.title} hint={tMeta.models.hint}>
+        <Button
+          variant="secondary"
+          disabled={Boolean(deniedModel)}
+          title={deniedModel ?? undefined}
+          onClick={() => setCreatingVendor(true)}
         >
-          <MasterDetail
-            selected={Boolean(id)}
-            list={
-              <Rail
-                searchID="mp-search"
-                searchHint={tMeta.models.searchHint}
-                search={search}
-                onSearch={(q) => {
-                  setSearch(q)
-                  setPage(0)
-                }}
-                pager={
-                  searching ? null : (
-                    <TreePager
-                      page={at}
-                      pageCount={pageCount(vendorList.length, VENDORS_PER_PAGE)}
-                      onPage={setPage}
-                    />
-                  )
-                }
-                actions={
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground flex-1 rounded-md"
-                      disabled={Boolean(deniedModel)}
-                      title={deniedModel ?? undefined}
-                      onClick={() =>
-                        setCreating({
-                          id: "",
-                          name: "",
-                          attr_defaults: {},
-                        })
+          {tMeta.vendors.create}
+        </Button>
+        <Button
+          disabled={Boolean(deniedModel)}
+          title={deniedModel ?? undefined}
+          onClick={() =>
+            setCreating({
+              id: "",
+              name: "",
+              attr_defaults: {},
+            })
+          }
+        >
+          {tMeta.models.create}
+        </Button>
+      </PageHeader>
+
+      <StateBoundary
+        isLoading={models.isLoading || vendors.isLoading}
+        error={(models.error ?? vendors.error) as Error | null}
+        onRetry={() => {
+          models.refetch()
+          vendors.refetch()
+        }}
+      >
+        <MasterDetail
+          selected={Boolean(id)}
+          list={
+            <Rail
+              searchID="mp-search"
+              searchHint={tMeta.models.searchHint}
+              search={search}
+              onSearch={(q) => {
+                setSearch(q)
+                setPage(0)
+              }}
+              pager={
+                searching ? null : (
+                  <TreePager
+                    page={at}
+                    pageCount={pageCount(vendorList.length, VENDORS_PER_PAGE)}
+                    onPage={setPage}
+                  />
+                )
+              }
+            >
+              {rows.map((r, i) =>
+                r.kind === "novendor" ? (
+                  <li key="novendor">
+                    <RailHeading>{tMeta.panes.noVendor}</RailHeading>
+                  </li>
+                ) : (
+                  <li key={`${r.kind}-${r.id}-${i}`}>
+                    <RailRow
+                      to={`/models/${r.id}`}
+                      label={r.label}
+                      count={r.count}
+                      depth={r.depth}
+                      selected={r.id === selection.current}
+                      folded={
+                        r.kind === "vendor" && !searching
+                          ? folds.isFolded(r.id, r.count ?? 0)
+                          : undefined
                       }
-                    >
-                      + {tMeta.models.create}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground flex-1 rounded-md"
-                      disabled={Boolean(deniedModel)}
-                      title={deniedModel ?? undefined}
-                      onClick={() => setCreatingVendor(true)}
-                    >
-                      + {tMeta.vendors.create}
-                    </Button>
-                  </>
-                }
-              >
-                {rows.map((r, i) =>
-                  r.kind === "novendor" ? (
-                    <li key="novendor">
-                      <RailHeading>{tMeta.panes.noVendor}</RailHeading>
-                    </li>
-                  ) : (
-                    <li key={`${r.kind}-${r.id}-${i}`}>
-                      <RailRow
-                        to={`/models/${r.id}`}
-                        label={r.label}
-                        count={r.count}
-                        depth={r.depth}
-                        selected={r.id === selection.current}
-                        folded={
-                          r.kind === "vendor" && !searching
-                            ? folds.isFolded(r.id, r.count ?? 0)
-                            : undefined
-                        }
-                        onFold={() => folds.toggle(r.id, r.count ?? 0)}
-                        foldLabel={
-                          folds.isFolded(r.id, r.count ?? 0) ? tMeta.panes.unfold : tMeta.panes.fold
-                        }
-                      />
-                    </li>
-                  ),
-                )}
-              </Rail>
-            }
-            detail={
-              modelList.length === 0 && vendorList.length === 0 ? null : currentVendor ? (
-                <VendorDetail
-                  key={currentVendor.id}
-                  vendor={currentVendor}
-                  modelCount={modelList.filter((m) => m.vendor_id === currentVendor.id).length}
-                  fields={fieldList}
-                  onEdit={() => setEditingVendor(currentVendor)}
-                />
-              ) : currentModel ? (
-                <ModelDetail
-                  key={currentModel.id}
-                  model={currentModel}
-                  vendorName={currentModel.vendor_name ?? ""}
-                  fields={fieldList}
-                  count={countMap[currentModel.id] ?? 0}
-                  onEdit={() => setEditing(currentModel)}
-                />
-              ) : (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyTitle>
-                      {selection.missing ? tMeta.panes.notFound : tMeta.models.empty}
-                    </EmptyTitle>
-                    <EmptyDescription>
-                      {selection.missing ? tMeta.panes.notFoundHint : tMeta.models.emptyHint}
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              )
-            }
-          />
-        </StateBoundary>
-      </div>
+                      onFold={() => folds.toggle(r.id, r.count ?? 0)}
+                      foldLabel={
+                        folds.isFolded(r.id, r.count ?? 0) ? tMeta.panes.unfold : tMeta.panes.fold
+                      }
+                    />
+                  </li>
+                ),
+              )}
+            </Rail>
+          }
+          detail={
+            modelList.length === 0 && vendorList.length === 0 ? null : currentVendor ? (
+              <VendorDetail
+                key={currentVendor.id}
+                vendor={currentVendor}
+                modelCount={modelList.filter((m) => m.vendor_id === currentVendor.id).length}
+                fields={fieldList}
+                onEdit={() => setEditingVendor(currentVendor)}
+              />
+            ) : currentModel ? (
+              <ModelDetail
+                key={currentModel.id}
+                model={currentModel}
+                vendorName={currentModel.vendor_name ?? ""}
+                fields={fieldList}
+                count={countMap[currentModel.id] ?? 0}
+                onEdit={() => setEditing(currentModel)}
+              />
+            ) : (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>
+                    {selection.missing ? tMeta.panes.notFound : tMeta.models.empty}
+                  </EmptyTitle>
+                  <EmptyDescription>
+                    {selection.missing ? tMeta.panes.notFoundHint : tMeta.models.emptyHint}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )
+          }
+        />
+      </StateBoundary>
 
       <ModelEditor
         model={editing}

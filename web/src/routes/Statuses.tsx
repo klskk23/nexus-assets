@@ -174,10 +174,15 @@ export function Statuses() {
             </Badge>
           ),
         },
-        { header: tStatuses.key, cell: (s) => <span className="font-mono text-xs">{s.key}</span> },
+        {
+          header: tStatuses.key,
+          cell: (s) => <span className="font-mono text-[12.5px]">{s.key}</span>,
+        },
         {
           header: tStatuses.kind,
-          cell: (s) => (s.builtin ? tStatuses.builtin : tStatuses.custom),
+          cell: (s) => (
+            <span className="text-neutral-400">{s.builtin ? tStatuses.builtin : tStatuses.custom}</span>
+          ),
         },
         {
           header: tStatuses.behaviour,
@@ -205,7 +210,7 @@ export function Statuses() {
           cell: (s) => {
             const u = usage[s.key] ?? { assets: 0, history: 0 }
             return (
-              <span className="text-muted-foreground text-sm">
+              <span className="text-neutral-400 text-[13px]">
                 {u.assets > 0 ? tStatuses.inUse(u.assets) : tStatuses.unused}
                 {u.history > 0 ? `・${tStatuses.inHistory(u.history)}` : ""}
               </span>

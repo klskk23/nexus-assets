@@ -13,16 +13,17 @@ interface Props {
   children: ReactNode
   /** Paging, when the list has more than one page. */
   pager?: ReactNode
-  /** What can be created from here. */
-  actions?: ReactNode
+  /** What sits under the rows: a line of fact, such as where the default stock point is. */
+  foot?: ReactNode
 }
 
 /**
  * The frame around a left-hand rail: a search box, some rows, and a foot.
  *
  * Frame only. It does not know whether the rows are a tree, how they are
- * ordered, what a row shows, or what the buttons at the bottom create -- four
- * pages use it and all four answer those differently.
+ * ordered, or what a row shows -- four pages use it and all four answer those
+ * differently. No creating verbs at the foot since 030: the prototype puts
+ * every page's verbs in the title row, so the rail is rows and nothing else.
  *
  * No surface of its own (030): the handoff draws the rail straight on the
  * page -- a 32px search box, then the rows -- and the detail pane beside it
@@ -39,7 +40,7 @@ export function Rail({
   onSearch,
   children,
   pager,
-  actions,
+  foot,
 }: Props) {
   const composed = useComposedInput(search, onSearch)
 
@@ -63,7 +64,7 @@ export function Rail({
        * exceeds the rail" is the frame's business. */}
       <ul className="grid min-w-0 gap-0.5 [&>li]:min-w-0">{children}</ul>
       {pager}
-      {actions && <div className="flex gap-1">{actions}</div>}
+      {foot}
     </div>
   )
 }

@@ -72,12 +72,18 @@ export function HolderDetail({
   return (
     <Pane
       title={holder.name}
-      tag={tMeta.entityTypes[holder.type] ?? holder.type}
+      badges={
+        <>
+          <Badge variant="secondary">{tMeta.entityTypes[holder.type] ?? holder.type}</Badge>
+          {holder.is_default_stock && (
+            <Badge variant="outline">{tMeta.holders.defaultStock}</Badge>
+          )}
+        </>
+      }
       action={
         <>
           <Button
-            variant="outline"
-            size="sm"
+            variant="secondary"
             onClick={onSetDefaultStock}
             disabled={already || wrongKind || Boolean(deniedStock) || settingDefaultStock}
             title={stockReason}
@@ -86,7 +92,6 @@ export function HolderDetail({
             {tMeta.holders.setDefaultStock}
           </Button>
           <Button
-            size="sm"
             onClick={onEdit}
             disabled={Boolean(deniedEdit)}
             title={deniedEdit ?? undefined}
@@ -110,7 +115,7 @@ export function HolderDetail({
           </Fact>
           <Fact label={tMeta.holders.defaultStock}>
             {holder.is_default_stock ? (
-              <Badge>{tMeta.holders.defaultStock}</Badge>
+              t.common.yes
             ) : (
               <span className="text-muted-foreground">{t.common.no}</span>
             )}
@@ -122,9 +127,9 @@ export function HolderDetail({
           <Fact label={tMeta.holders.deviceCount}>
             <Link
               to={`/assets?holder_type=entity&holder_id=${holder.id}&holder_include_descendants=true`}
-              className="hover:text-primary underline-offset-4 hover:underline"
+              className="text-primary hover:underline"
             >
-              {tMeta.holders.viewAssets(count)}
+              {tMeta.holders.viewAssets(count)} →
             </Link>
           </Fact>
         </>
@@ -140,8 +145,8 @@ export function HolderDetail({
       {stockRefusal && <RefusalAlert refusal={stockRefusal} />}
       {holder.note && (
         <div>
-          <p className="text-muted-foreground mb-1 text-[13px]">{tMeta.holders.note}</p>
-          <p className="text-[15px] break-words">{holder.note}</p>
+          <p className="text-neutral-500 mb-1 text-xs">{tMeta.holders.note}</p>
+          <p className="text-sm break-words">{holder.note}</p>
         </div>
       )}
     </Pane>

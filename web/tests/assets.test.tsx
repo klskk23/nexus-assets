@@ -347,13 +347,13 @@ describe("Assets paging", () => {
     return new URLSearchParams(calls[calls.length - 1].split("?")[1])
   }
 
-  it("asks for ten rows by default", async () => {
+  it("asks for twenty rows by default", async () => {
     renderWithProviders(<Assets />)
     await screen.findByLabelText(/共 137 条/)
 
-    expect(lastAssetCall().get("limit")).toBe("10")
+    expect(lastAssetCall().get("limit")).toBe("20")
     expect(lastAssetCall().get("offset")).toBe("0")
-    expect(screen.getByLabelText("第 1–10 条，共 137 条")).toBeInTheDocument()
+    expect(screen.getByLabelText("第 1–20 条，共 137 条")).toBeInTheDocument()
   })
 
   it("moves through the pages", async () => {
@@ -361,12 +361,12 @@ describe("Assets paging", () => {
     renderWithProviders(<Assets />)
     await screen.findByLabelText(/共 137 条/)
 
-    await user.click(screen.getByRole("link", { name: "14" }))
-    await waitFor(() => expect(lastAssetCall().get("offset")).toBe("130"))
-    expect(screen.getByLabelText("第 131–137 条，共 137 条")).toBeInTheDocument()
+    await user.click(screen.getByRole("link", { name: "7" }))
+    await waitFor(() => expect(lastAssetCall().get("offset")).toBe("120"))
+    expect(screen.getByLabelText("第 121–137 条，共 137 条")).toBeInTheDocument()
 
     await user.click(screen.getByRole("link", { name: "上一页" }))
-    await waitFor(() => expect(lastAssetCall().get("offset")).toBe("120"))
+    await waitFor(() => expect(lastAssetCall().get("offset")).toBe("100"))
   })
 
   // The accessible name comes from an aria-label we pass, so it stayed right
@@ -386,7 +386,7 @@ describe("Assets paging", () => {
 
     await user.click(screen.getByRole("combobox", { name: "每页" }))
     const sizes = (await screen.findAllByRole("option")).map((o) => o.textContent)
-    expect(sizes).toEqual(["10 / 页", "20 / 页", "50 / 页", "100 / 页"])
+    expect(sizes).toEqual(["20 / 页", "50 / 页", "100 / 页"])
 
     await user.click(screen.getByRole("option", { name: "100 / 页" }))
     await waitFor(() => expect(lastAssetCall().get("limit")).toBe("100"))
@@ -399,7 +399,7 @@ describe("Assets paging", () => {
     await screen.findByLabelText(/共 137 条/)
 
     await user.click(screen.getByRole("link", { name: "2" }))
-    await waitFor(() => expect(lastAssetCall().get("offset")).toBe("10"))
+    await waitFor(() => expect(lastAssetCall().get("offset")).toBe("20"))
 
     await chooseByLabel(user, "状态", "在库")
     await waitFor(() => expect(lastAssetCall().get("offset")).toBe("0"))

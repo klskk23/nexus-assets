@@ -59,18 +59,18 @@ export function MovementCell({ event }: { event: Transfer }) {
      * ends up separated from the name it points at. */
     <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <span className="flex shrink-0 items-center gap-2">
-        {/* The action's name, on --well behind a muted outline. Colour in this
-            product means status, and "checked out" the verb must not borrow the
-            look of 已签出 the state. It is also the only thing on the row that
-            still speaks when every leg stayed put. */}
-        <Badge variant="outline" className="bg-well border-border-muted">
+        {/* The action's name as the neutral tag (handoff: .tag-neutral). Colour
+            in this product means status, and "checked out" the verb must not
+            borrow the look of 已签出 the state. It is also the only thing on
+            the row that still speaks when every leg stayed put. */}
+        <Badge variant="secondary">
           {tTransfer.kind[event.kind] ?? event.kind}
         </Badge>
         {/* Twenty devices shipped together are one action, and the overview
             shows that action once. Without this the other nineteen are simply
             not mentioned anywhere. */}
         {(event.batch_size ?? 0) > 1 && (
-          <Badge variant="outline">{tTransfer.batch(event.batch_size ?? 0)}</Badge>
+          <Badge variant="secondary">{tTransfer.batch(event.batch_size ?? 0)}</Badge>
         )}
       </span>
       {(heldElsewhere || restated) && (
@@ -92,7 +92,7 @@ export function MovementCell({ event }: { event: Transfer }) {
            two names are answering a different question, and it does that job
            whether this sits on its own line or beside the rest. */
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-muted-foreground text-[13px]">{t.assets.owner}</span>
+          <span className="text-muted-foreground text-xs">{t.assets.owner}</span>
           {fromOwner && (
             <>
               <span className="text-muted-foreground">{fromOwner}</span>
@@ -107,7 +107,7 @@ export function MovementCell({ event }: { event: Transfer }) {
           answer write-only. Prose of any length, so it is the one part allowed
           to break inside itself. */}
       {event.note && (
-        <span className="text-muted-foreground min-w-0 text-[13px] break-words">
+        <span className="text-muted-foreground min-w-0 text-xs break-words">
           {tTransfer.noteIs(event.note)}
         </span>
       )}
@@ -116,7 +116,7 @@ export function MovementCell({ event }: { event: Transfer }) {
           is the note and the owner -- both of them in this cell, which is why
           the mark belongs here rather than beside the person who moved it. */}
       {event.edited_at && (
-        <span className="text-muted-foreground shrink-0 text-[13px]">
+        <span className="text-muted-foreground shrink-0 text-xs">
           {tTransfer.edited(event.editor?.name ?? event.edited_by ?? t.common.none)}
         </span>
       )}

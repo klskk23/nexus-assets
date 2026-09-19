@@ -2,14 +2,12 @@ import { useState } from "react"
 
 import type { Category } from "@/lib/types"
 import { tMeta } from "@/i18n"
-import { usePermissions } from "@/features/auth/usePermissions"
 import { flattenCategories, rootIDOf, searchCategories } from "./categoryRows"
 import { useFoldable } from "@/features/common/useFoldable"
 import { useComposedInput } from "@/features/common/useComposedInput"
 import { TreePager } from "@/features/common/TreePager"
 import { clampPage, pageCount, pageOfRoots } from "@/features/common/rootPaging"
 import { RailRow } from "@/features/common/RailRow"
-import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,7 +21,6 @@ interface Props {
   onSearch: (q: string) => void
   /** The category currently open on the right, so its row can say so. */
   currentID: string
-  onCreate: () => void
 }
 
 /**
@@ -70,9 +67,7 @@ export function CategoryTree({
   search,
   onSearch,
   currentID,
-  onCreate,
 }: Props) {
-  const { deniedReason } = usePermissions()
   const folds = useFoldable()
   const [page, setPage] = useState(0)
   const composed = useComposedInput(search, onSearch)
@@ -98,10 +93,11 @@ export function CategoryTree({
   const rows = searching
     ? searchCategories(categories, search)
     : flattenCategories(visible, folds.isFolded)
-  const denied = deniedReason("schema.manage")
 
   return (
-    <div className="bg-well grid gap-2.5 rounded-[28px] p-3">
+    /* No card of its own (030): the rail sits straight on the page and the
+       pane beside it is what lifts. Same as Rail.tsx. */
+    <div className="grid gap-2.5">
       <Label htmlFor="ct-search" className="sr-only">
         {tMeta.categories.searchHint}
       </Label>
@@ -113,8 +109,8 @@ export function CategoryTree({
       <Input
         id="ct-search"
         {...composed}
+        size="rail"
         placeholder={tMeta.categories.searchHint}
-        className="bg-background"
       />
 
       {rows.length === 0 ? (
@@ -166,20 +162,6 @@ export function CategoryTree({
           onPage={setPage}
         />
       )}
-
-      {/* A category, not a child of whatever is selected: the parent is a
-          field on the form, so the button means the same thing wherever the
-          reader happens to be standing. */}
-      <Button
-        variant="ghost"
-        className="justify-start rounded-md text-muted-foreground"
-        onClick={onCreate}
-        disabled={Boolean(denied)}
-        title={denied ?? undefined}
-      >
-        <span aria-hidden>+</span>
-        {tMeta.categories.create}
-      </Button>
     </div>
   )
 }

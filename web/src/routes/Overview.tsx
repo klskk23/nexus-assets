@@ -101,7 +101,10 @@ export function Overview() {
   const hasCategories = (categories.data ?? []).length > 0
 
   return (
-    <div className="grid gap-14">
+    /* Handoff §2: the overview's own gap is 34px where every other page's
+     * is 22, and the prototype caps the grid at 1280 -- three cards past that
+     * width stop being a row and start being a horizon. */
+    <div className="grid max-w-[1280px] gap-[34px]">
       <PageHeader title={tOverview.title}>
         {/* Importing is an act performed from where the devices are, not a
             place on the navigation bar beside the eleven things people do
@@ -131,23 +134,23 @@ export function Overview() {
         error={overview.error as Error | null}
         onRetry={() => overview.refetch()}
       >
-        <div className="grid gap-14">
+        <div className="grid gap-[34px]">
           {/* Three lists of the same shape, side by side: how many of each
               status, how many in each category, how many under each person.
               They used to be a row of five big cards and a chart, which made
               the same kind of fact look like two different kinds.
 
-              Two across until there is room for three: at 1024px a third
-              column leaves each bar about ninety pixels of track, which is a
-              chart that has stopped saying anything. */}
-          <div className="grid gap-10 lg:grid-cols-2 xl:grid-cols-3">
+              As many across as fit at 300px each (handoff: repeat(auto-fit,
+              minmax(300px,1fr))): below that a bar has about ninety pixels of
+              track, which is a chart that has stopped saying anything. */}
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4">
             <section
               aria-label={tOverview.statusTitle}
-              className="bg-well grid content-start gap-3 rounded-[28px] px-[26px] py-[22px]"
+              className="bg-card grid content-start gap-3.5 rounded-md p-[18px_20px] shadow-sm"
             >
-              <div className="flex items-baseline gap-3">
-                <h2 className="text-[21px] leading-tight font-bold">{tOverview.statusTitle}</h2>
-                <span className="text-muted-foreground text-sm">
+              <div className="flex items-baseline gap-2.5">
+                <h2 className="font-heading text-base leading-tight">{tOverview.statusTitle}</h2>
+                <span className="text-muted-foreground text-xs">
                   {tOverview.total(overview.data?.total ?? 0)}
                 </span>
               </div>
@@ -156,6 +159,10 @@ export function Overview() {
                   id: s.status,
                   label: <StatusBadge status={s.status} />,
                   count: s.count,
+                  // The bar in the status's own bar tone: the one distribution
+                  // whose fill is allowed to be a status colour, because it is
+                  // about a status.
+                  bar: `status-${statuses.color(s.status)} bg-[var(--status-line)]`,
                 }))}
                 rowLabel={(r) => `${statuses.label(r.id)} ${r.count} ${tOverview.unit}`}
                 onSelect={(id) => navigate(`/assets?status=${id}`)}
@@ -164,9 +171,9 @@ export function Overview() {
 
             <section
               aria-label={tOverview.categoryTitle}
-              className="bg-well grid content-start gap-3 rounded-[28px] px-[26px] py-[22px]"
+              className="bg-card grid content-start gap-3.5 rounded-md p-[18px_20px] shadow-sm"
             >
-              <h2 className="text-[21px] leading-tight font-bold">{tOverview.categoryTitle}</h2>
+              <h2 className="font-heading text-base leading-tight">{tOverview.categoryTitle}</h2>
               <div>
                 {distribution.length === 0 ? (
                   <Empty>
@@ -200,16 +207,16 @@ export function Overview() {
              * explains. */}
             <section
               aria-label={tOverview.ownerTitle}
-              className="bg-well grid content-start gap-3 rounded-[28px] px-[26px] py-[22px]"
+              className="bg-card grid content-start gap-3.5 rounded-md p-[18px_20px] shadow-sm"
             >
               <div className="grid gap-1">
-                <h2 className="text-[21px] leading-tight font-bold">{tOverview.ownerTitle}</h2>
+                <h2 className="font-heading text-base leading-tight">{tOverview.ownerTitle}</h2>
                 {/* Only when there is a remainder. This line carries a number,
                     not an explanation -- the card said "counted the way the
                     category card is" under the title, which is a sentence a
                     reader reads once and then steps over for good. */}
                 {restOwners.length > 0 && (
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-muted-foreground text-xs">
                     {tOverview.moreOwners(restOwners.length, restDevices)}
                   </p>
                 )}
@@ -230,6 +237,8 @@ export function Overview() {
                       id: o.owner_id,
                       label: o.name,
                       count: o.count,
+                      // Quantity, not action: the neutral step (handoff §2).
+                      bar: "bg-neutral-500",
                     }))}
                     rowLabel={(r) => `${r.label} ${r.count} ${tOverview.unit}`}
                     onSelect={(id) => navigate(`/assets?owner_id=${id}`)}
@@ -241,7 +250,7 @@ export function Overview() {
 
           <section aria-label={tOverview.recentTitle} className="grid gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-[21px] leading-tight font-bold">{tOverview.recentTitle}</h2>
+              <h2 className="font-heading text-base leading-tight">{tOverview.recentTitle}</h2>
               {/* Each entry is a multi-line block, so how many belong here is a
                   matter of taste rather than a constant worth guessing at. */}
               <Field orientation="horizontal" className="w-auto">
@@ -249,7 +258,7 @@ export function Overview() {
                   {tOverview.recentCount}
                 </FieldLabel>
                 <Select value={String(recentCount)} onValueChange={(v) => setRecentCount(Number(v))}>
-                  <SelectTrigger id="recent-count" size="sm" className="w-24">
+                  <SelectTrigger id="recent-count" size="xs" className="w-24">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -285,13 +294,13 @@ export function Overview() {
                 <TableBody>
                   {(overview.data?.recent_transfers ?? []).map((it) => (
                     <TableRow key={it.id}>
-                      <TableCell className="whitespace-nowrap">
+                      <TableCell className="text-neutral-400 whitespace-nowrap tabular-nums">
                         {new Date(it.created_at).toLocaleString()}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         <Link
                           to={`/assets/${it.asset_id}`}
-                          className="tabular-nums hover:text-primary"
+                          className="text-accent-300 font-mono text-[13px] hover:underline"
                         >
                           {it.asset_display_name ?? it.asset_id}
                         </Link>

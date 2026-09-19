@@ -328,6 +328,7 @@ export const enMeta: typeof zhMeta = {
     permissions: "Permissions",
     permissionsHint:
       "Ticked is what this role can do; anything else is a disabled button that says what it needs. Reading -- devices, categories, fields, models, statuses, holders, accounts -- is open to everyone and not controlled here.",
+    hint: "Reading (assets, categories, fields, models, statuses, holders, accounts) is open to everyone and not controlled here. An administrator has every permission, including ones added later; it is not a set of ticks.",
     accounts: "Accounts",
     everything: "Everything",
     countOf: (n: number) => `${n} permission(s)`,
@@ -392,6 +393,7 @@ export const enMeta: typeof zhMeta = {
     defaults: "Defaults",
     defaultsHint:
       "Used to prefill fields left empty when this model is chosen. Keys the device does not have are skipped.",
+    defaultsShort: "Pre-filled on entry for fields left blank",
     defaultKey: "Key",
     defaultValue: "Value",
     addDefault: "Add one",
@@ -467,6 +469,9 @@ export const enMeta: typeof zhMeta = {
     allStatuses: "All states",
     title: "Accounts",
     create: "New local account",
+    auth: "Sign-in",
+    authOIDC: "Google single sign-on",
+    authLocal: "Local password",
     email: "Email",
     name: "Name",
     password: "Password",
@@ -562,6 +567,10 @@ export const enMeta: typeof zhMeta = {
     unfold: "Expand",
     unfoldN: (n: number) => `Expand ${n}`,
     fold: "Collapse",
+    validation: "Validation",
+    source: "Source",
+    expression: "Expression",
+    rangeOf: (min: string, max: string) => `${min} to ${max}`,
   },
   fieldTypes: {
     text: "Text", number: "Number", boolean: "Yes/no", date: "Date",

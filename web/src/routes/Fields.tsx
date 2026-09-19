@@ -106,129 +106,123 @@ export function Fields() {
   const denied = deniedReason("schema.manage")
 
   return (
-    <div>
-      <PageHeader title={tMeta.fields.title} hint={tMeta.fields.emptyHint} />
-
-      <div className="mt-14">
-        <StateBoundary
-          isLoading={fields.isLoading || groups.isLoading}
-          error={(fields.error ?? groups.error) as Error | null}
-          onRetry={() => {
-            fields.refetch()
-            groups.refetch()
-          }}
+    <div className="grid gap-[22px]">
+      {/* Both creating verbs in the header (030, handoff §5): the group first
+          and quiet, the field last and primary -- a field is made far more
+          often than a group. They were ghost buttons at the foot of the rail;
+          the prototype puts every page's verbs in the same row. */}
+      <PageHeader title={tMeta.fields.title} hint={tMeta.fields.emptyHint}>
+        <Button
+          variant="secondary"
+          disabled={Boolean(denied)}
+          title={denied ?? undefined}
+          onClick={() => setCreating("group")}
         >
-          <MasterDetail
-            selected={Boolean(id)}
-            list={
-              <Rail
-                searchID="fp-search"
-                searchHint={tMeta.fields.searchHint}
-                search={search}
-                onSearch={(q) => {
-                  setSearch(q)
-                  setPage(0)
-                }}
-                pager={
-                  searching ? null : (
-                    <TreePager
-                      page={at}
-                      pageCount={pageCount(groupList.length, GROUPS_PER_PAGE)}
-                      onPage={setPage}
+          {tMeta.fieldGroups.create}
+        </Button>
+        <Button
+          disabled={Boolean(denied)}
+          title={denied ?? undefined}
+          onClick={() => setCreating("field")}
+        >
+          {tMeta.fields.create}
+        </Button>
+      </PageHeader>
+
+      <StateBoundary
+        isLoading={fields.isLoading || groups.isLoading}
+        error={(fields.error ?? groups.error) as Error | null}
+        onRetry={() => {
+          fields.refetch()
+          groups.refetch()
+        }}
+      >
+        <MasterDetail
+          selected={Boolean(id)}
+          list={
+            <Rail
+              searchID="fp-search"
+              searchHint={tMeta.fields.searchHint}
+              search={search}
+              onSearch={(q) => {
+                setSearch(q)
+                setPage(0)
+              }}
+              pager={
+                searching ? null : (
+                  <TreePager
+                    page={at}
+                    pageCount={pageCount(groupList.length, GROUPS_PER_PAGE)}
+                    onPage={setPage}
+                  />
+                )
+              }
+            >
+              {rows.map((r, i) =>
+                r.kind === "ungrouped" ? (
+                  <li key="ungrouped">
+                    <RailHeading>{tMeta.panes.ungrouped}</RailHeading>
+                  </li>
+                ) : (
+                  <li key={`${r.kind}-${r.id}-${i}`}>
+                    <RailRow
+                      to={`/fields/${r.id}`}
+                      label={r.label}
+                      count={r.count}
+                      depth={r.depth}
+                      // Every copy of a field lights up: the address names
+                      // the field, not the row it was reached through.
+                      selected={r.id === selection.current}
+                      folded={
+                        r.kind === "group" && !searching
+                          ? folds.isFolded(r.id, r.count ?? 0)
+                          : undefined
+                      }
+                      onFold={() => folds.toggle(r.id, r.count ?? 0)}
+                      foldLabel={
+                        folds.isFolded(r.id, r.count ?? 0)
+                          ? tMeta.panes.unfold
+                          : tMeta.panes.fold
+                      }
                     />
-                  )
-                }
-                actions={
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground flex-1 rounded-md"
-                      disabled={Boolean(denied)}
-                      title={denied ?? undefined}
-                      onClick={() => setCreating("field")}
-                    >
-                      + {tMeta.fields.create}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground flex-1 rounded-md"
-                      disabled={Boolean(denied)}
-                      title={denied ?? undefined}
-                      onClick={() => setCreating("group")}
-                    >
-                      + {tMeta.fieldGroups.create}
-                    </Button>
-                  </>
-                }
-              >
-                {rows.map((r, i) =>
-                  r.kind === "ungrouped" ? (
-                    <li key="ungrouped">
-                      <RailHeading>{tMeta.panes.ungrouped}</RailHeading>
-                    </li>
-                  ) : (
-                    <li key={`${r.kind}-${r.id}-${i}`}>
-                      <RailRow
-                        to={`/fields/${r.id}`}
-                        label={r.label}
-                        count={r.count}
-                        depth={r.depth}
-                        // Every copy of a field lights up: the address names
-                        // the field, not the row it was reached through.
-                        selected={r.id === selection.current}
-                        folded={
-                          r.kind === "group" && !searching
-                            ? folds.isFolded(r.id, r.count ?? 0)
-                            : undefined
-                        }
-                        onFold={() => folds.toggle(r.id, r.count ?? 0)}
-                        foldLabel={
-                          folds.isFolded(r.id, r.count ?? 0)
-                            ? tMeta.panes.unfold
-                            : tMeta.panes.fold
-                        }
-                      />
-                    </li>
-                  ),
-                )}
-              </Rail>
-            }
-            detail={
-              fieldList.length === 0 && groupList.length === 0 ? null : currentGroup ? (
-                <GroupDetail
-                  key={currentGroup.id}
-                  group={currentGroup}
-                  fields={fieldList}
-                  onEdit={() => setEditingGroup(currentGroup)}
-                />
-              ) : currentField ? (
-                <FieldDetail
-                  key={currentField.id}
-                  field={currentField}
-                  groups={groupList}
-                  categories={categories.data ?? []}
-                  models={Array.isArray(models.data) ? models.data : []}
-                  vendors={Array.isArray(vendors.data) ? vendors.data : []}
-                  onEdit={() => setEditingField(currentField)}
-                />
-              ) : (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyTitle>
-                      {selection.missing ? tMeta.panes.notFound : tMeta.fields.empty}
-                    </EmptyTitle>
-                    <EmptyDescription>
-                      {selection.missing ? tMeta.panes.notFoundHint : tMeta.fields.emptyHint}
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              )
-            }
-          />
-        </StateBoundary>
-      </div>
+                  </li>
+                ),
+              )}
+            </Rail>
+          }
+          detail={
+            fieldList.length === 0 && groupList.length === 0 ? null : currentGroup ? (
+              <GroupDetail
+                key={currentGroup.id}
+                group={currentGroup}
+                fields={fieldList}
+                onEdit={() => setEditingGroup(currentGroup)}
+              />
+            ) : currentField ? (
+              <FieldDetail
+                key={currentField.id}
+                field={currentField}
+                groups={groupList}
+                categories={categories.data ?? []}
+                models={Array.isArray(models.data) ? models.data : []}
+                vendors={Array.isArray(vendors.data) ? vendors.data : []}
+                onEdit={() => setEditingField(currentField)}
+              />
+            ) : (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>
+                    {selection.missing ? tMeta.panes.notFound : tMeta.fields.empty}
+                  </EmptyTitle>
+                  <EmptyDescription>
+                    {selection.missing ? tMeta.panes.notFoundHint : tMeta.fields.emptyHint}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )
+          }
+        />
+      </StateBoundary>
 
       {editingField && (
         <FieldEditor field={editingField} onClose={() => setEditingField(null)} />

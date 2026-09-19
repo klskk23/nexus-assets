@@ -1,4 +1,4 @@
-import { WarningCircle, Plus } from "@phosphor-icons/react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { Fragment, useState, type ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -68,6 +68,8 @@ export interface ListPage<T> {
 
 interface Props<T> {
   title: string
+  /** What the page is for, behind the question mark beside its title. */
+  hint?: string
   queryKey: string
   /**
    * One page of rows, given the search, the filters and the paging the toolbar
@@ -138,6 +140,7 @@ interface Props<T> {
  */
 export function CrudPage<T extends { id: string }>({
   title,
+  hint,
   queryKey,
   list,
   searchHint,
@@ -185,10 +188,12 @@ export function CrudPage<T extends { id: string }>({
   })
 
   return (
-    <div className="grid gap-14">
+    /* One rhythm, 22px, from the title down (030, handoff §8-11): the
+       prototype draws the title row, the controls and the table as one grid. */
+    <div className="grid gap-[22px]">
       {/* Creating is occasional; the list is what the page is for. The form
           lives behind a button so the records get the screen. */}
-      <PageHeader title={title}>
+      <PageHeader title={title} hint={hint}>
         <Dialog
           open={open}
           onOpenChange={(next) => {
@@ -203,7 +208,6 @@ export function CrudPage<T extends { id: string }>({
         >
           <DialogTrigger asChild>
             <Button disabled={createDeniedReason !== undefined} title={createDeniedReason}>
-              <Plus />
               {createLabel}
             </Button>
           </DialogTrigger>
@@ -241,9 +245,7 @@ export function CrudPage<T extends { id: string }>({
       </PageHeader>
 
       {/* The list is one thing: a notice about it, the controls that narrow
-          it, the rows, and the pager under them. 22px inside, 56px to the
-          title above -- a single gap for both made the page read as four
-          unrelated blocks. */}
+          it, the rows, and the pager under them. */}
       <div className="grid gap-[22px]">
         {notice}
 

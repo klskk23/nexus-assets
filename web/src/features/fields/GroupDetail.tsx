@@ -2,7 +2,7 @@ import type { FieldDefinitionRow, FieldGroupRow } from "@/lib/metaTypes"
 import { tMeta } from "@/i18n"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { Hint } from "@/features/common/Hint"
-import { Fact, Pane } from "@/features/common/Pane"
+import { Fact, Pane, PaneHeading } from "@/features/common/Pane"
 import { TableFrame } from "@/features/common/TableFrame"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
@@ -43,7 +43,7 @@ export function GroupDetail({
     <Pane
       title={group.name}
       action={
-        <Button variant="outline" onClick={onEdit} disabled={Boolean(denied)} title={denied ?? undefined}>
+        <Button variant="secondary" onClick={onEdit} disabled={Boolean(denied)} title={denied ?? undefined}>
           {tMeta.fieldGroups.edit}
         </Button>
       }
@@ -54,7 +54,7 @@ export function GroupDetail({
       }
     >
       <div className="flex items-center gap-1.5">
-        <h3 className="text-[21px] font-bold">{tMeta.panes.groupMembers}</h3>
+        <PaneHeading>{tMeta.panes.groupMembers}</PaneHeading>
         <Hint>{tMeta.fieldGroups.bindFromEditor}</Hint>
       </div>
       {members.length === 0 ? (

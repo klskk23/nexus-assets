@@ -393,7 +393,7 @@ describe("类别树", () => {
     expect(within(row).queryByRole("link")).not.toBeInTheDocument()
   })
 
-  it("新建类别在树的脚下，不在页头", async () => {
+  it("新建类别在页头，是页面的动作（030）", async () => {
     const user = userEvent.setup()
     openAt()
     await screen.findByRole("link", { name: /SDWAN 路由器/ })

@@ -124,18 +124,21 @@ describe("Fields page", () => {
   // Required is the field's own flag since 018, so one place can answer for it.
   // The pane always carries the label, so the answer is the value beside it --
   // asserting on the word alone would pass for both fields.
+  // On the bindings table since 030 (handoff §6): a 必填 tag on every row the
+  // field is bound through, or a dash. The field's own flag, so every row of
+  // one field says the same thing (018).
   it("says whether a field asks for a value", async () => {
-    const required = (label: string) =>
-      screen.getByText(label).parentElement?.textContent ?? ""
+    const bindingRow = () => within(screen.getByRole("table")).getAllByRole("row")[1]
 
     const { unmount } = atField("f1")
     await screen.findByRole("heading", { name: "基准 MAC" })
-    expect(required("必填")).toContain("是")
+    expect(within(bindingRow()).getByText("必填")).toBeInTheDocument()
     unmount()
 
     atField("f2")
     await screen.findByRole("heading", { name: "固件版本" })
-    expect(required("必填")).toContain("否")
+    expect(within(bindingRow()).queryByText("必填")).not.toBeInTheDocument()
+    expect(within(bindingRow()).getByText("—")).toBeInTheDocument()
   })
 
   // A device-bound field used to read "未绑定" under a column headed 所属类别 --

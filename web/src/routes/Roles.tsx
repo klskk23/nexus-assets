@@ -49,6 +49,7 @@ export function Roles() {
       {editing && <RoleEditor role={editing} onClose={() => setEditing(null)} />}
       <CrudPage<Role>
         title={tMeta.roles.title}
+        hint={tMeta.roles.hint}
         queryKey="roles"
         searchHint={tMeta.roles.searchHint}
         list={(params) => api.get<ListPage<Role>>(`/roles?${params}`)}
@@ -91,16 +92,32 @@ export function Roles() {
           { header: tMeta.roles.name, cell: (r) => r.name },
           {
             header: tMeta.roles.permissions,
+            // The count, then the first few by name (030, handoff §11): "5 项"
+            // alone sends the reader into the dialog to learn which five. The
+            // administrator's row is the accent tag -- its permissions are not
+            // a list, so no list is drawn.
             cell: (r) =>
               r.is_admin ? (
-                <Badge variant="secondary">{tMeta.roles.everything}</Badge>
+                <Badge>{tMeta.roles.everything}</Badge>
               ) : (
-                <span className="text-muted-foreground">
-                  {tMeta.roles.countOf(r.permissions.length)}
-                </span>
+                <>
+                  <span className="text-neutral-400 mr-2.5">
+                    {tMeta.roles.countOf(r.permissions.length)}
+                  </span>
+                  <span className="text-neutral-500 text-[12.5px]">
+                    {r.permissions
+                      .slice(0, 4)
+                      .map((p) => t.perm.names[p as Permission] ?? p)
+                      .join("、")}
+                    {r.permissions.length > 4 ? "…" : ""}
+                  </span>
+                </>
               ),
           },
-          { header: tMeta.roles.accounts, cell: (r) => r.users },
+          {
+            header: tMeta.roles.accounts,
+            cell: (r) => <span className="tabular-nums">{r.users}</span>,
+          },
         ]}
         form={
           <FieldGroup>

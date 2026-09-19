@@ -22,12 +22,12 @@ import {
 /**
  * The first one is the default, and the rest are the way out of it.
  *
- * Ten because a page of this product is read, not scrolled past: at 48px a row
- * that is about 480px of table, which leaves the filters above it and the
- * pager below it on screen together. Someone who wants the long view says so
- * and gets it remembered in the address bar.
+ * Twenty (handoff §3: 20 / 50 / 100). Rows are 33px in this system rather than
+ * Organic's 48, so twenty of them is about the table ten used to be, with the
+ * filters above and the pager below still on screen together. Someone who
+ * wants the long view says so and gets it remembered in the address bar.
  */
-export const PAGE_SIZES: number[] = [10, 20, 50, 100]
+export const PAGE_SIZES: number[] = [20, 50, 100]
 
 /**
  * Which page numbers to draw: the ends, the neighbourhood of the current page,
@@ -124,8 +124,8 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
                   // Icon only. The words sat either side of the numbers and
                   // made the run twice as wide as the thing it pages.
                   className={cn(
-                    "size-6 gap-0 px-0 [&>span]:sr-only",
-                    page === 0 && "pointer-events-none opacity-50",
+                    "border-border size-[30px] gap-0 rounded-md border px-0 [&>span]:sr-only",
+                    page === 0 && "pointer-events-none opacity-45",
                   )}
                   onClick={(e) => {
                     e.preventDefault()
@@ -138,14 +138,14 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
               {pageWindow(page, pageCount).map((n, i) =>
                 n === null ? (
                   <PaginationItem key={`gap-${i}`}>
-                    <PaginationEllipsis className="size-6" />
+                    <PaginationEllipsis className="size-[30px]" />
                   </PaginationItem>
                 ) : (
                   <PaginationItem key={n}>
                     <PaginationLink
                       href="#"
                       isActive={n === page}
-                      className="size-6 text-[11px]"
+                      className="size-[30px] text-xs"
                       onClick={(e) => {
                         e.preventDefault()
                         onPage(n)
@@ -162,8 +162,8 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
                   aria-label={t.assets.nextPage}
                   aria-disabled={page >= pageCount - 1}
                   className={cn(
-                    "size-6 gap-0 px-0 [&>span]:sr-only",
-                    page >= pageCount - 1 && "pointer-events-none opacity-50",
+                    "border-border size-[30px] gap-0 rounded-md border px-0 [&>span]:sr-only",
+                    page >= pageCount - 1 && "pointer-events-none opacity-45",
                   )}
                   onClick={(e) => {
                     e.preventDefault()
@@ -185,7 +185,7 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
               {t.assets.perPage}
             </FieldLabel>
             <Select value={String(pageSize)} onValueChange={(v) => onPageSize(Number(v))}>
-              <SelectTrigger id="page-size" size="sm" className="h-6 w-[74px] gap-1 px-2 text-xs">
+              <SelectTrigger id="page-size" size="xs" className="w-[84px] gap-1 px-2 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

@@ -1,7 +1,7 @@
 import type { FieldDefinitionRow, VendorRow } from "@/lib/metaTypes"
 import { tMeta } from "@/i18n"
 import { usePermissions } from "@/features/auth/usePermissions"
-import { Fact, Pane } from "@/features/common/Pane"
+import { Fact, Pane, PaneHeading } from "@/features/common/Pane"
 import { TableFrame } from "@/features/common/TableFrame"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
@@ -49,7 +49,7 @@ export function VendorDetail({
       title={vendor.name}
       action={
         <Button
-          variant="outline"
+          variant="secondary"
           onClick={onEdit}
           disabled={Boolean(deniedRename)}
           title={deniedRename ?? undefined}
@@ -64,7 +64,7 @@ export function VendorDetail({
         </>
       }
     >
-      <h3 className="text-[21px] font-bold">{tMeta.panes.vendorFields}</h3>
+      <PaneHeading>{tMeta.panes.vendorFields}</PaneHeading>
       {bound.length === 0 ? (
         <Empty>
           <EmptyHeader>

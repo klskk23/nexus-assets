@@ -6,6 +6,7 @@ import type { Category, CategorySchema } from "@/lib/types"
 import { t, tConfig, tMeta } from "@/i18n"
 import { usePermissions } from "@/features/auth/usePermissions"
 import { Hint } from "@/features/common/Hint"
+import { Fact, Pane, PaneHeading } from "@/features/common/Pane"
 import { TableFrame } from "@/features/common/TableFrame"
 import { usePresets, usePrinting } from "@/features/print/usePrinting"
 import { Badge } from "@/components/ui/badge"
@@ -41,6 +42,9 @@ interface Props {
  * already does it, and deleting stays in there too: switching category here
  * costs one click, so a destructive control on a pane that changes under you
  * that easily is a worse trade than one extra click.
+ *
+ * On the shared Pane since 030: the handoff draws all four detail panes the
+ * same way, and this one had been the odd one out with markup of its own.
  */
 export function CategoryDetail({ category, categories, count, onEdit }: Props) {
   const { deniedReason } = usePermissions()
@@ -64,78 +68,70 @@ export function CategoryDetail({ category, categories, count, onEdit }: Props) {
   )
 
   return (
-    <div className="bg-well grid gap-6 rounded-[28px] px-7 py-6">
-      {/* Only where the two panes cannot both be on screen. On a narrow screen
-          they are two pages, so this is the way back to the list -- and it is
-          a link to the list's own address, so the browser's Back agrees with
-          it instead of competing. */}
-      <Link
-        to="/categories"
-        className="text-muted-foreground hover:text-foreground -mb-2 text-sm md:hidden"
-      >
-        ← {tMeta.categories.title}
-      </Link>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h2 className="text-[26px] leading-tight font-bold">{category.name}</h2>
-        <span className="text-muted-foreground font-heading text-sm">{category.code}</span>
+    <Pane
+      title={category.name}
+      tag={category.code}
+      backTo="/categories"
+      backLabel={tMeta.categories.title}
+      action={
         <Button
-          variant="outline"
-          className="ml-auto"
+          variant="secondary"
           onClick={onEdit}
           disabled={Boolean(denied)}
           title={denied ?? undefined}
         >
           {tMeta.categories.edit}
         </Button>
-      </div>
-
-      <dl className="bg-card grid gap-5 rounded-[20px] px-6 py-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* The parent is a name, not a link. The tree is right there and
-            already selects; a second way to move that looks different from
-            the first is two things to learn. */}
-        <Fact label={tMeta.categories.parent}>
-          {category.parent_id ? nameOf(category.parent_id) : tMeta.categories.noParent}
-        </Fact>
-        {/* codeShort, not code: that one is a form label carrying its own
-            hint in brackets, and a hint read as a column heading is noise. */}
-        <Fact label={tMeta.categories.codeShort}>
-          <span className="font-mono text-[13px]">{category.code}</span>
-        </Fact>
-        <Fact label={tMeta.categories.displayKey}>
-          {category.display_key || (
-            <span className="text-muted-foreground">{tConfig.displayKey.none}</span>
-          )}
-        </Fact>
-        <Fact label={tMeta.categories.printPreset}>
-          {presetNames.length > 0 ? (
-            presetNames.join("、")
-          ) : (
-            <span className="text-muted-foreground">
-              {printing.enabled ? t.common.none : tMeta.categories.printPresetOffline}
-            </span>
-          )}
-        </Fact>
-      </dl>
-
+      }
+      facts={
+        <>
+          {/* The parent is a name, not a link. The tree is right there and
+              already selects; a second way to move that looks different from
+              the first is two things to learn. */}
+          <Fact label={tMeta.categories.parent}>
+            {category.parent_id ? nameOf(category.parent_id) : tMeta.categories.noParent}
+          </Fact>
+          {/* codeShort, not code: that one is a form label carrying its own
+              hint in brackets, and a hint read as a column heading is noise. */}
+          <Fact label={tMeta.categories.codeShort}>
+            <span className="font-mono text-[13px]">{category.code}</span>
+          </Fact>
+          <Fact label={tMeta.categories.displayKey}>
+            {category.display_key || (
+              <span className="text-muted-foreground">{tConfig.displayKey.none}</span>
+            )}
+          </Fact>
+          <Fact label={tMeta.categories.printPreset}>
+            {presetNames.length > 0 ? (
+              presetNames.join("、")
+            ) : (
+              <span className="text-muted-foreground">
+                {printing.enabled ? t.common.none : tMeta.categories.printPresetOffline}
+              </span>
+            )}
+          </Fact>
+        </>
+      }
+    >
       {/* The number in the tree says how many; this says where to go and see
           them. Descendants included, exactly as the overview's distribution
           links -- the same category reached two ways must not produce two
           different lists. */}
       <Link
         to={`/assets?category_id=${category.id}&include_descendants=true`}
-        className="text-primary justify-self-start text-sm font-semibold hover:underline"
+        className="text-primary justify-self-start text-sm hover:underline"
       >
-        {tMeta.categories.seeAssets(count)}
+        {tMeta.categories.seeAssets(count)} →
       </Link>
 
-      <div className="grid gap-2.5">
+      <div className="mt-2.5 grid gap-2.5">
         <div className="flex items-center gap-1.5">
-          <h3 className="text-[21px] font-bold">{tMeta.categories.fields}</h3>
+          <PaneHeading>{tMeta.categories.fields}</PaneHeading>
           <Hint>{tMeta.categories.bindElsewhere}</Hint>
         </div>
 
         {schema.isLoading ? (
-          <Skeleton className="h-24 w-full rounded-[20px]" />
+          <Skeleton className="h-24 w-full" />
         ) : bound.length === 0 ? (
           <Empty>
             <EmptyHeader>
@@ -184,15 +180,6 @@ export function CategoryDetail({ category, categories, count, onEdit }: Props) {
           </TableFrame>
         )}
       </div>
-    </div>
-  )
-}
-
-function Fact({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <dt className="text-muted-foreground mb-1 text-[13px]">{label}</dt>
-      <dd className="text-[15px]">{children}</dd>
-    </div>
+    </Pane>
   )
 }

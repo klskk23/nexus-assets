@@ -325,17 +325,17 @@ describe("AssetDetail", () => {
   })
 
   // Deleting is irreversible, so it goes through a dialog that stays inert
-  // until the number is typed out.
+  // until the number is typed out. The button is in the header row with the
+  // other verbs (030, handoff §4); the phrase is what keeps it safe there.
   it("requires the number to be typed before it will delete", async () => {
     del.mockResolvedValue(undefined)
     const user = userEvent.setup()
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
-    await openEdit(user)
 
     await user.click(screen.getByRole("button", { name: "删除" }))
-    await screen.findByRole("alertdialog")
-    const confirm = screen.getByRole("button", { name: "删除" })
+    const dialog = await screen.findByRole("alertdialog")
+    const confirm = within(dialog).getByRole("button", { name: "删除" })
     expect(confirm).toBeDisabled()
 
     const input = screen.getByLabelText(/请输入/)
@@ -456,7 +456,9 @@ describe("标题下面那一行", () => {
     )
     renderWithProviders(<AssetDetail />)
     await screen.findByText("112394521950")
-    expect(await screen.findByText("X100 · Acme")).toBeInTheDocument()
+    // The line leads with the category's name when the fixture has one
+    // (handoff §4: 类别 · 型号 · 厂商); the model and vendor end it either way.
+    expect(await screen.findByText(/X100 · Acme$/)).toBeInTheDocument()
   })
 
   // The fixture device has no model, so the line has nothing to say and does
@@ -539,22 +541,23 @@ describe("更正一条流转", () => {
   })
 })
 
-// Deleting used to be a section of its own at the bottom of the dialog, which
-// gave the rarest thing on the screen a heading of its own.
-it("keeps delete beside save rather than in a section of its own", async () => {
+// Deleting was a section of its own at the bottom of the dialog, then a button
+// beside Save in it (022); the handoff draws it in the header row with the
+// other verbs (030, §4), and that is where it is. It is the only red thing on
+// the page, and it still asks for the number.
+it("keeps delete in the header row with the other verbs, not in the editor", async () => {
   const user = userEvent.setup()
   renderWithProviders(<AssetDetail />)
   await screen.findByText("112394521950")
-  await openEdit(user)
 
-  // A page now, not a dialog: queries run against the document.
-  expect(screen.getByRole("button", { name: "删除" })).toBeInTheDocument()
-  // The card the two of them share is the device's own, not a delete card.
+  const header = screen.getByRole("heading", { level: 1 }).parentElement!
+  expect(within(header).getByRole("button", { name: "删除" })).toHaveAttribute("data-variant", "destructive")
   expect(screen.queryByText("删除资产")).not.toBeInTheDocument()
 
-  // Both live in the editor, so Save is reachable from the same place --
-  // which is the whole of what "beside" was protecting.
-  expect(screen.getByRole("button", { name: t.assets.save })).toBeInTheDocument()
+  await openEdit(user)
+  const dialog = await screen.findByRole("dialog")
+  expect(within(dialog).queryByRole("button", { name: "删除" })).not.toBeInTheDocument()
+  expect(within(dialog).getByRole("button", { name: t.assets.save })).toBeInTheDocument()
 })
 
 // A label for the one device on screen used to be two clicks and a page away

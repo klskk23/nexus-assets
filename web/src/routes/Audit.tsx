@@ -191,13 +191,11 @@ export function Audit() {
     `${e.target_label ?? e.target_id}`
 
   return (
-    <div className="grid gap-14">
+    <div className="grid gap-[22px]">
       <PageHeader title={tAudit.title} hint={tAudit.hint}>
         <AuditTabs current="audit" />
       </PageHeader>
 
-      {/* The same two rhythms as every other list on the product: 56px under
-          the title, 22px between the controls, the rows and the pager. */}
       <div className="grid gap-[22px]">
         {/* One row, the same one every table page wears. Every control carries
             its own "all of them" wording, so the labels are for screen readers
@@ -304,15 +302,34 @@ export function Audit() {
                 </PopoverContent>
               </Popover>
 
-              {targetID && (
-                <>
-                  <Badge variant="outline">{tAudit.onlyTarget(targetID)}</Badge>
-                  <Button variant="ghost" size="sm" onClick={() => setTargetID("")}>
-                    {tAudit.clearFilters}
-                  </Button>
-                </>
+              {targetID && <Badge variant="outline">{tAudit.onlyTarget(targetID)}</Badge>}
+              {/* One verb for every narrowing at once (030, handoff §12). It
+                  used to clear only the object filter, which is the one with
+                  no control of its own; the others still had theirs, but five
+                  resets for one question is four too many. */}
+              {(q || targetType || targetID || actorID || action || range?.from) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setQ("")
+                    setTargetType("")
+                    setTargetID("")
+                    setActorID("")
+                    setActorName("")
+                    setAction("")
+                    setRange(undefined)
+                  }}
+                >
+                  {tAudit.clearFilters}
+                </Button>
               )}
             </>
+          }
+          actions={
+            <span className="text-neutral-500 text-xs">
+              {tAudit.total(query.data?.total ?? 0)}
+            </span>
           }
         />
 
@@ -342,7 +359,7 @@ export function Audit() {
                     <TableHead>{tAudit.when}</TableHead>
                     <TableHead>{tAudit.actor}</TableHead>
                     <TableHead>{tAudit.action}</TableHead>
-                    <TableHead>{tAudit.target}</TableHead>
+                    <TableHead className="w-full">{tAudit.target}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -358,10 +375,10 @@ export function Audit() {
                             className={cn(hasChange && "cursor-pointer")}
                             onClick={() => hasChange && setDetail(e)}
                           >
-                            <TableCell className="whitespace-nowrap">
+                            <TableCell className="text-neutral-400 tabular-nums whitespace-nowrap">
                               {new Date(e.created_at).toLocaleString(locale())}
                             </TableCell>
-                            <TableCell>{e.actor_name}</TableCell>
+                            <TableCell className="whitespace-nowrap">{e.actor_name}</TableCell>
                             <TableCell>
                               <Badge variant="secondary">
                                 {tAudit.actions[e.action] ?? e.action}
@@ -369,7 +386,7 @@ export function Audit() {
                             </TableCell>
                             <TableCell>
                               {tAudit.targets[e.target_type] ?? e.target_type}
-                              <span className="text-muted-foreground ml-2 text-xs">
+                              <span className="text-neutral-500 ml-2 text-xs">
                                 {e.target_label ?? e.target_id}
                               </span>
                             </TableCell>
@@ -407,7 +424,7 @@ export function Audit() {
       </div>
 
       <Dialog open={detail !== null} onOpenChange={(open) => !open && setDetail(null)}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
             <DialogTitle>{tAudit.changeTitle}</DialogTitle>
             <DialogDescription>{detail ? describe(detail) : ""}</DialogDescription>

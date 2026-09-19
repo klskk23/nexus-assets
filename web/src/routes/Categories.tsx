@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, ApiError } from "@/lib/api"
 import type { Category } from "@/lib/types"
 import { t, tMeta } from "@/i18n"
+import { usePermissions } from "@/features/auth/usePermissions"
 import { StateBoundary } from "@/components/StateBoundary"
 import { PageHeader } from "@/features/common/PageHeader"
 import { MasterDetail } from "@/features/common/MasterDetail"
@@ -31,6 +32,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 
 export function Categories() {
   const queryClient = useQueryClient()
+  const { deniedReason } = usePermissions()
   // No paging here: page two of a tree can begin with a child whose parent was
   // on page one, and the indent would then be measured against nothing. See
   // decision 91.
@@ -88,17 +90,26 @@ export function Categories() {
     id,
   )
   const current = items.find((c) => c.id === selection.current) ?? null
-
+  const denied = deniedReason("schema.manage")
 
   return (
-    <div>
-      <PageHeader title={tMeta.categories.title} hint={tMeta.categories.selectHint} />
+    <div className="grid gap-[22px]">
+      {/* The trigger is a page action in the header (030, handoff §4 --
+          "新建类别" at the row's end as the primary verb). 024 had put it at
+          the foot of the tree; the prototype puts every page's creating verb
+          in the same place, and a reader who has learned one page has
+          learned them all. Still a category, not a child of whatever is
+          selected: the parent is a field on the form. */}
+      <PageHeader title={tMeta.categories.title} hint={tMeta.categories.selectHint}>
+        <Button
+          onClick={() => setCreateOpen(true)}
+          disabled={Boolean(denied)}
+          title={denied ?? undefined}
+        >
+          {tMeta.categories.create}
+        </Button>
+      </PageHeader>
 
-      {/* The trigger lives at the foot of the tree, not up here: creating a
-          category is something you do while looking at the ones that exist,
-          and the page header is where a *page* action goes. Controlled from
-          there rather than wrapped around it, so the button stays part of the
-          list it belongs to. */}
       <Dialog
         open={createOpen}
         onOpenChange={(next) => {
@@ -157,57 +168,53 @@ export function Categories() {
           </DialogContent>
       </Dialog>
 
-      {/* 56px below the title. The two panes state their own inner gap. */}
-      <div className="mt-14">
-        <StateBoundary
-          isLoading={categories.isLoading}
-          error={categories.error as Error | null}
-          onRetry={() => categories.refetch()}
-        >
-          <MasterDetail
-            selected={Boolean(id)}
-            list={
-              <CategoryTree
+    <StateBoundary
+        isLoading={categories.isLoading}
+        error={categories.error as Error | null}
+        onRetry={() => categories.refetch()}
+      >
+        <MasterDetail
+          selected={Boolean(id)}
+          list={
+            <CategoryTree
+              categories={items}
+              counts={counts.data ?? {}}
+              search={search}
+              onSearch={setSearch}
+              currentID={selection.current}
+            />
+          }
+          detail={
+            // Nothing at all when there are no categories: the rail already
+            // says so and offers the way out, and a second copy of the same
+            // sentence beside it is the page saying it twice.
+            items.length === 0 ? null : current ? (
+              <CategoryDetail
+                key={current.id}
+                category={current}
                 categories={items}
-                counts={counts.data ?? {}}
-                search={search}
-                onSearch={setSearch}
-                currentID={selection.current}
-                onCreate={() => setCreateOpen(true)}
+                count={counts.data?.[current.id] ?? 0}
+                onEdit={() => setEditing(current)}
               />
-            }
-            detail={
-              // Nothing at all when there are no categories: the rail already
-              // says so and offers the way out, and a second copy of the same
-              // sentence beside it is the page saying it twice.
-              items.length === 0 ? null : current ? (
-                <CategoryDetail
-                  key={current.id}
-                  category={current}
-                  categories={items}
-                  count={counts.data?.[current.id] ?? 0}
-                  onEdit={() => setEditing(current)}
-                />
-              ) : (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyTitle>
-                      {selection.missing
-                        ? tMeta.categories.notFound
-                        : tMeta.categories.empty}
-                    </EmptyTitle>
-                    <EmptyDescription>
-                      {selection.missing
-                        ? tMeta.categories.notFoundHint
-                        : tMeta.categories.emptyHint}
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              )
-            }
-          />
-        </StateBoundary>
-      </div>
+            ) : (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>
+                    {selection.missing
+                      ? tMeta.categories.notFound
+                      : tMeta.categories.empty}
+                  </EmptyTitle>
+                  <EmptyDescription>
+                    {selection.missing
+                      ? tMeta.categories.notFoundHint
+                      : tMeta.categories.emptyHint}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )
+          }
+        />
+      </StateBoundary>
 
       {editing && (
         <CategoryEditor

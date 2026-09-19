@@ -116,7 +116,7 @@ export function TransferAudit() {
   }
 
   return (
-    <div className="grid gap-14">
+    <div className="grid gap-[22px]">
       {/* The tab strip rides the title row, where every other paired page in
           the product already puts it. On its own line it read as a second
           heading under the first, and pushed the filters and the table one
@@ -130,13 +130,14 @@ export function TransferAudit() {
             placeholder and the value say what each one is, and a column of
             labels above a row of controls doubles the height of the bar for
             nothing. */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 [&_[data-slot=select-trigger]]:h-[34px] [&_[data-slot=button][role=combobox]]:h-[34px]">
           <Label htmlFor="ta-number" className="sr-only">
             {tAudit.assetNumber}
           </Label>
           <Input
             id="ta-number"
-            className="w-[220px]"
+            size="filter"
+            className="w-[220px] font-mono text-[13px]"
             placeholder={tAudit.assetNumberPlaceholder}
             value={assetNumber}
             onChange={(e) => {
@@ -190,7 +191,7 @@ export function TransferAudit() {
 
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline">
+              <Button variant="secondary" className="font-normal">
                 <CalendarBlank />
                 {range?.from ? range.from.toLocaleDateString() : tAudit.anyTime}
               </Button>
@@ -212,6 +213,9 @@ export function TransferAudit() {
               {tAudit.clearFilters}
             </Button>
           )}
+          <span className="text-neutral-500 ml-auto text-xs">
+            {tAudit.total(list.data?.total ?? 0)}
+          </span>
         </div>
 
         <StateBoundary
@@ -252,7 +256,7 @@ export function TransferAudit() {
               <TableBody>
                 {(list.data?.items ?? []).map((it) => (
                   <TableRow key={it.id}>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="text-neutral-400 tabular-nums whitespace-nowrap">
                       {new Date(it.created_at).toLocaleString()}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
@@ -261,7 +265,7 @@ export function TransferAudit() {
                           then to go and look at it. */}
                       <Link
                         to={`/assets/${it.asset_id}`}
-                        className="tabular-nums hover:text-primary"
+                        className="text-accent-300 font-mono text-[13px] tabular-nums hover:underline"
                       >
                         {it.asset_display_name ?? it.asset_id}
                       </Link>

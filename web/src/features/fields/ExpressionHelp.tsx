@@ -1,4 +1,5 @@
 import { Question } from "@phosphor-icons/react"
+import type { ReactNode } from "react"
 
 import { t, tExprHelp } from "@/i18n"
 import { Button } from "@/components/ui/button"
@@ -42,14 +43,19 @@ function Section({ title, children }: { title: string; children: React.ReactNode
  * the box you are typing in would make it a thing to memorise and dismiss
  * instead of a thing to glance at.
  */
-export function ExpressionHelp() {
+export function ExpressionHelp({ trigger }: { trigger?: ReactNode }) {
   return (
     <Drawer direction="right">
+      {/* The trigger is the caller's when it says so: the editor wants the
+          question-mark button beside its textarea, the field pane wants the
+          plain "怎么写" link the prototype draws beside the expression. */}
       <DrawerTrigger asChild>
-        <Button variant="ghost" size="sm" type="button">
-          <Question />
-          {tExprHelp.open}
-        </Button>
+        {trigger ?? (
+          <Button variant="ghost" size="sm" type="button">
+            <Question />
+            {tExprHelp.open}
+          </Button>
+        )}
       </DrawerTrigger>
       <DrawerContent className="w-full sm:max-w-md">
         <DrawerHeader>

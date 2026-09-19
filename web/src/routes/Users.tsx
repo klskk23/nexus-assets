@@ -116,9 +116,25 @@ export function Users() {
         emptyTitle={tMeta.users.empty}
         emptyHint={tMeta.users.emptyHint}
         columns={[
-          { header: tMeta.users.email, cell: (u) => u.email },
+          {
+            header: tMeta.users.email,
+            cell: (u) => (
+              <span className="text-neutral-300 font-mono text-[12.5px]">{u.email}</span>
+            ),
+          },
           { header: tMeta.users.name, cell: (u) => u.name },
           { header: tMeta.roles.ofUser, cell: (u) => roleName(u.role_id) },
+          // Which door they come in by (030, handoff §10). It decides what the
+          // editor can offer -- a password reset is meaningless for an account
+          // that signs in elsewhere -- so it is worth a column.
+          {
+            header: tMeta.users.auth,
+            cell: (u) => (
+              <span className="text-neutral-400">
+                {u.auth_type === "oidc" ? tMeta.users.authOIDC : tMeta.users.authLocal}
+              </span>
+            ),
+          },
           {
             header: tMeta.users.status,
             cell: (u) =>

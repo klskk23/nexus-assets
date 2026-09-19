@@ -1,10 +1,11 @@
 import { useState } from "react"
-import { Link, useParams, useSearchParams } from "react-router"
+import { useParams, useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api } from "@/lib/api"
 import type { HolderEntity } from "@/lib/types"
 import { tMeta } from "@/i18n"
+import { usePermissions } from "@/features/auth/usePermissions"
 import { StateBoundary } from "@/components/StateBoundary"
 import { PageHeader } from "@/features/common/PageHeader"
 import { MasterDetail } from "@/features/common/MasterDetail"
@@ -14,6 +15,7 @@ import { HolderDetail } from "@/features/holders/HolderDetail"
 import { HolderEditor } from "@/features/holders/HolderEditor"
 import { HolderCreateDialog } from "@/features/holders/HolderCreateDialog"
 import { refusalOf, type Refusal } from "@/features/holders/RefusalAlert"
+import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 
 /**
@@ -27,6 +29,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/u
 export function Holders() {
   const { id } = useParams()
   const queryClient = useQueryClient()
+  const { deniedReason } = usePermissions()
   // The search term lives in the address, as it does on the three other
   // rails: replace rather than push, because a filter is not a place you went.
   const [searchParams, setSearchParams] = useSearchParams()
@@ -81,24 +84,23 @@ export function Holders() {
     onError: (e) => setStockRefusal(refusalOf(e)),
   })
 
+  const deniedCreate = deniedReason("holder.create")
+
   return (
-    <div>
+    <div className="grid gap-[22px]">
+      {/* A holder, not a child of whatever is selected: the parent is a field
+          on the form, so the button means the same thing wherever the reader
+          happens to be standing (024 decision 4). In the title row since 030;
+          the default stock point it used to share the row with now sits under
+          the tree, beside the rows it points into. */}
       <PageHeader title={tMeta.holders.title} hint={tMeta.holders.selectHint}>
-        {/* There is exactly one default stock point in the system, and after
-            paging arrived it can be on any page -- so the answer is written
-            out rather than left to be found. A link into the rail, not a
-            control: it moves the selection, which is what clicking a name
-            does everywhere else on this page. */}
-        {defaultStock ? (
-          <Link
-            to={`/holders/${defaultStock.id}`}
-            className="text-muted-foreground hover:text-primary text-sm"
-          >
-            {tMeta.holders.defaultStockIs(defaultStock.name)}
-          </Link>
-        ) : (
-          <span className="text-muted-foreground text-sm">{tMeta.holders.defaultStockNone}</span>
-        )}
+        <Button
+          onClick={() => setCreating(true)}
+          disabled={Boolean(deniedCreate)}
+          title={deniedCreate ?? undefined}
+        >
+          {tMeta.holders.create}
+        </Button>
       </PageHeader>
 
       {creating && (
@@ -113,60 +115,58 @@ export function Holders() {
         />
       )}
 
-      <div className="mt-14">
-        <StateBoundary
-          isLoading={all.isLoading}
-          error={all.error as Error | null}
-          onRetry={() => all.refetch()}
-        >
-          <MasterDetail
-            selected={Boolean(id)}
-            list={
-              <HolderTree
+      <StateBoundary
+        isLoading={all.isLoading}
+        error={all.error as Error | null}
+        onRetry={() => all.refetch()}
+      >
+        <MasterDetail
+          selected={Boolean(id)}
+          list={
+            <HolderTree
+              holders={holders}
+              counts={counts.data ?? {}}
+              search={search}
+              onSearch={setSearch}
+              currentID={selection.current}
+              defaultStock={defaultStock}
+            />
+          }
+          detail={
+            // Nothing at all when there are no holders: the rail already
+            // says so and offers the way out, and a second copy of the same
+            // sentence beside it is the page saying it twice.
+            holders.length === 0 ? null : current ? (
+              <HolderDetail
+                key={current.id}
+                holder={current}
                 holders={holders}
-                counts={counts.data ?? {}}
-                search={search}
-                onSearch={setSearch}
-                currentID={selection.current}
-                onCreate={() => setCreating(true)}
+                count={counts.data?.[current.id] ?? 0}
+                onEdit={() => setEditing(current)}
+                onSetDefaultStock={() => {
+                  setStockRefusal(null)
+                  setDefaultStock.mutate(current.id)
+                }}
+                settingDefaultStock={setDefaultStock.isPending}
+                stockRefusal={stockRefusal}
               />
-            }
-            detail={
-              // Nothing at all when there are no holders: the rail already
-              // says so and offers the way out, and a second copy of the same
-              // sentence beside it is the page saying it twice.
-              holders.length === 0 ? null : current ? (
-                <HolderDetail
-                  key={current.id}
-                  holder={current}
-                  holders={holders}
-                  count={counts.data?.[current.id] ?? 0}
-                  onEdit={() => setEditing(current)}
-                  onSetDefaultStock={() => {
-                    setStockRefusal(null)
-                    setDefaultStock.mutate(current.id)
-                  }}
-                  settingDefaultStock={setDefaultStock.isPending}
-                  stockRefusal={stockRefusal}
-                />
-              ) : (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyTitle>
-                      {selection.missing ? tMeta.holders.notFound : tMeta.holders.empty}
-                    </EmptyTitle>
-                    <EmptyDescription>
-                      {selection.missing
-                        ? tMeta.holders.notFoundHint
-                        : tMeta.holders.emptyHint}
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              )
-            }
-          />
-        </StateBoundary>
-      </div>
+            ) : (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>
+                    {selection.missing ? tMeta.holders.notFound : tMeta.holders.empty}
+                  </EmptyTitle>
+                  <EmptyDescription>
+                    {selection.missing
+                      ? tMeta.holders.notFoundHint
+                      : tMeta.holders.emptyHint}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )
+          }
+        />
+      </StateBoundary>
     </div>
   )
 }

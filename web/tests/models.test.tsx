@@ -343,7 +343,9 @@ describe("同一个字段既绑型号又绑厂商", () => {
 
     const table = await screen.findByRole("table")
     const rows = within(table).getAllByRole("row").slice(1)
-    expect(rows.filter((r) => r.textContent?.includes("service_tag"))).toHaveLength(1)
+    // By label: the pane names the field and where it came from, and no
+    // longer prints the key (030, handoff §7 -- two columns, 显示名 / 来源).
+    expect(rows.filter((r) => r.textContent?.includes("Service Tag"))).toHaveLength(1)
     // The other field is untouched: one route, one row.
     expect(rows).toHaveLength(2)
   })

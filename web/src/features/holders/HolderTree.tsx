@@ -1,15 +1,14 @@
 import { useState } from "react"
+import { Link } from "react-router"
 
 import type { HolderEntity } from "@/lib/types"
 import { tMeta } from "@/i18n"
-import { usePermissions } from "@/features/auth/usePermissions"
 import { childCounts, flattenHolders, rootIDOf, searchHolders } from "./holderRows"
 import { useFoldable } from "@/features/common/useFoldable"
 import { Rail } from "@/features/common/Rail"
 import { RailRow } from "@/features/common/RailRow"
 import { TreePager } from "@/features/common/TreePager"
 import { clampPage, pageCount, pageOfRoots } from "@/features/common/rootPaging"
-import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 
 interface Props {
@@ -19,7 +18,8 @@ interface Props {
   search: string
   onSearch: (q: string) => void
   currentID: string
-  onCreate: () => void
+  /** The one holder returns go to by default, or null while there is none. */
+  defaultStock: HolderEntity | null
 }
 
 /** Root holders per page. A page is N roots and everything beneath them. */
@@ -36,8 +36,7 @@ const ROOTS_PER_PAGE = 12
  * Roots are companies and parentless locations together, by name. See
  * holderRows for why the type does not sort and does not section.
  */
-export function HolderTree({ holders, counts, search, onSearch, currentID, onCreate }: Props) {
-  const { deniedReason } = usePermissions()
+export function HolderTree({ holders, counts, search, onSearch, currentID, defaultStock }: Props) {
   const folds = useFoldable()
   const [page, setPage] = useState(0)
 
@@ -57,7 +56,6 @@ export function HolderTree({ holders, counts, search, onSearch, currentID, onCre
         return holders.filter((h) => keep.has(rootIDOf(h, byID)))
       })()
   const rows = searching ? searchHolders(holders, search) : flattenHolders(visible, folds.isFolded)
-  const denied = deniedReason("holder.create")
 
   return (
     <Rail
@@ -77,20 +75,21 @@ export function HolderTree({ holders, counts, search, onSearch, currentID, onCre
           />
         )
       }
-      actions={
-        /* A holder, not a child of whatever is selected: the parent is a field
-           on the form, so the button means the same thing wherever the reader
-           happens to be standing (024 decision 4). */
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground flex-1 justify-start rounded-md"
-          onClick={onCreate}
-          disabled={Boolean(denied)}
-          title={denied ?? undefined}
-        >
-          + {tMeta.holders.create}
-        </Button>
+      foot={
+        /* There is exactly one default stock point in the system, and with
+           paging it can be on any page -- so the answer is written out under
+           the tree (030, handoff §9) rather than left to be found. A link into
+           the rail, not a control: it moves the selection, which is what
+           clicking a name does everywhere else on this page. */
+        <p className="text-neutral-500 mx-2.5 mt-1 text-xs">
+          {defaultStock ? (
+            <Link to={`/holders/${defaultStock.id}`} className="hover:text-primary">
+              {tMeta.holders.defaultStockIs(defaultStock.name)}
+            </Link>
+          ) : (
+            tMeta.holders.defaultStockNone
+          )}
+        </p>
       }
     >
       {rows.length === 0 ? (

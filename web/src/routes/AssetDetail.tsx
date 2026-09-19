@@ -1,4 +1,4 @@
-import { ArrowLeft, Info, Printer } from "@phosphor-icons/react"
+import { ArrowLeft, Check, Printer } from "@phosphor-icons/react"
 import { Hint } from "@/features/common/Hint"
 import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router"
@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { cn } from "cn"
 import { api, ApiError, type FieldErrors } from "@/lib/api"
-import type { Asset, CategorySchema, HolderEntity, User } from "@/lib/types"
+import type { Asset, Category, CategorySchema, HolderEntity, User } from "@/lib/types"
 import type { ProductModelRow } from "@/lib/metaTypes"
 import { NONE } from "@/lib/select"
 import type { Transfer } from "@/lib/transferTypes"
@@ -215,12 +215,22 @@ export function AssetDetail() {
     queryFn: () => api.get<ProductModelRow[]>("/models"),
   })
   const model = (models.data ?? []).find((m) => m.id === asset?.model_id)
+  // The line under the number reads 类别 · 型号 · 厂商 (handoff §4); the
+  // category is a name here, not the id the asset carries.
+  const categories = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => api.get<Category[]>("/categories"),
+  })
+  const categoryName = (categories.data ?? []).find((c) => c.id === asset?.category_id)?.name
 
   const shown = fieldsForModel(schema.data?.fields ?? [], asset?.model_id ?? null)
   const events = timeline.data ?? []
 
   return (
-    <div className="grid gap-14">
+    /* Handoff §4: 1100 wide at most, 30px between blocks. The cap is the
+     * prototype's number (decision 215) -- a device page is read, and a
+     * two-column attribute list wider than that stops reading as pairs. */
+    <div className="grid max-w-[1100px] gap-[30px]">
       {/* Back, and it always goes to the list -- not wherever the browser
           happened to come from. Someone who arrived from a scan, from
           finishing a form, or from the audit's "just this object" is on this
@@ -228,7 +238,7 @@ export function AssetDetail() {
           other ones". The list's filters ride along in this page's own query
           string, so handing them back is handing back what we were given.
           Nothing to restore, nothing to remember, and it survives a refresh. */}
-      <Button variant="outline" size="sm" className="w-fit" asChild>
+      <Button variant="ghost" size="sm" className="w-fit" asChild>
         <Link to={{ pathname: "/assets", search: location.search }}>
           <ArrowLeft />
           {t.assets.title}
@@ -241,7 +251,7 @@ export function AssetDetail() {
           onRetry={() => detail.refetch()}
         >
           {asset && (
-            <div className="grid gap-14">
+            <div className="grid gap-[30px]">
               <header className="grid gap-2">
                 {/* pe-10 leaves room for the print button and, past it, the
                     dialog's own close button. */}
@@ -255,9 +265,9 @@ export function AssetDetail() {
                     nothing between them. They wrap under on a narrow panel,
                     which is the only width where the row cannot hold both. */}
                 <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-                  <h1 className="flex flex-wrap items-center gap-3 text-[40px] leading-[1.2] font-bold">
-                    <span className="font-heading tabular-nums">{asset.display_name}</span>
-                    <StatusBadge status={asset.status} />
+                  <h1 className="font-heading flex flex-wrap items-center gap-3 text-[30px] leading-tight">
+                    <span className="tabular-nums">{asset.display_name}</span>
+                    <StatusBadge status={asset.status} className="text-xs" />
                   </h1>
                   {/* Everything you can DO to this device, in one row, ordered by
                     how often it is done: label it, correct it, move it. The page
@@ -267,10 +277,10 @@ export function AssetDetail() {
                     Moving is the primary because it is why this system exists.
                     The other two are outlines -- printing is occasional, editing
                     happens about once in a device's life. */}
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2.5">
                     {canPrint && (
                       <Button
-                        variant="outline"
+                        variant="secondary"
                         disabled={deniedReason("print") !== undefined}
                         title={deniedReason("print") ?? t.print.action}
                         onClick={() => setPrinting(true)}
@@ -279,9 +289,26 @@ export function AssetDetail() {
                         {t.print.action}
                       </Button>
                     )}
-                    <Button variant="outline" onClick={() => setEditOpen(true)}>
+                    <Button variant="secondary" onClick={() => setEditOpen(true)}>
                       {t.assets.editAttrs}
                     </Button>
+                    {/* In the header row with the other verbs, as the handoff
+                        draws it (§4), and still asking for the number to be
+                        typed: near enough to find, and the phrase is what keeps
+                        it from being hit on the way to anything else. */}
+                    <ConfirmDialog
+                      trigger={
+                        <Button variant="destructive" disabled={remove.isPending}>
+                          {t.assets.delete}
+                        </Button>
+                      }
+                      title={t.assets.deleteTitle}
+                      description={t.assets.deleteHint(asset.display_name)}
+                      confirmLabel={t.assets.delete}
+                      tone="danger"
+                      requirePhrase={asset.display_name}
+                      onConfirm={() => remove.mutate()}
+                    />
                     <Button onClick={() => setTransferOpen(true)}>{tTransfer.actions.title}</Button>
                   </div>
                 </div>
@@ -289,9 +316,9 @@ export function AssetDetail() {
                     the number is derived -- that belongs to the entry form,
                     where somebody is deciding whether to type one. No model, no
                     line; model without a vendor, no separator left hanging. */}
-                {model && (
-                  <p className="text-muted-foreground text-sm">
-                    {[model.name, model.vendor_name].filter(Boolean).join(" · ")}
+                {(categoryName || model) && (
+                  <p className="text-neutral-400 text-[13px]">
+                    {[categoryName, model?.name, model?.vendor_name].filter(Boolean).join(" · ")}
                   </p>
                 )}
               </header>
@@ -303,17 +330,17 @@ export function AssetDetail() {
                   which meant reading them cost finding the form that changes
                   them. On --card because this band is the one raised thing on
                   a page that is otherwise flat. */}
-              <dl className="bg-card grid gap-x-6 gap-y-5 rounded-[28px] px-8 py-6 text-sm sm:grid-cols-4">
+              <dl className="bg-card grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-[18px_24px] rounded-md p-[18px_22px] text-sm shadow-sm">
                 <div>
-                  <dt className="text-muted-foreground text-[13px]">{t.assets.currentHolder}</dt>
+                  <dt className="text-neutral-500 text-xs">{t.assets.currentHolder}</dt>
                   <dd className="mt-1">{asset.holder.name ?? asset.holder.id}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground text-[13px]">{t.assets.currentOwner}</dt>
+                  <dt className="text-neutral-500 text-xs">{t.assets.currentOwner}</dt>
                   <dd className="mt-1">{asset.owner?.name ?? t.common.none}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground text-[13px]">{t.assets.home}</dt>
+                  <dt className="text-neutral-500 text-xs">{t.assets.home}</dt>
                   {/* Both halves of the home, not just the place.
                    *
                    * The home owner decides who becomes responsible when this
@@ -326,14 +353,14 @@ export function AssetDetail() {
                   <dd className="mt-1">
                     {asset.home_holder?.name ?? t.assets.homeNone}
                     {asset.home_owner && (
-                      <span className="text-muted-foreground block text-[13px]">
+                      <span className="text-neutral-500 block text-xs">
                         {t.assets.homeOwnerIs(asset.home_owner.name)}
                       </span>
                     )}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground text-[13px]">{t.assets.createdAt}</dt>
+                  <dt className="text-neutral-500 text-xs">{t.assets.createdAt}</dt>
                   <dd className="mt-1 tabular-nums">{asset.created_at.slice(0, 10)}</dd>
                 </div>
               </dl>
@@ -350,9 +377,9 @@ export function AssetDetail() {
                   unique, inherited from somewhere else, or computed and
                   therefore not typed by anyone. */}
               <section aria-label={t.assets.attrs} className="grid content-start gap-3">
-                <h2 className="text-[21px] leading-tight font-bold">{t.assets.attrs}</h2>
+                <h2 className="font-heading text-base leading-tight">{t.assets.attrs}</h2>
                 {shown.length === 0 ? (
-                  <div className="bg-well rounded-[28px] p-6">
+                  <div className="bg-card rounded-md p-6 shadow-sm">
                     <Empty>
                       <EmptyHeader>
                         {/* Two different reasons for an empty card, and saying
@@ -367,17 +394,20 @@ export function AssetDetail() {
                     </Empty>
                   </div>
                 ) : (
-                  <dl className="grid gap-x-12 text-sm sm:grid-cols-2">
+                  /* Two columns from 340px each, 40px apart; each row 10px
+                     tall on either side with a rule that fades over 24px at
+                     both ends (handoff §4). */
+                  <dl className="grid grid-cols-[repeat(auto-fit,minmax(340px,1fr))] gap-x-10 text-sm">
                     {shown.map((f) => (
                       <div
                         key={f.key}
-                        className="border-border-muted flex items-center gap-4 border-b py-4"
+                        className="flex items-center gap-4 bg-[linear-gradient(to_right,transparent,var(--border-muted)_24px,var(--border-muted)_calc(100%-24px),transparent)] bg-[length:100%_1px] bg-bottom bg-no-repeat py-2.5"
                       >
-                        <dt className="text-muted-foreground w-32 shrink-0">{f.label}</dt>
+                        <dt className="text-neutral-500 w-[110px] shrink-0 text-[13px]">{f.label}</dt>
                         <dd
                           className={cn(
                             "min-w-0 flex-1 break-words tabular-nums",
-                            f.type === "computed" && "font-mono",
+                            (f.type === "computed" || f.type === "mac" || f.is_unique) && "font-mono text-[13px]",
                           )}
                         >
                           {attrText(asset.attrs[f.key])}
@@ -387,11 +417,11 @@ export function AssetDetail() {
                             where it came from. Three badges on one row would
                             be a legend, not a label. */}
                         {f.type === "computed" ? (
-                          <Badge variant="outline">{t.common.computed}</Badge>
+                          <Badge variant="outline" className="text-[10px]">{t.common.computed}</Badge>
                         ) : f.is_unique ? (
-                          <Badge variant="outline">{t.common.unique}</Badge>
+                          <Badge variant="outline" className="text-[10px]">{t.common.unique}</Badge>
                         ) : f.inherited_from ? (
-                          <Badge variant="outline">{t.common.inherited}</Badge>
+                          <Badge variant="outline" className="text-[10px]">{t.common.inherited}</Badge>
                         ) : null}
                       </div>
                     ))}
@@ -410,21 +440,23 @@ export function AssetDetail() {
                     looked and had nothing to say. */}
                 {asset.note && (
                   <div className="flex items-start gap-4 pt-1 text-sm">
-                    <span className="text-muted-foreground w-32 shrink-0">{t.assets.note}</span>
+                    <span className="text-neutral-500 w-[110px] shrink-0 text-[13px]">{t.assets.note}</span>
                     <p className="min-w-0 flex-1 break-words">{asset.note}</p>
                   </div>
                 )}
               </section>
 
+              {/* The success banner (handoff §4): the deep accent step with the
+                  light one for the words, 13px, a tick. */}
               {banner && (
-                <Alert role="status">
-                  <Info />
-                  <AlertDescription>{banner}</AlertDescription>
+                <Alert role="status" variant="success" className="px-3.5 py-2.5 text-[13px]">
+                  <Check />
+                  <AlertDescription className="text-current">{banner}</AlertDescription>
                 </Alert>
               )}
 
               <section aria-label={t.assets.transfers} className="grid content-start gap-3">
-                <h2 className="text-[21px] leading-tight font-bold">{t.assets.transfers}</h2>
+                <h2 className="font-heading text-base leading-tight">{t.assets.transfers}</h2>
                 <div className="grid gap-4">
                   {editing && (
                     <EditEvent event={editing} assetID={id} onClose={() => setEditing(null)} />
@@ -454,7 +486,7 @@ export function AssetDetail() {
                           <ContextMenu key={ev.id}>
                             <ContextMenuTrigger asChild>
                               <TableRow>
-                                <TableCell className="whitespace-nowrap">
+                                <TableCell className="text-neutral-400 whitespace-nowrap tabular-nums">
                                   {new Date(ev.created_at).toLocaleString()}
                                 </TableCell>
                                 <TableCell>
@@ -607,26 +639,6 @@ export function AssetDetail() {
                         {save.isPending && <Spinner aria-hidden />}
                         {save.isPending ? t.assets.saving : t.assets.save}
                       </Button>
-                      {/* At the far end, and it still asks for the number to be
-                        typed out: near enough to find, far enough not to be
-                        hit on the way to Save. */}
-                      <ConfirmDialog
-                        trigger={
-                          <Button
-                            variant="destructive"
-                            className="ml-auto"
-                            disabled={remove.isPending}
-                          >
-                            {t.assets.delete}
-                          </Button>
-                        }
-                        title={t.assets.deleteTitle}
-                        description={t.assets.deleteHint(asset.display_name)}
-                        confirmLabel={t.assets.delete}
-                        tone="danger"
-                        requirePhrase={asset.display_name}
-                        onConfirm={() => remove.mutate()}
-                      />
                     </DialogFooter>
                   </div>
                 </DialogContent>
@@ -634,8 +646,8 @@ export function AssetDetail() {
 
               {(detail.data?.value_history ?? []).length > 0 && (
                 <section aria-label={t.assets.valueHistory} className="grid content-start gap-3">
-                  <h2 className="text-[21px] leading-tight font-bold">{t.assets.valueHistory}</h2>
-                  <div className="bg-well rounded-[20px] p-6">
+                  <h2 className="font-heading text-base leading-tight">{t.assets.valueHistory}</h2>
+                  <div className="bg-card rounded-md p-[18px_22px] shadow-sm">
                     <ul className="grid gap-1 font-mono text-sm">
                       {(detail.data?.value_history ?? []).map((h, i) => (
                         <li key={i}>
@@ -656,9 +668,9 @@ export function AssetDetail() {
               {archived.length > 0 && (
                 <section
                   aria-label={t.assets.archivedFields}
-                  className="bg-card grid content-start gap-3 rounded-[28px] px-8 py-6"
+                  className="bg-card grid content-start gap-3 rounded-md p-[18px_22px] shadow-sm"
                 >
-                  <h2 className="text-base font-bold">{t.assets.archivedFields}</h2>
+                  <h2 className="font-heading text-base leading-tight">{t.assets.archivedFields}</h2>
                   <ul className="flex flex-wrap gap-2">
                     {archived.map(([k, v]) => (
                       <li key={k} className="bg-background rounded-[6px] border px-3 py-1.5 text-sm">

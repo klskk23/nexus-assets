@@ -411,7 +411,7 @@ export function Assets() {
   const total = assets.data?.total ?? 0
 
   return (
-    <div>
+    <div className="grid gap-[22px]">
       <PageHeader title={t.assets.title}>
         {/* Not a link: every credential this app has travels in a header, and
             a plain download navigation carries none of them. */}
@@ -444,18 +444,20 @@ export function Assets() {
 
       {/* The list is one thing seen in three parts: the controls that narrow
           it, the rows, and the pager under them. */}
-      <div className="mt-14 grid gap-[22px]">
-        {/* One row. The labels are read out but not drawn: each control already
-            shows what it is -- the magnifier, "全部类别", "全部状态" -- so drawing
-            a caption above each one only pushed the filters onto three lines. */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Field className="w-auto">
+      <div className="grid gap-[22px]">
+        {/* One row (handoff §3: wrap, 8px gap, the search at 260 with the glass
+            inside its 30px inset, every control 34px tall). The labels are
+            read out but not drawn: each control already shows what it is --
+            the magnifier, "全部类别", "全部状态" -- so drawing a caption above
+            each one only pushed the filters onto three lines. */}
+        <div className="flex flex-wrap items-center gap-2 [&_[data-slot=button][role=combobox]]:h-[34px]">
+          <Field className="w-[260px]">
             <FieldLabel htmlFor="q" className="sr-only">
               {t.assets.search}
             </FieldLabel>
-            <InputGroup className="w-64">
-              <InputGroupAddon>
-                <MagnifyingGlass />
+            <InputGroup className="h-[34px] w-full">
+              <InputGroupAddon className="pl-2.5">
+                <MagnifyingGlass className="size-3.5" />
               </InputGroupAddon>
               <InputGroupInput
                 id="q"
@@ -493,7 +495,7 @@ export function Assets() {
               {t.assets.statusLabel}
             </FieldLabel>
             <Select value={toNone(status)} onValueChange={(v) => setStatus(fromNone(v))}>
-              <SelectTrigger id="status" className="w-36">
+              <SelectTrigger id="status" size="sm" className="w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -606,9 +608,18 @@ export function Assets() {
           {/* Always here, not only once a category is chosen: the built-in
               columns exist on every device, so there is something to choose even
               under "all categories". */}
+          {/* The range at the row's end (handoff §3), 12px: how many the
+              filters left, said where the filters are. */}
+          <span className="text-neutral-500 ml-auto text-xs tabular-nums whitespace-nowrap">
+            {t.assets.rangeShort(
+              total === 0 ? 0 : page * pageSize + 1,
+              Math.min((page + 1) * pageSize, total),
+              total,
+            )}
+          </span>
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="ml-auto" aria-label={t.assets.columns}>
+              <Button variant="ghost" size="icon" aria-label={t.assets.columns}>
                 <DotsThreeVertical />
               </Button>
             </DropdownMenuTrigger>
@@ -718,7 +729,7 @@ export function Assets() {
                         checkbox rather than allowed to scroll away, and the two
                         of them carry the shadow that says the rest slides
                         underneath. */}
-                    <TableHead className="bg-well sticky left-10 z-[2] shadow-[14px_0_14px_-14px_rgba(32,30,29,.22)]">
+                    <TableHead className="bg-well sticky left-10 z-[2] shadow-[14px_0_14px_-14px_rgba(0,0,0,.55)]">
                       {t.assets.sn}
                     </TableHead>
                     {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
@@ -732,7 +743,7 @@ export function Assets() {
                     {/* The row actions. No heading text: three icon buttons that
                         appear on hover are not a column of data, and a label over
                         them would claim they are. */}
-                    <TableHead className="bg-well sticky right-0 z-[2] w-px shadow-[-14px_0_14px_-14px_rgba(32,30,29,.22)]" />
+                    <TableHead className="bg-well sticky right-0 z-[2] w-px shadow-[-14px_0_14px_-14px_rgba(0,0,0,.55)]" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -752,6 +763,7 @@ export function Assets() {
                             were not. */}
                         <TableRow
                           className="group/row cursor-pointer"
+                          data-state={selection.has(a.id) ? "selected" : undefined}
                           onClick={() =>
                             navigate({
                               pathname: `/assets/${a.id}`,
@@ -781,7 +793,7 @@ export function Assets() {
                               onCheckedChange={() => selection.toggle(a.id, i)}
                             />
                           </TableCell>
-                          <TableCell className="bg-well group-hover/row:bg-accent sticky left-10 z-[1] font-mono shadow-[14px_0_14px_-14px_rgba(32,30,29,.22)]">
+                          <TableCell className="bg-well group-hover/row:bg-accent sticky left-10 z-[1] font-mono text-[13px] shadow-[14px_0_14px_-14px_rgba(0,0,0,.55)]">
                             {a.display_name}
                           </TableCell>
                           {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
@@ -794,7 +806,10 @@ export function Assets() {
                               // rows one each is a worse trade. Whoever needs it
                               // without a mouse opens the device, where the note
                               // is written out in full.
-                              className={cn(k === "note" && "text-muted-foreground max-w-48")}
+                              className={cn(
+                                k === "note" && "text-neutral-400 max-w-[220px]",
+                                k === "vendor" && "text-neutral-400",
+                              )}
                             >
                               {k === "note" && a.note ? (
                                 <Ellipsis text={a.note} />
@@ -819,14 +834,14 @@ export function Assets() {
                               Visible on hover and on focus, so tabbing through
                               reaches something that can be seen. */}
                           <TableCell
-                            className="bg-well group-hover/row:bg-accent sticky right-0 z-[1] w-px shadow-[-14px_0_14px_-14px_rgba(32,30,29,.22)]"
+                            className="bg-well group-hover/row:bg-accent sticky right-0 z-[1] w-px shadow-[-14px_0_14px_-14px_rgba(0,0,0,.55)]"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+                            <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity duration-[120ms] group-hover/row:opacity-100 focus-within:opacity-100">
                               {printing && (
                                 <Button
                                   variant="ghost"
-                                  size="icon-sm"
+                                  size="icon-xs"
                                   aria-label={t.assets.rowPrint}
                                   disabled={!can("print")}
                                   onClick={() => setPrintingOne(a.id)}
@@ -836,7 +851,7 @@ export function Assets() {
                               )}
                               <Button
                                 variant="ghost"
-                                size="icon-sm"
+                                size="icon-xs"
                                 aria-label={t.assets.rowTransfer}
                                 disabled={!can("transfer.create")}
                                 onClick={() => setRowTransfer({ id: a.id, action: "checkout" })}
@@ -845,7 +860,7 @@ export function Assets() {
                               </Button>
                               <Button
                                 variant="ghost"
-                                size="icon-sm"
+                                size="icon-xs"
                                 aria-label={t.assets.rowDetail}
                                 onClick={() =>
                                   navigate({
