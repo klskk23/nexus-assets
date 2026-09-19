@@ -711,7 +711,12 @@ export function Assets() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="bg-well sticky left-0 z-[2] w-10">
+                    {/* The row rule is a background on the tr, and a sticky cell's
+                        own opaque ground covers it -- so each sticky cell draws
+                        the same 1px line on top of its ground: fading in under
+                        the checkbox (the row's 48px fade starts there), full
+                        under the number, fading out under the actions. */}
+                    <TableHead className="bg-well sticky left-0 z-[2] w-10 bg-[linear-gradient(to_right,transparent,var(--border))] bg-[length:100%_1px] bg-bottom bg-no-repeat">
                       <Checkbox
                         aria-label={t.assets.selectPage}
                         checked={
@@ -729,7 +734,7 @@ export function Assets() {
                         checkbox rather than allowed to scroll away, and the two
                         of them carry the shadow that says the rest slides
                         underneath. */}
-                    <TableHead className="bg-well sticky left-10 z-[2] shadow-[14px_0_14px_-14px_rgba(0,0,0,.55)]">
+                    <TableHead className="bg-well sticky left-10 z-[2] bg-[linear-gradient(var(--border),var(--border))] bg-[length:100%_1px] bg-bottom bg-no-repeat shadow-[14px_0_14px_-14px_rgba(0,0,0,.55)]">
                       {t.assets.sn}
                     </TableHead>
                     {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
@@ -743,7 +748,7 @@ export function Assets() {
                     {/* The row actions. No heading text: three icon buttons that
                         appear on hover are not a column of data, and a label over
                         them would claim they are. */}
-                    <TableHead className="bg-well sticky right-0 z-[2] w-px shadow-[-14px_0_14px_-14px_rgba(0,0,0,.55)]" />
+                    <TableHead className="bg-well sticky right-0 z-[2] w-px bg-[linear-gradient(to_right,var(--border),transparent)] bg-[length:100%_1px] bg-bottom bg-no-repeat shadow-[-14px_0_14px_-14px_rgba(0,0,0,.55)]" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -772,7 +777,7 @@ export function Assets() {
                           }
                         >
                           <TableCell
-                            className="bg-well group-hover/row:bg-accent sticky left-0 z-[1]"
+                            className="bg-well group-hover/row:bg-accent sticky left-0 z-[1] bg-[linear-gradient(to_right,transparent,var(--border-muted))] bg-[length:100%_1px] bg-bottom bg-no-repeat"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Checkbox
@@ -793,7 +798,7 @@ export function Assets() {
                               onCheckedChange={() => selection.toggle(a.id, i)}
                             />
                           </TableCell>
-                          <TableCell className="bg-well group-hover/row:bg-accent sticky left-10 z-[1] font-mono text-[13px] shadow-[14px_0_14px_-14px_rgba(0,0,0,.55)]">
+                          <TableCell className="bg-well group-hover/row:bg-accent sticky left-10 z-[1] font-mono text-[13px] bg-[linear-gradient(var(--border-muted),var(--border-muted))] bg-[length:100%_1px] bg-bottom bg-no-repeat shadow-[14px_0_14px_-14px_rgba(0,0,0,.55)]">
                             {a.display_name}
                           </TableCell>
                           {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
@@ -834,7 +839,7 @@ export function Assets() {
                               Visible on hover and on focus, so tabbing through
                               reaches something that can be seen. */}
                           <TableCell
-                            className="bg-well group-hover/row:bg-accent sticky right-0 z-[1] w-px shadow-[-14px_0_14px_-14px_rgba(0,0,0,.55)]"
+                            className="bg-well group-hover/row:bg-accent sticky right-0 z-[1] w-px bg-[linear-gradient(to_right,var(--border-muted),transparent)] bg-[length:100%_1px] bg-bottom bg-no-repeat shadow-[-14px_0_14px_-14px_rgba(0,0,0,.55)]"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity duration-[120ms] group-hover/row:opacity-100 focus-within:opacity-100">

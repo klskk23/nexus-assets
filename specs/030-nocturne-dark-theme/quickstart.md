@@ -133,9 +133,9 @@ await page.evaluate(() => document.querySelector("nav")!.closest("[data-slot=rai
 | d10 | 汇总条颜色 | 琥珀 | `accent-900 / accent-200` | 不改：状态槽位不画非状态（FR-004） |
 | d10 | 预览表 | 全部行 + 问题列 | 只列出错行 | 不改：预览接口只回出错行的字段错误 |
 | d13 | 容器 | 640 弹窗 | 640 抽屉（右侧） | 不改：帮助要在写表达式时并排看，抽屉是 025 定的形制 |
-| 全部 | `--destructive` 红字对比 | `oklch(0.72 0.12 20)` | 对 `--card` 3.04:1、对地 3.52:1（< 4.5） | 报告：原型的值；换成原型错误列用的 `oklch(0.80 0.12 20)` 可到 4.87:1，等裁定 |
+| 全部 | `--destructive` 红字对比 | `oklch(0.72 0.12 20)` | 对 `--card` 3.04:1、对地 3.52:1（< 4.5） | 不改：开发者 2026-09-19 裁定接受原型的值（换成 `oklch(0.80 0.12 20)` 可到 4.87:1，留作后手） |
 | 全部 | 示例数据 | 编造的产品词汇 | 演示库数据 | 不改，决策 231 |
-| 全部 | 原型运行时 | `support.js` + `_ds_bundle.js` | **缺失**（`design/MISSING.md`） | 报告：并排截图待补 |
+| 全部 | 原型运行时 | `support.js` + `_ds_bundle.js` | 已从重新提供的 zip 放回 `design/` | 已改 |
 
 **量化结果**（1440×900，2026-09-19）：
 
@@ -146,7 +146,7 @@ await page.evaluate(() => document.querySelector("nav")!.closest("[data-slot=rai
 | English 不破版 | 13 屏 + 13 弹窗 `scrollWidth > clientWidth` 均为 0；`nowrap` 元素溢出 0；弹窗底栏距面板右缘 24px（= 面板内边距） |
 | 弹窗内浮层滚轮（029） | 录入设备的持有方下拉：滚轮 240 → `scrollTop` 0 → 240（列表 1256 / 256） |
 | bundle | `index-*.js` gzip **202.6 KB**（≤ 512 KB）；全部 js gzip 316 KB；`index-*.css` gzip 159 KB（Noto 三个字重的 `unicode-range` 声明） |
-| woff2 | 产物 301 文件、**7.51 MB**：Inter wght 0.22 MB + Noto 400/500/700 各约 2.43 MB。**相对 v0.16.0 增量约 +2.4 MB**（新增 Noto 500 一整个字重 2.43 MB + Inter 0.22 MB − Figtree/Caprasimo 约 0.3 MB），**超出 ≤ 2 MB 的预算** —— 但这是产物体积，不是传输量：每个字重按 `unicode-range` 切成 100 个子集，页面只取用到的几个。报告给开发者：要么接受，要么把 500 换成 `font-synthesis` 合成（决策 224 选了真字重） |
+| woff2 | 产物 301 文件、**7.51 MB**：Inter wght 0.22 MB + Noto 400/500/700 各约 2.43 MB。**相对 v0.16.0 增量约 +2.4 MB**（新增 Noto 500 一整个字重 2.43 MB + Inter 0.22 MB − Figtree/Caprasimo 约 0.3 MB），**超出 ≤ 2 MB 的预算** —— 但这是产物体积，不是传输量：每个字重按 `unicode-range` 切成 100 个子集，页面只取用到的几个。开发者 2026-09-19 裁定**接受**（决策 224 要真字重；预算线按此结果改为「产物 woff2 ≤ 8 MB、`index-*.js` gzip ≤ 512 KB」） |
 | Go 门禁 | `gofmt -l` 空、`go vet` 空、`go test ./...` 全过（服务端零改动） |
 | 前端门禁 | `tsc` 空、`eslint` 空、`vitest --maxWorkers=4` 61 文件 520 全过、`npm run build` 通过 |
 
