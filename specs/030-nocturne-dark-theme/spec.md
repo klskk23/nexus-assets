@@ -275,7 +275,7 @@
   全部自托管；产物零处 `fonts.googleapis.com` / `fonts.gstatic.com`；Figtree、Caprasimo 卸除。
   正文 15px / 1.55；等宽为 `ui-monospace, SFMono-Regular, Menlo, monospace` 12.5–13px。
 - **FR-012**: 图标 MUST 全部为 Phosphor 线性风格；lucide 卸除，源码零处 `lucide-react`。
-  导航 25 条映射逐个核对含义。
+  导航 11 条映射逐个核对含义。
 - **FR-013**: `logo.svg`、`favicon.ico`、`apple-touch-icon.png` MUST 重出为立方体线框标；
   三者颜色取自 accent 与 bg token。
 

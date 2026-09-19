@@ -116,7 +116,7 @@ Nocturne 与 shadcn 对「accent」这个词的用法**相反**：Nocturne 的 `
 ## 四、图标与字体：替换面的实际数字
 
 **图标**：lucide 在 53 个文件里出现，**24 个不同图标名** + 一个类型 `LucideIcon`，
-外加 `navIcons.ts` 的 25 条映射。对照表（Phosphor 线性 = `weight="regular"`）：
+外加 `navIcons.ts` 的 11 条映射（10 条路由 + 兜底）。对照表（Phosphor 线性 = `weight="regular"`）：
 
 | lucide | Phosphor | 备注 |
 |---|---|---|
@@ -143,7 +143,7 @@ Nocturne 与 shadcn 对「accent」这个词的用法**相反**：Nocturne 的 `
 | `type LucideIcon` | `type Icon` | `@phosphor-icons/react` 导出 |
 | 品牌 | `Cube` | 新 |
 
-`navIcons.ts` 的 25 条在实施时逐条对（表在 tasks 里）。Phosphor 组件接受 `className`
+`navIcons.ts` 的 11 条在实施时逐条对（表在 tasks 里）。Phosphor 组件接受 `className`
 与 `size`；现有调用写的是 `className="size-4"`，保留即可。`aria-hidden` 照旧。
 
 **字体**：

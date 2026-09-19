@@ -10,7 +10,7 @@
 13 屏 + 13 弹窗。技术路径：**`index.css` 的十九个语义槽位保留名字只换值**（token 映射见
 `research.md` §一），暴露两条色阶，整表替换八组状态色；**23 个 shadcn 组件按角色重写
 变体**（药丸整条作废、主按钮改描边、去全部进出场动画）；feature 层按 `design/screen-map.md`
-逐屏改版面数字；图标 lucide → Phosphor 全量替换、字体 Figtree/Caprasimo → Inter Variable
+逐屏改版面数字；图标 lucide → Phosphor 全量替换（53 文件、24 个图标名、`navIcons` 11 条）、字体 Figtree/Caprasimo → Inter Variable
 （Noto Sans SC 加 500）；新增导航折叠。服务端零改动。验收靠真浏览器逐屏截图对照原型，
 证据存 `walkthrough/`。
 
@@ -127,7 +127,7 @@ CLAUDE.md                              # 当前计划指针
    色阶 + 状态色 + `color-scheme` → 去 `tw-animate-css` → `nocturne.test.ts` 九条**先红**
    → 23 个 ui 变体重写 → 九条转绿。Checkpoint：任意一页打开是深色、按钮描边、
    弹窗即开即关；`grep` 九条零命中。
-2. **图标与标志**：Phosphor 映射表、`navIcons.ts` 25 条、53 文件替换、`Logo.tsx`、三个
+2. **图标与标志**：Phosphor 映射表、`navIcons.ts` 11 条、53 文件替换、`Logo.tsx`、三个
    图标文件重出、`favicon.test.ts` 改钉。Checkpoint：`lucide-react` 零命中，标签页图标是立方体。
 3. **壳**：`AppShell` 216px 两列、三组导航、激活竖线、底部账号行、折叠（钩子 + i18n +
    `navCollapse.test.tsx`）。Checkpoint：截图 02 的壳部分；量 216 / 60。
