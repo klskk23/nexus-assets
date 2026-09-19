@@ -97,7 +97,7 @@ description: "Task list for 030 — Nocturne 深色系统，像素级换皮"
       类别 `bg-accent-600` / 负责人 `bg-neutral-500`；`96px 1fr 40px`。
 - [x] T018 [US4] 审计「变更内容」的前后值：`web/src/features/audit/*`（按 screen-map）
       左缘 2px `neutral-700` / `primary`，确认**没有**红绿。
-- [ ] T019 [US4] 走查量化（quickstart「量化检查」）：真键盘 Tab 在 02、03、05 三屏各取一个控件，
+- [X] T019 [US4] 走查量化（quickstart「量化检查」）：真键盘 Tab 在 02、03、05 三屏各取一个控件，
       记 `outlineColor/outlineWidth`；算 `--ring` 对 bg 与 surface 的对比度，期望 5.46 / 4.71，
       写进 `quickstart.md` 差异表。
 
@@ -147,7 +147,7 @@ description: "Task list for 030 — Nocturne 深色系统，像素级换皮"
       「或」渐隐分隔、Google 按钮 secondary block。`contentColumn.test.ts` 白名单条目更新。
 - [x] T028 [US1] `web/tests/login.test.tsx`：可达性断言不变，删旧装饰断言；
       `web/tests/a11y.test.tsx` 若断言了壳的类名则随之改。
-- [ ] T029 [US1] 走查：截图 `01-login.png`、`02-overview.png`（壳）+ 原型并排；设置弹窗
+- [X] T029 [US1] 走查：截图 `01-login.png`、`02-overview.png`（壳）+ 原型并排；设置弹窗
       确认无主题项；差异记录。
 
 **Checkpoint**：US1 独立可验收。
@@ -165,7 +165,7 @@ description: "Task list for 030 — Nocturne 深色系统，像素级换皮"
 - [x] T033 [US5] `web/src/routes/AppShell.tsx`：品牌块变 `<button>`（`aria-label` = collapse/expand）；
       折叠态 `grid-cols-[60px_…]`、只画图标、`title`、激活竖线仍在左缘；`max-md` 下不参与
       （源码断言在 T032）。T032 转绿。
-- [ ] T034 [US5] 走查：量导航 216 / 60；折叠态截一张 `02b-overview-collapsed.png`（附加，不计入 26）。
+- [X] T034 [US5] 走查：量导航 216 / 60；折叠态截一张 `02b-overview-collapsed.png`（附加，不计入 26）。
 
 ---
 
@@ -196,49 +196,49 @@ description: "Task list for 030 — Nocturne 深色系统，像素级换皮"
 
 **每个任务末尾 = 截图存档 + 差异记录。** 屏 01、02 的壳已在 US1 截过，这里补 02 的内容区。
 
-- [ ] T044 [US2] 概览 `web/src/routes/Overview.tsx`：三张卡 `minmax(300px,1fr) gap-4`、`p-[18px_20px] gap-3.5`；
+- [X] T044 [US2] 概览 `web/src/routes/Overview.tsx`：三张卡 `minmax(300px,1fr) gap-4`、`p-[18px_20px] gap-3.5`；
       最近流转四列表 + 30px `Select`（5/10/20）；`grid gap-[34px]`。截图 `02-overview.png` 覆盖 T029 的那张。
-- [ ] T045 [US2] 资产列表 `web/src/routes/Assets.tsx`：筛选行；表格列（复选 15px、编号等宽 13px、
+- [X] T045 [US2] 资产列表 `web/src/routes/Assets.tsx`：筛选行；表格列（复选 15px、编号等宽 13px、
       状态 `.tag`、厂商 `neutral-400`、备注 `max-w-[220px]` 省略 + `title`、行操作
       `opacity-0 group-hover:opacity-100 transition-opacity duration-[120ms]`）；选中行
       `bg-[color-mix(in_srgb,var(--primary)_8%,transparent)]`；每页 20/50/100；空态句。
       **筛选下拉保持 `SearchSelect`**（决策 217）。截图 `03-assets.png`（勾一行）。
-- [ ] T046 [US2] 设备详情 `web/src/routes/AssetDetail.tsx`：`max-w-[1100px] gap-[30px]`；「← 资产」ghost；
+- [X] T046 [US2] 设备详情 `web/src/routes/AssetDetail.tsx`：`max-w-[1100px] gap-[30px]`；「← 资产」ghost；
       `h1` 30px tabular + 状态 `.tag`；右端四按钮；四项事实卡 `minmax(180px,1fr)`；属性两列
       `minmax(340px,1fr) gap-x-10`、行 `py-2.5` 渐隐线、`dt` 110px；`.tag-outline` 10px 来源标；
       成功横幅 `bg-accent-900 text-accent-200`。截图 `04-asset-detail.png`。
-- [ ] T047 [US2] 类别 `web/src/routes/Categories.tsx` + `features/categories/CategoryDetail.tsx`：
+- [X] T047 [US2] 类别 `web/src/routes/Categories.tsx` + `features/categories/CategoryDetail.tsx`：
       标题 + ⓘ；右上「新建类别」；右栏名称 20px + 代号等宽 12px + 「编辑类别」secondary；
       事实四项；链接「看这个类别的 N 台设备（含子类别）→」；字段表五列（必填 `.tag-outline` 或 —、
       继承自 `.tag-neutral` 或 —）。截图 `05-categories.png`。
-- [ ] T048 [US2] 字段 `web/src/routes/Fields.tsx` + `features/fields/FieldDetail.tsx`：左栏按组分节
+- [X] T048 [US2] 字段 `web/src/routes/Fields.tsx` + `features/fields/FieldDetail.tsx`：左栏按组分节
       （节标题 11px、行右端键名等宽 11.5px）；右栏显示名 20px + 键名 + 类型 `.tag-neutral` +
       「唯一」`.tag-outline` + 编辑；事实四项；表达式 `code` 块（`bg-well` 左 2px `border-primary`
       `text-accent-300`）+ 「怎么写」链接；**「绑在哪些目标上」表三列，无解绑列、无「＋ 绑定到类别」，
       `bindElsewhere` 保留**（决策 218）。截图 `06-fields.png`。
-- [ ] T049 [US2] 型号 `web/src/routes/Models.tsx` + `features/models/{ModelDetail,VendorDetail}.tsx`：
+- [X] T049 [US2] 型号 `web/src/routes/Models.tsx` + `features/models/{ModelDetail,VendorDetail}.tsx`：
       左栏按厂商分节（标题右端型号数、行 `pl-[18px]`、右端在册数）；右栏型号名 20px + 厂商 13px +
       「在册 N 台」`.tag-neutral` + 编辑；备注段；两栏 `minmax(320px,1fr)` 默认值表 / 字段表
       （来源 `.tag-neutral`）。截图 `07-models.png`。
-- [ ] T050 [US2] 状态 `web/src/routes/Statuses.tsx`：搜索框 `max-w-[360px]`；五列表（显示名 `.tag`、
+- [X] T050 [US2] 状态 `web/src/routes/Statuses.tsx`：搜索框 `max-w-[360px]`；五列表（显示名 `.tag`、
       键名等宽、类型、行为 `.tag-neutral`、使用情况「N 台设备・历史 M 条」）；行点开编辑。
       截图 `08-statuses.png`。
-- [ ] T051 [US2] 持有方 `web/src/routes/Holders.tsx` + `features/holders/HolderDetail.tsx`：左栏名称 +
+- [X] T051 [US2] 持有方 `web/src/routes/Holders.tsx` + `features/holders/HolderDetail.tsx`：左栏名称 +
       类型 11px + 数量；树下 12px「默认库存点：X」；右栏名称 + 类型 `.tag-neutral` + 「默认库存点」
       `.tag-outline`；右端「设为默认库存点」secondary + 「编辑」primary；事实四项；备注段。
       截图 `09-holders.png`。
-- [ ] T052 [US2] 账号 `web/src/routes/Users.tsx`：筛选（搜索 260、角色、状态）；五列表（邮箱等宽
+- [X] T052 [US2] 账号 `web/src/routes/Users.tsx`：筛选（搜索 260、角色、状态）；五列表（邮箱等宽
       12.5px `neutral-300`、登录方式由 `auth_type` 译、状态 `.tag-neutral`/`.tag-outline`）。
       截图 `10-users.png`。
-- [ ] T053 [US2] 角色 `web/src/routes/Roles.tsx`：三列表（管理员 → `.tag-accent`「全部权限」；否则
+- [X] T053 [US2] 角色 `web/src/routes/Roles.tsx`：三列表（管理员 → `.tag-accent`「全部权限」；否则
       「N 项」+ 前 4 项…；账号数）；**无表下说明**（决策 219）。截图 `11-roles.png`。
-- [ ] T054 [US2] 操作审计 `web/src/routes/Audit.tsx` + `features/audit/AuditTabs.tsx`：`.seg` 切换；
+- [X] T054 [US2] 操作审计 `web/src/routes/Audit.tsx` + `features/audit/AuditTabs.tsx`：`.seg` 切换；
       筛选（搜索、对象类型、操作、操作人、日期按钮、清除、右端「共 N 条」）；四列表；
       **无标题下说明**（决策 219）。截图 `12-audit.png`。
-- [ ] T055 [US2] 流转审计 `web/src/routes/TransferAudit.tsx` + `features/transfers/MovementCell.tsx`：
+- [X] T055 [US2] 流转审计 `web/src/routes/TransferAudit.tsx` + `features/transfers/MovementCell.tsx`：
       筛选（资产编号等宽 220px、操作人、动作、时间）；表同概览最近流转；动作 Badge neutral 变体。
       截图 `13-audit-transfers.png`。
-- [ ] T056 [US2] 每屏随改的既有 DOM 测试（凡断言文案与角色的不动；断言类名的改），
+- [X] T056 [US2] 每屏随改的既有 DOM 测试（凡断言文案与角色的不动；断言类名的改），
       `npx vitest run --maxWorkers=4` 全绿。
 
 **Checkpoint**：13 张屏截图齐、差异表填满、每条处置三选一。
@@ -249,33 +249,33 @@ description: "Task list for 030 — Nocturne 深色系统，像素级换皮"
 
 > 容器形制在 T010 已换。这里只剩各弹窗**自己**的宽度、内部布局与特殊件。每个任务末尾截图 + 差异记录。
 
-- [ ] T057 [US3] 设置 `web/src/features/settings/SettingsDialog.tsx`：560；语言 `.seg`；API 密钥表 +
+- [X] T057 [US3] 设置 `web/src/features/settings/SettingsDialog.tsx`：560；语言 `.seg`；API 密钥表 +
       「新建密钥」28px；文档链接；**无主题项**。`d01`。
-- [ ] T058 [US3] 流转 `web/src/features/transfers/TransferDialog.tsx`：520；标题后缀；动作 `.seg`
+- [X] T058 [US3] 流转 `web/src/features/transfers/TransferDialog.tsx`：520；标题后缀；动作 `.seg`
       （`dialogTrack` 的 `flex-wrap` 不动）；目标 / 负责人 `SearchSelect`；备注；提交后横幅。`d02`。
-- [ ] T059 [US3] 状态编辑 `web/src/features/statuses/*`：460；键名（编辑禁用）、显示名、颜色
+- [X] T059 [US3] 状态编辑 `web/src/features/statuses/*`：460；键名（编辑禁用）、显示名、颜色
       `Select` + 实时 `.tag` 预览、行为两复选、内置提示。`d03`。
-- [ ] T060 [US3] 编辑类别 `web/src/features/categories/CategoryEditor.tsx`：480；四字段 + 复选；
+- [X] T060 [US3] 编辑类别 `web/src/features/categories/CategoryEditor.tsx`：480；四字段 + 复选；
       左下「删除类别」红 ghost。`d04`。
-- [ ] T061 [US3] 录入设备 `web/src/features/assets/NewAssetDialog.tsx`：560；类别 / 型号 / 持有方 +
+- [X] T061 [US3] 录入设备 `web/src/features/assets/NewAssetDialog.tsx`：560；类别 / 型号 / 持有方 +
       `DynamicForm`（决策 222）；说明句。`d05`。
-- [ ] T062 [US3] 账号 `web/src/features/users/UserEditor.tsx`：480；邮箱禁用 + 说明；重置密码
+- [X] T062 [US3] 账号 `web/src/features/users/UserEditor.tsx`：480；邮箱禁用 + 说明；重置密码
       （SSO 禁用）；停用 / 启用 → 确认。`d06`。
-- [ ] T063 [US3] 角色 `web/src/features/roles/RoleEditor.tsx`：560；管理员只读说明；19 项复选
+- [X] T063 [US3] 角色 `web/src/features/roles/RoleEditor.tsx`：560；管理员只读说明；19 项复选
       `repeat(auto-fill,minmax(160px,1fr))`；左下「删除角色」。`d07`。
-- [ ] T064 [US3] 变更内容 `web/src/features/audit/*`：640；前后 `pre` 左缘 2px。`d08`。
-- [ ] T065 [US3] 确认 `web/src/features/common/ConfirmDialog.tsx`：440；红缘（T010）；type-to-confirm +
+- [X] T064 [US3] 变更内容 `web/src/features/audit/*`：640；前后 `pre` 左缘 2px。`d08`。
+- [X] T065 [US3] 确认 `web/src/features/common/ConfirmDialog.tsx`：440；红缘（T010）；type-to-confirm +
       复制按钮；主按钮红描边。`d09`。
-- [ ] T066 [US3] 批量导入 `web/src/features/import/ImportDialog.tsx`：680；三步圆圈（完成 / 当前 accent
+- [X] T066 [US3] 批量导入 `web/src/features/import/ImportDialog.tsx`：680；三步圆圈（完成 / 当前 accent
       描边、未到 `neutral-700`）；虚线文件区；琥珀色提示条（amber 状态槽位？**不**——用
       `--status-*` 画非状态违反 FR-004，用 `accent-900`/`accent-200` 横幅）；预览表错误列红字。`d10`。
-- [ ] T067 [US3] 打印标签 `web/src/features/print/*`：560；计划态表 + 「确认打印 N 张」；队列表 +
+- [X] T067 [US3] 打印标签 `web/src/features/print/*`：560；计划态表 + 「确认打印 N 张」；队列表 +
       4px `Progress`。`d11`。
-- [ ] T068 [US3] 导出 `web/src/features/assets/ExportDialog.tsx`：520；`RadioGroup` 范围；字段复选 +
+- [X] T068 [US3] 导出 `web/src/features/assets/ExportDialog.tsx`：520；`RadioGroup` 范围；字段复选 +
       全选 / 全不选；固定列说明。`d12`。
-- [ ] T069 [US3] 表达式帮助 `web/src/features/fields/ExpressionHelp.tsx`：640；两列 `.table`
+- [X] T069 [US3] 表达式帮助 `web/src/features/fields/ExpressionHelp.tsx`：640；两列 `.table`
       （等宽 `accent-300` 键）；「知道了」。`d13`。
-- [ ] T070 [US3] 弹窗相关既有 DOM 测试随改（`dialogFocus`、`confirmDialog`、`confirmTone`、`editEvent`、
+- [X] T070 [US3] 弹窗相关既有 DOM 测试随改（`dialogFocus`、`confirmDialog`、`confirmTone`、`editEvent`、
       `import`、`export`、`fieldEditor`、`expressionHelp`）全绿。**流转弹窗持有方下拉滚轮**
       （029）实机再验一次。
 
@@ -285,27 +285,27 @@ description: "Task list for 030 — Nocturne 深色系统，像素级换皮"
 
 ## Phase 10: US6 — 英文不破版 (P3)
 
-- [ ] T071 [US6] 切 English，按 quickstart「药丸不换行」片段量 13 屏 + 13 弹窗：
+- [X] T071 [US6] 切 English，按 quickstart「药丸不换行」片段量 13 屏 + 13 弹窗：
       `scrollWidth > clientWidth` 期望零；弹窗底栏对面板 ±1px。结果写 `quickstart.md`。
-- [ ] T072 [US6] 凡量出换行的，在对应组件补 `whitespace-nowrap`（FR-027），复量到零。
+- [X] T072 [US6] 凡量出换行的，在对应组件补 `whitespace-nowrap`（FR-027），复量到零。
 
 ---
 
 ## Phase 11: Polish（文档、门禁）
 
-- [ ] T073 [P] `docs/rules/web-forms.md`「视觉（017 Organic）」整节改写为「视觉（030 Nocturne）」：
+- [X] T073 [P] `docs/rules/web-forms.md`「视觉（017 Organic）」整节改写为「视觉（030 Nocturne）」：
       深色唯一（形状同 017）、圆角 4/8/14 无药丸、`rounded-full` 白名单、**焦点环可以直接用主色
       （5.46 / 4.71）**、颜色分工四句（`--primary` 动作 / `accent-600–900` 填充 / `.status-*` 状态 /
       `neutral-*` 数量）、字体 Inter + Noto 400/500/700、图标 Phosphor、无动画。写明推翻了哪几条。
-- [ ] T074 [P] `docs/rules/web-tables.md`「版面数字（018）」改写为「版面数字（030）」：壳 216 / 60、
+- [X] T074 [P] `docs/rules/web-tables.md`「版面数字（018）」改写为「版面数字（030）」：壳 216 / 60、
       内容区内边距、左栏 280、表头 11px、行线 8%、弹窗容器与宽度表；**决策 135 推翻**一句。
-- [ ] T075 [P] `docs/rules/web-tables.md` 主从节：左栏 300 → 280 的一处数字。
-- [ ] T076 Bundle 与字体：`npm run build`；量 `index-*.js` gzip（≤ 512KB）与 `dist/static/*.woff2`
+- [X] T075 [P] `docs/rules/web-tables.md` 主从节：左栏 300 → 280 的一处数字。
+- [X] T076 Bundle 与字体：`npm run build`；量 `index-*.js` gzip（≤ 512KB）与 `dist/static/*.woff2`
       总量相对 v0.16.0 的增量（≤ 2MB）；写进 `quickstart.md`。
-- [ ] T077 七条门禁本地全跑：`tsc`、`eslint`、`vitest --maxWorkers=4`、`build`、自定义组件守卫、
+- [X] T077 七条门禁本地全跑：`tsc`、`eslint`、`vitest --maxWorkers=4`、`build`、自定义组件守卫、
       bundle 预算、`go test`（零改动回归）。
-- [ ] T078 `quickstart.md` 差异表收口：每条处置三选一；「报告」类汇总成一段给开发者。
-- [ ] T079 按阶段提交（地基 / 图标 / 壳 / 共用件 / 各屏 / 弹窗 / 文档），**不推送、不打 tag**。
+- [X] T078 `quickstart.md` 差异表收口：每条处置三选一；「报告」类汇总成一段给开发者。
+- [X] T079 按阶段提交（地基 / 图标 / 壳 / 共用件 / 各屏 / 弹窗 / 文档），**不推送、不打 tag**。
 
 ---
 
