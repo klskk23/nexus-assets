@@ -30,19 +30,21 @@ beforeEach(() => {
 })
 
 /**
- * Opens the transfer dialog from the bar and picks the action inside it.
+ * Opens the transfer dialog from the bar with the action already chosen.
  *
- * The bar used to carry all five verbs as five buttons, which is a menu
- * spelled out along a bar; the dialog it opened asked again anyway. These
- * tests are about what a batch transfer does, not about where the verb is
- * chosen, so they go through whichever path exists.
+ * The bar names three of the verbs directly (030, following the prototype);
+ * the dialog opens with that one selected. These tests are about what a
+ * batch transfer does, not about where the verb is chosen, so they go
+ * through whichever path exists -- and check the dialog agrees about which
+ * verb it was.
  */
 async function startTransfer(user: ReturnType<typeof userEvent.setup>, action: string) {
-  await user.click(screen.getByRole("button", { name: "流转" }))
+  // In through the first verb on the bar, then to whichever verb the test
+  // wants: the two that are not on the bar are reached inside the dialog.
+  await user.click(screen.getByRole("button", { name: "签出" }))
   const dialog = await screen.findByRole("dialog")
-  // The verb is a toggle inside the dialog, not a select: scoped to the
-  // dialog because the bar behind it has buttons of its own.
-  await user.click(within(dialog).getByRole("radio", { name: action }))
+  expect(within(dialog).getByRole("radio", { name: "签出" })).toHaveAttribute("aria-checked", "true")
+  if (action !== "签出") await user.click(within(dialog).getByRole("radio", { name: action }))
 }
 
 describe("ActionBar", () => {

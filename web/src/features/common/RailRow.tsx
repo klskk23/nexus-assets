@@ -28,9 +28,13 @@ interface Props {
  * by sitting outside the link rather than within: it is a separate button
  * beside the row, not a control in a cell (docs/rules/web-tables.md).
  *
- * Shared by the three rails rather than copied into each: what a row looks
+ * Shared by the four rails rather than copied into each: what a row looks
  * like is one decision, and it had already drifted between two of them by the
  * time the third arrived.
+ *
+ * Handoff §5: 6px 10px, indented 16px per level, 13.5px; children in the
+ * muted tone; the active row wears the same bed and text as the active nav
+ * entry; the count 12px in neutral-500.
  */
 export function RailRow({
   to,
@@ -54,7 +58,7 @@ export function RailRow({
          * holder rail, where a company has children and a standalone warehouse
          * does not -- reads as two ragged columns. The indent is supposed to
          * mean depth and nothing else. */
-        <span aria-hidden className="size-6 shrink-0" style={{ marginInlineStart: depth * 18 }} />
+        <span aria-hidden className="size-6 shrink-0" style={{ marginInlineStart: depth * 16 }} />
       ) : (
         <button
           type="button"
@@ -62,13 +66,9 @@ export function RailRow({
           aria-label={foldLabel}
           aria-expanded={!folded}
           className="text-muted-foreground hover:text-foreground grid size-6 shrink-0 place-items-center rounded-md"
-          style={{ marginInlineStart: depth * 18 }}
+          style={{ marginInlineStart: depth * 16 }}
         >
-          {folded ? (
-            <CaretRight className="size-3.5" />
-          ) : (
-            <CaretDown className="size-3.5" />
-          )}
+          {folded ? <CaretRight className="size-3.5" /> : <CaretDown className="size-3.5" />}
         </button>
       )}
       <TruncatedTip text={label} isTruncated={isTruncated}>
@@ -76,11 +76,11 @@ export function RailRow({
           to={to}
           aria-current={selected ? "true" : undefined}
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-2.5 rounded-md py-[9px] pr-3.5 pl-3 text-sm transition-colors",
+            "flex min-w-0 flex-1 items-center gap-2.5 rounded-md py-1.5 pr-2.5 pl-2.5 text-[13.5px] transition-colors",
             selected
-              ? "bg-accent text-accent-foreground font-semibold"
-              : "hover:bg-accent hover:text-accent-foreground",
-            !selected && depth > 0 && "text-muted-foreground",
+              ? "bg-selected text-selected-foreground"
+              : "hover:bg-accent hover:text-foreground",
+            !selected && depth > 0 && "text-neutral-400",
           )}
         >
           {/* The trigger is the link, not this span: a span is not a tab stop,
@@ -90,7 +90,7 @@ export function RailRow({
             {label}
           </span>
           {count !== undefined && (
-            <span className="shrink-0 text-[13px] tabular-nums">{count}</span>
+            <span className="text-neutral-500 shrink-0 text-xs tabular-nums">{count}</span>
           )}
         </Link>
       </TruncatedTip>
@@ -101,6 +101,6 @@ export function RailRow({
 /** A heading in a rail. Not a link -- it is not a thing you can open. */
 export function RailHeading({ children }: { children: ReactNode }) {
   return (
-    <div className="text-muted-foreground px-3.5 pt-3 pb-1 text-xs tracking-wide">{children}</div>
+    <div className="text-neutral-500 px-2.5 pt-3 pb-1 text-[11px] tracking-[0.06em]">{children}</div>
   )
 }

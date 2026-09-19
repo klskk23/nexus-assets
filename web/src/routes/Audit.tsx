@@ -425,7 +425,7 @@ export function Audit() {
             {detail?.before != null && (
               <div className="border-border border-l-2 pl-3">
                 <p className="text-muted-foreground mb-1">{tAudit.before}</p>
-                <pre className="bg-well text-muted-foreground overflow-x-auto rounded-[20px] p-3">
+                <pre className="border-neutral-700 bg-well text-neutral-400 overflow-x-auto rounded-md border-l-2 p-3 text-xs">
                   {JSON.stringify(detail.before, null, 2)}
                 </pre>
               </div>
@@ -433,7 +433,7 @@ export function Audit() {
             {detail?.after != null && (
               <div className="border-primary border-l-2 pl-3">
                 <p className="text-muted-foreground mb-1">{tAudit.after}</p>
-                <pre className="bg-well overflow-x-auto rounded-[20px] p-3">
+                <pre className="border-primary bg-well overflow-x-auto rounded-md border-l-2 p-3 text-xs">
                   {JSON.stringify(detail.after, null, 2)}
                 </pre>
               </div>

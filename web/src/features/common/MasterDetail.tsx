@@ -36,18 +36,17 @@ interface Props {
  * useMasterSelection, for the same reason -- selection is a question about
  * ids, and ids are not layout.
  *
- * Deliberately absent, with one caller as of writing: a width knob, slots for
- * either pane's empty state (an empty pane is content, so the caller draws
- * it), and arrow-key movement between rows. The second caller may well want
- * the width; adding it then is a few lines and changes nothing that already
- * works, which is cheaper than guessing at it now.
+ * Four callers as of 030 and still no width knob: the handoff moved the rail
+ * from 300 to 280 and that was one number here, which is what "the second
+ * caller needs no change to the shell" was meant to buy.
  */
 export function MasterDetail({ selected, list, detail }: Props) {
   return (
-    /* 300px and the rest. minmax(0,1fr) rather than 1fr on the right: an auto
-     * track is at least its widest child's min-content, so one wide row inside
-     * would push the whole page out rather than scrolling within itself. */
-    <div className="grid gap-[22px] md:grid-cols-[300px_minmax(0,1fr)] md:items-start">
+    /* 280px and the rest (handoff §5). minmax(0,1fr) rather than 1fr on the
+     * right: an auto track is at least its widest child's min-content, so one
+     * wide row inside would push the whole page out rather than scrolling
+     * within itself. */
+    <div className="grid gap-[22px] md:grid-cols-[280px_minmax(0,1fr)] md:items-start">
       {/* Which pane shows on a narrow screen follows the address, so going
           back is what returns to the list -- no second "back" of its own to
           disagree with the browser's. */}

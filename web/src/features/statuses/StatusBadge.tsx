@@ -14,14 +14,14 @@ interface Props {
  * the one column people actually scan carried no information until they read
  * it. The colour is not decoration: it is what makes a lost device findable in
  * a page of forty rows.
+ *
+ * The chip is the .tag at the badge's own size (11px, 3px 10px); .status-chip
+ * paints it from the slot's three values and outranks the variant.
  */
 export function StatusBadge({ status, className }: Props) {
   const { label, color } = useStatuses()
   return (
-    <Badge
-      variant="outline"
-      className={cn("status-chip px-3 py-1 text-[13px]", `status-${color(status)}`, className)}
-    >
+    <Badge variant="secondary" className={cn("status-chip", `status-${color(status)}`, className)}>
       {label(status)}
     </Badge>
   )

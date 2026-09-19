@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Trash } from "@phosphor-icons/react"
+import { DownloadSimple, Printer, Trash } from "@phosphor-icons/react"
 
 import { api, ApiError } from "@/lib/api"
 import { t, tImport, tTransfer } from "@/i18n"
@@ -10,7 +10,6 @@ import {
   TransferDialog,
   type TransferAction,
 } from "@/features/transfers/TransferDialog"
-import { DownloadSimple, Printer } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { PrintDialog } from "@/features/print/PrintDialog"
 import { usePrinting } from "@/features/print/usePrinting"
@@ -24,6 +23,9 @@ interface Props {
   onExport: () => void
 }
 
+/** The three movements the bar names directly (handoff §3). */
+const QUICK: TransferAction[] = ["checkout", "checkin", "transfer"]
+
 /**
  * The bar that rises once rows are ticked.
  *
@@ -33,11 +35,15 @@ interface Props {
  * It composes nothing itself. Each transfer button opens the shared dialog
  * with that action preselected, so the list page and the detail page cannot
  * end up behaving differently for the same operation.
+ *
+ * Handoff §3: a floating panel in the dialog's own dress -- surface, the top
+ * elevation, 14px corners, 8px 8px 8px 16px inside -- fixed 22px above the
+ * bottom. "已选 N 台" in the accent's 300 step; the three movements, the
+ * label and the export as 30px secondary buttons; delete as the red ghost;
+ * clear as a muted ghost at the end. The three verbs are back on the bar
+ * because the prototype draws them there (decision 215); the dialog they open
+ * still asks, and the other two actions are still reachable through it.
  */
-/** An outlined pill on the dark bar. Transparent, so the bar shows through. */
-const PILL =
-  "border-background/35 text-background hover:bg-background/15 rounded-md border bg-transparent"
-
 export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
   const queryClient = useQueryClient()
   const { deniedReason } = usePermissions()
@@ -63,46 +69,50 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
   if (selected.length === 0) return null
 
   return (
-    /* A dark pill floating over the table, centred, rather than a full-width
-     * card. It is the one thing on this page that has to be found instantly
-     * while a list of forty rows scrolls behind it, and this palette's four
-     * grounds are all within 1.22:1 of each other -- none of them can carry
-     * that. --foreground can, and it is already in the palette.
-     *
-     * z-20 because the table's pinned columns carry an opaque background and a
+    /* z-20 because the table's pinned columns carry an opaque background and a
      * stacking order of their own; without it the bar was painted over by the
-     * very rows it floats above.
-     *
-     * Four actions, not eight. The five transfer verbs used to sit here as
-     * five buttons, which is a menu spelled out along a bar -- the dialog they
-     * open asks which one anyway, so it asks there. What is left is the four
-     * things you do to a batch: move it, label it, take it away, delete it. */
-    <div className="sticky bottom-6 z-20 flex justify-center">
-      <div className="bg-foreground text-background flex flex-wrap items-center gap-1.5 rounded-md py-2 pr-2 pl-5 shadow-lg">
-        <span className="mr-1 text-sm whitespace-nowrap">
+     * very rows it floats above. */
+    <div className="sticky bottom-[22px] z-20 flex justify-center">
+      <div className="bg-card flex flex-wrap items-center gap-1.5 rounded-lg py-2 pr-2 pl-4 shadow-lg">
+        <span className="text-accent-300 mr-1.5 text-[13px] whitespace-nowrap">
           {tTransfer.actions.selected(selected.length)}
         </span>
 
-        <Button size="sm" className={PILL} onClick={onClear}>
-          {tTransfer.actions.clear}
-        </Button>
+        {QUICK.map((kind) => (
+          <Button
+            key={kind}
+            variant="secondary"
+            size="sm"
+            disabled={deniedReason("transfer.create") !== undefined}
+            title={deniedReason("transfer.create")}
+            onClick={() => {
+              setAction(kind)
+              setOpen(true)
+            }}
+          >
+            {tTransfer.kind[kind]}
+          </Button>
+        ))}
+
+        {/* Printing is a property of the installation: with no print service
+            configured there is no button, rather than one that answers "not
+            configured" after it is pressed. */}
+        {printing && (
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={deniedReason("print") !== undefined}
+            title={deniedReason("print")}
+            onClick={() => setPrintOpen(true)}
+          >
+            <Printer />
+            {t.print.action}
+          </Button>
+        )}
 
         <Button
+          variant="secondary"
           size="sm"
-          className={PILL}
-          disabled={deniedReason("transfer.create") !== undefined}
-          title={deniedReason("transfer.create")}
-          onClick={() => {
-            setAction(null)
-            setOpen(true)
-          }}
-        >
-          {tTransfer.actions.title}
-        </Button>
-
-        <Button
-          size="sm"
-          className={PILL}
           disabled={deniedReason("export") !== undefined}
           title={deniedReason("export")}
           onClick={onExport}
@@ -111,28 +121,16 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
           {tImport.exportSelection}
         </Button>
 
-        {/* Destructive, and the only one here that cannot be undone -- but it
-            does NOT wear --destructive, and that is deliberate.
-
-            This bar's ground is --foreground. Clay measures 2.53:1 on it and
-            the red it replaced measured 3.48 -- neither clears 4.5, so the old
-            button was already failing and switching the token would only have
-            made it worse. The design covers light grounds; this pill is the one
-            dark surface in the product and it was never drawn.
-
-            So the button follows the rule the rest of this bar already
-            follows -- invert against the ground -- and gets its danger from the
-            bin and the word, which is where the meaning was anyway. Inverted it
-            measures 15.17:1.
-
-            **This is the only destructive action in the product that is not
-            destructive-coloured.** It looks like an oversight. It is not: see
-            022 FR-020 and docs/rules/web-tables.md. */}
+        {/* Destructive and the only one here that cannot be undone. Red as
+            text and outline, like every red on this ground -- the surface it
+            sits on is the same as a dialog's, so the rule that applies to a
+            dialog's delete applies here. (022's inverted pill on a dark bar is
+            gone with the bar it was inverted against.) */}
         <ConfirmDialog
           trigger={
             <Button
+              variant="destructive"
               size="sm"
-              className={PILL}
               disabled={deniedReason("asset.delete") !== undefined}
               title={deniedReason("asset.delete")}
             >
@@ -150,22 +148,9 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
           onConfirm={() => remove.mutate()}
         />
 
-        {/* Printing is a property of the installation: with no print service
-            configured there is no button, rather than one that answers "not
-            configured" after it is pressed. It is the primary act here --
-            a batch is usually selected in order to label it. */}
-        {printing && (
-          <Button
-            size="sm"
-            className="rounded-md"
-            disabled={deniedReason("print") !== undefined}
-            title={deniedReason("print")}
-            onClick={() => setPrintOpen(true)}
-          >
-            <Printer />
-            {t.print.action}
-          </Button>
-        )}
+        <Button variant="ghost" size="sm" className="text-neutral-400" onClick={onClear}>
+          {tTransfer.actions.clear}
+        </Button>
       </div>
 
       <TransferDialog

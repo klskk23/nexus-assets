@@ -25,6 +25,9 @@ interface Props {
  * the heading, some with `ml-auto` on the first button, and the gap between
  * the heading and the content below was 5 on three pages and 6 on the rest.
  * None of that is a decision any single page should be making.
+ *
+ * Handoff §全局壳: h1 26px, medium, margin auto on the right; the page's
+ * actions at the row's end with a 10px gap.
  */
 export function PageHeader({ title, hint, children }: Props) {
   return (
@@ -32,12 +35,12 @@ export function PageHeader({ title, hint, children }: Props) {
      * Latin one are set the same way -- the display face 017 chose covered
      * Latin only, and a page title in Chinese fell through to Noto entirely.
      * Size carries the hierarchy: 26px, medium, never bold. */
-    <div className="flex flex-wrap items-center gap-3">
-      <h1 className="mr-auto flex flex-wrap items-center gap-2 text-[40px] leading-[1.2] font-bold">
+    <div className="flex flex-wrap items-center gap-2.5">
+      <h1 className="font-heading mr-auto flex flex-wrap items-center gap-2 text-[26px] leading-tight">
         {title}
         {hint && <Hint>{hint}</Hint>}
       </h1>
-      {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
+      {children && <div className="flex flex-wrap items-center gap-2.5">{children}</div>}
     </div>
   )
 }

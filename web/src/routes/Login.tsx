@@ -64,111 +64,90 @@ export function Login() {
     }
   }
 
+  const [brandFirst, ...brandRest] = t.appName.split(" ")
+
   return (
-    /* The mark, at page scale, with the way in sitting on it.
-     *
-     * The four discs are the logo blown up and bled off the right edge -- the
-     * same three circles the rail wears at 40px, plus the outlined one, sized
-     * in vw so the composition holds its proportions instead of snapping
-     * between two hand-placed layouts. The old version pinned them at fixed
-     * pixels in a column that vanished below md; this one is one composition
-     * that grows.
-     *
-     * The card is the product's own idiom, not a login-only invention:
-     * background floating on well at 28px, exactly what the panel does beside
-     * the rail on every other screen.
+    /* Handoff §1, and the prototype's own numbers where the handoff gives
+     * none. A radial bloom of the deepest accent step at the upper right
+     * over the ground; two hairline circles out to the right, the smaller one
+     * carrying an 80px glow; one horizontal rule fading at both ends. The
+     * card region is left-aligned and 420px at most -- Nocturne is
+     * "left-aligned, asymmetric: content hugs the left edge with whitespace on
+     * the right".
      *
      * This is the one screen with nothing of the reader's own on it, which is
-     * what earns it the space to be looked at. */
-    <div className="bg-well relative flex min-h-screen items-center p-[clamp(24px,4vw,64px)]">
-      {/* Deliberately none of the eight status palettes: on this product a
-          colour means a state a device is in, and a decoration borrowing one
-          would be saying something. Terracotta, cream and sage are the mark's
-          own three voices.
-          
-          Gone below md, which the desktop prototype this came from did not
-          have to answer for. Measured at 390px: the card leaves 24px of gap,
-          so the whole composition hides behind it and the only thing on screen
-          is a terracotta stripe down the right edge -- which reads as a
-          rendering fault, not as a mark. The mark is still on the phone; it is
-          the 52px one inside the card, which this page did not have before. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 overflow-hidden max-md:hidden"
-      >
-        <span className="bg-primary absolute top-1/2 right-[clamp(-260px,-9vw,-60px)] aspect-square w-[clamp(420px,48vw,760px)] -translate-y-1/2 rounded-md" />
-        <span className="bg-background absolute top-1/2 right-[clamp(60px,15vw,300px)] aspect-square w-[clamp(240px,27vw,430px)] translate-y-[-64%] rounded-md" />
-        <span className="bg-accent-2 absolute top-1/2 right-[clamp(10px,5vw,120px)] aspect-square w-[clamp(150px,17vw,270px)] translate-y-[14%] rounded-md opacity-[.62]" />
-        <span className="border-border absolute top-1/2 right-[clamp(300px,42vw,760px)] aspect-square w-[clamp(64px,7vw,104px)] translate-y-[150%] rounded-md border" />
+     * what earns it the space to be looked at. The decoration goes below md:
+     * on a phone the circles would sit behind the card and read as a fault,
+     * and the 36px mark inside the card is still there. */
+    <div className="bg-background relative grid min-h-screen items-center overflow-hidden bg-[radial-gradient(1200px_600px_at_85%_30%,var(--color-accent-900)_0%,transparent_60%)] p-[clamp(24px,5vw,72px)]">
+      <div aria-hidden className="pointer-events-none absolute inset-0 max-md:hidden">
+        <span className="border-accent-800 absolute top-[22%] right-[14%] aspect-square w-[min(38vw,520px)] rounded-full border" />
+        <span className="border-accent-700 absolute top-[12%] right-[24%] aspect-square w-[min(20vw,260px)] rounded-full border shadow-[0_0_80px_color-mix(in_srgb,var(--primary)_18%,transparent)]" />
+        <span className="absolute top-1/2 right-0 h-px w-[min(50vw,640px)] bg-[linear-gradient(to_right,transparent,var(--primary)_48px,var(--primary)_calc(100%-48px),transparent)] opacity-50" />
       </div>
 
-      <div className="bg-background relative w-full max-w-[472px] rounded-[28px] px-[clamp(28px,3vw,46px)] py-[clamp(32px,3.4vw,52px)]">
-        <div className="grid gap-8">
-          {/* The mark beside the name, which the old page left out entirely --
-              the one screen a first-time reader lands on was the only one not
-              showing them what the product is called and what it looks like.
-              The name is Latin, so the heading face renders every glyph of
-              it. */}
-          <div className="grid gap-3">
-            <div className="flex items-center gap-4">
-              <Logo className="size-[52px] shrink-0" />
-              <span className="font-heading grid text-[clamp(34px,3.4vw,46px)] leading-[1.05]">
-                <span>{t.appName.split(" ")[0]}</span>
-                <span className="text-primary">{t.appName.split(" ").slice(1).join(" ")}</span>
-              </span>
-            </div>
-            <p className="text-muted-foreground">{t.login.tagline}</p>
+      <div className="relative grid w-full max-w-[420px] gap-7">
+        {/* The mark beside the name: a 36px square with a 24px glow, then the
+            name at 28px. The name is Latin, so the heading face renders every
+            glyph of it. */}
+        <div className="grid gap-2">
+          <div className="flex items-center gap-3.5">
+            <Logo className="size-9 rounded-[10px] shadow-[0_0_24px_color-mix(in_srgb,var(--primary)_30%,transparent)]" />
+            <span className="font-heading text-[28px] leading-tight whitespace-nowrap">
+              {brandFirst} <span className="text-primary">{brandRest.join(" ")}</span>
+            </span>
           </div>
-
-          <form onSubmit={onSubmit} aria-label={t.login.title}>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="email">{t.login.email}</FieldLabel>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="username"
-                  required
-                  className="h-[50px]"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="password">{t.login.password}</FieldLabel>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  className="h-[50px]"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </Field>
-
-              {error && (
-                <Alert variant="destructive">
-                  <WarningCircle />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <Button type="submit" disabled={submitting}>
-                {submitting && <Spinner aria-hidden />}
-                {submitting ? t.login.submitting : t.login.submit}
-              </Button>
-
-              {/* The other way in, on the other side of a rule: one of these is
-                  a password, the other is somebody else's sign-in page. */}
-              <FieldSeparator>{t.login.or}</FieldSeparator>
-              <Button variant="outline" className="w-full" asChild>
-                <a href="/api/auth/oidc/start">{t.login.google}</a>
-              </Button>
-            </FieldGroup>
-          </form>
+          <p className="text-neutral-400 text-sm">{t.login.tagline}</p>
         </div>
+
+        <form onSubmit={onSubmit} aria-label={t.login.title}>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="email">{t.login.email}</FieldLabel>
+              <Input
+                id="email"
+                type="email"
+                size="lg"
+                autoComplete="username"
+                required
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="password">{t.login.password}</FieldLabel>
+              <Input
+                id="password"
+                type="password"
+                size="lg"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </Field>
+
+            {error && (
+              <Alert variant="destructive">
+                <WarningCircle />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+              {submitting && <Spinner aria-hidden />}
+              {submitting ? t.login.submitting : t.login.submit}
+            </Button>
+
+            {/* The other way in, on the other side of a rule: one of these is
+                a password, the other is somebody else's sign-in page. */}
+            <FieldSeparator>{t.login.or}</FieldSeparator>
+            <Button variant="secondary" size="lg" className="w-full" asChild>
+              <a href="/api/auth/oidc/start">{t.login.google}</a>
+            </Button>
+          </FieldGroup>
+        </form>
       </div>
     </div>
   )

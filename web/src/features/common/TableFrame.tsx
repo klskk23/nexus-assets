@@ -5,25 +5,24 @@ import { cn } from "cn"
 /**
  * The frame every table on this product sits in.
  *
- * It sits on --well, the same tone as the shell behind the panel and as every
- * other content block on this product (the import steps, the attribute group,
- * the print jobs, the overview's paired blocks). A table is a block of content
- * like those, so it wears what they wear. `--card` stays reserved for things
- * that genuinely float: dialogs, drawers, the sticky bulk bar.
+ * No surface of its own (030). Nocturne's table is rows on the page: the
+ * header's rule at full strength and each row's at 8% of the text, and both
+ * rules fade to nothing over 48px at either end rather than stopping at the
+ * edge -- the system's signature, painted here once as a row-level strip so
+ * the fade spans the row and not each cell. Organic put the whole table in a
+ * --well card; that card is gone with its theme.
  *
  * The rows scroll sideways rather than pushing the page wide -- a dynamic
  * column set means any of these tables can outgrow the window, and a
  * horizontal scrollbar on the body moves the nav with it. That scroller is
- * Table's own; this frame does not add a second one, which it briefly did and
- * which left the outer never scrolling while the inner did all the work.
+ * Table's own; this frame does not add a second one.
  *
  * The pager goes in `footer`, which is inside the frame but outside that
  * scroller: it belongs to the table it pages, and a pager that scrolled
  * sideways with the columns would be a pager you have to go looking for.
- * Below the frame it was also the first thing the sticky bulk bar covered.
  *
- * Its own component because ten places had written the same three classes out,
- * which is nine places to miss when that answer changes.
+ * Its own component because ten places had written the same classes out,
+ * which is nine places to miss when that answer changes -- as it just did.
  */
 export function TableFrame({
   className,
@@ -36,9 +35,19 @@ export function TableFrame({
   children: ReactNode
 }) {
   return (
-    <div className={cn("bg-well overflow-hidden rounded-[28px] border", className)}>
+    <div
+      className={cn(
+        "grid gap-2.5",
+        // The fading rules: the header's from --border, the rows' from the
+        // muted one. Applied to the tr as a bottom-aligned 1px background so
+        // Table's own border-b can be turned off underneath it.
+        "[&_thead_tr]:border-0 [&_thead_tr]:bg-[linear-gradient(to_right,transparent,var(--border)_48px,var(--border)_calc(100%-48px),transparent)] [&_thead_tr]:bg-[length:100%_1px] [&_thead_tr]:bg-bottom [&_thead_tr]:bg-no-repeat",
+        "[&_tbody_tr]:border-0 [&_tbody_tr]:bg-[linear-gradient(to_right,transparent,var(--border-muted)_48px,var(--border-muted)_calc(100%-48px),transparent)] [&_tbody_tr]:bg-[length:100%_1px] [&_tbody_tr]:bg-bottom [&_tbody_tr]:bg-no-repeat",
+        className,
+      )}
+    >
       {children}
-      {footer && <div className="border-border-muted border-t px-5 py-3">{footer}</div>}
+      {footer && <div className="flex flex-wrap items-center gap-2.5 px-1">{footer}</div>}
     </div>
   )
 }

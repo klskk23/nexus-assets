@@ -31,30 +31,24 @@ interface Props {
  * on a screen. A pager that disappears is obvious -- there is no second page.
  * A search box that disappears has no such tell, and "why does this page not
  * have one" is a question nobody can answer by looking.
+ *
+ * Handoff §3: the row wraps with an 8px gap; the search box is 260px with the
+ * glass at 14px inside a 30px inset; every control in the row is 34px tall.
+ * A fixed 260 rather than the flexible 640 it used to be -- that number was
+ * Organic's, and the prototype's is a control's width, not a column's.
  */
 export function ListToolbar({ q, onQ, searchHint, filters, actions, inputRef }: Props) {
   const composed = useComposedInput(q, onQ)
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* The search box takes the row's slack up to 640px, rather than a fixed
-       * 256: it is the control people reach for first, and on a metadata page
-       * with no filters beside it a stub of a search box in a wide row reads
-       * as an afterthought. Filters keep their own width and wrap below it.
-       *
-       * This 640 is a CONTROL's width and stays. 020 deleted an identical 640
-       * from the transfer form, which was a content column -- one rule decides
-       * how wide a page is, and it lives in AppShell. A search field spanning
-       * a 1675px row is not that rule being applied, it is a text input the
-       * size of a paragraph. Nothing would fail if this were swept up in a
-       * bulk replace, which is exactly why it is written down here. */}
-      <Field className="w-auto max-w-[640px] min-w-64 flex-1">
+    <div className="flex flex-wrap items-center gap-2 [&_[data-slot=select-trigger]]:h-[34px] [&_[data-slot=button][role=combobox]]:h-[34px]">
+      <Field className="w-[260px]">
         <FieldLabel htmlFor="list-q" className="sr-only">
           {searchHint}
         </FieldLabel>
-        <InputGroup className="w-full">
-          <InputGroupAddon>
-            <MagnifyingGlass />
+        <InputGroup className="h-[34px] w-full">
+          <InputGroupAddon className="pl-2.5">
+            <MagnifyingGlass className="size-3.5" />
           </InputGroupAddon>
           {/* Spread, composition events included: without them a pinyin IME
               writes its half-finished spelling into the address bar and gets

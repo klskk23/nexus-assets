@@ -103,6 +103,8 @@ export const en: typeof zh = {
     audit: "Audit",
     signOut: "Sign out",
     language: "Switch language",
+    collapse: "Collapse navigation",
+    expand: "Expand navigation",
   },
 
   login: {

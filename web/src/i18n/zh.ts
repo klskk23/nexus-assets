@@ -88,6 +88,8 @@ export const zh = {
     audit: "审计",
     signOut: "退出登录",
     language: "切换语言",
+    collapse: "折叠导航",
+    expand: "展开导航",
   },
 
   login: {

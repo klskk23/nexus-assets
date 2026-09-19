@@ -16,6 +16,8 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
  * Alert, a consequence worth knowing before ticking is an Alert, and both stay
  * on the page. This is for the sentence somebody wants once and then never
  * again.
+ *
+ * Handoff §5: a 16px circle. One of the four round things in this system.
  */
 export function Hint({ children }: { children: React.ReactNode }) {
   return (
@@ -30,9 +32,9 @@ export function Hint({ children }: { children: React.ReactNode }) {
           // on focus, does not pop it open unasked. See lib/dialogFocus.
           data-slot="hint"
           aria-label={t.common.whatIsThis}
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex size-4 shrink-0 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:outline-none"
+          className="border-border text-neutral-500 hover:border-foreground/45 hover:text-foreground inline-flex size-4 shrink-0 items-center justify-center rounded-full border"
         >
-          <Question className="size-3.5" />
+          <Question className="size-3" />
         </button>
       </HoverCardTrigger>
       <HoverCardContent className="text-muted-foreground text-sm leading-relaxed">

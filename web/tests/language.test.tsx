@@ -139,7 +139,8 @@ describe("the account block", () => {
     const signOut = screen.getByRole("button", { name: "退出登录" })
     const account = screen.getByRole("button", { name: /管理员/ })
     expect(signOut).toBeInTheDocument()
-    expect(screen.getAllByRole("button")).toHaveLength(2)
+    // Three: the brand block is the fold switch now (030), beside these two.
+    expect(screen.getAllByRole("button")).toHaveLength(3)
 
     await u.click(account)
     expect(await screen.findByRole("dialog")).toBeInTheDocument()

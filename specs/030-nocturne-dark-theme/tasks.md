@@ -24,13 +24,13 @@ description: "Task list for 030 — Nocturne 深色系统，像素级换皮"
 
 ## Phase 1: Setup（依赖与字体）
 
-- [ ] T001 `web/package.json`：`npm i @phosphor-icons/react@2.1.10 @fontsource-variable/inter@5.3.0`；
+- [x] T001 `web/package.json`：`npm i @phosphor-icons/react@2.1.10 @fontsource-variable/inter@5.3.0`；
       `npm rm lucide-react @fontsource/caprasimo @fontsource-variable/figtree tw-animate-css`。
       **先卸后装会让 tsc 立刻红一片**，这是预期 —— 直到 T020 之前不要求 tsc 绿。
-- [ ] T002 `web/src/assets/fonts/fonts.css` 重写：`@import "@fontsource-variable/inter/wght.css"`、
+- [x] T002 `web/src/assets/fonts/fonts.css` 重写：`@import "@fontsource-variable/inter/wght.css"`、
       `@fontsource/noto-sans-sc/400.css`、`/500.css`、`/700.css`；注释写明为什么要 500
       （Inter 500 标题里的汉字，`font-synthesis-weight: none`）。
-- [ ] T003 [P] `web/public/fonts/`：Caprasimo、Figtree 的 OFL 文件删掉，放 Inter 的 OFL；
+- [x] T003 [P] `web/public/fonts/`：Caprasimo、Figtree 的 OFL 文件删掉，放 Inter 的 OFL；
       `README` 或注释指向来源。
 
 ---
@@ -39,49 +39,49 @@ description: "Task list for 030 — Nocturne 深色系统，像素级换皮"
 
 **每一屏都站在这上面。九条不变量先红，组件层改完转绿。**
 
-- [ ] T004 `web/src/index.css` `:root`：按 `contracts/ui-tokens.md` §1 整表换值。删除
+- [x] T004 `web/src/index.css` `:root`：按 `contracts/ui-tokens.md` §1 整表换值。删除
       `--primary-hover`、`--radius-2xl`、`--radius-xl`；新增 `--selected`、
       `--selected-foreground`、`--destructive-line`。顶部注释改写：说明 Nocturne 的
       「accent」= 本表的 `--primary`，shadcn 的 `--accent` = 悬停底，**`accent-N` 是色阶、
       `accent` 是悬停底**。加 `color-scheme: dark`。
-- [ ] T005 同文件 `@theme inline`：`--radius-sm/md/lg = 4/8/14px`；`--font-sans`/`--font-heading`
+- [x] T005 同文件 `@theme inline`：`--radius-sm/md/lg = 4/8/14px`；`--font-sans`/`--font-heading`
       指向 Inter；`--font-mono`；新增 `--color-neutral-100…900` 与 `--color-accent-100…900`
       （§2）、`--color-selected*`、`--color-destructive-line`。注释写明 neutral 覆盖
       Tailwind 内建。
-- [ ] T006 同文件 `.status-*` 八组三值按 §3 逐字替换；`.status-chip` 保留消费方式。
-- [ ] T007 同文件：删 `@import "tw-animate-css"`；`font-heading` 工具类改为
+- [x] T006 同文件 `.status-*` 八组三值按 §3 逐字替换；`.status-chip` 保留消费方式。
+- [x] T007 同文件：删 `@import "tw-animate-css"`；`font-heading` 工具类改为
       `font-family: var(--font-heading); font-weight: 500`。
-- [ ] T008 `web/tests/nocturne.test.ts`（新）九条源码不变量，按 `contracts/ui-tokens.md` §3 §5：
+- [x] T008 `web/tests/nocturne.test.ts`（新）九条源码不变量，按 `contracts/ui-tokens.md` §3 §5：
       ① 24 个 oklch 逐字；② `animate-in|animate-out|fade-in-|fade-out-|zoom-in-|zoom-out-|slide-in-|slide-out-`
       零命中（**不是裸 `animate-`**，`animate-spin` 要留）；③ `lucide-react` 零；④ `dark:`
       与 `\.dark\b` 零；⑤ `tw-animate-css` 零；⑥ routes/features 六位十六进制零；
       ⑦ `googleapis|gstatic|Caprasimo|Figtree` 零；⑧ `rounded-full` 白名单（头像 / 单选点 /
       spinner）；⑨ `--primary-hover|--radius-2xl|--radius-xl` 不存在。**此刻应有 ②③⑧ 红**
       （组件层还没改），记下红的条数。
-- [ ] T009 `web/src/components/ui/button.tsx`：按 research §二重写五个变体与尺寸
+- [x] T009 `web/src/components/ui/button.tsx`：按 research §二重写五个变体与尺寸
       （default = accent 描边、secondary = divider 描边、ghost、destructive = 红 ghost、link）；
       圆角 8；14px `font-heading`；`disabled:opacity-45`；icon 36 / sm-icon 30 / xs-icon 28；
       **去 `rounded-full`**。
-- [ ] T010 `web/src/components/ui/dialog.tsx` 与 `alert-dialog.tsx`：容器 surface + `shadow-lg`
+- [x] T010 `web/src/components/ui/dialog.tsx` 与 `alert-dialog.tsx`：容器 surface + `shadow-lg`
       + 14px + `p-[22px_24px] gap-4`；遮罩 `bg-[color-mix(in_srgb,var(--color-neutral-900)_50%,transparent)]`；
       **删角落装饰圆**；`DialogFooter` 去 `-mx-8 bg-well` 带子改 `flex justify-end gap-2`；
       ✕ 28px ghost；AlertDialog 加 `shadow-[inset_2px_0_0_var(--destructive-line)]`；
       **删全部 `animate-*` 类**。`InsideDialogContext`（029）保留。
-- [ ] T011 [P] `web/src/components/ui/{input,textarea,input-group}.tsx`：`.input` 形制（surface、
+- [x] T011 [P] `web/src/components/ui/{input,textarea,input-group}.tsx`：`.input` 形制（surface、
       divider、8px、36px；`size` 变体 40 / 34 / 32）；hover / focus-visible 边色。
-- [ ] T012 [P] `web/src/components/ui/badge.tsx`：`.tag` 形制 + accent / neutral / outline 变体。
+- [x] T012 [P] `web/src/components/ui/badge.tsx`：`.tag` 形制 + accent / neutral / outline 变体。
       **红→绿双向验（状态色）**：把 T006 里 amber 的 `bar` 改一位，`nocturne.test.ts` ①
       必须红；改回转绿。记录在 commit message。
-- [ ] T013 [P] `web/src/components/ui/{select,popover,dropdown-menu,context-menu,hover-card,tooltip}.tsx`：
+- [x] T013 [P] `web/src/components/ui/{select,popover,dropdown-menu,context-menu,hover-card,tooltip}.tsx`：
       面板 surface + `shadow-md`（tooltip）/ `shadow-lg`、8px；项悬停 `bg-accent`；
       **删全部 `animate-*`**。**红→绿双向验（动画）**：给任一面板加回一条 `animate-in`，
       `nocturne.test.ts` ② 必须红；删掉转绿。
-- [ ] T014 [P] `web/src/components/ui/{tabs,toggle-group,toggle}.tsx`：`.seg` 形制。
+- [x] T014 [P] `web/src/components/ui/{tabs,toggle-group,toggle}.tsx`：`.seg` 形制。
       `dialogTrack.test.ts` 守的 `flex-wrap` 与 `spacing` 不动。
-- [ ] T015 [P] `web/src/components/ui/{table,card,checkbox,radio-group,alert,progress,skeleton,spinner,sonner,drawer}.tsx`：
+- [x] T015 [P] `web/src/components/ui/{table,card,checkbox,radio-group,alert,progress,skeleton,spinner,sonner,drawer}.tsx`：
       按 research §二各自换色阶与形制；表头去底色；checkbox 15px；radio 16px；
       alert destructive 不填充；spinner 保留 `animate-spin`。
-- [ ] T016 `npx vitest run tests/nocturne.test.ts`：**九条全绿**。`grep -rn "animate-\|rounded-full" web/src/components/ui` 复核。
+- [x] T016 `npx vitest run tests/nocturne.test.ts`：**九条全绿**。`grep -rn "animate-\|rounded-full" web/src/components/ui` 复核。
 
 **Checkpoint**：任意一页打开是深色、按钮描边、弹窗即开即关。tsc 仍会因 lucide 而红，
 到 T020 解决。
@@ -92,10 +92,10 @@ description: "Task list for 030 — Nocturne 深色系统，像素级换皮"
 
 > 颜色分工的**实现**在 Phase 2 已落地；这一阶段是把它**钉住**与**量出来**。
 
-- [ ] T017 [US4] `web/src/features/statuses/StatusBadge.tsx` 与 `web/src/features/overview/DistributionBar.tsx`：
+- [x] T017 [US4] `web/src/features/statuses/StatusBadge.tsx` 与 `web/src/features/overview/DistributionBar.tsx`：
       `.status-chip` 消费新三值；分布条轨道 `bg-neutral-900` 6px、填充按 状态 `--status-line` /
       类别 `bg-accent-600` / 负责人 `bg-neutral-500`；`96px 1fr 40px`。
-- [ ] T018 [US4] 审计「变更内容」的前后值：`web/src/features/audit/*`（按 screen-map）
+- [x] T018 [US4] 审计「变更内容」的前后值：`web/src/features/audit/*`（按 screen-map）
       左缘 2px `neutral-700` / `primary`，确认**没有**红绿。
 - [ ] T019 [US4] 走查量化（quickstart「量化检查」）：真键盘 Tab 在 02、03、05 三屏各取一个控件，
       记 `outlineColor/outlineWidth`；算 `--ring` 对 bg 与 surface 的对比度，期望 5.46 / 4.71，
@@ -107,21 +107,21 @@ description: "Task list for 030 — Nocturne 深色系统，像素级换皮"
 
 ## Phase 4: 图标与标志（阻塞 US1/US2）
 
-- [ ] T020 `web/src/features/common/navIcons.ts`：改 import 为 `@phosphor-icons/react`，
+- [x] T020 `web/src/features/common/navIcons.ts`：改 import 为 `@phosphor-icons/react`，
       类型 `LucideIcon → Icon`，**11 条映射逐条替换并在 16px `weight="regular"` 下看过**：
       `/` LayoutDashboard→`SquaresFour`；`/assets` Boxes→`Package`；`/categories` FolderTree→`TreeStructure`；
       `/fields` Columns3→`Columns`；`/models` Cpu→`Cpu`；`/statuses` CircleDot→`RadioButton`；
       `/holders` Warehouse→`Warehouse`；`/users` Users→`Users`；`/roles` ShieldCheck→`ShieldCheck`；
       `/audit` ScrollText→`Scroll`；兜底 Inbox→`Tray`。注释里「2.75 stroke」那句改成
       Phosphor regular。
-- [ ] T021 其余 52 个文件按 research §四对照表替换（`AlertCircleIcon→WarningCircle` ×25 是大头）；
+- [x] T021 其余 52 个文件按 research §四对照表替换（`AlertCircleIcon→WarningCircle` ×25 是大头）；
       `Loader2Icon→CircleNotch` 保留 `animate-spin`；`type LucideIcon→type Icon`。
       `npx tsc --noEmit` **转绿**；`nocturne.test.ts` ③ 绿。
-- [ ] T022 [P] `web/src/features/common/Logo.tsx`：立方体线框（Phosphor `Cube`）置于 1px
+- [x] T022 [P] `web/src/features/common/Logo.tsx`：立方体线框（Phosphor `Cube`）置于 1px
       `border-primary` 8px 方块内；尺寸由 `className` 给（导航 28、登录 36）。
-- [ ] T023 [P] `web/public/logo.svg`、`favicon.ico`（16+32）、`apple-touch-icon.png` 重出：
+- [x] T023 [P] `web/public/logo.svg`、`favicon.ico`（16+32）、`apple-touch-icon.png` 重出：
       立方体线框，只用 `#9184d9` 与 `#161826`；`rsvg-convert` + ImageMagick 生成。
-- [ ] T024 [P] `web/tests/favicon.test.ts`：`TOKENS = ["--primary", "--background"]`；注释改写。
+- [x] T024 [P] `web/tests/favicon.test.ts`：`TOKENS = ["--primary", "--background"]`；注释改写。
 
 **Checkpoint**：`lucide-react` 零命中；标签页图标是立方体。
 
@@ -133,19 +133,19 @@ description: "Task list for 030 — Nocturne 深色系统，像素级换皮"
 
 **Independent Test**: 截图 01（登录）与 02 的壳部分；设置弹窗无主题项；系统浅色下仍深色。
 
-- [ ] T025 [US1] `web/src/routes/AppShell.tsx`：`grid-cols-[216px_minmax(0,1fr)] h-screen`；导航
+- [x] T025 [US1] `web/src/routes/AppShell.tsx`：`grid-cols-[216px_minmax(0,1fr)] h-screen`；导航
       `p-[18px_12px_14px]`、右 1px border、渐变底；品牌块 28px + 「Nexus Assets」15px；
       三组、组标题 11px `.06em` `neutral-500` `p-[14px_10px_4px]`；导航项 `p-[7px_10px]` 8px 13.5px
       `gap-2.5`、默认 `neutral-400`、悬停 `bg-accent text-foreground`、激活 `bg-selected
       text-selected-foreground` + 左缘 `-left-3` 2px `bg-primary shadow-[0_0_10px_var(--primary)]`
       竖线；内容区 `p-[26px_36px_64px_32px]` 内 `grid gap-[22px]`。
-- [ ] T026 [US1] 同文件底部：顶边渐隐分隔；账号按钮（28px 圆头像 `bg-accent-900 text-accent-200`、
+- [x] T026 [US1] 同文件底部：顶边渐隐分隔；账号按钮（28px 圆头像 `bg-accent-900 text-accent-200`、
       姓名 13px、角色 11px `neutral-500`）→ 设置弹窗；30px 退出图标按钮。
       **`rounded-full` 白名单里的「头像」就是这一处。**
-- [ ] T027 [US1] `web/src/routes/Login.tsx` 按第 1 屏重写：径向渐变底、右侧两圆一线
+- [x] T027 [US1] `web/src/routes/Login.tsx` 按第 1 屏重写：径向渐变底、右侧两圆一线
       （`max-md:hidden`）、420px 卡片区 `gap-7`、36px 发光品牌块、28px 标题、40px 输入框与按钮、
       「或」渐隐分隔、Google 按钮 secondary block。`contentColumn.test.ts` 白名单条目更新。
-- [ ] T028 [US1] `web/tests/login.test.tsx`：可达性断言不变，删旧装饰断言；
+- [x] T028 [US1] `web/tests/login.test.tsx`：可达性断言不变，删旧装饰断言；
       `web/tests/a11y.test.tsx` 若断言了壳的类名则随之改。
 - [ ] T029 [US1] 走查：截图 `01-login.png`、`02-overview.png`（壳）+ 原型并排；设置弹窗
       确认无主题项；差异记录。
@@ -156,13 +156,13 @@ description: "Task list for 030 — Nocturne 深色系统，像素级换皮"
 
 ## Phase 6: US5 — 导航折叠 (P2)
 
-- [ ] T030 [P] [US5] `web/src/i18n/zh.ts` / `en.ts`：`nav.collapse`「折叠导航」/ "Collapse navigation"、
+- [x] T030 [P] [US5] `web/src/i18n/zh.ts` / `en.ts`：`nav.collapse`「折叠导航」/ "Collapse navigation"、
       `nav.expand`「展开导航」/ "Expand navigation"。
-- [ ] T031 [P] [US5] `web/src/features/common/useNavCollapsed.ts`（新）：`localStorage["nexus.nav.collapsed"]`，
+- [x] T031 [P] [US5] `web/src/features/common/useNavCollapsed.ts`（新）：`localStorage["nexus.nav.collapsed"]`，
       读写包 try/catch，读不到 = 展开。
-- [ ] T032 [US5] `web/tests/navCollapse.test.tsx`（新，**先写**）：点品牌块 → 导航项文字不可见、
+- [x] T032 [US5] `web/tests/navCollapse.test.tsx`（新，**先写**）：点品牌块 → 导航项文字不可见、
       每项 `title`；再点展开；`localStorage` 写入并重新挂载后读回；品牌块 `aria-label` 随状态切换。
-- [ ] T033 [US5] `web/src/routes/AppShell.tsx`：品牌块变 `<button>`（`aria-label` = collapse/expand）；
+- [x] T033 [US5] `web/src/routes/AppShell.tsx`：品牌块变 `<button>`（`aria-label` = collapse/expand）；
       折叠态 `grid-cols-[60px_…]`、只画图标、`title`、激活竖线仍在左缘；`max-md` 下不参与
       （源码断言在 T032）。T032 转绿。
 - [ ] T034 [US5] 走查：量导航 216 / 60；折叠态截一张 `02b-overview-collapsed.png`（附加，不计入 26）。
@@ -171,24 +171,24 @@ description: "Task list for 030 — Nocturne 深色系统，像素级换皮"
 
 ## Phase 7: 共用件（阻塞 US2 的十二屏）
 
-- [ ] T035 `web/src/features/common/MasterDetail.tsx`：左栏 `300 → 280px`。三个调用方零改动
+- [x] T035 `web/src/features/common/MasterDetail.tsx`：左栏 `300 → 280px`。三个调用方零改动
       （024 骨架标准再验一次）；`masterDetail.test.tsx` 不动。
-- [ ] T036 [P] `web/src/features/common/{Rail,RailRow,TreePager}.tsx`：搜索框 32px；行 `p-[6px_10px]`
+- [x] T036 [P] `web/src/features/common/{Rail,RailRow,TreePager}.tsx`：搜索框 32px；行 `p-[6px_10px]`
       + `10 + depth×16` 缩进 13.5px；子级 `neutral-400`；激活 `bg-selected text-selected-foreground`；
       右端数量 12px `neutral-500`；翻页按钮 30px secondary。
-- [ ] T037 [P] `web/src/features/common/PageHeader.tsx`：`h1` 26px `font-heading`；右端 `gap-2.5`；
+- [x] T037 [P] `web/src/features/common/PageHeader.tsx`：`h1` 26px `font-heading`；右端 `gap-2.5`；
       ⓘ 16px 圆（`Hint.tsx`）。
-- [ ] T038 [P] `web/src/features/common/Pane.tsx`（含 `Fact`）：`.card shadow-sm p-[20px_24px] gap-5`；
+- [x] T038 [P] `web/src/features/common/Pane.tsx`（含 `Fact`）：`.card shadow-sm p-[20px_24px] gap-5`；
       名称 20px；事实 `dl` `bg-well rounded-md p-[14px_16px]`，`dt` 12px `neutral-500`、`dd` 14px。
-- [ ] T039 [P] `web/src/features/common/TableFrame.tsx`：渐隐行线在此画一次（`linear-gradient` 8% 文本色，
+- [x] T039 [P] `web/src/features/common/TableFrame.tsx`：渐隐行线在此画一次（`linear-gradient` 8% 文本色，
       两端 48px 透明）；翻页条 30px 按钮、范围文字 12px。
-- [ ] T040 [P] `web/src/features/common/ListToolbar.tsx`：搜索框 260px `pl-[30px]` 放大镜 14px；
+- [x] T040 [P] `web/src/features/common/ListToolbar.tsx`：搜索框 260px `pl-[30px]` 放大镜 14px；
       筛选控件 `size=34`；「清除筛选」ghost。
-- [ ] T041 [P] `web/src/features/assets/ActionBar.tsx`：`.dialog` 风格浮层（surface、`shadow-lg`、14px、
+- [x] T041 [P] `web/src/features/assets/ActionBar.tsx`：`.dialog` 风格浮层（surface、`shadow-lg`、14px、
       `p-[8px_8px_8px_16px]`）；「已选 N 台」`text-accent-300`；按钮 30px secondary；删除红 ghost。
-- [ ] T042 `web/tests/contentColumn.test.ts` 改写：白名单 = `contracts/ui-tokens.md` §6，每条
+- [x] T042 `web/tests/contentColumn.test.ts` 改写：白名单 = `contracts/ui-tokens.md` §6，每条
       理由引用 handoff 段落；注释改写为「以原型为准，决策 215」。
-- [ ] T043 `web/tests/transferAudit.test.tsx`（唯一断言了 Organic 类名的测试）随 T036–T041 改。
+- [x] T043 `web/tests/transferAudit.test.tsx`（唯一断言了 Organic 类名的测试）随 T036–T041 改。
 
 ---
 

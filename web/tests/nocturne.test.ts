@@ -93,15 +93,17 @@ describe("Nocturne 钉在源码上", () => {
     expect(pkg).not.toMatch(/caprasimo|figtree/)
   })
 
-  // Nocturne has no pills. The four that remain are round because the thing
+  // Nocturne has no pills. The five that remain are round because the thing
   // itself is round: a radio's dot, the 16px "?" (handoff: 16px 圆形), the
-  // import dialog's numbered step circles, the avatar in the rail.
-  it("rounded-full 只在四处", () => {
+  // import dialog's numbered step circles, the avatar in the rail, and the two
+  // outlined circles behind the sign-in card.
+  it("rounded-full 只在五处", () => {
     expect(hits(/rounded-full/)).toEqual([
       "src/components/ui/radio-group.tsx",
       "src/features/common/Hint.tsx",
       "src/features/import/ImportDialog.tsx",
       "src/routes/AppShell.tsx",
+      "src/routes/Login.tsx",
     ])
   })
 
