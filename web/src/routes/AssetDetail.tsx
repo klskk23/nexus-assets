@@ -230,7 +230,7 @@ export function AssetDetail() {
     /* Handoff §4: 1100 wide at most, 30px between blocks. The cap is the
      * prototype's number (decision 215) -- a device page is read, and a
      * two-column attribute list wider than that stops reading as pairs. */
-    <div className="grid max-w-[1100px] gap-[30px]">
+    <div className="grid gap-[30px]">
       {/* Back, and it always goes to the list -- not wherever the browser
           happened to come from. Someone who arrived from a scan, from
           finishing a form, or from the audit's "just this object" is on this

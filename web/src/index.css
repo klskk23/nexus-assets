@@ -53,6 +53,11 @@
   /* The active entry -- nav, tree row -- and, at 8%, a selected table row.
    * Its text is accent-200: a ramp step light enough to read on the tint. */
   --selected: color-mix(in srgb, #9184d9 12%, transparent);
+  /* Opaque twins of the row tints (hover = --accent, selected = primary/8)
+     for cells that must not be see-through: the sticky columns on the asset
+     list scroll over their neighbours. */
+  --row-hover: color-mix(in srgb, #e9e9ed 6%, #161826);
+  --row-selected: color-mix(in srgb, #9184d9 8%, #161826);
   --selected-foreground: #e7e5fe;
   /* Red is text and outline only, never a fill (handoff: 危险动作为红色 ghost).
    * Two steps because the outline needs more chroma than the text does to be

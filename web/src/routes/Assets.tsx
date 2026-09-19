@@ -777,7 +777,7 @@ export function Assets() {
                           }
                         >
                           <TableCell
-                            className="bg-well group-hover/row:bg-accent sticky left-0 z-[1] bg-[linear-gradient(to_right,transparent,var(--border-muted))] bg-[length:100%_1px] bg-bottom bg-no-repeat"
+                            className="bg-well group-hover/row:bg-[var(--row-hover)] group-data-[state=selected]/row:bg-[var(--row-selected)] group-data-[state=selected]/row:group-hover/row:bg-[var(--row-selected)] sticky left-0 z-[1] bg-[linear-gradient(to_right,transparent,var(--border-muted))] bg-[length:100%_1px] bg-bottom bg-no-repeat"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Checkbox
@@ -798,7 +798,7 @@ export function Assets() {
                               onCheckedChange={() => selection.toggle(a.id, i)}
                             />
                           </TableCell>
-                          <TableCell className="bg-well group-hover/row:bg-accent sticky left-10 z-[1] font-mono text-[13px] bg-[linear-gradient(var(--border-muted),var(--border-muted))] bg-[length:100%_1px] bg-bottom bg-no-repeat shadow-[14px_0_14px_-14px_rgba(0,0,0,.55)]">
+                          <TableCell className="bg-well group-hover/row:bg-[var(--row-hover)] group-data-[state=selected]/row:bg-[var(--row-selected)] group-data-[state=selected]/row:group-hover/row:bg-[var(--row-selected)] sticky left-10 z-[1] font-mono text-[13px] bg-[linear-gradient(var(--border-muted),var(--border-muted))] bg-[length:100%_1px] bg-bottom bg-no-repeat shadow-[14px_0_14px_-14px_rgba(0,0,0,.55)]">
                             {a.display_name}
                           </TableCell>
                           {BUILTIN_COLUMNS.filter(builtins.shows).map((k) => (
@@ -839,7 +839,7 @@ export function Assets() {
                               Visible on hover and on focus, so tabbing through
                               reaches something that can be seen. */}
                           <TableCell
-                            className="bg-well group-hover/row:bg-accent sticky right-0 z-[1] w-px bg-[linear-gradient(to_right,var(--border-muted),transparent)] bg-[length:100%_1px] bg-bottom bg-no-repeat shadow-[-14px_0_14px_-14px_rgba(0,0,0,.55)]"
+                            className="bg-well group-hover/row:bg-[var(--row-hover)] group-data-[state=selected]/row:bg-[var(--row-selected)] group-data-[state=selected]/row:group-hover/row:bg-[var(--row-selected)] sticky right-0 z-[1] w-px bg-[linear-gradient(to_right,var(--border-muted),transparent)] bg-[length:100%_1px] bg-bottom bg-no-repeat shadow-[-14px_0_14px_-14px_rgba(0,0,0,.55)]"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity duration-[120ms] group-hover/row:opacity-100 focus-within:opacity-100">
