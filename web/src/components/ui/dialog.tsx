@@ -1,5 +1,5 @@
 import * as React from "react"
-import { XIcon } from "lucide-react"
+import { X } from "@phosphor-icons/react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "cn"
@@ -40,7 +40,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-foreground/38 backdrop-blur-[3px] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 bg-neutral-900/50",
         className
       )}
       {...props}
@@ -72,30 +72,11 @@ function DialogContent({
           // hangs off the rounded corner. minmax(0,...) caps the track at the
           // space that exists, so an oversized child overflows on its own
           // instead of moving the panel out from under everything else.
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] grid-cols-[minmax(0,1fr)] gap-6 rounded-2xl border bg-card p-8 shadow-lg duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
+          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] grid-cols-[minmax(0,1fr)] gap-4 rounded-lg bg-card p-[22px_24px] shadow-lg outline-none sm:max-w-lg",
           className
         )}
         {...props}
       >
-        {/* The soft shape in the corner -- decoration, and the one place the
-            palette's second voice appears on a floating surface.
- 
-            It is clipped by ITS OWN layer, never by the panel. Putting
-            `overflow-hidden` on the panel would clip the shape correctly and
-            silently break every dialog that is taller than the viewport and
-            scrolls inside itself (the device form, settings, a category with
-            many fields): the end of the content would simply stop existing,
-            with no error and nothing to see unless you scrolled to the bottom
-            looking for it.
- 
-            inset-0 with the panel's own radius, pointer-events-none so it
-            never eats a click, aria-hidden because it says nothing. */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
-        >
-          <span className="bg-accent-2/22 absolute -top-[72px] -right-14 block size-[190px] rounded-full" />
-        </span>
         {/* Anything opened from in here needs to know it is in here: the panel
             holds the page's scroll lock, and a floating panel portalled out of
             it cannot be scrolled until it takes a lock of its own. See
@@ -104,9 +85,9 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="bg-foreground/6 text-foreground hover:bg-accent hover:text-accent-foreground absolute top-5 right-5 z-10 grid size-[38px] place-items-center rounded-full transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[17px]"
+            className="text-primary hover:bg-primary/10 active:bg-primary/18 absolute top-4 right-4 z-10 grid size-7 place-items-center rounded-md disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
-            <XIcon />
+            <X />
             <span className="sr-only">{t.common.close}</span>
           </DialogPrimitive.Close>
         )}
@@ -137,19 +118,10 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        /* A full-bleed band, not a row of buttons floating on the panel.
-         *
-         * The panel keeps its p-8 and the band cancels it with negative
-         * margins, so the band reaches the panel's edges while every one of
-         * the twenty call sites stays exactly as it was. Taking the padding
-         * off the panel instead would have meant editing all twenty, and
-         * every dialog written after this one.
-         *
-         * The bottom corners follow the panel's own radius; without that the
-         * band's square corners poke out through the panel's curve.
-         *
-         * Left-aligned, because everything else on this product is. */
-        "bg-well -mx-8 -mb-8 mt-2 flex flex-col-reverse gap-3 rounded-b-2xl px-8 py-5 sm:flex-row sm:justify-start",
+        /* Right-aligned actions on the panel itself (handoff: .dialog-actions).
+         * The destructive action, when there is one, sits at the far left with
+         * mr-auto -- the caller places it; this row only decides the direction. */
+        "mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
         className
       )}
       {...props}
@@ -171,7 +143,7 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-lg leading-none font-semibold", className)}
+      className={cn("font-heading text-xl leading-tight", className)}
       {...props}
     />
   )

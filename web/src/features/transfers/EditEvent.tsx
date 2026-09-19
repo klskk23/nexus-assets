@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -126,7 +126,7 @@ export function EditEvent({ event, assetID, onClose }: Props) {
 
         {banner && (
           <Alert variant="destructive">
-            <AlertCircleIcon />
+            <WarningCircle />
             <AlertDescription>{banner}</AlertDescription>
           </Alert>
         )}

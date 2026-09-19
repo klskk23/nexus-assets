@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 
 import { ApiError, type Blocker, blockerKey } from "@/lib/api"
 import { t, tMeta } from "@/i18n"
@@ -30,7 +30,7 @@ export function refusalOf(e: unknown): Refusal {
 export function RefusalAlert({ refusal }: { refusal: Refusal }) {
   return (
     <Alert variant="destructive">
-      <AlertCircleIcon />
+      <WarningCircle />
       <AlertTitle>{tMeta.holders.blocked}</AlertTitle>
       <AlertDescription className="grid gap-1">
         {refusal.message}

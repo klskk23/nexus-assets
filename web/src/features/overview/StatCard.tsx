@@ -21,8 +21,7 @@ interface Props {
  * bulk bar.
  *
  * The chip is the label and the number is the content, so the number is what
- * carries the weight -- Caprasimo at 34px, which it can do here because a count
- * is digits and digits are what that face covers. A zero is allowed to recede:
+ * carries the weight -- the heading face at 34px. A zero is allowed to recede:
  * five equally loud cards with two of them reading 0 spend the page's attention
  * on nothing.
  *

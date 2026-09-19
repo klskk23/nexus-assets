@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { Hint } from "@/features/common/Hint"
 import { SearchSelect } from "@/features/common/SearchSelect"
 import { useState } from "react"
@@ -289,7 +289,7 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
               aria-hidden and covered. */}
           {banner && (
             <Alert variant="destructive">
-              <AlertCircleIcon />
+              <WarningCircle />
               <AlertDescription className="grid gap-1">
                 {banner}
                 {blockers.length > 0 && (

@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { useRef, useState, type ReactNode } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 
@@ -273,7 +273,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
           </div>
           {templateError && (
             <Alert variant="destructive">
-              <AlertCircleIcon />
+              <WarningCircle />
               <AlertDescription>{templateError}</AlertDescription>
             </Alert>
           )}
@@ -321,7 +321,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 
           {banner && (
             <Alert variant="destructive">
-              <AlertCircleIcon />
+              <WarningCircle />
               <AlertDescription>{banner}</AlertDescription>
             </Alert>
           )}

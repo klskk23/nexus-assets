@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, InfoIcon, PrinterIcon } from "lucide-react"
+import { ArrowLeft, Info, Printer } from "@phosphor-icons/react"
 import { Hint } from "@/features/common/Hint"
 import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router"
@@ -230,7 +230,7 @@ export function AssetDetail() {
           Nothing to restore, nothing to remember, and it survives a refresh. */}
       <Button variant="outline" size="sm" className="w-fit" asChild>
         <Link to={{ pathname: "/assets", search: location.search }}>
-          <ArrowLeftIcon />
+          <ArrowLeft />
           {t.assets.title}
         </Link>
       </Button>
@@ -245,11 +245,7 @@ export function AssetDetail() {
               <header className="grid gap-2">
                 {/* pe-10 leaves room for the print button and, past it, the
                     dialog's own close button. */}
-                {/* The one heading on this product that IS Latin: a device
-                    number. font-heading was taken off the Chinese page titles
-                    because Caprasimo renders none of those glyphs -- here it
-                    renders all of them, so this is where it belongs.
-                    A page title, not a number in a cell: the same number set
+                {/* A page title, not a number in a cell: the same number set
                     inside a table stays plain, because there it is a value to
                     match character by character rather than the name of the
                     page you are on. Tabular figures either way. */}
@@ -279,7 +275,7 @@ export function AssetDetail() {
                         title={deniedReason("print") ?? t.print.action}
                         onClick={() => setPrinting(true)}
                       >
-                        <PrinterIcon />
+                        <Printer />
                         {t.print.action}
                       </Button>
                     )}
@@ -422,7 +418,7 @@ export function AssetDetail() {
 
               {banner && (
                 <Alert role="status">
-                  <InfoIcon />
+                  <Info />
                   <AlertDescription>{banner}</AlertDescription>
                 </Alert>
               )}
@@ -665,7 +661,7 @@ export function AssetDetail() {
                   <h2 className="text-base font-bold">{t.assets.archivedFields}</h2>
                   <ul className="flex flex-wrap gap-2">
                     {archived.map(([k, v]) => (
-                      <li key={k} className="bg-background rounded-full border px-3 py-1.5 text-sm">
+                      <li key={k} className="bg-background rounded-[6px] border px-3 py-1.5 text-sm">
                         <span className="text-muted-foreground">{k}</span>
                         <span className="text-muted-foreground/60 px-1.5">·</span>
                         <span className="tabular-nums">{String(v)}</span>

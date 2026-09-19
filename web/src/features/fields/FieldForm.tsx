@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 
 import { tConfig, tMeta } from "@/i18n"
 import type { Category, FieldOptions, FieldType } from "@/lib/types"
@@ -205,7 +205,7 @@ export function FieldForm({
         </div>
         {value.required && (impact ?? 0) > 0 && (
           <Alert>
-            <AlertCircleIcon />
+            <WarningCircle />
             <AlertDescription>{tMeta.categories.requiredWarning(impact ?? 0)}</AlertDescription>
           </Alert>
         )}

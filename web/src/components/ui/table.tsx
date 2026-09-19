@@ -67,7 +67,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b border-border-muted transition-colors hover:bg-accent has-aria-expanded:bg-accent data-[state=selected]:bg-secondary",
+        "border-b border-border-muted hover:bg-accent has-aria-expanded:bg-accent data-[state=selected]:bg-primary/8",
         className
       )}
       {...props}
@@ -80,7 +80,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "px-5 py-[14px] text-left align-middle text-[13px] font-semibold whitespace-nowrap text-secondary-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "px-[5.6px] py-[5.6px] text-left align-middle text-[11px] font-normal tracking-[0.08em] whitespace-nowrap text-foreground/60 uppercase [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props}
@@ -106,7 +106,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
       // `tabular-nums` because a ledger is read down a column -- proportional
       // digits make one column of device numbers look ragged.
       className={cn(
-        "px-5 py-[14px] align-middle text-sm tabular-nums whitespace-nowrap [&:has(button)]:py-0 [&:has([data-slot=badge])]:py-0 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "px-[5.6px] py-[5.6px] align-middle text-sm tabular-nums whitespace-nowrap [&:has(button)]:py-0 [&:has([data-slot=badge])]:py-0 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props}

@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { Hint } from "@/features/common/Hint"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
@@ -112,7 +112,7 @@ export function RoleEditor({ role, onClose }: Props) {
               and covered for everyone else. */}
           {banner && (
             <Alert variant="destructive">
-              <AlertCircleIcon />
+              <WarningCircle />
               <AlertDescription>{banner}</AlertDescription>
             </Alert>
           )}

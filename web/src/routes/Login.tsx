@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { useEffect, useState, type FormEvent } from "react"
 import { useNavigate } from "react-router"
 
@@ -96,10 +96,10 @@ export function Login() {
         aria-hidden
         className="pointer-events-none absolute inset-0 overflow-hidden max-md:hidden"
       >
-        <span className="bg-primary absolute top-1/2 right-[clamp(-260px,-9vw,-60px)] aspect-square w-[clamp(420px,48vw,760px)] -translate-y-1/2 rounded-full" />
-        <span className="bg-background absolute top-1/2 right-[clamp(60px,15vw,300px)] aspect-square w-[clamp(240px,27vw,430px)] translate-y-[-64%] rounded-full" />
-        <span className="bg-accent-2 absolute top-1/2 right-[clamp(10px,5vw,120px)] aspect-square w-[clamp(150px,17vw,270px)] translate-y-[14%] rounded-full opacity-[.62]" />
-        <span className="border-border absolute top-1/2 right-[clamp(300px,42vw,760px)] aspect-square w-[clamp(64px,7vw,104px)] translate-y-[150%] rounded-full border" />
+        <span className="bg-primary absolute top-1/2 right-[clamp(-260px,-9vw,-60px)] aspect-square w-[clamp(420px,48vw,760px)] -translate-y-1/2 rounded-md" />
+        <span className="bg-background absolute top-1/2 right-[clamp(60px,15vw,300px)] aspect-square w-[clamp(240px,27vw,430px)] translate-y-[-64%] rounded-md" />
+        <span className="bg-accent-2 absolute top-1/2 right-[clamp(10px,5vw,120px)] aspect-square w-[clamp(150px,17vw,270px)] translate-y-[14%] rounded-md opacity-[.62]" />
+        <span className="border-border absolute top-1/2 right-[clamp(300px,42vw,760px)] aspect-square w-[clamp(64px,7vw,104px)] translate-y-[150%] rounded-md border" />
       </div>
 
       <div className="bg-background relative w-full max-w-[472px] rounded-[28px] px-[clamp(28px,3vw,46px)] py-[clamp(32px,3.4vw,52px)]">
@@ -107,9 +107,8 @@ export function Login() {
           {/* The mark beside the name, which the old page left out entirely --
               the one screen a first-time reader lands on was the only one not
               showing them what the product is called and what it looks like.
-              Caprasimo covers every glyph in the product name, which is why it
-              is allowed to be this loud here and why Chinese page titles are
-              not. */}
+              The name is Latin, so the heading face renders every glyph of
+              it. */}
           <div className="grid gap-3">
             <div className="flex items-center gap-4">
               <Logo className="size-[52px] shrink-0" />
@@ -151,7 +150,7 @@ export function Login() {
 
               {error && (
                 <Alert variant="destructive">
-                  <AlertCircleIcon />
+                  <WarningCircle />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}

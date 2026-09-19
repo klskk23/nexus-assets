@@ -172,7 +172,7 @@ export function CategoryTree({
           reader happens to be standing. */}
       <Button
         variant="ghost"
-        className="justify-start rounded-full text-muted-foreground"
+        className="justify-start rounded-md text-muted-foreground"
         onClick={onCreate}
         disabled={Boolean(denied)}
         title={denied ?? undefined}

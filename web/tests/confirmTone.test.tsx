@@ -38,21 +38,20 @@ const base = {
 describe("确认框的语气", () => {
   it("默认是中性的 —— 没有告警图标", async () => {
     const dialog = await open(<ConfirmDialog {...base} confirmLabel="保存" />)
-    expect(dialog.querySelector("svg.lucide-trash-2")).toBeNull()
+    expect(dialog.querySelector("[data-slot=confirm-danger-icon]")).toBeNull()
   })
 
   it("中性时主按钮是主色，不是危险色", async () => {
     await open(<ConfirmDialog {...base} confirmLabel="保存" />)
     const btn = screen.getByRole("button", { name: "保存" })
-    expect(btn.className).toContain("bg-primary")
-    expect(btn.className).not.toContain("bg-destructive")
+    expect(btn.dataset.variant).toBe("default")
   })
 
   it("声明 danger 之后才出现告警图标", async () => {
     const dialog = await open(
       <ConfirmDialog {...base} confirmLabel="删除" tone="danger" />,
     )
-    expect(dialog.querySelector("svg.lucide-trash-2")).not.toBeNull()
+    expect(dialog.querySelector("[data-slot=confirm-danger-icon]")).not.toBeNull()
   })
 
   // This one caught a real bug: AlertDialogAction defaults to the primary
@@ -62,7 +61,6 @@ describe("确认框的语气", () => {
   it("danger 的主按钮是危险色", async () => {
     await open(<ConfirmDialog {...base} confirmLabel="删除" tone="danger" />)
     const btn = screen.getByRole("button", { name: "删除" })
-    expect(btn.className).toContain("bg-destructive")
-    expect(btn.className).not.toContain("bg-primary ")
+    expect(btn.dataset.variant).toBe("destructive")
   })
 })

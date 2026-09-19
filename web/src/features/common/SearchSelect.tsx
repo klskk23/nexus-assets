@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { CheckIcon, ChevronDownIcon } from "lucide-react"
+import { Check, CaretDown } from "@phosphor-icons/react"
 
 import { cn } from "cn"
 import { t } from "@/i18n"
@@ -87,7 +87,7 @@ export function SearchSelect({
             <span ref={triggerText} className={cn("truncate", !chosen && "text-muted-foreground")}>
               {chosen?.label ?? placeholder}
             </span>
-            <ChevronDownIcon className="opacity-50" />
+            <CaretDown className="opacity-50" />
           </Button>
         </PopoverTrigger>
       </TruncatedTip>
@@ -127,7 +127,7 @@ export function SearchSelect({
                   setOpen(false)
                 }}
               >
-                <CheckIcon className={cn(!value ? "opacity-100" : "opacity-0")} />
+                <Check className={cn(!value ? "opacity-100" : "opacity-0")} />
                 <span className="text-muted-foreground">{placeholder}</span>
               </CommandItem>
               {options.map((o) => (
@@ -142,7 +142,7 @@ export function SearchSelect({
                     setOpen(false)
                   }}
                 >
-                  <CheckIcon className={cn(value === o.value ? "opacity-100" : "opacity-0")} />
+                  <Check className={cn(value === o.value ? "opacity-100" : "opacity-0")} />
                   {/* Mouse only, and knowingly: cmdk keeps DOM focus on the
                       search box and moves a highlight with aria-activedescendant,
                       so there is no focus here for a tooltip to open on. The

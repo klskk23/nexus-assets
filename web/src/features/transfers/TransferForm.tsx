@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { Hint } from "@/features/common/Hint"
 import { useCallback, useEffect, useState, type ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -364,7 +364,7 @@ export function TransferForm({
 
       {banner && (
         <Alert variant="destructive">
-          <AlertCircleIcon />
+          <WarningCircle />
           <AlertDescription>{banner}</AlertDescription>
         </Alert>
       )}

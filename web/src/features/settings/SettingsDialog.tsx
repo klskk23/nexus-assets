@@ -1,4 +1,4 @@
-import { CheckIcon, CopyIcon, ExternalLinkIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { Check, Copy, ArrowSquareOut, Plus, Trash } from "@phosphor-icons/react"
 import { Hint } from "@/features/common/Hint"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -184,7 +184,7 @@ export function SettingsDialog({ onClose }: Props) {
                 className="ml-auto"
                 onClick={() => setCreating(true)}
               >
-                <PlusIcon />
+                <Plus />
                 {t.settings.keyCreate}
               </Button>
             </div>
@@ -211,7 +211,7 @@ export function SettingsDialog({ onClose }: Props) {
                         )
                       }
                     >
-                      {copied === true ? <CheckIcon /> : <CopyIcon />}
+                      {copied === true ? <Check /> : <Copy />}
                     </Button>
                   </div>
                   <span className="text-muted-foreground text-xs">{t.settings.keyCopyHint}</span>
@@ -304,7 +304,7 @@ export function SettingsDialog({ onClose }: Props) {
                                 aria-label={`${t.settings.keyRevoke} ${k.name}`}
                                 onClick={() => setRevoking(k)}
                               >
-                                <Trash2Icon />
+                                <Trash />
                               </Button>
                             )}
                           </TableCell>
@@ -339,7 +339,7 @@ export function SettingsDialog({ onClose }: Props) {
             <div>
               <Button variant="outline" size="sm" asChild>
                 <a href="/api/docs" target="_blank" rel="noreferrer">
-                  <ExternalLinkIcon />
+                  <ArrowSquareOut />
                   {t.settings.docsOpen}
                 </a>
               </Button>

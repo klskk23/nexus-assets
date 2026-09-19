@@ -1,4 +1,4 @@
-import { HelpCircleIcon } from "lucide-react"
+import { Question } from "@phosphor-icons/react"
 
 import { t } from "@/i18n"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
@@ -32,7 +32,7 @@ export function Hint({ children }: { children: React.ReactNode }) {
           aria-label={t.common.whatIsThis}
           className="text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex size-4 shrink-0 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:outline-none"
         >
-          <HelpCircleIcon className="size-3.5" />
+          <Question className="size-3.5" />
         </button>
       </HoverCardTrigger>
       <HoverCardContent className="text-muted-foreground text-sm leading-relaxed">

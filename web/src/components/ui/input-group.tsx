@@ -12,8 +12,8 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="input-group"
       role="group"
       className={cn(
-        "group/input-group relative flex w-full items-center rounded-full border border-input shadow-xs transition-[color,box-shadow]",
-        "h-12 min-w-0 has-[>textarea]:h-auto",
+        "group/input-group relative flex w-full items-center rounded-md border border-input bg-card hover:border-foreground/45",
+        "h-9 min-w-0 has-[>textarea]:h-auto",
 
         // Variants based on alignment.
         "has-[>[data-align=inline-start]]:[&>input]:pl-2",
@@ -21,13 +21,13 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
         "has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>[data-align=block-start]]:[&>input]:pb-3",
         "has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-end]]:[&>input]:pt-3",
 
-        // Focus state. The ring belongs to the pill, not to the bare input
+        // Focus state. The ring belongs to the group, not to the bare input
         // inside it: an outline on the control would draw a rectangle across
-        // the middle of a rounded group, missing the addon and the corners.
-        "has-[[data-slot=input-group-control]:focus-visible]:outline-2 has-[[data-slot=input-group-control]:focus-visible]:outline-offset-2 has-[[data-slot=input-group-control]:focus-visible]:outline-ring",
+        // the middle of the box, missing the addon and the corners.
+        "has-[[data-slot=input-group-control]:focus-visible]:border-primary has-[[data-slot=input-group-control]:focus-visible]:outline-2 has-[[data-slot=input-group-control]:focus-visible]:outline-offset-0 has-[[data-slot=input-group-control]:focus-visible]:outline-ring",
 
         // Error state.
-        "has-[[data-slot][aria-invalid=true]]:border-destructive",
+        "has-[[data-slot][aria-invalid=true]]:border-destructive-line",
 
         className
       )}
@@ -37,7 +37,7 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 const inputGroupAddonVariants = cva(
-  "flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-sm font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 [&>kbd]:rounded-full [&>svg:not([class*='size-'])]:size-4",
+  "flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-sm font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-45 [&>kbd]:rounded-sm [&>svg:not([class*='size-'])]:size-4",
   {
     variants: {
       align: {
@@ -84,10 +84,10 @@ const inputGroupButtonVariants = cva(
   {
     variants: {
       size: {
-        xs: "h-6 gap-1 rounded-full px-2 has-[>svg]:px-2 [&>svg:not([class*='size-'])]:size-3.5",
-        sm: "h-8 gap-1.5 rounded-full px-2.5 has-[>svg]:px-2.5",
+        xs: "h-6 gap-1 rounded-md px-2 has-[>svg]:px-2 [&>svg:not([class*='size-'])]:size-3.5",
+        sm: "h-8 gap-1.5 rounded-md px-2.5 has-[>svg]:px-2.5",
         "icon-xs":
-          "size-6 rounded-full p-0 has-[>svg]:p-0",
+          "size-6 rounded-md p-0 has-[>svg]:p-0",
         "icon-sm": "size-8 p-0 has-[>svg]:p-0",
       },
     },
@@ -131,12 +131,12 @@ function InputGroupText({ className, ...props }: React.ComponentProps<"span">) {
 function InputGroupInput({
   className,
   ...props
-}: React.ComponentProps<"input">) {
+}: Omit<React.ComponentProps<"input">, "size">) {
   return (
     <Input
       data-slot="input-group-control"
       className={cn(
-        "flex-1 rounded-none border-0 bg-transparent shadow-none focus-visible:outline-none",
+        "h-full flex-1 rounded-none border-0 bg-transparent shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:outline-none",
         className
       )}
       {...props}
@@ -152,7 +152,7 @@ function InputGroupTextarea({
     <Textarea
       data-slot="input-group-control"
       className={cn(
-        "flex-1 resize-none rounded-none border-0 bg-transparent py-3 shadow-none focus-visible:outline-none",
+        "flex-1 resize-none rounded-none border-0 bg-transparent py-3 shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:outline-none",
         className
       )}
       {...props}

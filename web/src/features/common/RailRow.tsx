@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { Link } from "react-router"
-import { ChevronDownIcon, ChevronRightIcon } from "lucide-react"
+import { CaretDown, CaretRight } from "@phosphor-icons/react"
 
 import { cn } from "cn"
 import { TruncatedTip, useTruncated } from "./Ellipsis"
@@ -61,13 +61,13 @@ export function RailRow({
           onClick={onFold}
           aria-label={foldLabel}
           aria-expanded={!folded}
-          className="text-muted-foreground hover:text-foreground grid size-6 shrink-0 place-items-center rounded-full"
+          className="text-muted-foreground hover:text-foreground grid size-6 shrink-0 place-items-center rounded-md"
           style={{ marginInlineStart: depth * 18 }}
         >
           {folded ? (
-            <ChevronRightIcon className="size-3.5" />
+            <CaretRight className="size-3.5" />
           ) : (
-            <ChevronDownIcon className="size-3.5" />
+            <CaretDown className="size-3.5" />
           )}
         </button>
       )}
@@ -76,7 +76,7 @@ export function RailRow({
           to={to}
           aria-current={selected ? "true" : undefined}
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-2.5 rounded-full py-[9px] pr-3.5 pl-3 text-sm transition-colors",
+            "flex min-w-0 flex-1 items-center gap-2.5 rounded-md py-[9px] pr-3.5 pl-3 text-sm transition-colors",
             selected
               ? "bg-accent text-accent-foreground font-semibold"
               : "hover:bg-accent hover:text-accent-foreground",

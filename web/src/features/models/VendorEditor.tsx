@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
@@ -79,7 +79,7 @@ export function VendorEditor({ vendor, onClose }: { vendor: VendorRow; onClose: 
         </FieldGroup>
         {error && (
           <Alert variant="destructive">
-            <AlertCircleIcon />
+            <WarningCircle />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}

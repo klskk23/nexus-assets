@@ -28,14 +28,10 @@ interface Props {
  */
 export function PageHeader({ title, hint, children }: Props) {
   return (
-    /* Not font-heading. Caprasimo covers Latin and digits only, so on a Chinese
-     * page title every glyph fell through to Noto Sans SC and that class did
-     * nothing at all -- 017 reasoned carefully about its missing bold on the
-     * premise that it was rendering these words, which it never was.
-     * Size and weight carry the hierarchy: a title that means something in
-     * Chinese cannot borrow a Latin display face to say it.
-     * A page whose title IS Latin (a device number) passes its own
-     * `font-heading` in through `title`. */
+    /* font-heading is the body face at 500 (030), so a Chinese title and a
+     * Latin one are set the same way -- the display face 017 chose covered
+     * Latin only, and a page title in Chinese fell through to Noto entirely.
+     * Size carries the hierarchy: 26px, medium, never bold. */
     <div className="flex flex-wrap items-center gap-3">
       <h1 className="mr-auto flex flex-wrap items-center gap-2 text-[40px] leading-[1.2] font-bold">
         {title}

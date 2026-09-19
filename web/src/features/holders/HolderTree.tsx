@@ -84,7 +84,7 @@ export function HolderTree({ holders, counts, search, onSearch, currentID, onCre
         <Button
           variant="ghost"
           size="sm"
-          className="text-muted-foreground flex-1 justify-start rounded-full"
+          className="text-muted-foreground flex-1 justify-start rounded-md"
           onClick={onCreate}
           disabled={Boolean(denied)}
           title={denied ?? undefined}

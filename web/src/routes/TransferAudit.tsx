@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
-import { CalendarIcon } from "lucide-react"
+import { CalendarBlank } from "@phosphor-icons/react"
 import type { DateRange } from "react-day-picker"
 
 import { api } from "@/lib/api"
@@ -191,7 +191,7 @@ export function TransferAudit() {
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline">
-                <CalendarIcon />
+                <CalendarBlank />
                 {range?.from ? range.from.toLocaleDateString() : tAudit.anyTime}
               </Button>
             </PopoverTrigger>

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 
 import { api, ApiError } from "@/lib/api"
 import type { Status, StatusUsage } from "@/lib/types"
@@ -160,7 +160,7 @@ export function Statuses() {
       notice={
         notice && (
           <Alert variant="destructive">
-            <AlertCircleIcon />
+            <WarningCircle />
             <AlertDescription>{notice}</AlertDescription>
           </Alert>
         )

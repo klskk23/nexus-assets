@@ -1,4 +1,4 @@
-import { AlertCircleIcon, CheckIcon, ExternalLinkIcon, RefreshCwIcon } from "lucide-react"
+import { WarningCircle, Check, ArrowSquareOut, ArrowsClockwise } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 import { useMutation, useQueries } from "@tanstack/react-query"
 
@@ -318,7 +318,7 @@ export function PrintDialog({ ids, onClose }: Props) {
                                 title={t.print.openDesign}
                                 onClick={() => refreshSource.mutate(b.category_id)}
                               >
-                                <ExternalLinkIcon />
+                                <ArrowSquareOut />
                               </a>
                             </Button>
                           )}
@@ -390,14 +390,14 @@ export function PrintDialog({ ids, onClose }: Props) {
 
         {sourceNote && (
           <Alert role="status">
-            <RefreshCwIcon />
+            <ArrowsClockwise />
             <AlertDescription>{sourceNote}</AlertDescription>
           </Alert>
         )}
 
         {settled && (
           <Alert variant={anyFailed ? "destructive" : "default"}>
-            {anyFailed ? <AlertCircleIcon /> : <CheckIcon />}
+            {anyFailed ? <WarningCircle /> : <Check />}
             <AlertDescription>
               {anyFailed ? t.print.someFailed : t.print.allDone}
             </AlertDescription>
@@ -417,7 +417,7 @@ export function PrintDialog({ ids, onClose }: Props) {
                 target="_blank"
                 rel="noreferrer"
               >
-                <ExternalLinkIcon />
+                <ArrowSquareOut />
                 {anyFailed && confirmed ? t.print.openQueue : t.print.openService}
               </a>
             </Button>

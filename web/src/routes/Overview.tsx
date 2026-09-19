@@ -1,4 +1,4 @@
-import { ChartColumnIcon, PlusIcon } from "lucide-react"
+import { ChartBar, Plus } from "@phosphor-icons/react"
 import { useState } from "react"
 import { Link, useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
@@ -120,7 +120,7 @@ export function Overview() {
           title={hasCategories ? undefined : tOverview.noCategoriesHint}
           onClick={() => navigate("/assets?new=1")}
         >
-          <PlusIcon />
+          <Plus />
           {t.assets.newAsset}
         </Button>
       </PageHeader>
@@ -172,7 +172,7 @@ export function Overview() {
                   <Empty>
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
-                        <ChartColumnIcon />
+                        <ChartBar />
                       </EmptyMedia>
                       <EmptyDescription>{tOverview.emptyDistribution}</EmptyDescription>
                     </EmptyHeader>
@@ -219,7 +219,7 @@ export function Overview() {
                   <Empty>
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
-                        <ChartColumnIcon />
+                        <ChartBar />
                       </EmptyMedia>
                       <EmptyDescription>{tOverview.emptyOwners}</EmptyDescription>
                     </EmptyHeader>

@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -322,7 +322,7 @@ export function FieldEditor({ field, onClose }: Props) {
 
           {banner && (
             <Alert variant="destructive">
-              <AlertCircleIcon />
+              <WarningCircle />
               <AlertDescription className="grid gap-1">
                 {banner}
                 {refBlockers.length > 0 && (

@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -81,7 +81,7 @@ export function Users() {
         notice={
           banner && (
             <Alert variant="destructive">
-              <AlertCircleIcon />
+              <WarningCircle />
               <AlertDescription>{banner}</AlertDescription>
             </Alert>
           )

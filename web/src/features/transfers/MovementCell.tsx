@@ -1,4 +1,4 @@
-import { ArrowRightIcon } from "lucide-react"
+import { ArrowRight } from "@phosphor-icons/react"
 
 import type { Transfer } from "@/lib/transferTypes"
 import { StatusBadge } from "@/features/statuses/StatusBadge"
@@ -79,7 +79,7 @@ export function MovementCell({ event }: { event: Transfer }) {
             <>
               <span className="text-muted-foreground">{fromName}</span>
               {event.from_status && <StatusBadge status={event.from_status} />}
-              <ArrowRightIcon aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
+              <ArrowRight aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
             </>
           )}
           <span>{toName}</span>
@@ -96,7 +96,7 @@ export function MovementCell({ event }: { event: Transfer }) {
           {fromOwner && (
             <>
               <span className="text-muted-foreground">{fromOwner}</span>
-              <ArrowRightIcon aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
+              <ArrowRight aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
             </>
           )}
           <span>{toOwner || t.common.none}</span>

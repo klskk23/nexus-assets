@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -220,7 +220,7 @@ export function Models() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-muted-foreground flex-1 rounded-full"
+                      className="text-muted-foreground flex-1 rounded-md"
                       disabled={Boolean(deniedModel)}
                       title={deniedModel ?? undefined}
                       onClick={() =>
@@ -236,7 +236,7 @@ export function Models() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-muted-foreground flex-1 rounded-full"
+                      className="text-muted-foreground flex-1 rounded-md"
                       disabled={Boolean(deniedModel)}
                       title={deniedModel ?? undefined}
                       onClick={() => setCreatingVendor(true)}
@@ -441,7 +441,7 @@ function ModelEditor({
 
         {error && (
           <Alert variant="destructive">
-            <AlertCircleIcon />
+            <WarningCircle />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}

@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
@@ -144,7 +144,7 @@ export function HolderCreateDialog({ holders, onClose }: Props) {
 
         {create.error && (
           <Alert variant="destructive">
-            <AlertCircleIcon />
+            <WarningCircle />
             <AlertDescription>
               {create.error instanceof ApiError ? create.error.message : t.common.error}
             </AlertDescription>

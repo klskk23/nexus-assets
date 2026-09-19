@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -291,7 +291,7 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
 
         {banner && (
           <Alert variant="destructive">
-            <AlertCircleIcon />
+            <WarningCircle />
             <AlertDescription>{banner}</AlertDescription>
           </Alert>
         )}

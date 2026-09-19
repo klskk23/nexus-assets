@@ -1,4 +1,4 @@
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
+import { CaretLeft, CaretRight } from "@phosphor-icons/react"
 
 import { t } from "@/i18n"
 import { Button } from "@/components/ui/button"
@@ -29,12 +29,12 @@ export function TreePager({ page, pageCount, onPage }: Props) {
       <Button
         variant="ghost"
         size="sm"
-        className="rounded-full"
+        className="rounded-md"
         disabled={page === 0}
         onClick={() => onPage(page - 1)}
         aria-label={t.assets.prevPage}
       >
-        <ChevronLeftIcon />
+        <CaretLeft />
       </Button>
       <span className="text-muted-foreground text-[13px] tabular-nums">
         {page + 1} / {pageCount}
@@ -42,12 +42,12 @@ export function TreePager({ page, pageCount, onPage }: Props) {
       <Button
         variant="ghost"
         size="sm"
-        className="rounded-full"
+        className="rounded-md"
         disabled={page >= pageCount - 1}
         onClick={() => onPage(page + 1)}
         aria-label={t.assets.nextPage}
       >
-        <ChevronRightIcon />
+        <CaretRight />
       </Button>
     </div>
   )

@@ -39,7 +39,7 @@ describe("menu entries", () => {
     const missing: string[] = []
     for (const [name, body] of componentsIn(file)) {
       if (!PICKABLE.test(name)) continue
-      const hasFade = body.includes("data-[disabled]:opacity-50")
+      const hasFade = body.includes("data-[disabled]:opacity-45")
       const hasBlock = body.includes("data-[disabled]:pointer-events-none")
       if (!hasFade || !hasBlock) missing.push(name)
     }

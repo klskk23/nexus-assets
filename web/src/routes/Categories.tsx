@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { useState } from "react"
 import { useParams, useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -135,7 +135,7 @@ export function Categories() {
 
             {create.error && (
               <Alert variant="destructive">
-                <AlertCircleIcon />
+                <WarningCircle />
                 <AlertDescription>
                   {create.error instanceof ApiError ? create.error.message : t.common.error}
                 </AlertDescription>

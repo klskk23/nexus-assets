@@ -1,4 +1,4 @@
-import { AlertCircleIcon, PlusIcon } from "lucide-react"
+import { WarningCircle, Plus } from "@phosphor-icons/react"
 import { Fragment, useState, type ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -203,7 +203,7 @@ export function CrudPage<T extends { id: string }>({
         >
           <DialogTrigger asChild>
             <Button disabled={createDeniedReason !== undefined} title={createDeniedReason}>
-              <PlusIcon />
+              <Plus />
               {createLabel}
             </Button>
           </DialogTrigger>
@@ -216,7 +216,7 @@ export function CrudPage<T extends { id: string }>({
               {form}
               {mutation.error && (
                 <Alert variant="destructive">
-                  <AlertCircleIcon />
+                  <WarningCircle />
                   <AlertDescription>
                     {mutation.error instanceof ApiError ? mutation.error.message : t.common.error}
                   </AlertDescription>

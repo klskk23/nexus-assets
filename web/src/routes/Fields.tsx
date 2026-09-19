@@ -143,7 +143,7 @@ export function Fields() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-muted-foreground flex-1 rounded-full"
+                      className="text-muted-foreground flex-1 rounded-md"
                       disabled={Boolean(denied)}
                       title={denied ?? undefined}
                       onClick={() => setCreating("field")}
@@ -153,7 +153,7 @@ export function Fields() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-muted-foreground flex-1 rounded-full"
+                      className="text-muted-foreground flex-1 rounded-md"
                       disabled={Boolean(denied)}
                       title={denied ?? undefined}
                       onClick={() => setCreating("group")}

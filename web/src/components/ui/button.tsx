@@ -4,38 +4,45 @@ import { Slot } from "radix-ui"
 
 import { cn } from "cn"
 
+/*
+ * Nocturne's .btn (030). The primary is an OUTLINE in the action colour,
+ * never a fill -- "an accent used as a line and a glow rather than a flood" --
+ * and every state is a color-mix of that colour or of the text: 12% under the
+ * cursor, 22% pressed, for the accent variants; 7% and 14% of the text for the
+ * neutral one. No pills: 8px, the control radius, on every size.
+ *
+ * Icon buttons come in three heights because the handoff draws three: 36px
+ * (.btn-icon), 30px beside a 34px filter row, 28px for a dialog's close.
+ */
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-full text-sm font-medium whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-transparent font-heading text-sm leading-tight whitespace-nowrap disabled:pointer-events-none disabled:opacity-45 aria-invalid:border-destructive-line [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary-hover",
-        destructive:
-          "bg-destructive text-white hover:bg-destructive/90",
-        outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground",
+        default:
+          "border-primary text-primary hover:bg-primary/12 active:bg-primary/22",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost:
-          "hover:bg-accent hover:text-accent-foreground",
-        link: "text-accent-foreground underline-offset-4 hover:text-primary hover:underline",
+          "border-border text-foreground hover:bg-secondary active:bg-foreground/14",
+        // Kept as a name so call sites need not change; in this system an
+        // outline and a secondary are the same drawing.
+        outline:
+          "border-border text-foreground hover:bg-secondary active:bg-foreground/14",
+        ghost: "text-primary hover:bg-primary/10 active:bg-primary/18",
+        // Red is text and outline only. A filled red button is the one thing
+        // on a dark ground that reads as an alarm rather than a choice.
+        destructive:
+          "text-destructive hover:bg-destructive/10 active:bg-destructive/18 data-[outline]:border-destructive-line",
+        link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        // A button is sized by its vertical padding, not by a height: 12px
-        // either side of a 20px line gives the 44px the design asks for, and
-        // a button whose label wraps grows instead of clipping. Inputs and
-        // selects keep an explicit 48px -- they are a fixed shape, while a
-        // button is its label plus room.
-        default: "px-5 py-3 has-[>svg]:px-4",
-        xs: "h-6 gap-1 rounded-full px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 rounded-full px-3 has-[>svg]:px-2.5",
-        lg: "rounded-full px-6 py-[15px] has-[>svg]:px-5",
-        // Icon sizes track the label size they sit beside: a 36px icon
-        // button next to a 44px one in the same toolbar reads as a mistake.
-        icon: "size-11",
-        "icon-xs": "size-6 rounded-full [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
-        "icon-lg": "size-[50px]",
+        default: "px-2.5 py-[5.6px] has-[>svg]:px-2",
+        xs: "h-7 gap-1 px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-[30px] gap-1.5 px-2.5 text-[13px] has-[>svg]:px-2",
+        lg: "h-10 px-4 has-[>svg]:px-3",
+        icon: "size-9",
+        "icon-xs": "size-7 [&_svg:not([class*='size-'])]:size-3.5",
+        "icon-sm": "size-[30px]",
+        "icon-lg": "size-10",
       },
     },
     defaultVariants: {

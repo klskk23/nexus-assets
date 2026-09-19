@@ -2,10 +2,10 @@
 
 import * as React from "react"
 import {
-  ChevronDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from "lucide-react"
+  CaretDown,
+  CaretLeft,
+  CaretRight,
+} from "@phosphor-icons/react"
 import {
   DayPicker,
   getDefaultClassNames,
@@ -57,12 +57,12 @@ function Calendar({
         ),
         button_previous: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
+          "size-(--cell-size) p-0 select-none aria-disabled:opacity-45",
           defaultClassNames.button_previous
         ),
         button_next: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
+          "size-(--cell-size) p-0 select-none aria-disabled:opacity-45",
           defaultClassNames.button_next
         ),
         month_caption: cn(
@@ -74,7 +74,7 @@ function Calendar({
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
-          "relative rounded-md border border-input shadow-xs",
+          "relative rounded-md border border-input",
           defaultClassNames.dropdown_root
         ),
         dropdown: cn(
@@ -145,13 +145,13 @@ function Calendar({
         Chevron: ({ className, orientation, ...props }) => {
           if (orientation === "left") {
             return (
-              <ChevronLeftIcon className={cn("size-4", className)} {...props} />
+              <CaretLeft className={cn("size-4", className)} {...props} />
             )
           }
 
           if (orientation === "right") {
             return (
-              <ChevronRightIcon
+              <CaretRight
                 className={cn("size-4", className)}
                 {...props}
               />
@@ -159,7 +159,7 @@ function Calendar({
           }
 
           return (
-            <ChevronDownIcon className={cn("size-4", className)} {...props} />
+            <CaretDown className={cn("size-4", className)} {...props} />
           )
         },
         DayButton: CalendarDayButton,

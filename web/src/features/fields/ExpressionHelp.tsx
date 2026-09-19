@@ -1,4 +1,4 @@
-import { HelpCircleIcon } from "lucide-react"
+import { Question } from "@phosphor-icons/react"
 
 import { t, tExprHelp } from "@/i18n"
 import { Button } from "@/components/ui/button"
@@ -47,7 +47,7 @@ export function ExpressionHelp() {
     <Drawer direction="right">
       <DrawerTrigger asChild>
         <Button variant="ghost" size="sm" type="button">
-          <HelpCircleIcon />
+          <Question />
           {tExprHelp.open}
         </Button>
       </DrawerTrigger>

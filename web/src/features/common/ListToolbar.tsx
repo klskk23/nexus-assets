@@ -1,4 +1,4 @@
-import { SearchIcon } from "lucide-react"
+import { MagnifyingGlass } from "@phosphor-icons/react"
 import type { ReactNode, Ref } from "react"
 
 import { t } from "@/i18n"
@@ -54,7 +54,7 @@ export function ListToolbar({ q, onQ, searchHint, filters, actions, inputRef }: 
         </FieldLabel>
         <InputGroup className="w-full">
           <InputGroupAddon>
-            <SearchIcon />
+            <MagnifyingGlass />
           </InputGroupAddon>
           {/* Spread, composition events included: without them a pinyin IME
               writes its half-finished spelling into the address bar and gets

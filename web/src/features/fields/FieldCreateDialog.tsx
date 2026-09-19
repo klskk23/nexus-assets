@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 
 import { api, ApiError } from "@/lib/api"
 import type { Category } from "@/lib/types"
@@ -118,7 +118,7 @@ export function FieldCreateDialog({ onClose }: { onClose: () => void }) {
         />
         {error && (
           <Alert variant="destructive">
-            <AlertCircleIcon />
+            <WarningCircle />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}

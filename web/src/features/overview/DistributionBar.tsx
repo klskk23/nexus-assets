@@ -102,7 +102,7 @@ function Row({
         type="button"
         onClick={onSelect}
         aria-label={ariaLabel}
-        className="grid w-full grid-cols-[104px_1fr_46px] items-center gap-4 rounded-full py-1.5 text-left text-sm transition-opacity hover:opacity-[.72]"
+        className="grid w-full grid-cols-[104px_1fr_46px] items-center gap-4 rounded-[3px] py-1.5 text-left text-sm transition-opacity hover:opacity-[.72]"
       >
         <span className="flex min-w-0 items-center">
           <span ref={ref} className="truncate">
@@ -111,7 +111,7 @@ function Row({
         </span>
         {/* aria-hidden: the button's own label already says the name and the
             count, and a track read out as well would say it a second time. */}
-        <span aria-hidden className="bg-background h-[18px] overflow-hidden rounded-full">
+        <span aria-hidden className="bg-background h-[18px] overflow-hidden rounded-[3px]">
           {/* display:block, not inline: a percentage width on an inline box
                   is ignored and every bar would come out the width of nothing.
                   min-width so a row with one device is still a mark rather than
@@ -122,7 +122,7 @@ function Row({
           {count > 0 && (
             <span
               className={cn(
-                "block h-full min-w-1 rounded-full",
+                "block h-full min-w-1 rounded-[3px]",
                 // Alternating, so neighbouring rows are told apart by colour as
                 // well as by length. The alternation is by position and says
                 // nothing about the row -- see the note above the component.

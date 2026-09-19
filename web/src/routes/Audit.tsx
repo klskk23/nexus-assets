@@ -1,4 +1,4 @@
-import { CalendarIcon } from "lucide-react"
+import { CalendarBlank } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
@@ -277,7 +277,7 @@ export function Audit() {
                     aria-label={tAudit.dateRange}
                     className="justify-start font-normal"
                   >
-                    <CalendarIcon />
+                    <CalendarBlank />
                     {rangeText}
                   </Button>
                 </PopoverTrigger>

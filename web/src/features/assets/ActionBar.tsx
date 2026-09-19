@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Trash2Icon } from "lucide-react"
+import { Trash } from "@phosphor-icons/react"
 
 import { api, ApiError } from "@/lib/api"
 import { t, tImport, tTransfer } from "@/i18n"
@@ -10,7 +10,7 @@ import {
   TransferDialog,
   type TransferAction,
 } from "@/features/transfers/TransferDialog"
-import { DownloadIcon, PrinterIcon } from "lucide-react"
+import { DownloadSimple, Printer } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { PrintDialog } from "@/features/print/PrintDialog"
 import { usePrinting } from "@/features/print/usePrinting"
@@ -36,7 +36,7 @@ interface Props {
  */
 /** An outlined pill on the dark bar. Transparent, so the bar shows through. */
 const PILL =
-  "border-background/35 text-background hover:bg-background/15 rounded-full border bg-transparent"
+  "border-background/35 text-background hover:bg-background/15 rounded-md border bg-transparent"
 
 export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
   const queryClient = useQueryClient()
@@ -78,7 +78,7 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
      * open asks which one anyway, so it asks there. What is left is the four
      * things you do to a batch: move it, label it, take it away, delete it. */
     <div className="sticky bottom-6 z-20 flex justify-center">
-      <div className="bg-foreground text-background flex flex-wrap items-center gap-1.5 rounded-full py-2 pr-2 pl-5 shadow-lg">
+      <div className="bg-foreground text-background flex flex-wrap items-center gap-1.5 rounded-md py-2 pr-2 pl-5 shadow-lg">
         <span className="mr-1 text-sm whitespace-nowrap">
           {tTransfer.actions.selected(selected.length)}
         </span>
@@ -107,7 +107,7 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
           title={deniedReason("export")}
           onClick={onExport}
         >
-          <DownloadIcon />
+          <DownloadSimple />
           {tImport.exportSelection}
         </Button>
 
@@ -136,7 +136,7 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
               disabled={deniedReason("asset.delete") !== undefined}
               title={deniedReason("asset.delete")}
             >
-              <Trash2Icon />
+              <Trash />
               {t.assets.delete}
             </Button>
           }
@@ -157,12 +157,12 @@ export function ActionBar({ selected, onClear, onDone, onExport }: Props) {
         {printing && (
           <Button
             size="sm"
-            className="rounded-full"
+            className="rounded-md"
             disabled={deniedReason("print") !== undefined}
             title={deniedReason("print")}
             onClick={() => setPrintOpen(true)}
           >
-            <PrinterIcon />
+            <Printer />
             {t.print.action}
           </Button>
         )}

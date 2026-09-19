@@ -1,4 +1,4 @@
-import { AlertCircleIcon } from "lucide-react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -242,7 +242,7 @@ export function GroupEditor({
         {/* A refusal belongs here: the page behind is aria-hidden and covered. */}
         {error && (
           <Alert variant="destructive">
-            <AlertCircleIcon />
+            <WarningCircle />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}

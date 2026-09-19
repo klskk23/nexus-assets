@@ -1,10 +1,4 @@
-import {
-  ArrowRightLeftIcon,
-  InfoIcon,
-  MoreVerticalIcon,
-  PrinterIcon,
-  SearchIcon,
-} from "lucide-react"
+import { ArrowsLeftRight, Info, DotsThreeVertical, Printer, MagnifyingGlass } from "@phosphor-icons/react"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -461,7 +455,7 @@ export function Assets() {
             </FieldLabel>
             <InputGroup className="w-64">
               <InputGroupAddon>
-                <SearchIcon />
+                <MagnifyingGlass />
               </InputGroupAddon>
               <InputGroupInput
                 id="q"
@@ -615,7 +609,7 @@ export function Assets() {
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="ml-auto" aria-label={t.assets.columns}>
-                <MoreVerticalIcon />
+                <DotsThreeVertical />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -837,7 +831,7 @@ export function Assets() {
                                   disabled={!can("print")}
                                   onClick={() => setPrintingOne(a.id)}
                                 >
-                                  <PrinterIcon />
+                                  <Printer />
                                 </Button>
                               )}
                               <Button
@@ -847,7 +841,7 @@ export function Assets() {
                                 disabled={!can("transfer.create")}
                                 onClick={() => setRowTransfer({ id: a.id, action: "checkout" })}
                               >
-                                <ArrowRightLeftIcon />
+                                <ArrowsLeftRight />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -860,7 +854,7 @@ export function Assets() {
                                   })
                                 }
                               >
-                                <InfoIcon />
+                                <Info />
                               </Button>
                             </div>
                           </TableCell>
@@ -922,7 +916,7 @@ export function Assets() {
 
       {done && (
         <Alert role="status">
-          <InfoIcon />
+          <Info />
           <AlertDescription>{done}</AlertDescription>
         </Alert>
       )}

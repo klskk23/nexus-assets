@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { AlertCircleIcon, type LucideIcon } from "lucide-react"
+import { WarningCircle, type Icon } from "@phosphor-icons/react"
 import { useLocation } from "react-router"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -25,7 +25,7 @@ interface Props {
    * Overrides the icon, for an empty state that is not about the page it sits
    * on -- a device with no movements is not an empty asset list.
    */
-  emptyIcon?: LucideIcon
+  emptyIcon?: Icon
   onRetry?: () => void
   children: ReactNode
 }
@@ -64,7 +64,7 @@ export function StateBoundary({
   if (error) {
     return (
       <Alert variant="destructive">
-        <AlertCircleIcon />
+        <WarningCircle />
         <AlertTitle>{t.common.error}</AlertTitle>
         <AlertDescription>
           {error.message}

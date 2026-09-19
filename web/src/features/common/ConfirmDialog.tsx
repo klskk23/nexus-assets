@@ -1,4 +1,4 @@
-import { CheckIcon, CopyIcon, Trash2Icon } from "lucide-react"
+import { Check, Copy, Trash } from "@phosphor-icons/react"
 import { useRef, useState, type ReactNode } from "react"
 
 import {
@@ -106,9 +106,9 @@ export function ConfirmDialog({
           {danger && (
             <span
               aria-hidden
-              className="bg-destructive/12 text-destructive grid size-13 place-items-center rounded-full"
+              className="bg-destructive/12 text-destructive grid size-13 place-items-center rounded-md"
             >
-              <Trash2Icon className="size-[23px]" />
+              <Trash data-slot="confirm-danger-icon" className="size-[23px]" />
             </span>
           )}
           <AlertDialogTitle>{title}</AlertDialogTitle>
@@ -140,7 +140,7 @@ export function ConfirmDialog({
                   setCopied(await copyText(requirePhrase, phraseRef.current))
                 }}
               >
-                {copied === true ? <CheckIcon /> : <CopyIcon />}
+                {copied === true ? <Check /> : <Copy />}
                 {copied === true ? tConfirm.copied : tConfirm.copy}
               </Button>
             </div>

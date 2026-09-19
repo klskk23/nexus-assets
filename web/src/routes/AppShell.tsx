@@ -1,4 +1,4 @@
-import { LogOutIcon } from "lucide-react"
+import { SignOut } from "@phosphor-icons/react"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { NavLink, Navigate, Outlet } from "react-router"
@@ -199,7 +199,7 @@ export function AppShell() {
                     end={l.to === "/"}
                     className={({ isActive }) =>
                       cn(
-                        "flex items-center gap-2.5 rounded-full py-[9px] pr-3.5 pl-3 text-sm whitespace-nowrap transition-colors",
+                        "flex items-center gap-2.5 rounded-md py-[9px] pr-3.5 pl-3 text-sm whitespace-nowrap transition-colors",
                         isActive
                           ? "bg-accent text-accent-foreground font-semibold"
                           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
@@ -241,7 +241,7 @@ export function AppShell() {
               type="button"
               onClick={() => setSettingsOpen(true)}
               title={t.settings.open}
-              className="hover:bg-accent flex min-w-0 flex-1 items-center gap-2.5 rounded-full py-1.5 pr-2 pl-1.5 text-left transition-colors max-md:flex-none"
+              className="hover:bg-accent flex min-w-0 flex-1 items-center gap-2.5 rounded-md py-1.5 pr-2 pl-1.5 text-left transition-colors max-md:flex-none"
             >
               <span
                 aria-hidden
@@ -272,7 +272,7 @@ export function AppShell() {
             title={t.nav.signOut}
             onClick={signOut}
           >
-            <LogOutIcon />
+            <SignOut />
           </Button>
         </div>
       </div>
