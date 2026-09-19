@@ -104,7 +104,7 @@ export function Overview() {
     /* Handoff §2: the overview's own gap is 34px where every other page's
      * is 22, and the prototype caps the grid at 1280 -- three cards past that
      * width stop being a row and start being a horizon. */
-    <div className="grid max-w-[1280px] gap-[34px]">
+    <div className="grid gap-[34px]">
       <PageHeader title={tOverview.title}>
         {/* Importing is an act performed from where the devices are, not a
             place on the navigation bar beside the eleven things people do
