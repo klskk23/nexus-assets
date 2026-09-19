@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/nocturne-fb90bb99-ec0e-40a0-98e7-e7bd64fe3e38/styles.css">
+  <script src="_ds/nocturne-fb90bb99-ec0e-40a0-98e7-e7bd64fe3e38/_ds_bundle.js"></script>
+  <style>
+    html, body { height: 100%; color-scheme: dark; }
+    body { margin: 0; overflow: hidden; }
+    .btn, .tag, .seg-opt, .table th, label.field, .field > label { white-space: nowrap; }
+    .btn { flex: none; }
+    a { color: var(--color-accent-300); text-decoration: none; }
+    a:hover { color: var(--color-accent-200); }
+    select.input { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' fill='%239397ab'%3E%3Cpath d='M213.66 101.66l-80 80a8 8 0 0 1-11.32 0l-80-80A8 8 0 0 1 53.66 90.34L128 164.69l74.34-74.35a8 8 0 0 1 11.32 11.32z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; background-size: 14px; padding-right: 28px; }
+    .table tbody tr[data-click] { cursor: pointer; }
+    input[type=checkbox].nx { appearance: none; width: 15px; height: 15px; margin: 0; border: 1.5px solid var(--color-neutral-600); border-radius: 4px; background: transparent; cursor: pointer; display: inline-grid; place-items: center; }
+    input[type=checkbox].nx:checked { border-color: var(--color-accent); background: var(--color-accent); }
+    input[type=checkbox].nx:checked::after { content: ""; width: 4px; height: 8px; border: solid var(--color-bg); border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+    input[type=checkbox].nx:indeterminate { border-color: var(--color-accent); }
+    input[type=checkbox].nx:indeterminate::after { content: ""; width: 8px; height: 2px; background: var(--color-accent); }
+    .nx-row-actions { opacity: 0; transition: opacity .12s; }
+    tr:hover .nx-row-actions, tr:focus-within .nx-row-actions { opacity: 1; }
+    .nx-scroll { scrollbar-width: thin; scrollbar-color: var(--color-neutral-800) transparent; }
+  </style>
+</helmet>
+
+<!-- ─── Login ─── -->
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ false }}">
+  <div style="position:relative; min-height:100vh; display:grid; align-items:center; padding:clamp(24px,5vw,72px); background:radial-gradient(1200px 600px at 85% 30%, var(--color-accent-900) 0%, transparent 60%), var(--color-bg); overflow:hidden">
+    <div aria-hidden="true" style="position:absolute; inset:0; pointer-events:none">
+      <span style="position:absolute; top:22%; right:14%; width:min(38vw,520px); aspect-ratio:1; border-radius:50%; border:1px solid var(--color-accent-800)"></span>
+      <span style="position:absolute; top:12%; right:24%; width:min(20vw,260px); aspect-ratio:1; border-radius:50%; border:1px solid var(--color-accent-700); box-shadow:0 0 80px color-mix(in srgb, var(--color-accent) 18%, transparent)"></span>
+      <span style="position:absolute; top:50%; right:0; width:min(50vw,640px); height:1px; background:linear-gradient(to right, transparent, var(--color-accent) 48px, var(--color-accent) calc(100% - 48px), transparent); opacity:.5"></span>
+    </div>
+    <div style="position:relative; width:100%; max-width:420px; display:grid; gap:28px">
+      <div style="display:grid; gap:10px">
+        <div style="display:flex; align-items:center; gap:12px">
+          <span style="width:36px; height:36px; border-radius:10px; border:1px solid var(--color-accent); display:grid; place-items:center; color:var(--color-accent); box-shadow:0 0 24px color-mix(in srgb, var(--color-accent) 30%, transparent)">
+            <svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M128 32 32 80v96l96 48 96-48V80zM32 80l96 48 96-48M128 128v96"></path></svg>
+          </span>
+          <h1 style="font-size:28px; margin:0; letter-spacing:-0.02em">Nexus <span style="color:var(--color-accent)">Assets</span></h1>
+        </div>
+        <p style="margin:0; color:var(--color-neutral-400); font-size:14px">内部资产台账</p>
+      </div>
+      <form onSubmit="{{ onLogin }}" aria-label="登录" style="display:grid; gap:14px">
+        <div class="field">
+          <label for="email">邮箱</label>
+          <input class="input" id="email" type="email" autocomplete="username" placeholder="name@yourcompany.com" defaultValue="wanglei@yourcompany.com" style="min-height:40px">
+        </div>
+        <div class="field">
+          <label for="password">密码</label>
+          <input class="input" id="password" type="password" autocomplete="current-password" defaultValue="••••••••••" style="min-height:40px">
+        </div>
+        <button class="btn btn-primary btn-block" type="submit" style="min-height:40px; margin-top:6px">登录</button>
+        <div style="display:flex; align-items:center; gap:10px; color:var(--color-neutral-500); font-size:12px">
+          <span style="flex:1; height:1px; background:linear-gradient(to right, transparent, var(--color-divider))"></span>或<span style="flex:1; height:1px; background:linear-gradient(to left, transparent, var(--color-divider))"></span>
+        </div>
+        <button class="btn btn-secondary btn-block" type="button" onClick="{{ onLogin }}" style="min-height:40px; margin:0">使用 Google 登录</button>
+      </form>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ─── Shell ─── -->
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ true }}">
+<div style="display:grid; grid-template-columns:{{ railWidth }} minmax(0,1fr); height:100vh; background:var(--color-bg); color:var(--color-text); font-family:var(--font-body)">
+  <!-- Rail -->
+  <nav aria-label="主导航" style="display:flex; flex-direction:column; min-height:0; padding:18px 12px 14px; border-right:1px solid var(--color-divider); background:linear-gradient(to bottom, var(--color-surface), var(--color-bg) 60%)">
+    <div style="display:flex; align-items:center; gap:10px; padding:0 8px 18px">
+      <span style="flex:none; width:28px; height:28px; border-radius:8px; border:1px solid var(--color-accent); display:grid; place-items:center; color:var(--color-accent)">
+        <svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M128 32 32 80v96l96 48 96-48V80zM32 80l96 48 96-48M128 128v96"></path></svg>
+      </span>
+      <sc-if value="{{ railLabels }}" hint-placeholder-val="{{ true }}">
+        <span style="font-family:var(--font-heading); font-weight:500; font-size:15px; line-height:1.1; white-space:nowrap">Nexus <span style="color:var(--color-accent)">Assets</span></span>
+      </sc-if>
+    </div>
+    <div class="nx-scroll" style="display:flex; flex-direction:column; gap:2px; overflow-y:auto; min-height:0; flex:1">
+      <sc-for list="{{ navGroups }}" as="g" hint-placeholder-count="3">
+        <div style="display:flex; flex-direction:column; gap:2px">
+          <sc-if value="{{ g.label }}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{ railLabels }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:11px; letter-spacing:.06em; color:var(--color-neutral-500); padding:14px 10px 4px">{{ g.label }}</div>
+            </sc-if>
+          </sc-if>
+          <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="2">
+            <button type="button" onClick="{{ it.go }}" aria-current="{{ it.current }}" title="{{ it.label }}" style="display:flex; align-items:center; gap:10px; width:100%; text-align:left; border:0; cursor:pointer; padding:7px 10px; border-radius:var(--radius-md); font:inherit; font-size:13.5px; white-space:nowrap; position:relative; color:{{ it.color }}; background:{{ it.bg }}" style-hover="background:color-mix(in srgb, var(--color-text) 6%, transparent); color:var(--color-text)">
+              <sc-if value="{{ it.active }}" hint-placeholder-val="{{ false }}">
+                <span aria-hidden="true" style="position:absolute; left:-12px; top:8px; bottom:8px; width:2px; border-radius:2px; background:var(--color-accent); box-shadow:0 0 10px var(--color-accent)"></span>
+              </sc-if>
+              <svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="{{ it.d }}"></path></svg>
+              <sc-if value="{{ railLabels }}" hint-placeholder-val="{{ true }}"><span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis">{{ it.label }}</span></sc-if>
+            </button>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; padding-top:12px; border-top:1px solid transparent; background:linear-gradient(to right, transparent, var(--color-divider) 24px, var(--color-divider) calc(100% - 24px), transparent) no-repeat top / 100% 1px">
+      <button type="button" onClick="{{ openSettings }}" title="设置" style="flex:1; min-width:0; display:flex; align-items:center; gap:9px; border:0; background:transparent; cursor:pointer; padding:5px 6px; border-radius:var(--radius-md); text-align:left; font:inherit; color:inherit" style-hover="background:color-mix(in srgb, var(--color-text) 6%, transparent)">
+        <span aria-hidden="true" style="flex:none; width:28px; height:28px; border-radius:50%; background:var(--color-accent-900); color:var(--color-accent-200); display:grid; place-items:center; font-size:13px; font-weight:500">王</span>
+        <sc-if value="{{ railLabels }}" hint-placeholder-val="{{ true }}">
+          <span style="display:grid; min-width:0; line-height:1.25">
+            <span style="font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">王磊</span>
+            <span style="font-size:11px; color:var(--color-neutral-500); white-space:nowrap">管理员</span>
+          </span>
+        </sc-if>
+      </button>
+      <button class="btn btn-secondary btn-icon" type="button" onClick="{{ signOut }}" aria-label="退出登录" title="退出登录" style="width:30px; height:30px">
+        <svg width="15" height="15" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M112 216H48V40h64M112 128h104M176 88l40 40-40 40"></path></svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="nx-scroll" style="min-height:0; overflow-y:auto; padding:26px 36px 64px 32px">
+
+    <!-- Overview -->
+    <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="概览" style="display:grid; gap:34px; max-width:1280px">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px">
+          <h1 style="font-size:26px; margin:0 auto 0 0">概览</h1>
+          <button class="btn btn-secondary" type="button" onClick="{{ openImport }}">批量导入</button>
+          <button class="btn btn-primary" type="button" onClick="{{ goAssets }}">
+            <svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round"><path d="M128 40v176M40 128h176"></path></svg>录入设备
+          </button>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px">
+          <section aria-label="设备状态" class="card elev-sm" style="padding:18px 20px; gap:14px">
+            <div style="display:flex; align-items:baseline; gap:10px"><h2 style="font-size:16px; margin:0">设备状态</h2><span style="font-size:12px; color:var(--color-neutral-500)">共 {{ totalAssets }} 台</span></div>
+            <div style="display:grid; gap:8px">
+              <sc-for list="{{ statusDist }}" as="r" hint-placeholder-count="5">
+                <button type="button" onClick="{{ r.go }}" style="display:grid; grid-template-columns:96px 1fr 40px; align-items:center; gap:10px; border:0; background:transparent; padding:3px 4px; margin:0 -4px; border-radius:6px; cursor:pointer; font:inherit; color:inherit; text-align:left" style-hover="background:color-mix(in srgb, var(--color-text) 5%, transparent)">
+                  <span class="tag" style="justify-self:start; background:{{ r.bg }}; color:{{ r.fg }}">{{ r.label }}</span>
+                  <span style="height:6px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><span style="display:block; height:100%; border-radius:3px; background:{{ r.bar }}; width:{{ r.pct }}%"></span></span>
+                  <span style="font-size:13px; font-variant-numeric:tabular-nums; text-align:right; color:var(--color-neutral-300)">{{ r.count }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+          <section aria-label="类别分布" class="card elev-sm" style="padding:18px 20px; gap:14px">
+            <h2 style="font-size:16px; margin:0">类别分布</h2>
+            <div style="display:grid; gap:8px">
+              <sc-for list="{{ categoryDist }}" as="r" hint-placeholder-count="4">
+                <button type="button" onClick="{{ r.go }}" style="display:grid; grid-template-columns:96px 1fr 40px; align-items:center; gap:10px; border:0; background:transparent; padding:3px 4px; margin:0 -4px; border-radius:6px; cursor:pointer; font:inherit; color:inherit; text-align:left" style-hover="background:color-mix(in srgb, var(--color-text) 5%, transparent)">
+                  <span style="font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ r.label }}</span>
+                  <span style="height:6px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><span style="display:block; height:100%; border-radius:3px; background:var(--color-accent-600); width:{{ r.pct }}%"></span></span>
+                  <span style="font-size:13px; font-variant-numeric:tabular-nums; text-align:right; color:var(--color-neutral-300)">{{ r.count }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+          <section aria-label="负责人名下" class="card elev-sm" style="padding:18px 20px; gap:14px">
+            <div style="display:grid; gap:2px"><h2 style="font-size:16px; margin:0">负责人名下</h2><span style="font-size:12px; color:var(--color-neutral-500)">{{ ownerRest }}</span></div>
+            <div style="display:grid; gap:8px">
+              <sc-for list="{{ ownerDist }}" as="r" hint-placeholder-count="6">
+                <button type="button" onClick="{{ r.go }}" style="display:grid; grid-template-columns:96px 1fr 40px; align-items:center; gap:10px; border:0; background:transparent; padding:3px 4px; margin:0 -4px; border-radius:6px; cursor:pointer; font:inherit; color:inherit; text-align:left" style-hover="background:color-mix(in srgb, var(--color-text) 5%, transparent)">
+                  <span style="font-size:13px">{{ r.label }}</span>
+                  <span style="height:6px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><span style="display:block; height:100%; border-radius:3px; background:var(--color-neutral-500); width:{{ r.pct }}%"></span></span>
+                  <span style="font-size:13px; font-variant-numeric:tabular-nums; text-align:right; color:var(--color-neutral-300)">{{ r.count }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+        </div>
+        <section aria-label="最近流转" style="display:grid; gap:12px">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+            <h2 style="font-size:16px; margin:0">最近流转</h2>
+            <select class="input" aria-label="显示条数" style="width:auto; min-height:30px; padding:3px 28px 3px 10px; font-size:13px"><option>5 条</option><option selected>10 条</option><option>20 条</option></select>
+          </div>
+          <table class="table">
+            <thead><tr><th>时间</th><th>资产</th><th style="width:100%">变更内容</th><th>操作人</th></tr></thead>
+            <tbody>
+              <sc-for list="{{ recent }}" as="e" hint-placeholder-count="6">
+                <tr data-click="1" onClick="{{ e.go }}">
+                  <td style="white-space:nowrap; color:var(--color-neutral-400); font-variant-numeric:tabular-nums">{{ e.when }}</td>
+                  <td style="white-space:nowrap; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px; color:var(--color-accent-300)">{{ e.asset }}</td>
+                  <td><span class="tag tag-neutral" style="margin-right:8px">{{ e.kind }}</span>{{ e.text }}</td>
+                  <td style="white-space:nowrap">{{ e.actor }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </sc-if>
+
+    <!-- Assets list -->
+    <sc-if value="{{ isAssets }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="资产" style="display:grid; gap:22px">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px">
+          <h1 style="font-size:26px; margin:0 auto 0 0">资产</h1>
+          <button class="btn btn-secondary" type="button" onClick="{{ openImport }}">批量导入</button>
+          <button class="btn btn-secondary" type="button" title="按当前筛选条件导出" onClick="{{ openExport }}">导出 CSV</button>
+          <button class="btn btn-primary" type="button" onClick="{{ openNewAsset }}">录入设备</button>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px">
+          <div style="position:relative; width:260px">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--color-neutral-500)"><path d="M112 192a80 80 0 1 0 0-160 80 80 0 1 0 0 160zM168 168l56 56"></path></svg>
+            <input class="input" aria-label="搜索资产" placeholder="搜索编号、序列号、MAC" value="{{ q }}" onChange="{{ onQ }}" style="padding-left:30px; min-height:34px">
+          </div>
+          <select class="input" aria-label="类别" value="{{ fCategory }}" onChange="{{ onFCategory }}" style="width:auto; min-height:34px; padding-top:4px; padding-bottom:4px">
+            <option value="">全部类别</option>
+            <sc-for list="{{ categoryOptions }}" as="o" hint-placeholder-count="3"><option value="{{ o.id }}">{{ o.label }}</option></sc-for>
+          </select>
+          <select class="input" aria-label="状态" value="{{ fStatus }}" onChange="{{ onFStatus }}" style="width:auto; min-height:34px; padding-top:4px; padding-bottom:4px">
+            <option value="">全部状态</option>
+            <sc-for list="{{ statusList }}" as="s" hint-placeholder-count="5"><option value="{{ s.key }}">{{ s.label }}</option></sc-for>
+          </select>
+          <select class="input" aria-label="负责人" value="{{ fOwner }}" onChange="{{ onFOwner }}" style="width:auto; min-height:34px; padding-top:4px; padding-bottom:4px">
+            <option value="">全部负责人</option>
+            <sc-for list="{{ userList }}" as="u" hint-placeholder-count="3"><option value="{{ u }}">{{ u }}</option></sc-for>
+          </select>
+          <select class="input" aria-label="持有方" value="{{ fHolder }}" onChange="{{ onFHolder }}" style="width:auto; min-height:34px; padding-top:4px; padding-bottom:4px">
+            <option value="">全部持有方</option>
+            <sc-for list="{{ holderList }}" as="h" hint-placeholder-count="3"><option value="{{ h }}">{{ h }}</option></sc-for>
+          </select>
+          <sc-if value="{{ hasFilters }}" hint-placeholder-val="{{ false }}">
+            <button class="btn btn-ghost" type="button" onClick="{{ clearFilters }}" style="font-size:13px">清除筛选</button>
+          </sc-if>
+          <span style="margin-left:auto; font-size:12px; color:var(--color-neutral-500); font-variant-numeric:tabular-nums">{{ rangeText }}</span>
+        </div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width:32px"><input class="nx" type="checkbox" aria-label="全选本页" checked="{{ allChecked }}" onChange="{{ togglePage }}"></th>
+              <th>编号</th><th>类别</th><th>状态</th><th>持有方</th><th>负责人</th><th>型号</th><th>厂商</th><th>备注</th><th style="width:1px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ rows }}" as="a" hint-placeholder-count="10">
+              <tr data-click="1" onClick="{{ a.open }}" style="background-color:{{ a.rowBg }}">
+                <td onClick="{{ stop }}"><input class="nx" type="checkbox" aria-label="选择 {{ a.sn }}" checked="{{ a.checked }}" onChange="{{ a.toggle }}"></td>
+                <td style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px; white-space:nowrap">{{ a.sn }}</td>
+                <td style="white-space:nowrap">{{ a.category }}</td>
+                <td><span class="tag" style="background:{{ a.statusBg }}; color:{{ a.statusFg }}">{{ a.status }}</span></td>
+                <td style="white-space:nowrap">{{ a.holder }}</td>
+                <td style="white-space:nowrap">{{ a.owner }}</td>
+                <td style="white-space:nowrap">{{ a.model }}</td>
+                <td style="white-space:nowrap; color:var(--color-neutral-400)">{{ a.vendor }}</td>
+                <td style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--color-neutral-400)" title="{{ a.note }}">{{ a.note }}</td>
+                <td onClick="{{ stop }}" style="white-space:nowrap">
+                  <span class="nx-row-actions" style="display:flex; gap:2px; justify-content:flex-end">
+                    <button class="btn btn-ghost btn-icon" type="button" aria-label="打印这一台的标签" title="打印标签" onClick="{{ a.print }}" style="width:28px; height:28px; color:var(--color-neutral-300)"><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M64 80V40h128v40M64 168H32V80h192v88h-32M64 136h128v80H64z"></path></svg></button>
+                    <button class="btn btn-ghost btn-icon" type="button" aria-label="变更这一台的状态" title="流转" onClick="{{ a.transfer }}" style="width:28px; height:28px; color:var(--color-neutral-300)"><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M32 88h176l-40-40M224 168H48l40 40"></path></svg></button>
+                  </span>
+                </td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+        <sc-if value="{{ noRows }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:40px 0; text-align:center; color:var(--color-neutral-500); font-size:14px">当前筛选下没有资产，换个条件或清除筛选。</div>
+        </sc-if>
+        <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--color-neutral-400)">
+          <span style="margin-right:auto">{{ rangeText }}</span>
+          <select class="input" aria-label="每页" style="width:auto; min-height:30px; padding:3px 28px 3px 10px; font-size:13px"><option>20 / 页</option><option>50 / 页</option><option>100 / 页</option></select>
+          <button class="btn btn-secondary" type="button" disabled style="min-height:30px; padding:4px 10px">上一页</button>
+          <button class="btn btn-secondary" type="button" disabled style="min-height:30px; padding:4px 10px">下一页</button>
+        </div>
+      </div>
+      <sc-if value="{{ hasSelection }}" hint-placeholder-val="{{ false }}">
+        <div role="toolbar" aria-label="批量操作" style="position:fixed; left:50%; bottom:22px; transform:translateX(-50%); display:flex; align-items:center; gap:8px; padding:8px 8px 8px 16px; border-radius:var(--radius-lg); background:var(--color-surface); box-shadow:var(--shadow-lg); font-size:13px; z-index:5">
+          <span style="color:var(--color-accent-300); margin-right:6px; white-space:nowrap; flex:none">已选 {{ selectedCount }} 台</span>
+          <button class="btn btn-secondary" type="button" onClick="{{ transferSelected }}" style="min-height:30px; padding:4px 10px">签出</button>
+          <button class="btn btn-secondary" type="button" onClick="{{ transferSelected }}" style="min-height:30px; padding:4px 10px">归还</button>
+          <button class="btn btn-secondary" type="button" onClick="{{ transferSelected }}" style="min-height:30px; padding:4px 10px">转移</button>
+          <button class="btn btn-secondary" type="button" onClick="{{ printSelected }}" style="min-height:30px; padding:4px 10px">打印标签</button>
+          <button class="btn btn-secondary" type="button" onClick="{{ openExport }}" style="min-height:30px; padding:4px 10px">导出</button>
+          <button class="btn btn-ghost" type="button" onClick="{{ deleteSelected }}" style="min-height:30px; padding:4px 10px; color:oklch(0.72 0.12 20)">删除</button>
+          <button class="btn btn-ghost" type="button" onClick="{{ clearSelection }}" style="min-height:30px; padding:4px 8px; color:var(--color-neutral-400)">取消选择</button>
+        </div>
+      </sc-if>
+    </sc-if>
+
+    <!-- Asset detail -->
+    <sc-if value="{{ isAsset }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="设备详情" style="display:grid; gap:30px; max-width:1100px">
+        <button class="btn btn-ghost" type="button" onClick="{{ goAssets }}" style="justify-self:start; padding:4px 8px 4px 4px; color:var(--color-neutral-400); font-weight:400">
+          <svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><path d="M216 128H40M104 64l-64 64 64 64"></path></svg>资产
+        </button>
+        <header style="display:grid; gap:6px">
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:14px">
+            <h1 style="font-size:30px; margin:0; font-variant-numeric:tabular-nums; letter-spacing:-0.01em">{{ asset.sn }}</h1>
+            <span class="tag" style="background:{{ asset.statusBg }}; color:{{ asset.statusFg }}; font-size:12px">{{ asset.status }}</span>
+            <div style="margin-left:auto; display:flex; flex-wrap:wrap; gap:8px">
+              <button class="btn btn-secondary" type="button" onClick="{{ printThis }}">打印标签</button>
+              <button class="btn btn-secondary" type="button">编辑设备属性</button>
+              <button class="btn btn-ghost" type="button" onClick="{{ deleteThis }}" style="color:oklch(0.72 0.12 20)">删除</button>
+              <button class="btn btn-primary" type="button" onClick="{{ openTransfer }}">流转</button>
+            </div>
+          </div>
+          <p style="margin:0; color:var(--color-neutral-400); font-size:13px">{{ asset.modelLine }}</p>
+        </header>
+        <sc-if value="{{ banner }}" hint-placeholder-val="{{ false }}">
+          <div role="status" style="display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:var(--radius-md); background:var(--color-accent-900); color:var(--color-accent-200); font-size:13px">
+            <svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><path d="M40 136l48 48L216 72"></path></svg>{{ banner }}
+          </div>
+        </sc-if>
+        <dl class="card elev-sm" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:18px 24px; padding:18px 22px; margin:0; font-size:14px">
+          <div><dt style="font-size:12px; color:var(--color-neutral-500)">当前持有方</dt><dd style="margin:4px 0 0">{{ asset.holder }}</dd></div>
+          <div><dt style="font-size:12px; color:var(--color-neutral-500)">当前负责人</dt><dd style="margin:4px 0 0">{{ asset.owner }}</dd></div>
+          <div><dt style="font-size:12px; color:var(--color-neutral-500)">默认归属</dt><dd style="margin:4px 0 0">{{ asset.home }}<span style="display:block; font-size:12px; color:var(--color-neutral-500)">{{ asset.homeOwner }}</span></dd></div>
+          <div><dt style="font-size:12px; color:var(--color-neutral-500)">建档时间</dt><dd style="margin:4px 0 0; font-variant-numeric:tabular-nums">{{ asset.createdAt }}</dd></div>
+        </dl>
+        <section aria-label="设备属性" style="display:grid; gap:10px">
+          <h2 style="font-size:16px; margin:0">设备属性</h2>
+          <dl style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:0 40px; margin:0; font-size:14px">
+            <sc-for list="{{ asset.attrs }}" as="f" hint-placeholder-count="6">
+              <div style="display:flex; align-items:center; gap:14px; padding:10px 0; background:linear-gradient(to right, transparent, color-mix(in srgb, var(--color-text) 8%, transparent) 24px, color-mix(in srgb, var(--color-text) 8%, transparent) calc(100% - 24px), transparent) no-repeat bottom / 100% 1px">
+                <dt style="width:110px; flex:none; color:var(--color-neutral-500); font-size:13px">{{ f.label }}</dt>
+                <dd style="margin:0; flex:1; min-width:0; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; font-family:{{ f.font }}">{{ f.value }}</dd>
+                <sc-if value="{{ f.badge }}" hint-placeholder-val="{{ false }}"><span class="tag tag-outline" style="font-size:10px; padding:2px 7px">{{ f.badge }}</span></sc-if>
+              </div>
+            </sc-for>
+          </dl>
+          <sc-if value="{{ asset.note }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; gap:14px; font-size:14px; padding-top:6px"><span style="width:110px; flex:none; color:var(--color-neutral-500); font-size:13px">备注</span><p style="margin:0; flex:1">{{ asset.note }}</p></div>
+          </sc-if>
+        </section>
+        <section aria-label="流转历史" style="display:grid; gap:10px">
+          <h2 style="font-size:16px; margin:0">流转历史</h2>
+          <table class="table">
+            <thead><tr><th>时间</th><th style="width:100%">变更内容</th><th>操作人</th></tr></thead>
+            <tbody>
+              <sc-for list="{{ asset.events }}" as="e" hint-placeholder-count="4">
+                <tr>
+                  <td style="white-space:nowrap; color:var(--color-neutral-400); font-variant-numeric:tabular-nums">{{ e.when }}</td>
+                  <td><span class="tag tag-neutral" style="margin-right:8px">{{ e.kind }}</span>{{ e.text }}<sc-if value="{{ e.note }}" hint-placeholder-val="{{ false }}"><span style="display:block; font-size:12px; color:var(--color-neutral-500); margin-top:2px">备注：{{ e.note }}</span></sc-if></td>
+                  <td style="white-space:nowrap">{{ e.actor }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </sc-if>
+
+    <!-- Categories -->
+    <sc-if value="{{ isCategories }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="类别" style="display:grid; gap:22px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <h1 style="font-size:26px; margin:0 auto 0 0">类别 <span title="点击一行编辑该类别：名称、上级、编号字段与字段绑定。" style="display:inline-grid; place-items:center; width:16px; height:16px; border-radius:50%; border:1px solid var(--color-neutral-600); color:var(--color-neutral-500); font-size:10px; vertical-align:middle; cursor:help">?</span></h1>
+          <button class="btn btn-primary" type="button">新建类别</button>
+        </div>
+        <div style="display:grid; grid-template-columns:280px minmax(0,1fr); gap:22px; align-items:start">
+          <div style="display:grid; gap:8px">
+            <input class="input" aria-label="搜索类别" placeholder="搜索名称、编码" style="min-height:32px">
+            <div style="display:grid; gap:1px">
+              <sc-for list="{{ categoryRows }}" as="c" hint-placeholder-count="8">
+                <button type="button" onClick="{{ c.go }}" aria-current="{{ c.current }}" style="display:flex; align-items:center; gap:8px; border:0; cursor:pointer; font:inherit; font-size:13.5px; text-align:left; padding:6px 10px; padding-left:{{ c.indent }}px; border-radius:var(--radius-md); color:{{ c.color }}; background:{{ c.bg }}" style-hover="background:color-mix(in srgb, var(--color-text) 6%, transparent)">
+                  <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ c.name }}</span>
+                  <span style="font-size:12px; font-variant-numeric:tabular-nums; color:var(--color-neutral-500)">{{ c.count }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          <div class="card elev-sm" style="padding:20px 24px; gap:20px">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px">
+              <h2 style="font-size:20px; margin:0">{{ cat.name }}</h2>
+              <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:var(--color-neutral-500)">{{ cat.code }}</span>
+              <button class="btn btn-secondary" type="button" onClick="{{ openEditCategory }}" style="margin-left:auto">编辑类别</button>
+            </div>
+            <dl style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px 20px; margin:0; font-size:14px; padding:14px 16px; border-radius:var(--radius-md); background:var(--color-bg)">
+              <div><dt style="font-size:12px; color:var(--color-neutral-500)">上级类别</dt><dd style="margin:3px 0 0">{{ cat.parent }}</dd></div>
+              <div><dt style="font-size:12px; color:var(--color-neutral-500)">代号</dt><dd style="margin:3px 0 0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px">{{ cat.code }}</dd></div>
+              <div><dt style="font-size:12px; color:var(--color-neutral-500)">编号字段</dt><dd style="margin:3px 0 0">{{ cat.displayKey }}</dd></div>
+              <div><dt style="font-size:12px; color:var(--color-neutral-500)">可打印的标签</dt><dd style="margin:3px 0 0">{{ cat.preset }}</dd></div>
+            </dl>
+            <a href="#" onClick="{{ cat.seeAssets }}" style="font-size:13px; justify-self:start">看这个类别的 {{ cat.count }} 台设备（含子类别）→</a>
+            <div style="display:grid; gap:8px">
+              <h3 style="font-size:15px; margin:0">本类别的字段</h3>
+              <table class="table">
+                <thead><tr><th>显示名</th><th>键名</th><th>类型</th><th>必填</th><th>继承自</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{ cat.fields }}" as="f" hint-placeholder-count="4">
+                    <tr>
+                      <td>{{ f.label }}</td>
+                      <td style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12.5px; color:var(--color-neutral-400)">{{ f.key }}</td>
+                      <td>{{ f.type }}</td>
+                      <td><sc-if value="{{ f.required }}" hint-placeholder-val="{{ false }}"><span class="tag tag-outline">必填</span></sc-if><sc-if value="{{ f.optional }}" hint-placeholder-val="{{ true }}"><span style="color:var(--color-neutral-600)">—</span></sc-if></td>
+                      <td><sc-if value="{{ f.inherited }}" hint-placeholder-val="{{ false }}"><span class="tag tag-neutral">{{ f.inherited }}</span></sc-if><sc-if value="{{ f.own }}" hint-placeholder-val="{{ true }}"><span style="color:var(--color-neutral-600)">—</span></sc-if></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- Fields -->
+    <sc-if value="{{ isFields }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="字段" style="display:grid; gap:22px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <h1 style="font-size:26px; margin:0 auto 0 0">字段</h1>
+          <button class="btn btn-secondary" type="button">新建字段组</button>
+          <button class="btn btn-primary" type="button">新建字段</button>
+        </div>
+        <div style="display:grid; grid-template-columns:280px minmax(0,1fr); gap:22px; align-items:start">
+          <div style="display:grid; gap:8px">
+            <input class="input" aria-label="搜索字段" placeholder="搜索键名、显示名" style="min-height:32px">
+            <div style="display:grid; gap:1px">
+              <sc-for list="{{ fieldRows }}" as="f" hint-placeholder-count="10">
+                <sc-if value="{{ f.heading }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px; letter-spacing:.06em; color:var(--color-neutral-500); padding:12px 10px 4px">{{ f.heading }}</div></sc-if>
+                <sc-if value="{{ f.isRow }}" hint-placeholder-val="{{ true }}">
+                  <button type="button" onClick="{{ f.go }}" aria-current="{{ f.current }}" style="display:flex; align-items:center; gap:8px; border:0; cursor:pointer; font:inherit; font-size:13.5px; text-align:left; padding:6px 10px; border-radius:var(--radius-md); color:{{ f.color }}; background:{{ f.bg }}" style-hover="background:color-mix(in srgb, var(--color-text) 6%, transparent)">
+                    <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ f.label }}</span>
+                    <span style="font-size:11.5px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; color:var(--color-neutral-500)">{{ f.key }}</span>
+                  </button>
+                </sc-if>
+              </sc-for>
+            </div>
+          </div>
+          <div class="card elev-sm" style="padding:20px 24px; gap:20px">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px">
+              <h2 style="font-size:20px; margin:0">{{ fld.label }}</h2>
+              <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:var(--color-neutral-500)">{{ fld.key }}</span>
+              <span class="tag tag-neutral">{{ fld.type }}</span>
+              <sc-if value="{{ fld.unique }}" hint-placeholder-val="{{ false }}"><span class="tag tag-outline">唯一</span></sc-if>
+              <button class="btn btn-secondary" type="button" style="margin-left:auto">编辑字段</button>
+            </div>
+            <dl style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px 20px; margin:0; font-size:14px; padding:14px 16px; border-radius:var(--radius-md); background:var(--color-bg)">
+              <div><dt style="font-size:12px; color:var(--color-neutral-500)">绑定到</dt><dd style="margin:3px 0 0">{{ fld.mode }}</dd></div>
+              <div><dt style="font-size:12px; color:var(--color-neutral-500)">可搜索</dt><dd style="margin:3px 0 0">{{ fld.searchable }}</dd></div>
+              <div><dt style="font-size:12px; color:var(--color-neutral-500)">所属组</dt><dd style="margin:3px 0 0">{{ fld.group }}</dd></div>
+              <div><dt style="font-size:12px; color:var(--color-neutral-500)">校验</dt><dd style="margin:3px 0 0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12.5px; overflow-wrap:anywhere">{{ fld.rule }}</dd></div>
+            </dl>
+            <sc-if value="{{ fld.template }}" hint-placeholder-val="{{ false }}">
+              <div style="display:grid; gap:6px">
+                <div style="display:flex; align-items:center; gap:10px"><h3 style="font-size:15px; margin:0">表达式</h3><a href="#" onClick="{{ openExprHelp }}" style="font-size:12.5px">怎么写</a></div>
+                <code style="display:block; padding:10px 14px; border-radius:var(--radius-md); background:var(--color-bg); font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px; color:var(--color-accent-300); border-left:2px solid var(--color-accent)">{{ fld.template }}</code>
+              </div>
+            </sc-if>
+            <div style="display:grid; gap:8px">
+              <h3 style="font-size:15px; margin:0">绑在哪些目标上</h3>
+              <table class="table">
+                <thead><tr><th>目标类型</th><th>目标</th><th>必填</th><th style="width:1px"></th></tr></thead>
+                <tbody>
+                  <sc-for list="{{ fld.bindings }}" as="b" hint-placeholder-count="3">
+                    <tr>
+                      <td style="color:var(--color-neutral-400)">{{ b.kind }}</td>
+                      <td>{{ b.target }}</td>
+                      <td><sc-if value="{{ b.required }}" hint-placeholder-val="{{ false }}"><span class="tag tag-outline">必填</span></sc-if><sc-if value="{{ b.optional }}" hint-placeholder-val="{{ true }}"><span style="color:var(--color-neutral-600)">—</span></sc-if></td>
+                      <td><button class="btn btn-ghost" type="button" style="font-size:12px; padding:2px 6px; color:var(--color-neutral-400)">解绑</button></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+              <button class="btn btn-ghost" type="button" style="justify-self:start; font-size:13px">＋ 绑定到类别</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- Models -->
+    <sc-if value="{{ isModels }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="型号" style="display:grid; gap:22px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <h1 style="font-size:26px; margin:0 auto 0 0">型号</h1>
+          <button class="btn btn-secondary" type="button">新建厂商</button>
+          <button class="btn btn-primary" type="button">新建型号</button>
+        </div>
+        <div style="display:grid; grid-template-columns:280px minmax(0,1fr); gap:22px; align-items:start">
+          <div style="display:grid; gap:8px">
+            <input class="input" aria-label="搜索型号" placeholder="搜索名称、厂商、备注" style="min-height:32px">
+            <div style="display:grid; gap:1px">
+              <sc-for list="{{ modelRows }}" as="m" hint-placeholder-count="10">
+                <sc-if value="{{ m.heading }}" hint-placeholder-val="{{ false }}"><div style="display:flex; align-items:center; gap:8px; font-size:11px; letter-spacing:.06em; color:var(--color-neutral-500); padding:12px 10px 4px"><span style="flex:1">{{ m.heading }}</span><span style="font-variant-numeric:tabular-nums">{{ m.n }}</span></div></sc-if>
+                <sc-if value="{{ m.isRow }}" hint-placeholder-val="{{ true }}">
+                  <button type="button" onClick="{{ m.go }}" aria-current="{{ m.current }}" style="display:flex; align-items:center; gap:8px; border:0; cursor:pointer; font:inherit; font-size:13.5px; text-align:left; padding:6px 10px 6px 18px; border-radius:var(--radius-md); color:{{ m.color }}; background:{{ m.bg }}" style-hover="background:color-mix(in srgb, var(--color-text) 6%, transparent)">
+                    <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ m.name }}</span>
+                    <span style="font-size:12px; font-variant-numeric:tabular-nums; color:var(--color-neutral-500)">{{ m.count }}</span>
+                  </button>
+                </sc-if>
+              </sc-for>
+            </div>
+          </div>
+          <div class="card elev-sm" style="padding:20px 24px; gap:20px">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px">
+              <h2 style="font-size:20px; margin:0">{{ mdl.name }}</h2>
+              <span style="font-size:13px; color:var(--color-neutral-400)">{{ mdl.vendor }}</span>
+              <span class="tag tag-neutral">在册 {{ mdl.count }} 台</span>
+              <button class="btn btn-secondary" type="button" style="margin-left:auto">编辑型号</button>
+            </div>
+            <sc-if value="{{ mdl.note }}" hint-placeholder-val="{{ false }}"><p style="margin:0; font-size:14px; color:var(--color-neutral-300)">{{ mdl.note }}</p></sc-if>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:24px">
+              <div style="display:grid; gap:8px">
+                <h3 style="font-size:15px; margin:0">默认值 <span style="font-size:12px; color:var(--color-neutral-500); font-weight:400; margin-left:6px">录入时预填尚未填写的字段</span></h3>
+                <table class="table">
+                  <thead><tr><th>键名</th><th>值</th></tr></thead>
+                  <tbody>
+                    <sc-for list="{{ mdl.defaults }}" as="d" hint-placeholder-count="3">
+                      <tr><td style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12.5px; color:var(--color-neutral-400)">{{ d.key }}</td><td style="font-variant-numeric:tabular-nums">{{ d.value }}</td></tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+              <div style="display:grid; gap:8px">
+                <h3 style="font-size:15px; margin:0">这个型号的字段</h3>
+                <table class="table">
+                  <thead><tr><th>显示名</th><th>来源</th></tr></thead>
+                  <tbody>
+                    <sc-for list="{{ mdl.fields }}" as="f" hint-placeholder-count="3">
+                      <tr><td>{{ f.label }}</td><td><span class="tag tag-neutral">{{ f.from }}</span></td></tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- Statuses -->
+    <sc-if value="{{ isStatuses }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="状态" style="display:grid; gap:22px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <h1 style="font-size:26px; margin:0 auto 0 0">状态</h1>
+          <button class="btn btn-primary" type="button" onClick="{{ openNewStatus }}">新建状态</button>
+        </div>
+        <input class="input" aria-label="搜索状态" placeholder="搜索名称、键名" style="min-height:34px; max-width:360px">
+        <table class="table">
+          <thead><tr><th>显示名</th><th>键名</th><th>类型</th><th>行为</th><th>使用情况</th></tr></thead>
+          <tbody>
+            <sc-for list="{{ statusRows }}" as="s" hint-placeholder-count="5">
+              <tr data-click="1" onClick="{{ s.edit }}">
+                <td><span class="tag" style="background:{{ s.bg }}; color:{{ s.fg }}">{{ s.label }}</span></td>
+                <td style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12.5px">{{ s.key }}</td>
+                <td style="color:var(--color-neutral-400)">{{ s.kind }}</td>
+                <td><sc-if value="{{ s.behaviour }}" hint-placeholder-val="{{ false }}"><span class="tag tag-neutral">{{ s.behaviour }}</span></sc-if><sc-if value="{{ s.plain }}" hint-placeholder-val="{{ true }}"><span style="color:var(--color-neutral-600)">—</span></sc-if></td>
+                <td style="color:var(--color-neutral-400); font-size:13px">{{ s.usage }}</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </sc-if>
+
+    <!-- Holders -->
+    <sc-if value="{{ isHolders }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="持有方" style="display:grid; gap:22px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <h1 style="font-size:26px; margin:0 auto 0 0">持有方</h1>
+          <button class="btn btn-primary" type="button">新建持有方</button>
+        </div>
+        <div style="display:grid; grid-template-columns:280px minmax(0,1fr); gap:22px; align-items:start">
+          <div style="display:grid; gap:8px">
+            <input class="input" aria-label="搜索持有方" placeholder="搜索名称、备注" style="min-height:32px">
+            <div style="display:grid; gap:1px">
+              <sc-for list="{{ holderRows }}" as="h" hint-placeholder-count="6">
+                <button type="button" onClick="{{ h.go }}" aria-current="{{ h.current }}" style="display:flex; align-items:center; gap:8px; border:0; cursor:pointer; font:inherit; font-size:13.5px; text-align:left; padding:6px 10px; padding-left:{{ h.indent }}px; border-radius:var(--radius-md); color:{{ h.color }}; background:{{ h.bg }}" style-hover="background:color-mix(in srgb, var(--color-text) 6%, transparent)">
+                  <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ h.name }}</span>
+                  <span style="font-size:11px; color:var(--color-neutral-500)">{{ h.type }}</span>
+                  <span style="font-size:12px; font-variant-numeric:tabular-nums; color:var(--color-neutral-500); min-width:16px; text-align:right">{{ h.count }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <p style="margin:4px 10px 0; font-size:12px; color:var(--color-neutral-500)">默认库存点：上海仓库</p>
+          </div>
+          <div class="card elev-sm" style="padding:20px 24px; gap:20px">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px">
+              <h2 style="font-size:20px; margin:0">{{ hld.name }}</h2>
+              <span class="tag tag-neutral">{{ hld.type }}</span>
+              <sc-if value="{{ hld.isStock }}" hint-placeholder-val="{{ false }}"><span class="tag tag-outline">默认库存点</span></sc-if>
+              <div style="margin-left:auto; display:flex; gap:8px">
+                <button class="btn btn-secondary" type="button" disabled="{{ hld.stockDisabled }}" title="{{ hld.stockReason }}">设为默认库存点</button>
+                <button class="btn btn-primary" type="button">编辑</button>
+              </div>
+            </div>
+            <dl style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px 20px; margin:0; font-size:14px; padding:14px 16px; border-radius:var(--radius-md); background:var(--color-bg)">
+              <div><dt style="font-size:12px; color:var(--color-neutral-500)">类型</dt><dd style="margin:3px 0 0">{{ hld.type }}</dd></div>
+              <div><dt style="font-size:12px; color:var(--color-neutral-500)">上级</dt><dd style="margin:3px 0 0">{{ hld.parent }}</dd></div>
+              <div><dt style="font-size:12px; color:var(--color-neutral-500)">默认库存点</dt><dd style="margin:3px 0 0">{{ hld.stockText }}</dd></div>
+              <div><dt style="font-size:12px; color:var(--color-neutral-500)">放着的设备</dt><dd style="margin:3px 0 0"><a href="#" onClick="{{ hld.seeAssets }}">看这里的 {{ hld.count }} 台设备（含下级）→</a></dd></div>
+            </dl>
+            <sc-if value="{{ hld.note }}" hint-placeholder-val="{{ false }}">
+              <div><p style="margin:0 0 4px; font-size:12px; color:var(--color-neutral-500)">备注</p><p style="margin:0; font-size:14px">{{ hld.note }}</p></div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- Users -->
+    <sc-if value="{{ isUsers }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="账号" style="display:grid; gap:22px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <h1 style="font-size:26px; margin:0 auto 0 0">账号</h1>
+          <button class="btn btn-primary" type="button" onClick="{{ openNewUser }}">新建本地账号</button>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
+          <input class="input" aria-label="搜索账号" placeholder="搜索邮箱、姓名" style="min-height:34px; width:260px">
+          <select class="input" aria-label="角色" style="width:auto; min-height:34px; padding-top:4px; padding-bottom:4px"><option>全部角色</option><sc-for list="{{ roleNames }}" as="r" hint-placeholder-count="3"><option>{{ r }}</option></sc-for></select>
+          <select class="input" aria-label="状态" style="width:auto; min-height:34px; padding-top:4px; padding-bottom:4px"><option>全部状态</option><option>正常</option><option>已停用</option></select>
+        </div>
+        <table class="table">
+          <thead><tr><th>邮箱</th><th>姓名</th><th>角色</th><th>登录方式</th><th>状态</th></tr></thead>
+          <tbody>
+            <sc-for list="{{ userRows }}" as="u" hint-placeholder-count="8">
+              <tr data-click="1" onClick="{{ u.edit }}">
+                <td style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12.5px; color:var(--color-neutral-300)">{{ u.email }}</td>
+                <td>{{ u.name }}</td>
+                <td>{{ u.role }}</td>
+                <td style="color:var(--color-neutral-400)">{{ u.auth }}</td>
+                <td><span class="tag {{ u.tagClass }}">{{ u.status }}</span></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </sc-if>
+
+    <!-- Roles -->
+    <sc-if value="{{ isRoles }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="角色" style="display:grid; gap:22px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <h1 style="font-size:26px; margin:0 auto 0 0">角色</h1>
+          <button class="btn btn-primary" type="button" onClick="{{ openNewRole }}">新建角色</button>
+        </div>
+        <input class="input" aria-label="搜索角色" placeholder="搜索名称" style="min-height:34px; max-width:360px">
+        <table class="table">
+          <thead><tr><th>名称</th><th style="width:100%">权限</th><th>账号数</th></tr></thead>
+          <tbody>
+            <sc-for list="{{ roleRows }}" as="r" hint-placeholder-count="4">
+              <tr data-click="1" onClick="{{ r.edit }}">
+                <td style="white-space:nowrap">{{ r.name }}</td>
+                <td><sc-if value="{{ r.admin }}" hint-placeholder-val="{{ false }}"><span class="tag tag-accent">全部权限</span></sc-if><sc-if value="{{ r.notAdmin }}" hint-placeholder-val="{{ true }}"><span style="color:var(--color-neutral-400); margin-right:10px">{{ r.countText }}</span><span style="font-size:12.5px; color:var(--color-neutral-500)">{{ r.summary }}</span></sc-if></td>
+                <td style="font-variant-numeric:tabular-nums">{{ r.users }}</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+        <p style="margin:0; font-size:12px; color:var(--color-neutral-500); max-width:720px">读取（查看资产、类别、字段、型号、状态、持有方、账号）对所有人开放，不在这里控制。管理员是「全部，包括以后新增的」，不是一组勾选。</p>
+      </div>
+    </sc-if>
+
+    <!-- Audit -->
+    <sc-if value="{{ isAudit }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="审计" style="display:grid; gap:22px">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:14px">
+          <h1 style="font-size:26px; margin:0 auto 0 0">{{ auditTitle }}</h1>
+          <div class="seg">
+            <label class="seg-opt"><input type="radio" name="audit-tab" checked="{{ auditOps }}" onChange="{{ pickOps }}">操作审计</label>
+            <label class="seg-opt"><input type="radio" name="audit-tab" checked="{{ auditMoves }}" onChange="{{ pickMoves }}">流转审计</label>
+          </div>
+        </div>
+        <p style="margin:-8px 0 0; font-size:13px; color:var(--color-neutral-500); max-width:720px">{{ auditHint }}</p>
+        <sc-if value="{{ auditOps }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
+            <input class="input" aria-label="搜索" placeholder="搜索操作人、对象编号" style="min-height:34px; width:260px">
+            <select class="input" aria-label="对象类型" value="{{ auType }}" onChange="{{ onAuType }}" style="width:auto; min-height:34px; padding-top:4px; padding-bottom:4px"><option value="">全部类型</option><sc-for list="{{ auTargets }}" as="t" hint-placeholder-count="4"><option value="{{ t.key }}">{{ t.label }}</option></sc-for></select>
+            <select class="input" aria-label="操作" value="{{ auAction }}" onChange="{{ onAuAction }}" style="width:auto; min-height:34px; padding-top:4px; padding-bottom:4px"><option value="">全部操作</option><option value="新建">新建</option><option value="修改">修改</option><option value="停用">停用</option><option value="删除">删除</option><option value="重算">重算</option></select>
+            <select class="input" aria-label="操作人" style="width:auto; min-height:34px; padding-top:4px; padding-bottom:4px"><option>全部操作人</option><sc-for list="{{ userList }}" as="u" hint-placeholder-count="3"><option>{{ u }}</option></sc-for></select>
+            <button class="btn btn-secondary" type="button" style="font-weight:400"><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M40 56h176v160H40zM40 96h176M88 32v40M168 32v40"></path></svg>全部时间</button>
+            <sc-if value="{{ auFiltered }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" type="button" onClick="{{ clearAu }}" style="font-size:13px">清除筛选</button></sc-if>
+            <span style="margin-left:auto; font-size:12px; color:var(--color-neutral-500)">共 {{ auCount }} 条</span>
+          </div>
+          <table class="table">
+            <thead><tr><th>时间</th><th>操作人</th><th>操作</th><th style="width:100%">对象</th></tr></thead>
+            <tbody>
+              <sc-for list="{{ auditRows }}" as="e" hint-placeholder-count="10">
+                <tr data-click="1" onClick="{{ e.open }}">
+                  <td style="white-space:nowrap; color:var(--color-neutral-400); font-variant-numeric:tabular-nums">{{ e.when }}</td>
+                  <td style="white-space:nowrap">{{ e.actor }}</td>
+                  <td><span class="tag tag-neutral">{{ e.action }}</span></td>
+                  <td>{{ e.targetType }}<span style="margin-left:8px; font-size:12px; color:var(--color-neutral-500)">{{ e.target }}</span></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </sc-if>
+        <sc-if value="{{ auditMoves }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
+            <input class="input" aria-label="资产编号" placeholder="编号的一部分即可" value="{{ taNumber }}" onChange="{{ onTaNumber }}" style="min-height:34px; width:220px; font-family:ui-monospace, Menlo, monospace; font-size:13px">
+            <select class="input" aria-label="操作人" style="width:auto; min-height:34px; padding-top:4px; padding-bottom:4px"><option>全部操作人</option><sc-for list="{{ userList }}" as="u" hint-placeholder-count="3"><option>{{ u }}</option></sc-for></select>
+            <select class="input" aria-label="动作" value="{{ taKind }}" onChange="{{ onTaKind }}" style="width:auto; min-height:34px; padding-top:4px; padding-bottom:4px"><option value="">全部动作</option><option value="录入">录入</option><option value="签出">签出</option><option value="归还">归还</option><option value="转移">转移</option><option value="变更负责人">变更负责人</option><option value="状态变更">状态变更</option></select>
+            <button class="btn btn-secondary" type="button" style="font-weight:400"><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M40 56h176v160H40zM40 96h176M88 32v40M168 32v40"></path></svg>全部时间</button>
+            <sc-if value="{{ taFiltered }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" type="button" onClick="{{ clearTa }}" style="font-size:13px">清除筛选</button></sc-if>
+            <span style="margin-left:auto; font-size:12px; color:var(--color-neutral-500)">共 {{ taCount }} 条</span>
+          </div>
+          <table class="table">
+            <thead><tr><th>时间</th><th>资产</th><th style="width:100%">变更内容</th><th>操作人</th></tr></thead>
+            <tbody>
+              <sc-for list="{{ moveRows }}" as="e" hint-placeholder-count="10">
+                <tr data-click="1" onClick="{{ e.go }}">
+                  <td style="white-space:nowrap; color:var(--color-neutral-400); font-variant-numeric:tabular-nums">{{ e.when }}</td>
+                  <td style="white-space:nowrap; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px; color:var(--color-accent-300)">{{ e.asset }}</td>
+                  <td><span class="tag tag-neutral" style="margin-right:8px">{{ e.kind }}</span>{{ e.text }}<sc-if value="{{ e.note }}" hint-placeholder-val="{{ false }}"><span style="display:block; font-size:12px; color:var(--color-neutral-500); margin-top:2px">备注：{{ e.note }}</span></sc-if></td>
+                  <td style="white-space:nowrap">{{ e.actor }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </sc-if>
+      </div>
+    </sc-if>
+  </main>
+</div>
+
+<sc-if value="{{ dlgAudit }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeDialog }}" style="z-index:10">
+    <div class="dialog" role="dialog" aria-label="变更内容" onClick="{{ stop }}" style="width:min(640px,100%); padding:22px 24px; gap:16px">
+      <div style="display:flex; align-items:center"><div class="dialog-title">变更内容</div><button class="btn btn-ghost btn-icon" type="button" aria-label="关闭" onClick="{{ closeDialog }}" style="margin-left:auto; width:28px; height:28px; color:var(--color-neutral-400)">✕</button></div>
+      <p style="margin:0; font-size:13px; color:var(--color-neutral-400)">{{ au.describe }}</p>
+      <div style="display:grid; gap:14px; font-size:12px">
+        <sc-if value="{{ au.before }}" hint-placeholder-val="{{ false }}">
+          <div style="border-left:2px solid var(--color-neutral-700); padding-left:12px">
+            <p style="margin:0 0 6px; color:var(--color-neutral-500)">变更前</p>
+            <pre style="margin:0; padding:12px; border-radius:var(--radius-md); background:var(--color-bg); color:var(--color-neutral-400); font-family:ui-monospace, Menlo, monospace; overflow:auto">{{ au.before }}</pre>
+          </div>
+        </sc-if>
+        <div style="border-left:2px solid var(--color-accent); padding-left:12px">
+          <p style="margin:0 0 6px; color:var(--color-neutral-500)">变更后</p>
+          <pre style="margin:0; padding:12px; border-radius:var(--radius-md); background:var(--color-bg); font-family:ui-monospace, Menlo, monospace; overflow:auto">{{ au.after }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- Confirm (type-to-confirm, destructive) -->
+<sc-if value="{{ dlgConfirm }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeDialog }}" style="z-index:12">
+    <form class="dialog" role="alertdialog" aria-label="{{ cf.title }}" onClick="{{ stop }}" onSubmit="{{ cf.confirm }}" style="width:min(440px,100%); padding:22px 24px; gap:14px; box-shadow:var(--shadow-lg), inset 2px 0 0 oklch(0.64 0.16 20)">
+      <div class="dialog-title">{{ cf.title }}</div>
+      <p class="dialog-body" style="margin:0">{{ cf.description }}</p>
+      <div class="field">
+        <label for="cf-phrase" style="display:flex; align-items:center; gap:8px">此操作不可撤销。请输入 <code style="font-family:ui-monospace, Menlo, monospace; color:var(--color-text); user-select:all">{{ cf.phrase }}</code> 以确认<button class="btn btn-ghost" type="button" onClick="{{ cf.copy }}" style="margin-left:auto; font-size:11px; padding:1px 6px; color:var(--color-neutral-400)">{{ cf.copyLabel }}</button></label>
+        <input class="input" id="cf-phrase" value="{{ cf.typed }}" onChange="{{ cf.onTyped }}" autocomplete="off" style="font-family:ui-monospace, Menlo, monospace; font-size:13px">
+      </div>
+      <div class="dialog-actions"><button class="btn btn-ghost" type="button" onClick="{{ closeDialog }}">取消</button><button class="btn" type="submit" disabled="{{ cf.disabled }}" style="border-color:oklch(0.64 0.16 20); color:oklch(0.80 0.12 20)" style-hover="background:oklch(0.64 0.16 20 / 0.12)">{{ cf.confirmLabel }}</button></div>
+    </form>
+  </div>
+</sc-if>
+
+<!-- Import (three steps) -->
+<sc-if value="{{ dlgImport }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeDialog }}" style="z-index:10">
+    <div class="dialog nx-scroll" role="dialog" aria-label="批量导入" onClick="{{ stop }}" style="width:min(680px,100%); max-height:88vh; overflow-y:auto; padding:22px 24px; gap:22px">
+      <div style="display:flex; align-items:center"><div class="dialog-title">批量导入</div><button class="btn btn-ghost btn-icon" type="button" aria-label="关闭" onClick="{{ closeDialog }}" style="margin-left:auto; width:28px; height:28px; color:var(--color-neutral-400)">✕</button></div>
+      <ol style="list-style:none; margin:0; padding:0; display:grid; gap:20px">
+        <li style="display:grid; grid-template-columns:24px 1fr; gap:12px">
+          <span style="width:24px; height:24px; border-radius:50%; border:1px solid var(--color-accent); color:var(--color-accent); display:grid; place-items:center; font-size:12px">1</span>
+          <div style="display:grid; gap:10px">
+            <div style="font-size:14px; font-weight:500">下载模板</div>
+            <div style="display:flex; gap:8px; align-items:end">
+              <div class="field" style="flex:1"><label for="im-cat">导入到类别</label><select class="input" id="im-cat" style="min-height:34px; padding-top:4px; padding-bottom:4px"><sc-for list="{{ categoryOptions }}" as="o" hint-placeholder-count="3"><option>{{ o.label }}</option></sc-for></select></div>
+              <button class="btn btn-secondary" type="button" style="min-height:34px">下载模板</button>
+            </div>
+          </div>
+        </li>
+        <li style="display:grid; grid-template-columns:24px 1fr; gap:12px">
+          <span style="width:24px; height:24px; border-radius:50%; border:1px solid var(--color-accent); color:var(--color-accent); display:grid; place-items:center; font-size:12px">2</span>
+          <div style="display:grid; gap:10px">
+            <div style="font-size:14px; font-weight:500">上传并预览</div>
+            <div style="display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px dashed var(--color-neutral-700); border-radius:var(--radius-md); font-size:13px">
+              <svg width="18" height="18" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-neutral-500)"><path d="M56 216h144V88l-48-48H56zM152 40v48h48M96 152l32-32 32 32M128 120v72"></path></svg>
+              <span style="flex:1"><span style="font-family:ui-monospace, Menlo, monospace">laptops-2026-09.csv</span><span style="color:var(--color-neutral-500); margin-left:8px">5 行 · 3.1 KB</span></span>
+              <button class="btn btn-secondary" type="button" style="min-height:28px; padding:3px 10px; font-size:12.5px">重新选择</button>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:var(--radius-md); background:oklch(0.36 0.07 75 / 0.35); color:oklch(0.90 0.12 80); font-size:13px">5 行中 4 行可以导入 · 有 1 行需要修正，修正后重新上传</div>
+            <table class="table" style="font-size:13px">
+              <thead><tr><th>行号</th><th>将生成编号</th><th>sn</th><th>mac</th><th style="width:100%">问题</th></tr></thead>
+              <tbody>
+                <tr><td style="color:var(--color-neutral-500)">2</td><td style="font-family:ui-monospace, Menlo, monospace">LT-0133</td><td style="font-family:ui-monospace, Menlo, monospace">PF4K7M4B</td><td style="font-family:ui-monospace, Menlo, monospace">A4:BB:6D:12:B2:01</td><td style="color:var(--color-neutral-600)">—</td></tr>
+                <tr><td style="color:var(--color-neutral-500)">3</td><td style="font-family:ui-monospace, Menlo, monospace">LT-0134</td><td style="font-family:ui-monospace, Menlo, monospace">PF4K7M4C</td><td style="font-family:ui-monospace, Menlo, monospace">A4:BB:6D:12:B2:02</td><td style="color:var(--color-neutral-600)">—</td></tr>
+                <tr><td style="color:var(--color-neutral-500)">4</td><td style="color:var(--color-neutral-600)">—</td><td style="font-family:ui-monospace, Menlo, monospace">PF4K7M2L</td><td style="font-family:ui-monospace, Menlo, monospace">A4:BB:6D:12:B2:03</td><td style="color:oklch(0.80 0.12 20)">sn 与 LT-0128 重复（类别子树内唯一）</td></tr>
+                <tr><td style="color:var(--color-neutral-500)">5</td><td style="font-family:ui-monospace, Menlo, monospace">LT-0135</td><td style="font-family:ui-monospace, Menlo, monospace">7XQ2R95</td><td style="font-family:ui-monospace, Menlo, monospace">C8:F7:50:44:1C:10</td><td style="color:var(--color-neutral-600)">—</td></tr>
+                <tr><td style="color:var(--color-neutral-500)">6</td><td style="font-family:ui-monospace, Menlo, monospace">LT-0136</td><td style="font-family:ui-monospace, Menlo, monospace">7XQ2R96</td><td style="font-family:ui-monospace, Menlo, monospace">C8:F7:50:44:1C:11</td><td style="color:var(--color-neutral-600)">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </li>
+        <li style="display:grid; grid-template-columns:24px 1fr; gap:12px">
+          <span style="width:24px; height:24px; border-radius:50%; border:1px solid var(--color-neutral-700); color:var(--color-neutral-500); display:grid; place-items:center; font-size:12px">3</span>
+          <div style="display:grid; gap:8px">
+            <div style="font-size:14px; font-weight:500; color:var(--color-neutral-400)">确认导入</div>
+            <p style="margin:0; font-size:12.5px; color:var(--color-neutral-500)">整份文件一次写入。任何一行失败则全部不写入。</p>
+            <button class="btn btn-primary" type="button" disabled title="有 1 行需要修正" style="justify-self:start">确认导入</button>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </div>
+</sc-if>
+
+<!-- Print -->
+<sc-if value="{{ dlgPrint }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeDialog }}" style="z-index:10">
+    <form class="dialog" role="dialog" aria-label="打印标签" onClick="{{ stop }}" onSubmit="{{ pr.submit }}" style="width:min(560px,100%); padding:22px 24px; gap:16px">
+      <div style="display:flex; align-items:center"><div class="dialog-title">打印标签 <span style="font-size:13px; color:var(--color-neutral-500); margin-left:8px">{{ pr.subtitle }}</span></div><button class="btn btn-ghost btn-icon" type="button" aria-label="关闭" onClick="{{ closeDialog }}" style="margin-left:auto; width:28px; height:28px; color:var(--color-neutral-400)">✕</button></div>
+      <sc-if value="{{ pr.planning }}" hint-placeholder-val="{{ true }}">
+        <p style="margin:0; font-size:13px; color:var(--color-neutral-400)">{{ pr.splitHint }}</p>
+        <table class="table" style="font-size:13px">
+          <thead><tr><th>类别</th><th>标签</th><th>数量</th></tr></thead>
+          <tbody>
+            <sc-for list="{{ pr.groups }}" as="g" hint-placeholder-count="2">
+              <tr><td>{{ g.category }}</td><td><select class="input" style="min-height:30px; padding:3px 28px 3px 10px; font-size:13px; width:auto"><option>资产编号标签 40×20</option><option>位置标签 50×30</option></select></td><td style="font-variant-numeric:tabular-nums">{{ g.count }} 张</td></tr>
+            </sc-for>
+          </tbody>
+        </table>
+        <div class="dialog-actions"><a href="#" onClick="{{ noop }}" style="margin-right:auto; font-size:12.5px; align-self:center; white-space:nowrap">去打印服务管理标签 →</a><button class="btn btn-ghost" type="button" onClick="{{ closeDialog }}">取消</button><button class="btn btn-primary" type="submit">确认打印 {{ pr.total }} 张</button></div>
+      </sc-if>
+      <sc-if value="{{ pr.submitted }}" hint-placeholder-val="{{ false }}">
+        <table class="table" style="font-size:13px">
+          <thead><tr><th>类别</th><th>状态</th><th style="width:100%">进度</th></tr></thead>
+          <tbody>
+            <sc-for list="{{ pr.groups }}" as="g" hint-placeholder-count="2">
+              <tr><td style="white-space:nowrap">{{ g.category }}</td><td style="white-space:nowrap"><span class="tag" style="background:{{ g.bg }}; color:{{ g.fg }}">{{ g.state }}</span></td><td><span style="display:flex; align-items:center; gap:10px; min-width:200px"><span style="flex:1; height:4px; border-radius:2px; background:var(--color-neutral-900); overflow:hidden"><span style="display:block; height:100%; width:{{ g.pct }}%; background:var(--color-accent-600)"></span></span><span style="font-size:12px; color:var(--color-neutral-400); font-variant-numeric:tabular-nums">已出 {{ g.done }}/{{ g.count }} 张</span></span></td></tr>
+            </sc-for>
+          </tbody>
+        </table>
+        <p style="margin:0; font-size:12.5px; color:var(--color-neutral-500)">消耗序号 seq：133–{{ pr.seqEnd }}</p>
+        <div class="dialog-actions"><a href="#" onClick="{{ noop }}" style="margin-right:auto; font-size:12.5px; align-self:center; white-space:nowrap">去打印服务看队列 →</a><button class="btn btn-secondary" type="button" onClick="{{ closeDialog }}">关闭</button></div>
+      </sc-if>
+    </form>
+  </div>
+</sc-if>
+
+<!-- Export -->
+<sc-if value="{{ dlgExport }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeDialog }}" style="z-index:10">
+    <form class="dialog" role="dialog" aria-label="导出资产" onClick="{{ stop }}" onSubmit="{{ closeDialogSubmit }}" style="width:min(520px,100%); padding:22px 24px; gap:16px">
+      <div style="display:flex; align-items:center"><div class="dialog-title">导出资产</div><button class="btn btn-ghost btn-icon" type="button" aria-label="关闭" onClick="{{ closeDialog }}" style="margin-left:auto; width:28px; height:28px; color:var(--color-neutral-400)">✕</button></div>
+      <sc-if value="{{ ex.hasTicked }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid; gap:8px">
+          <div style="font-size:12px; color:var(--color-neutral-400)">导出范围</div>
+          <label class="radio"><input type="radio" name="ex-scope" checked="{{ ex.scopeTicked }}" onChange="{{ ex.pickTicked }}"><span class="dot"></span>已勾选的 {{ ex.ticked }} 台</label>
+          <label class="radio"><input type="radio" name="ex-scope" checked="{{ ex.scopeFiltered }}" onChange="{{ ex.pickFiltered }}"><span class="dot"></span>按当前筛选条件</label>
+          <p style="margin:0; font-size:12px; color:var(--color-neutral-500)">勾选的设备跨多个类别时，每个类别导出一个 CSV，一起打包成 zip —— 固定列之外的列是各自类别的字段，一张表放不下两种。</p>
+        </div>
+      </sc-if>
+      <sc-if value="{{ ex.noTicked }}" hint-placeholder-val="{{ true }}">
+        <p style="margin:0; font-size:13px; color:var(--color-neutral-400)">导出的是当前筛选条件下、该类别里的资产。</p>
+        <div class="field"><label for="ex-cat">资产类别</label><select class="input" id="ex-cat" style="min-height:34px; padding-top:4px; padding-bottom:4px"><sc-for list="{{ categoryOptions }}" as="o" hint-placeholder-count="3"><option>{{ o.label }}</option></sc-for></select></div>
+      </sc-if>
+      <div style="display:grid; gap:8px">
+        <div style="display:flex; align-items:center; gap:10px; font-size:12px; color:var(--color-neutral-400)">导出字段<span style="margin-left:auto; display:flex; gap:10px"><a href="#" onClick="{{ noop }}">全选</a><a href="#" onClick="{{ noop }}">全不选</a></span></div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:8px 16px; font-size:13.5px">
+          <label style="display:flex; align-items:center; gap:8px; white-space:nowrap"><input class="nx" type="checkbox" defaultChecked>序列号</label>
+          <label style="display:flex; align-items:center; gap:8px; white-space:nowrap"><input class="nx" type="checkbox" defaultChecked>MAC 地址</label>
+          <label style="display:flex; align-items:center; gap:8px; white-space:nowrap"><input class="nx" type="checkbox">IP 地址</label>
+          <label style="display:flex; align-items:center; gap:8px; white-space:nowrap"><input class="nx" type="checkbox" defaultChecked>购入日期</label>
+          <label style="display:flex; align-items:center; gap:8px; white-space:nowrap"><input class="nx" type="checkbox">保修到期</label>
+          <label style="display:flex; align-items:center; gap:8px; white-space:nowrap"><input class="nx" type="checkbox">处理器</label>
+        </div>
+        <p style="margin:0; font-size:12px; color:var(--color-neutral-500)">固定列（编号、类别、状态、持有方、负责人、型号、厂商、备注、建档时间）始终导出。</p>
+      </div>
+      <div class="dialog-actions"><button class="btn btn-ghost" type="button" onClick="{{ closeDialog }}">取消</button><button class="btn btn-primary" type="submit">导出</button></div>
+    </form>
+  </div>
+</sc-if>
+
+<!-- Expression help -->
+<sc-if value="{{ dlgExpr }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeDialog }}" style="z-index:10">
+    <div class="dialog nx-scroll" role="dialog" aria-label="表达式怎么写" onClick="{{ stop }}" style="width:min(640px,100%); max-height:88vh; overflow-y:auto; padding:22px 24px; gap:18px; font-size:13px">
+      <div style="display:flex; align-items:center"><div class="dialog-title">表达式怎么写</div><button class="btn btn-ghost btn-icon" type="button" aria-label="关闭" onClick="{{ closeDialog }}" style="margin-left:auto; width:28px; height:28px; color:var(--color-neutral-400)">✕</button></div>
+      <p style="margin:0; color:var(--color-neutral-400)">表达式把一台设备的若干字段算成一个值 —— 通常是它的编号。</p>
+      <section style="display:grid; gap:6px"><h3 style="font-size:14px; margin:0">能读什么</h3>
+        <table class="table" style="font-size:12.5px"><tbody>
+          <sc-for list="{{ exprReads }}" as="r" hint-placeholder-count="6"><tr><td style="font-family:ui-monospace, Menlo, monospace; color:var(--color-accent-300); white-space:nowrap">{{ r.k }}</td><td style="color:var(--color-neutral-300)">{{ r.v }}</td></tr></sc-for>
+        </tbody></table>
+        <p style="margin:0; font-size:12px; color:var(--color-neutral-500)">只有这六个。写错名字会被当场拒绝，而不是算出一个含「空」的编号。</p>
+      </section>
+      <section style="display:grid; gap:6px"><h3 style="font-size:14px; margin:0">例子</h3>
+        <table class="table" style="font-size:12.5px"><tbody>
+          <sc-for list="{{ exprExamples }}" as="r" hint-placeholder-count="6"><tr><td style="font-family:ui-monospace, Menlo, monospace; color:var(--color-accent-300)">{{ r.k }}</td><td style="color:var(--color-neutral-300); white-space:nowrap">{{ r.v }}</td></tr></sc-for>
+        </tbody></table>
+      </section>
+      <section style="display:grid; gap:6px"><h3 style="font-size:14px; margin:0">管道</h3>
+        <p style="margin:0; color:var(--color-neutral-300)">x | f() 等同于 f(x)，多个函数串起来时从左往右读更顺。</p>
+        <code style="display:block; padding:8px 12px; border-radius:var(--radius-md); background:var(--color-bg); font-family:ui-monospace, Menlo, monospace; font-size:12.5px; color:var(--color-accent-300)">attrs.mac | trunc(6) | lower()  等同于  lower(trunc(attrs.mac, 6))</code>
+      </section>
+      <section style="display:grid; gap:6px"><h3 style="font-size:14px; margin:0">可用函数</h3>
+        <table class="table" style="font-size:12.5px"><tbody>
+          <sc-for list="{{ exprFuncs }}" as="r" hint-placeholder-count="9"><tr><td style="font-family:ui-monospace, Menlo, monospace; color:var(--color-accent-300); white-space:nowrap">{{ r.k }}</td><td style="color:var(--color-neutral-300)">{{ r.v }}</td></tr></sc-for>
+        </tbody></table>
+        <p style="margin:0; font-size:12px; color:var(--color-neutral-500)">另有 len、string、hasPrefix、split 等常用内建函数可用。</p>
+      </section>
+      <section style="display:grid; gap:6px"><h3 style="font-size:14px; margin:0">运算符</h3>
+        <table class="table" style="font-size:12.5px"><tbody>
+          <sc-for list="{{ exprOps }}" as="r" hint-placeholder-count="6"><tr><td style="font-family:ui-monospace, Menlo, monospace; color:var(--color-accent-300); white-space:nowrap">{{ r.k }}</td><td style="color:var(--color-neutral-300)">{{ r.v }}</td></tr></sc-for>
+        </tbody></table>
+      </section>
+      <section style="display:grid; gap:6px"><h3 style="font-size:14px; margin:0">两条规矩</h3>
+        <ol style="margin:0; padding-left:18px; color:var(--color-neutral-300); display:grid; gap:4px"><li>结果不能为空，也不能含有取不到值的字段 —— 那样的编号会被拒绝写入。</li><li>把表达式绑定到类别时，它读到的每个字段都必须已绑定且标为必填，否则绑定会被拒绝。</li></ol>
+      </section>
+      <div class="dialog-actions"><button class="btn btn-primary" type="button" onClick="{{ closeDialog }}">知道了</button></div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dlgUser }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeDialog }}" style="z-index:10">
+    <form class="dialog" role="dialog" aria-label="{{ ud.title }}" onClick="{{ stop }}" onSubmit="{{ closeDialogSubmit }}" style="width:min(480px,100%); padding:22px 24px; gap:16px">
+      <div style="display:flex; align-items:center"><div class="dialog-title">{{ ud.title }}</div><button class="btn btn-ghost btn-icon" type="button" aria-label="关闭" onClick="{{ closeDialog }}" style="margin-left:auto; width:28px; height:28px; color:var(--color-neutral-400)">✕</button></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+        <div class="field"><label for="u-email">邮箱<sc-if value="{{ ud.isEdit }}" hint-placeholder-val="{{ false }}"><span style="color:var(--color-neutral-600)"> · 不可修改</span></sc-if></label><input class="input" id="u-email" type="email" defaultValue="{{ ud.email }}" disabled="{{ ud.isEdit }}" placeholder="name@yourcompany.com"></div>
+        <div class="field"><label for="u-name">姓名</label><input class="input" id="u-name" defaultValue="{{ ud.name }}"></div>
+        <div class="field"><label for="u-role">角色</label><select class="input" id="u-role" defaultValue="{{ ud.role }}" style="min-height:34px; padding-top:4px; padding-bottom:4px"><option value="">选择</option><sc-for list="{{ roleNames }}" as="r" hint-placeholder-count="3"><option value="{{ r }}">{{ r }}</option></sc-for></select></div>
+        <sc-if value="{{ ud.isNew }}" hint-placeholder-val="{{ false }}"><div class="field"><label for="u-pw">密码</label><input class="input" id="u-pw" type="password"></div></sc-if>
+      </div>
+      <sc-if value="{{ ud.isEdit }}" hint-placeholder-val="{{ false }}">
+        <p style="margin:0; font-size:12px; color:var(--color-neutral-500)">邮箱不可修改：它是单点登录的匹配依据，也是流水里的身份。</p>
+        <div style="display:flex; gap:8px"><button class="btn btn-secondary" type="button" disabled="{{ ud.sso }}" title="{{ ud.ssoReason }}" style="min-height:30px; padding:4px 10px; font-size:13px">重置密码</button><button class="btn btn-secondary" type="button" onClick="{{ ud.toggle }}" style="min-height:30px; padding:4px 10px; font-size:13px; color:oklch(0.72 0.12 20)">{{ ud.toggleLabel }}</button></div>
+      </sc-if>
+      <div class="dialog-actions"><button class="btn btn-ghost" type="button" onClick="{{ closeDialog }}">取消</button><button class="btn btn-primary" type="submit">{{ ud.submit }}</button></div>
+    </form>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dlgRole }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeDialog }}" style="z-index:10">
+    <form class="dialog" role="dialog" aria-label="{{ rd.title }}" onClick="{{ stop }}" onSubmit="{{ closeDialogSubmit }}" style="width:min(560px,100%); padding:22px 24px; gap:16px">
+      <div style="display:flex; align-items:center"><div class="dialog-title">{{ rd.title }}</div><button class="btn btn-ghost btn-icon" type="button" aria-label="关闭" onClick="{{ closeDialog }}" style="margin-left:auto; width:28px; height:28px; color:var(--color-neutral-400)">✕</button></div>
+      <div class="field"><label for="r-name">名称</label><input class="input" id="r-name" defaultValue="{{ rd.name }}"></div>
+      <sc-if value="{{ rd.admin }}" hint-placeholder-val="{{ false }}"><p style="margin:0; font-size:13px; color:var(--color-neutral-400); padding:10px 12px; border-radius:var(--radius-md); background:var(--color-bg)">管理员的权限不是一组勾选，而是「全部，包括以后新增的」。这里只能改名。</p></sc-if>
+      <sc-if value="{{ rd.notAdmin }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid; gap:8px">
+          <div style="font-size:12px; color:var(--color-neutral-400)">权限 <span style="color:var(--color-neutral-600)">· 勾中的事情这个角色能做；没勾的按钮会灰掉并说明缺什么</span></div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:8px 16px; font-size:13.5px; align-items:start">
+            <sc-for list="{{ rd.perms }}" as="p" hint-placeholder-count="19">
+              <label style="display:flex; align-items:center; gap:8px; white-space:nowrap"><input class="nx" type="checkbox" defaultChecked="{{ p.on }}">{{ p.label }}</label>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <div class="dialog-actions"><sc-if value="{{ rd.isEdit }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" type="button" disabled="{{ rd.hasUsers }}" title="{{ rd.deleteReason }}" onClick="{{ rd.remove }}" style="margin-right:auto; color:oklch(0.72 0.12 20)">删除角色</button></sc-if><button class="btn btn-ghost" type="button" onClick="{{ closeDialog }}">取消</button><button class="btn btn-primary" type="submit">{{ rd.submit }}</button></div>
+    </form>
+  </div>
+</sc-if>
+
+<!-- ─── Dialogs ─── -->
+<sc-if value="{{ dlgSettings }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeDialog }}" style="z-index:10">
+    <div class="dialog" role="dialog" aria-label="设置" onClick="{{ stop }}" style="width:min(560px,100%); padding:22px 24px; gap:20px">
+      <div style="display:flex; align-items:center"><div class="dialog-title">设置</div><button class="btn btn-ghost btn-icon" type="button" aria-label="关闭" onClick="{{ closeDialog }}" style="margin-left:auto; width:28px; height:28px; color:var(--color-neutral-400)">✕</button></div>
+      <div style="display:grid; gap:8px">
+        <div style="font-size:13px; color:var(--color-neutral-300)">语言</div>
+        <div class="seg" style="justify-self:start">
+          <label class="seg-opt"><input type="radio" name="lang" defaultChecked>中文</label>
+          <label class="seg-opt"><input type="radio" name="lang">English</label>
+        </div>
+        <p style="margin:0; font-size:12px; color:var(--color-neutral-500)">语言跟随账号，换一台电脑也是这个设置。</p>
+      </div>
+      <div style="display:grid; gap:8px">
+        <div style="display:flex; align-items:center"><div style="font-size:13px; color:var(--color-neutral-300)">API 密钥</div><button class="btn btn-primary" type="button" style="margin-left:auto; min-height:28px; padding:3px 10px; font-size:12.5px">新建密钥</button></div>
+        <p style="margin:0; font-size:12px; color:var(--color-neutral-500)">带上密钥即可用脚本调用接口，权限与你本人相同。密钥只在创建时显示一次。</p>
+        <table class="table" style="font-size:13px">
+          <thead><tr><th>名称</th><th>前缀</th><th>有效期至</th><th>最近使用</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>盘点脚本</td><td style="font-family:ui-monospace, Menlo, monospace; font-size:12px">nxk_7f3a…</td><td style="font-variant-numeric:tabular-nums">2026-12-31</td><td style="color:var(--color-neutral-400)">今天 09:12</td><td style="text-align:right"><button class="btn btn-ghost" type="button" style="font-size:12px; padding:2px 6px; color:var(--color-neutral-400)">撤销</button></td></tr>
+            <tr><td>打印服务</td><td style="font-family:ui-monospace, Menlo, monospace; font-size:12px">nxk_c21e…</td><td style="color:var(--color-neutral-400)">长期有效</td><td style="color:var(--color-neutral-400)">2026-09-18</td><td style="text-align:right"><button class="btn btn-ghost" type="button" style="font-size:12px; padding:2px 6px; color:var(--color-neutral-400)">撤销</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:grid; gap:6px">
+        <div style="font-size:13px; color:var(--color-neutral-300)">接口文档</div>
+        <p style="margin:0; font-size:12px; color:var(--color-neutral-500)">带着当前登录状态直接调试接口（Swagger UI，随程序内置，不依赖外网）。</p>
+        <a href="#" onClick="{{ noop }}" style="font-size:13px; justify-self:start">打开接口文档 →</a>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dlgTransfer }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeDialog }}" style="z-index:10">
+    <form class="dialog" role="dialog" aria-label="流转" onClick="{{ stop }}" onSubmit="{{ submitTransfer }}" style="width:min(520px,100%); padding:22px 24px; gap:16px">
+      <div style="display:flex; align-items:center"><div class="dialog-title">流转 <span style="font-size:13px; color:var(--color-neutral-500); margin-left:8px">{{ transferTargets }}</span></div><button class="btn btn-ghost btn-icon" type="button" aria-label="关闭" onClick="{{ closeDialog }}" style="margin-left:auto; width:28px; height:28px; color:var(--color-neutral-400)">✕</button></div>
+      <div style="display:grid; gap:6px">
+        <div style="font-size:12px; color:var(--color-neutral-400)">操作</div>
+        <div class="seg" style="justify-self:start">
+          <sc-for list="{{ transferKinds }}" as="k" hint-placeholder-count="5">
+            <label class="seg-opt"><input type="radio" name="tk" value="{{ k.key }}" checked="{{ k.checked }}" onChange="{{ k.pick }}">{{ k.label }}</label>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+        <div class="field"><label for="t-target">目标</label>
+          <select class="input" id="t-target" style="min-height:34px; padding-top:4px; padding-bottom:4px"><sc-for list="{{ holderList }}" as="h" hint-placeholder-count="3"><option>{{ h }}</option></sc-for></select>
+        </div>
+        <div class="field"><label for="t-owner">负责人</label>
+          <select class="input" id="t-owner" style="min-height:34px; padding-top:4px; padding-bottom:4px"><option>不变</option><sc-for list="{{ userList }}" as="u" hint-placeholder-count="3"><option>{{ u }}</option></sc-for></select>
+        </div>
+      </div>
+      <div class="field"><label for="t-note">本次流转的备注</label><textarea class="input" id="t-note" rows="2" placeholder="记这一次移动的缘由" style="min-height:64px"></textarea></div>
+      <div class="dialog-actions"><button class="btn btn-ghost" type="button" onClick="{{ closeDialog }}">取消</button><button class="btn btn-primary" type="submit">提交</button></div>
+    </form>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dlgStatus }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeDialog }}" style="z-index:10">
+    <form class="dialog" role="dialog" aria-label="{{ statusDlgTitle }}" onClick="{{ stop }}" onSubmit="{{ saveStatus }}" style="width:min(460px,100%); padding:22px 24px; gap:16px">
+      <div style="display:flex; align-items:center"><div class="dialog-title">{{ statusDlgTitle }}</div><button class="btn btn-ghost btn-icon" type="button" aria-label="关闭" onClick="{{ closeDialog }}" style="margin-left:auto; width:28px; height:28px; color:var(--color-neutral-400)">✕</button></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+        <div class="field"><label for="s-key">键名 <span style="color:var(--color-neutral-600)">· 建好后不可更改</span></label><input class="input" id="s-key" value="{{ sd.key }}" onChange="{{ sd.onKey }}" disabled="{{ sd.keyFixed }}" placeholder="小写字母、数字与下划线" style="font-family:ui-monospace, Menlo, monospace; font-size:13px"></div>
+        <div class="field"><label for="s-label">显示名</label><input class="input" id="s-label" value="{{ sd.label }}" onChange="{{ sd.onLabel }}"></div>
+      </div>
+      <div class="field"><label for="s-color">颜色</label>
+        <div style="display:flex; align-items:center; gap:12px">
+          <select class="input" id="s-color" value="{{ sd.color }}" onChange="{{ sd.onColor }}" style="width:160px; min-height:34px; padding-top:4px; padding-bottom:4px"><sc-for list="{{ paletteList }}" as="p" hint-placeholder-count="8"><option value="{{ p.key }}">{{ p.label }}</option></sc-for></select>
+          <span class="tag" style="background:{{ sd.bg }}; color:{{ sd.fg }}">{{ sd.preview }}</span>
+        </div>
+      </div>
+      <sc-if value="{{ sd.isNew }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid; gap:8px; font-size:13.5px">
+          <div style="font-size:12px; color:var(--color-neutral-400)">行为</div>
+          <label style="display:flex; align-items:center; gap:8px"><input class="nx" type="checkbox" defaultChecked>计入类别分布</label>
+          <label style="display:flex; align-items:center; gap:8px"><input class="nx" type="checkbox">终态 <span style="color:var(--color-neutral-500); font-size:12px">终态的设备不能再转到别的状态</span></label>
+        </div>
+      </sc-if>
+      <sc-if value="{{ sd.builtin }}" hint-placeholder-val="{{ false }}"><p style="margin:0; font-size:12px; color:var(--color-neutral-500)">内置状态只能改名与换色，行为固定。</p></sc-if>
+      <div class="dialog-actions"><button class="btn btn-ghost" type="button" onClick="{{ closeDialog }}">取消</button><button class="btn btn-primary" type="submit">保存</button></div>
+    </form>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dlgCategory }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeDialog }}" style="z-index:10">
+    <form class="dialog" role="dialog" aria-label="编辑类别" onClick="{{ stop }}" onSubmit="{{ closeDialogSubmit }}" style="width:min(480px,100%); padding:22px 24px; gap:16px">
+      <div style="display:flex; align-items:center"><div class="dialog-title">编辑类别</div><button class="btn btn-ghost btn-icon" type="button" aria-label="关闭" onClick="{{ closeDialog }}" style="margin-left:auto; width:28px; height:28px; color:var(--color-neutral-400)">✕</button></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+        <div class="field"><label for="c-code">代号（英文，模板中可用）</label><input class="input" id="c-code" defaultValue="{{ cat.code }}" style="font-family:ui-monospace, Menlo, monospace; font-size:13px"></div>
+        <div class="field"><label for="c-name">名称</label><input class="input" id="c-name" defaultValue="{{ cat.name }}"></div>
+      </div>
+      <div class="field"><label for="c-parent">上级类别</label><select class="input" id="c-parent" style="min-height:34px; padding-top:4px; padding-bottom:4px"><option>无（作为顶层类别）</option><sc-for list="{{ categoryOptions }}" as="o" hint-placeholder-count="3"><option>{{ o.label }}</option></sc-for></select></div>
+      <div class="field"><label for="c-dk">编号字段 <span style="color:var(--color-neutral-600)">· 只能选择标为唯一的字段</span></label><select class="input" id="c-dk" style="min-height:34px; padding-top:4px; padding-bottom:4px"><option>asset_no（资产编号）</option><option>sn（序列号）</option><option>mac（MAC 地址）</option><option>未设置（显示 UUID 前 8 位）</option></select></div>
+      <div style="display:grid; gap:6px; font-size:13.5px">
+        <div style="font-size:12px; color:var(--color-neutral-400)">可打印的标签</div>
+        <label style="display:flex; align-items:center; gap:8px"><input class="nx" type="checkbox" defaultChecked>资产编号标签 40×20</label>
+        <label style="display:flex; align-items:center; gap:8px"><input class="nx" type="checkbox">位置标签 50×30</label>
+      </div>
+      <div class="dialog-actions"><button class="btn btn-ghost" type="button" onClick="{{ deleteCategory }}" style="margin-right:auto; color:oklch(0.72 0.12 20)">删除类别</button><button class="btn btn-ghost" type="button" onClick="{{ closeDialog }}">取消</button><button class="btn btn-primary" type="submit">保存</button></div>
+    </form>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dlgNewAsset }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeDialog }}" style="z-index:10">
+    <form class="dialog" role="dialog" aria-label="录入设备" onClick="{{ stop }}" onSubmit="{{ closeDialogSubmit }}" style="width:min(560px,100%); padding:22px 24px; gap:16px">
+      <div style="display:flex; align-items:center"><div class="dialog-title">录入设备</div><button class="btn btn-ghost btn-icon" type="button" aria-label="关闭" onClick="{{ closeDialog }}" style="margin-left:auto; width:28px; height:28px; color:var(--color-neutral-400)">✕</button></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+        <div class="field"><label for="n-cat">类别</label><select class="input" id="n-cat" style="min-height:34px; padding-top:4px; padding-bottom:4px"><sc-for list="{{ categoryOptions }}" as="o" hint-placeholder-count="3"><option>{{ o.label }}</option></sc-for></select></div>
+        <div class="field"><label for="n-model">设备型号</label><select class="input" id="n-model" style="min-height:34px; padding-top:4px; padding-bottom:4px"><option>未指定型号</option><sc-for list="{{ modelOptions }}" as="o" hint-placeholder-count="3"><option>{{ o }}</option></sc-for></select></div>
+        <div class="field"><label for="n-sn">序列号 <span style="color:var(--color-neutral-600)">· 唯一</span></label><input class="input" id="n-sn" placeholder="FOC2345X1AB" style="font-family:ui-monospace, Menlo, monospace; font-size:13px"></div>
+        <div class="field"><label for="n-mac">MAC 地址 <span style="color:var(--color-neutral-600)">· 唯一</span></label><input class="input" id="n-mac" placeholder="00:1B:44:11:3A:B7" style="font-family:ui-monospace, Menlo, monospace; font-size:13px"></div>
+        <div class="field"><label for="n-date">购入日期</label><input class="input" id="n-date" type="date"></div>
+        <div class="field"><label for="n-holder">持有方</label><select class="input" id="n-holder" style="min-height:34px; padding-top:4px; padding-bottom:4px"><sc-for list="{{ holderList }}" as="h" hint-placeholder-count="3"><option>{{ h }}</option></sc-for></select></div>
+      </div>
+      <p style="margin:0; font-size:12px; color:var(--color-neutral-500)">编号由该类别的显示编号字段推导，无需填写。</p>
+      <div class="dialog-actions"><button class="btn btn-ghost" type="button" onClick="{{ closeDialog }}">取消</button><button class="btn btn-primary" type="submit">录入</button></div>
+    </form>
+  </div>
+</sc-if>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;overview&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;overview&quot;,&quot;assets&quot;,&quot;asset&quot;,&quot;categories&quot;,&quot;fields&quot;,&quot;models&quot;,&quot;statuses&quot;,&quot;holders&quot;,&quot;users&quot;,&quot;roles&quot;,&quot;audit&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;原型&quot;},&quot;compactRail&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;布局&quot;}}">
+const PALETTE = {
+  slate:  { bg: 'oklch(0.34 0.02 260)', fg: 'oklch(0.86 0.02 260)', bar: 'oklch(0.62 0.03 260)', label: '石墨' },
+  green:  { bg: 'oklch(0.34 0.06 150)', fg: 'oklch(0.88 0.10 150)', bar: 'oklch(0.66 0.12 150)', label: '绿' },
+  blue:   { bg: 'oklch(0.34 0.07 250)', fg: 'oklch(0.88 0.08 250)', bar: 'oklch(0.66 0.12 250)', label: '蓝' },
+  amber:  { bg: 'oklch(0.36 0.07 75)',  fg: 'oklch(0.90 0.12 80)',  bar: 'oklch(0.72 0.14 75)',  label: '琥珀' },
+  red:    { bg: 'oklch(0.34 0.08 20)',  fg: 'oklch(0.88 0.10 20)',  bar: 'oklch(0.64 0.16 20)',  label: '红' },
+  violet: { bg: 'oklch(0.34 0.08 300)', fg: 'oklch(0.88 0.08 300)', bar: 'oklch(0.66 0.13 300)', label: '紫' },
+  teal:   { bg: 'oklch(0.34 0.05 190)', fg: 'oklch(0.88 0.08 190)', bar: 'oklch(0.66 0.10 190)', label: '青' },
+  rose:   { bg: 'oklch(0.34 0.07 350)', fg: 'oklch(0.88 0.09 350)', bar: 'oklch(0.66 0.14 350)', label: '玫红' },
+};
+const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
+const CATS = [
+  { id: 'net', code: 'NET', name: '网络设备', parent: null, dk: 'asset_no', preset: '资产编号标签 40×20' },
+  { id: 'sw', code: 'SW', name: '交换机', parent: 'net', dk: 'asset_no', preset: '资产编号标签 40×20' },
+  { id: 'rt', code: 'RT', name: '路由器', parent: 'net', dk: 'asset_no', preset: '资产编号标签 40×20' },
+  { id: 'ap', code: 'AP', name: '无线 AP', parent: 'net', dk: 'asset_no', preset: '资产编号标签 40×20、位置标签 50×30' },
+  { id: 'end', code: 'END', name: '终端', parent: null, dk: 'asset_no', preset: '资产编号标签 40×20' },
+  { id: 'lt', code: 'LT', name: '笔记本', parent: 'end', dk: 'asset_no', preset: '资产编号标签 40×20' },
+  { id: 'dt', code: 'DT', name: '台式机', parent: 'end', dk: 'asset_no', preset: '资产编号标签 40×20' },
+  { id: 'mon', code: 'MON', name: '显示器', parent: 'end', dk: 'sn', preset: '无' },
+  { id: 'srv', code: 'SRV', name: '服务器', parent: null, dk: 'asset_no', preset: '资产编号标签 40×20' },
+  { id: 'prn', code: 'PRN', name: '打印设备', parent: null, dk: 'sn', preset: '无' },
+];
+const FIELDS = [
+  { id: 'asset_no', key: 'asset_no', label: '资产编号', type: 'computed', unique: true, group: '基础信息', template: 'category.code + "-" + pad(attrs.seq, 4)', bindings: [['类别', '网络设备', true], ['类别', '终端', true], ['类别', '服务器', true]] },
+  { id: 'sn', key: 'sn', label: '序列号', type: 'text', unique: true, group: '基础信息', rule: '^[A-Z0-9]{8,16}$', bindings: [['类别', '网络设备', true], ['类别', '终端', true], ['类别', '服务器', true], ['类别', '打印设备', true]] },
+  { id: 'seq', key: 'seq', label: '序号', type: 'number', unique: false, group: '基础信息', rule: 'min 1 · max 9999', bindings: [['类别', '网络设备', true], ['类别', '终端', true], ['类别', '服务器', true]] },
+  { id: 'purchase_date', key: 'purchase_date', label: '购入日期', type: 'date', unique: false, group: '采购', bindings: [['类别', '网络设备', false], ['类别', '终端', true], ['类别', '服务器', true], ['类别', '打印设备', false]] },
+  { id: 'warranty_until', key: 'warranty_until', label: '保修到期', type: 'date', unique: false, group: '采购', bindings: [['类别', '网络设备', false], ['类别', '终端', false], ['类别', '服务器', false]] },
+  { id: 'mac', key: 'mac', label: 'MAC 地址', type: 'mac', unique: true, group: '网络', bindings: [['类别', '网络设备', true], ['类别', '终端', false], ['类别', '服务器', true]] },
+  { id: 'ip', key: 'ip', label: 'IP 地址', type: 'ip', unique: false, group: '网络', bindings: [['类别', '网络设备', false], ['类别', '服务器', false]] },
+  { id: 'port_count', key: 'port_count', label: '端口数', type: 'number', unique: false, group: '网络', rule: 'min 4 · max 96', bindings: [['类别', '交换机', true]] },
+  { id: 'firmware', key: 'firmware', label: '固件版本', type: 'text', unique: false, group: null, mode: 'device', bindings: [['厂商', 'Cisco', false], ['厂商', 'H3C', false]] },
+  { id: 'cpu', key: 'cpu', label: '处理器', type: 'text', unique: false, group: null, mode: 'device', bindings: [['型号', 'ThinkPad T14 Gen 4', false], ['型号', 'Latitude 5540', false], ['型号', 'PowerEdge R760', false]] },
+  { id: 'ram_gb', key: 'ram_gb', label: '内存 (GB)', type: 'number', unique: false, group: null, mode: 'device', rule: 'min 4 · max 2048', bindings: [['厂商', 'Dell', false], ['厂商', 'Lenovo', false]] },
+  { id: 'screen_in', key: 'screen_in', label: '屏幕尺寸', type: 'number', unique: false, group: null, bindings: [['类别', '显示器', true], ['类别', '笔记本', false]] },
+];
+const TYPES = { text: '文本', number: '数字', boolean: '布尔', date: '日期', mac: 'MAC 地址', ip: 'IP 地址', url: '网址', computed: '计算项' };
+const VENDORS = ['Cisco', 'H3C', 'Dell', 'Lenovo', 'Apple', 'HP'];
+const MODELS = [
+  { id: 'c9300', name: 'Catalyst 9300-48P', vendor: 'Cisco', note: '', defaults: [['port_count', '48'], ['firmware', '17.9.4a']], fields: [['固件版本', '厂商']] },
+  { id: 'isr4331', name: 'ISR 4331', vendor: 'Cisco', note: '已停产，仅维护存量。', defaults: [['firmware', '17.6.5']], fields: [['固件版本', '厂商']] },
+  { id: 's5130', name: 'S5130S-28P-EI', vendor: 'H3C', note: '', defaults: [['port_count', '28']], fields: [['固件版本', '厂商']] },
+  { id: 'wa6320', name: 'WA6320', vendor: 'H3C', note: '', defaults: [], fields: [['固件版本', '厂商']] },
+  { id: 'lat5540', name: 'Latitude 5540', vendor: 'Dell', note: '', defaults: [['cpu', 'Core i7-1365U'], ['ram_gb', '32'], ['screen_in', '15.6']], fields: [['处理器', '本型号'], ['内存 (GB)', '厂商']] },
+  { id: 'r760', name: 'PowerEdge R760', vendor: 'Dell', note: '', defaults: [['cpu', 'Xeon Gold 6430 ×2'], ['ram_gb', '512']], fields: [['处理器', '本型号'], ['内存 (GB)', '厂商']] },
+  { id: 'r740', name: 'PowerEdge R740', vendor: 'Dell', note: '2025 年起不再续保。', defaults: [['ram_gb', '256']], fields: [['内存 (GB)', '厂商']] },
+  { id: 'u2723', name: 'U2723QE', vendor: 'Dell', note: '', defaults: [['screen_in', '27']], fields: [['内存 (GB)', '厂商']] },
+  { id: 't14', name: 'ThinkPad T14 Gen 4', vendor: 'Lenovo', note: '', defaults: [['cpu', 'Core i5-1335U'], ['ram_gb', '16'], ['screen_in', '14']], fields: [['处理器', '本型号'], ['内存 (GB)', '厂商']] },
+  { id: 'm70q', name: 'ThinkCentre M70q Gen 4', vendor: 'Lenovo', note: '', defaults: [['ram_gb', '16']], fields: [['内存 (GB)', '厂商']] },
+  { id: 'mbp14', name: 'MacBook Pro 14 (M3)', vendor: 'Apple', note: '', defaults: [['screen_in', '14.2']], fields: [] },
+  { id: 'm428', name: 'LaserJet Pro M428fdw', vendor: 'HP', note: '', defaults: [], fields: [] },
+];
+const HOLDERS = ['上海总部', '研发部', '财务部', '上海仓库', '北京办公室', '深圳分公司'];
+const USERS = ['王磊', '李婷', '张伟', '陈思', '刘洋', '赵敏', '周杰', '孙丽'];
+const ASSETS = [
+  { id: 'a1', sn: 'NET-SW-0041', cat: 'sw', status: 'in_use', holder: '研发部', owner: '王磊', model: 'c9300', note: '机房 A 排 3 号机柜，核心接入。', created: '2024-03-12', home: '上海仓库', attrs: { sn: 'FOC2345X1AB', mac: '00:1B:44:11:3A:B7', ip: '10.20.0.41', port_count: '48', firmware: '17.9.4a', purchase_date: '2024-03-12', warranty_until: '2027-03-11', seq: '41' } },
+  { id: 'a2', sn: 'NET-SW-0042', cat: 'sw', status: 'in_stock', holder: '上海仓库', owner: '', model: 's5130', note: '', created: '2024-03-12', home: '上海仓库', attrs: { sn: '219801A1Q9H', mac: '3C:8C:40:2A:11:0F', port_count: '28', firmware: '7.1.070', purchase_date: '2024-03-12', seq: '42' } },
+  { id: 'a3', sn: 'NET-RT-0007', cat: 'rt', status: 'in_use', holder: '北京办公室', owner: '李婷', model: 'isr4331', note: '北京出口路由，双线。', created: '2022-11-03', home: '北京办公室', attrs: { sn: 'FDO2213A0KX', mac: '70:0F:6A:9C:21:44', ip: '10.30.0.1', firmware: '17.6.5', purchase_date: '2022-11-03', seq: '7' } },
+  { id: 'a4', sn: 'NET-AP-0113', cat: 'ap', status: 'in_repair', holder: '上海仓库', owner: '张伟', model: 'wa6320', note: '2.4G 射频异常，已送修。', created: '2023-06-20', home: '研发部', attrs: { sn: '219801A2Z7X', mac: '84:D9:31:7B:0C:A2', ip: '10.20.5.113', firmware: '7.1.064', purchase_date: '2023-06-20', seq: '113' } },
+  { id: 'a5', sn: 'LT-0128', cat: 'lt', status: 'in_use', holder: '研发部', owner: '陈思', model: 't14', note: '', created: '2024-09-02', home: '上海仓库', attrs: { sn: 'PF4K7M2L', mac: 'A4:BB:6D:12:9E:03', cpu: 'Core i5-1335U', ram_gb: '16', screen_in: '14', purchase_date: '2024-09-02', warranty_until: '2027-09-01', seq: '128' } },
+  { id: 'a6', sn: 'LT-0129', cat: 'lt', status: 'in_use', holder: '财务部', owner: '刘洋', model: 'lat5540', note: '', created: '2024-09-02', home: '上海仓库', attrs: { sn: '7XQ2R93', mac: 'C8:F7:50:44:1A:BC', cpu: 'Core i7-1365U', ram_gb: '32', screen_in: '15.6', purchase_date: '2024-09-02', warranty_until: '2027-09-01', seq: '129' } },
+  { id: 'a7', sn: 'LT-0130', cat: 'lt', status: 'in_stock', holder: '上海仓库', owner: '', model: 'mbp14', note: '备机。', created: '2025-01-15', home: '上海仓库', attrs: { sn: 'C02ZK1QWMD6T', mac: 'F0:18:98:3B:77:E1', screen_in: '14.2', purchase_date: '2025-01-15', warranty_until: '2026-01-14', seq: '130' } },
+  { id: 'a8', sn: 'LT-0131', cat: 'lt', status: 'lost', holder: '深圳分公司', owner: '赵敏', model: 'lat5540', note: '2026-08 出差后未归还，已报备。', created: '2024-09-02', home: '上海仓库', attrs: { sn: '7XQ2R94', mac: 'C8:F7:50:44:1B:02', cpu: 'Core i7-1365U', ram_gb: '32', screen_in: '15.6', purchase_date: '2024-09-02', seq: '131' } },
+  { id: 'a9', sn: 'DT-0052', cat: 'dt', status: 'in_use', holder: '财务部', owner: '周杰', model: 'm70q', note: '', created: '2023-04-18', home: '财务部', attrs: { sn: 'MJ0C9X1T', mac: '54:05:DB:8A:3C:1D', ram_gb: '16', purchase_date: '2023-04-18', seq: '52' } },
+  { id: 'a10', sn: 'MON-0210', cat: 'mon', status: 'in_use', holder: '研发部', owner: '陈思', model: 'u2723', note: '', created: '2024-09-02', home: '上海仓库', attrs: { sn: 'CN0D7K9X', screen_in: '27', purchase_date: '2024-09-02', seq: '210' } },
+  { id: 'a11', sn: 'SRV-0003', cat: 'srv', status: 'in_use', holder: '上海总部', owner: '王磊', model: 'r760', note: '虚拟化宿主机 esx-03。', created: '2024-05-06', home: '上海总部', attrs: { sn: 'J7R2K93', mac: 'B0:7B:25:1C:44:F0', ip: '10.10.1.13', cpu: 'Xeon Gold 6430 ×2', ram_gb: '512', purchase_date: '2024-05-06', warranty_until: '2029-05-05', seq: '3' } },
+  { id: 'a12', sn: 'SRV-0004', cat: 'srv', status: 'retired', holder: '上海仓库', owner: '', model: 'r740', note: '硬盘已抹除，待处置。', created: '2019-08-21', home: '上海仓库', attrs: { sn: 'H2M4P77', mac: 'D0:94:66:0A:21:9E', ram_gb: '256', purchase_date: '2019-08-21', seq: '4' } },
+  { id: 'a13', sn: 'PRN-0011', cat: 'prn', status: 'in_use', holder: '深圳分公司', owner: '孙丽', model: 'm428', note: '', created: '2023-02-09', home: '深圳分公司', attrs: { sn: 'PHCLM3K9', purchase_date: '2023-02-09' } },
+  { id: 'a14', sn: 'LT-0132', cat: 'lt', status: 'in_stock', holder: '上海仓库', owner: '', model: 't14', note: '', created: '2025-01-15', home: '上海仓库', attrs: { sn: 'PF4K7M3A', mac: 'A4:BB:6D:12:A1:77', cpu: 'Core i5-1335U', ram_gb: '16', screen_in: '14', purchase_date: '2025-01-15', warranty_until: '2028-01-14', seq: '132' } },
+];
+const EVENTS = [
+  { asset: 'a1', when: '2026-09-18 16:42', kind: '状态变更', text: '维修中 → 在用', actor: '王磊', note: '端口 12 更换后恢复' },
+  { asset: 'a8', when: '2026-09-17 10:05', kind: '状态变更', text: '在用 → 丢失', actor: '张伟', note: '出差后未归还' },
+  { asset: 'a5', when: '2026-09-16 09:31', kind: '签出', text: '上海仓库 → 研发部，负责人 陈思', actor: '张伟' },
+  { asset: 'a10', when: '2026-09-16 09:31', kind: '签出', text: '上海仓库 → 研发部，负责人 陈思', actor: '张伟' },
+  { asset: 'a4', when: '2026-09-12 14:20', kind: '归还', text: '研发部 → 上海仓库', actor: '李婷', note: '射频异常，送修' },
+  { asset: 'a4', when: '2026-09-12 14:21', kind: '状态变更', text: '在用 → 维修中', actor: '李婷' },
+  { asset: 'a9', when: '2026-09-08 11:12', kind: '变更负责人', text: '刘洋 → 周杰', actor: '王磊' },
+  { asset: 'a12', when: '2026-08-30 17:55', kind: '状态变更', text: '在用 → 已退役', actor: '王磊', note: '硬盘已抹除' },
+  { asset: 'a13', when: '2026-08-22 08:40', kind: '转移', text: '上海总部 → 深圳分公司，负责人 孙丽', actor: '孙丽' },
+  { asset: 'a1', when: '2026-06-02 09:10', kind: '状态变更', text: '在用 → 维修中', actor: '王磊', note: '端口 12 故障' },
+  { asset: 'a1', when: '2024-03-15 10:00', kind: '签出', text: '上海仓库 → 研发部，负责人 王磊', actor: '张伟' },
+  { asset: 'a1', when: '2024-03-12 15:30', kind: '录入', text: '入库至 上海仓库', actor: '张伟' },
+];
+const ICONS = {
+  overview: 'M40 40h72v72H40zM144 40h72v72h-72zM40 144h72v72H40zM144 144h72v72h-72z',
+  assets: 'M128 32 32 80v96l96 48 96-48V80zM32 80l96 48 96-48M128 128v96',
+  categories: 'M40 40h64v40H40zM152 168h64v48h-64zM152 88h64v48h-64zM72 80v136h80M72 112h80',
+  fields: 'M40 48h176v160H40zM98 48v160M157 48v160',
+  models: 'M72 72h112v112H72zM104 104h48v48h-48zM104 40v32M152 40v32M104 184v32M152 184v32M40 104h32M40 152h32M184 104h32M184 152h32',
+  statuses: 'M128 32a96 96 0 1 0 0 192 96 96 0 1 0 0-192zM128 104a24 24 0 1 0 0 48 24 24 0 1 0 0-48z',
+  holders: 'M32 216V96l96-56 96 56v120M72 216v-72h112v72M72 180h112',
+  users: 'M96 136a48 48 0 1 0 0-96 48 48 0 1 0 0 96zM24 208a72 72 0 0 1 144 0M168 48a40 40 0 0 1 0 80M184 136a72 72 0 0 1 48 72',
+  roles: 'M128 24 48 56v72c0 56 36 88 80 104 44-16 80-48 80-104V56zM88 128l28 28 52-56',
+  audit: 'M64 40h136v176H64zM96 88h72M96 128h72M96 168h40',
+};
+const HOLDER_TREE = [
+  { id: 'sh', name: '上海总部', type: 'company', parent: null, note: '张江科技园 3 号楼，前台电话 021-5555-0100。' },
+  { id: 'rd', name: '研发部', type: 'department', parent: 'sh', note: '' },
+  { id: 'fin', name: '财务部', type: 'department', parent: 'sh', note: '' },
+  { id: 'whs', name: '上海仓库', type: 'location', parent: 'sh', stock: true, note: '3 号楼 B1，货架 A1–A12 放网络设备，B 区放终端备机。联系人 张伟。' },
+  { id: 'bj', name: '北京办公室', type: 'location', parent: null, note: '望京 SOHO T2，机房在 18 层弱电间。' },
+  { id: 'sz', name: '深圳分公司', type: 'company', parent: null, note: '' },
+];
+const HOLDER_TYPES = { company: '公司', department: '部门', location: '位置' };
+const ROLES = [
+  { id: 'admin', name: '管理员', admin: true, perms: [], users: 2 },
+  { id: 'ops', name: '资产管理员', admin: false, perms: ['asset.create','asset.update','asset.delete','transfer.create','transfer.update','print','import','export','holder.create','holder.update','transfer.audit'], users: 3 },
+  { id: 'it', name: 'IT 支持', admin: false, perms: ['asset.update','transfer.create','print'], users: 2 },
+  { id: 'viewer', name: '只读', admin: false, perms: [], users: 1 },
+];
+const PERMS = [['asset.create','录入设备'],['asset.update','修改设备'],['asset.delete','删除设备'],['transfer.create','流转'],['transfer.update','修改流转记录'],['print','打印标签'],['import','导入'],['export','导出'],['schema.manage','管理类别与字段'],['model.manage','管理型号'],['status.manage','管理状态'],['holder.create','新增持有方'],['holder.update','修改持有方'],['holder.delete','删除持有方'],['holder.default_stock','设为默认库存点'],['user.manage','管理账号'],['audit.read','查看操作审计'],['transfer.audit','查看流转审计'],['role.manage','管理角色']];
+const USER_ROWS = [
+  { email: 'wanglei@yourcompany.com', name: '王磊', role: '管理员', auth: 'local', active: true },
+  { email: 'liting@yourcompany.com', name: '李婷', role: '资产管理员', auth: 'oidc', active: true },
+  { email: 'zhangwei@yourcompany.com', name: '张伟', role: '资产管理员', auth: 'oidc', active: true },
+  { email: 'chensi@yourcompany.com', name: '陈思', role: 'IT 支持', auth: 'oidc', active: true },
+  { email: 'liuyang@yourcompany.com', name: '刘洋', role: '只读', auth: 'oidc', active: true },
+  { email: 'zhaomin@yourcompany.com', name: '赵敏', role: 'IT 支持', auth: 'oidc', active: true },
+  { email: 'zhoujie@yourcompany.com', name: '周杰', role: '管理员', auth: 'local', active: true },
+  { email: 'sunli@yourcompany.com', name: '孙丽', role: '资产管理员', auth: 'oidc', active: true },
+  { email: 'hanmei@yourcompany.com', name: '韩梅', role: '只读', auth: 'oidc', active: false },
+];
+const AUDIT = [
+  { when: '2026-09-18 15:02', actor: '王磊', action: '修改', type: 'field', target: 'asset_no（资产编号）', before: '{\n  "template": "category.code + \\"-\\" + pad(attrs.seq, 3)"\n}', after: '{\n  "template": "category.code + \\"-\\" + pad(attrs.seq, 4)"\n}' },
+  { when: '2026-09-18 15:02', actor: '王磊', action: '重算', type: 'field', target: 'asset_no · 影响 13 台', before: '', after: '{\n  "affected": 13,\n  "conflicts": null,\n  "archived_aliases": 13\n}' },
+  { when: '2026-09-17 11:40', actor: '李婷', action: '新建', type: 'status', target: 'on_loan（外借）', before: '', after: '{\n  "key": "on_loan",\n  "label": "外借",\n  "color": "violet",\n  "counts_as_available": true,\n  "terminal": false\n}' },
+  { when: '2026-09-16 09:12', actor: '张伟', action: '修改', type: 'holder', target: '上海仓库', before: '{\n  "note": "3 号楼 B1"\n}', after: '{\n  "note": "3 号楼 B1，货架 A1–A12 放网络设备，B 区放终端备机。联系人 张伟。"\n}' },
+  { when: '2026-09-15 17:25', actor: '王磊', action: '停用', type: 'user', target: 'hanmei@yourcompany.com', before: '{\n  "status": "active"\n}', after: '{\n  "status": "disabled"\n}' },
+  { when: '2026-09-12 10:08', actor: '李婷', action: '新建', type: 'binding', target: 'screen_in → 笔记本', before: '', after: '{\n  "field": "screen_in",\n  "category": "lt",\n  "required": false\n}' },
+  { when: '2026-09-10 14:30', actor: '王磊', action: '修改', type: 'model', target: 'ISR 4331', before: '{\n  "note": ""\n}', after: '{\n  "note": "已停产，仅维护存量。"\n}' },
+  { when: '2026-09-08 09:55', actor: '周杰', action: '修改', type: 'category', target: '无线 AP', before: '{\n  "print_preset_ids": ["p-asset-40x20"]\n}', after: '{\n  "print_preset_ids": ["p-asset-40x20", "p-loc-50x30"]\n}' },
+  { when: '2026-09-03 16:11', actor: '王磊', action: '新建', type: 'vendor', target: 'Apple', before: '', after: '{\n  "name": "Apple"\n}' },
+  { when: '2026-08-29 13:47', actor: '周杰', action: '删除', type: 'field_group', target: '旧网络组', before: '{\n  "name": "旧网络组",\n  "members": ["mac", "ip"]\n}', after: '' },
+];
+const AUDIT_TARGETS = { category: '类别', field: '字段', binding: '字段绑定', model: '型号', holder: '持有方', user: '账号', status: '状态', vendor: '厂商', field_group: '字段组' };
+const EXPR = {
+  reads: [['attrs.键名', '这台设备某个字段的值，例如 attrs.mac'], ['category.code', '所属类别的代号'], ['category.name', '所属类别的名称'], ['model.name', '型号名'], ['model.vendor', '厂商'], ['id', '系统内部的 UUID']],
+  examples: [['hex2dec(attrs.mac)', '把 MAC 当成十六进制转成十进制'], ['attrs.mac | hex2dec() | pad(16)', '同上，再左补零到 16 位'], ['category.code + "-" + str(attrs.seq)', '类别代号加序号，中间一个连字符'], ['attrs.kind == "spare" ? "S" : "M"', '备件用 S，其余用 M'], ['attrs.sn ?? hex2dec(attrs.mac)', '有 sn 就用 sn，没有就用 MAC 算'], ['upper(trim(attrs.rack))', '去掉首尾空格再转大写']],
+  funcs: [['hex2dec(x)', '十六进制转十进制，忽略 MAC 里的分隔符'], ['dec2hex(x)', '十进制转大写十六进制'], ['pad(x, n)', '左补零到 n 位。超长不截断'], ['trunc(x, n)', '只保留前 n 个字符'], ['slice(x, a, b)', '取第 a 到 b 个字符（不含 b）'], ['upper(x) / lower(x) / trim(x)', '大写 / 小写 / 去首尾空格'], ['replace(x, 旧, 新)', '替换全部出现'], ['default(x, 兜底)', 'x 为空时用兜底值'], ['str(x)', '转成字符串。拼接数字时需要']],
+  ops: [['+', '拼接字符串，或做加法'], ['== != < >', '比较'], ['? :', '条件：判断 ? 真时 : 假时'], ['??', '左边为空时取右边'], ['in', 'attrs.vendor in ["Acme", "Beta"]'], ['matches', '正则：attrs.mac matches "^[0-9A-F]{12}$"']],
+};
+const kv = list => list.map(([k, v]) => ({ k, v }));
+const TKINDS = [['checkout', '签出'], ['checkin', '归还'], ['transfer', '转移'], ['reassign', '改负责人'], ['status_change', '改状态']];
+
+class Component extends DCLogic {
+  state = {
+    screen: this.props.startScreen ?? 'overview',
+    assetId: 'a1', categoryId: 'sw', fieldId: 'asset_no', modelId: 'c9300',
+    q: '', fCategory: '', fStatus: '', fOwner: '', fHolder: '',
+    selected: [], dialog: null, banner: '', tKind: 'checkout', transferIds: [],
+    statuses: [
+      { key: 'in_stock', label: '在库', color: 'green', builtin: true, terminal: false, counts: true, assets: 4, history: 31 },
+      { key: 'in_use', label: '在用', color: 'blue', builtin: true, terminal: false, counts: true, assets: 8, history: 57 },
+      { key: 'in_repair', label: '维修中', color: 'amber', builtin: true, terminal: false, counts: false, assets: 1, history: 9 },
+      { key: 'lost', label: '丢失', color: 'red', builtin: true, terminal: false, counts: false, assets: 1, history: 2 },
+      { key: 'retired', label: '已退役', color: 'slate', builtin: true, terminal: true, counts: false, assets: 1, history: 3 },
+      { key: 'on_loan', label: '外借', color: 'violet', builtin: false, terminal: false, counts: true, assets: 0, history: 0 },
+    ],
+    sd: null, events: EVENTS,
+    confirm: null, confirmTyped: '', copied: false, printIds: [], printSubmitted: false,
+    holderId: 'whs', auditTab: 'ops', auType: '', auAction: '', taNumber: '', taKind: '', auEntry: null, ud: null, rd: null,
+  };
+  go(screen, extra) { this.setState({ screen, dialog: null, ...(extra || {}) }); }
+  renderVals() {
+    const s = this.state, p = this.props;
+    const compact = p.compactRail ?? false;
+    const statusOf = k => s.statuses.find(x => x.key === k) || { label: k, color: 'slate' };
+    const pal = k => PALETTE[statusOf(k).color] || PALETTE.slate;
+    const catOf = id => CATS.find(c => c.id === id);
+    const rootOf = id => { let c = catOf(id); while (c && c.parent) c = catOf(c.parent); return c; };
+    const modelOf = id => MODELS.find(m => m.id === id);
+    const cname = a => catOf(a.cat)?.name || '';
+    const isCat = (a, id) => { let c = catOf(a.cat); while (c) { if (c.id === id) return true; c = catOf(c.parent); } return false; };
+    const stop = e => e.stopPropagation();
+
+    const nav = [
+      { label: '', items: [['overview', '概览'], ['assets', '资产']] },
+      { label: '配置', items: [['categories', '类别'], ['fields', '字段'], ['models', '型号'], ['statuses', '状态'], ['holders', '持有方']] },
+      { label: '权限与审计', items: [['users', '账号'], ['roles', '角色'], ['audit', '审计']] },
+    ];
+    const activeNav = s.screen === 'asset' ? 'assets' : s.screen;
+    const navGroups = nav.map(g => ({ label: g.label, items: g.items.map(([k, label]) => {
+      const active = activeNav === k;
+      return { label, d: ICONS[k], active, current: active ? 'page' : undefined,
+        color: active ? 'var(--color-accent-200)' : 'var(--color-neutral-400)',
+        bg: active ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent',
+        go: () => this.go(k) };
+    }) }));
+
+    // Overview
+    const total = ASSETS.length;
+    const statusDist = s.statuses.filter(st => st.builtin || ASSETS.some(a => a.status === st.key)).map(st => { const n = ASSETS.filter(a => a.status === st.key).length; const c = PALETTE[st.color]; return { label: st.label, count: n, pct: Math.max(2, n / total * 100), bg: c.bg, fg: c.fg, bar: c.bar, go: () => this.go('assets', { fStatus: st.key, fCategory: '', fOwner: '', fHolder: '', q: '' }) }; });
+    const roots = CATS.filter(c => !c.parent);
+    const catCounts = roots.map(r => ({ r, n: ASSETS.filter(a => isCat(a, r.id)).length }));
+    const catMax = Math.max(...catCounts.map(x => x.n));
+    const categoryDist = catCounts.map(({ r, n }) => ({ label: r.name, count: n, pct: n / catMax * 100, go: () => this.go('assets', { fCategory: r.id, fStatus: '', fOwner: '', fHolder: '', q: '' }) }));
+    const owners = USERS.map(u => ({ u, n: ASSETS.filter(a => a.owner === u).length })).filter(x => x.n > 0).sort((a, b) => b.n - a.n);
+    const oMax = owners[0]?.n || 1;
+    const ownerDist = owners.slice(0, 6).map(({ u, n }) => ({ label: u, count: n, pct: n / oMax * 100, go: () => this.go('assets', { fOwner: u, fStatus: '', fCategory: '', fHolder: '', q: '' }) }));
+    const rest = owners.slice(6);
+    const ownerRest = rest.length ? `另有 ${rest.length} 人共 ${rest.reduce((a, b) => a + b.n, 0)} 台` : `${owners.length} 人名下有设备`;
+    const recent = s.events.slice(0, 10).map(e => ({ ...e, asset: ASSETS.find(a => a.id === e.asset)?.sn, go: () => this.go('asset', { assetId: e.asset, banner: '' }) }));
+
+    // Assets list
+    const q = s.q.trim().toLowerCase();
+    const filtered = ASSETS.filter(a =>
+      (!q || a.sn.toLowerCase().includes(q) || Object.values(a.attrs).some(v => String(v).toLowerCase().includes(q)) || a.note.toLowerCase().includes(q)) &&
+      (!s.fCategory || isCat(a, s.fCategory)) && (!s.fStatus || a.status === s.fStatus) &&
+      (!s.fOwner || a.owner === s.fOwner) && (!s.fHolder || a.holder === s.fHolder));
+    const rows = filtered.map(a => { const m = modelOf(a.model); const c = pal(a.status); const checked = s.selected.includes(a.id); return {
+      sn: a.sn, category: cname(a), status: statusOf(a.status).label, statusBg: c.bg, statusFg: c.fg, holder: a.holder, owner: a.owner || '无', model: m?.name || '', vendor: m?.vendor || '', note: a.note,
+      checked, rowBg: checked ? 'color-mix(in srgb, var(--color-accent) 8%, transparent)' : 'transparent',
+      open: () => this.go('asset', { assetId: a.id, banner: '' }),
+      toggle: () => this.setState(st => ({ selected: st.selected.includes(a.id) ? st.selected.filter(x => x !== a.id) : [...st.selected, a.id] })),
+      transfer: () => this.setState({ dialog: 'transfer', transferIds: [a.id], tKind: 'checkout' }),
+      print: () => this.setState({ dialog: 'print', printIds: [a.id], printSubmitted: false }),
+    }; });
+    const allChecked = filtered.length > 0 && filtered.every(a => s.selected.includes(a.id));
+    const hasFilters = !!(q || s.fCategory || s.fStatus || s.fOwner || s.fHolder);
+    const set = k => e => this.setState({ [k]: e.target.value, selected: [] });
+
+    // Asset detail
+    const A = ASSETS.find(a => a.id === s.assetId) || ASSETS[0];
+    const Am = modelOf(A.model), Ac = pal(A.status);
+    const attrOrder = ['asset_no', 'sn', 'mac', 'ip', 'port_count', 'firmware', 'cpu', 'ram_gb', 'screen_in', 'purchase_date', 'warranty_until'];
+    const attrs = attrOrder.filter(k => k === 'asset_no' ? true : A.attrs[k] !== undefined).map(k => { const f = FIELDS.find(x => x.key === k); const computed = f.type === 'computed'; return { label: f.label, value: computed ? A.sn : A.attrs[k], font: computed || k === 'mac' || k === 'sn' ? MONO : 'inherit', badge: computed ? '计算项' : f.unique ? '唯一' : (f.mode === 'device' ? (f.bindings[0][0] === '厂商' ? '来自厂商' : '来自型号') : '') }; });
+    const asset = { sn: A.sn, status: statusOf(A.status).label, statusBg: Ac.bg, statusFg: Ac.fg, modelLine: [cname(A), Am?.name, Am?.vendor].filter(Boolean).join(' · '), holder: A.holder, owner: A.owner || '无', home: A.home, homeOwner: A.owner ? `默认负责人：${A.owner}` : '', createdAt: A.created, note: A.note, attrs, events: s.events.filter(e => e.asset === A.id) };
+
+    // Categories
+    const catRows = []; const walk = (parent, depth) => CATS.filter(c => c.parent === parent).forEach(c => { const active = c.id === s.categoryId; catRows.push({ name: c.name, count: ASSETS.filter(a => isCat(a, c.id)).length, indent: 10 + depth * 16, current: active ? 'true' : undefined, color: active ? 'var(--color-accent-200)' : depth ? 'var(--color-neutral-400)' : 'var(--color-text)', bg: active ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent', go: () => this.setState({ categoryId: c.id }) }); walk(c.id, depth + 1); }); walk(null, 0);
+    const C = catOf(s.categoryId); const chain = []; { let c = C; while (c) { chain.unshift(c); c = catOf(c.parent); } }
+    const catFields = []; chain.forEach(c => FIELDS.forEach(f => { const b = f.bindings.find(x => x[0] === '类别' && x[1] === c.name); if (b && !catFields.some(x => x.key === f.key)) catFields.push({ label: f.label, key: f.key, type: TYPES[f.type], required: b[2], optional: !b[2], inherited: c.id !== C.id ? c.name : '', own: c.id === C.id }); }));
+    const cat = { name: C.name, code: C.code, parent: C.parent ? catOf(C.parent).name : '无（顶层类别）', displayKey: C.dk, preset: C.preset, count: ASSETS.filter(a => isCat(a, C.id)).length, fields: catFields, seeAssets: e => { e.preventDefault(); this.go('assets', { fCategory: C.id, fStatus: '', fOwner: '', fHolder: '', q: '' }); } };
+
+    // Fields
+    const fieldRows = []; const groups = ['基础信息', '采购', '网络', null];
+    groups.forEach(g => { fieldRows.push({ heading: g || '未分组', isRow: false }); FIELDS.filter(f => f.group === g).forEach(f => { const active = f.id === s.fieldId; fieldRows.push({ isRow: true, label: f.label, key: f.key, current: active ? 'true' : undefined, color: active ? 'var(--color-accent-200)' : 'var(--color-text)', bg: active ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent', go: () => this.setState({ fieldId: f.id }) }); }); });
+    const F = FIELDS.find(f => f.id === s.fieldId);
+    const fld = { label: F.label, key: F.key, type: TYPES[F.type], unique: F.unique, mode: F.mode === 'device' ? '设备（型号 / 厂商）' : '类别', searchable: F.unique ? '是（唯一字段自带）' : '否', group: F.group || '不属于任何组', rule: F.rule || '—', template: F.template || '', bindings: F.bindings.map(b => ({ kind: b[0], target: b[1], required: b[2], optional: !b[2] })) };
+
+    // Models
+    const modelRows = []; VENDORS.forEach(v => { const ms = MODELS.filter(m => m.vendor === v); modelRows.push({ heading: v, n: ms.length, isRow: false }); ms.forEach(m => { const active = m.id === s.modelId; modelRows.push({ isRow: true, name: m.name, count: ASSETS.filter(a => a.model === m.id).length, current: active ? 'true' : undefined, color: active ? 'var(--color-accent-200)' : 'var(--color-text)', bg: active ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent', go: () => this.setState({ modelId: m.id }) }); }); });
+    const M = modelOf(s.modelId);
+    const mdl = { name: M.name, vendor: M.vendor, note: M.note, count: ASSETS.filter(a => a.model === M.id).length, defaults: M.defaults.map(([key, value]) => ({ key, value })), fields: M.fields.map(([label, from]) => ({ label, from })) };
+
+    // Statuses
+    const statusRows = s.statuses.map(st => { const c = PALETTE[st.color]; const beh = st.terminal ? '终态' : !st.counts ? '不计入类别分布' : ''; return { label: st.label, key: st.key, kind: st.builtin ? '内置' : '自定义', behaviour: beh, plain: !beh, usage: (st.assets ? `${st.assets} 台设备` : '无设备使用') + (st.history ? `・历史 ${st.history} 条` : ''), bg: c.bg, fg: c.fg, edit: () => this.setState({ dialog: 'status', sd: { ...st, isNew: false } }) }; });
+    const sdRaw = s.sd || { key: '', label: '', color: 'slate', isNew: true, builtin: false };
+    const sdc = PALETTE[sdRaw.color] || PALETTE.slate;
+    const sd = { ...sdRaw, keyFixed: !sdRaw.isNew, bg: sdc.bg, fg: sdc.fg, preview: sdRaw.label || '显示名',
+      onKey: e => this.setState({ sd: { ...sdRaw, key: e.target.value } }), onLabel: e => this.setState({ sd: { ...sdRaw, label: e.target.value } }), onColor: e => this.setState({ sd: { ...sdRaw, color: e.target.value } }) };
+
+    // Holders
+    const hInSub = (name, id) => { let h = HOLDER_TREE.find(x => x.name === name); while (h) { if (h.id === id) return true; h = HOLDER_TREE.find(x => x.id === h.parent); } return false; };
+    const holderRows = []; const walkH = (parent, depth) => HOLDER_TREE.filter(h => h.parent === parent).forEach(h => { const active = h.id === s.holderId; holderRows.push({ name: h.name, type: HOLDER_TYPES[h.type], count: ASSETS.filter(a => hInSub(a.holder, h.id)).length, indent: 10 + depth * 16, current: active ? 'true' : undefined, color: active ? 'var(--color-accent-200)' : depth ? 'var(--color-neutral-400)' : 'var(--color-text)', bg: active ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent', go: () => this.setState({ holderId: h.id }) }); walkH(h.id, depth + 1); }); walkH(null, 0);
+    const H = HOLDER_TREE.find(h => h.id === s.holderId);
+    const hld = { name: H.name, type: HOLDER_TYPES[H.type], isStock: !!H.stock, stockText: H.stock ? '是' : '否', parent: H.parent ? HOLDER_TREE.find(x => x.id === H.parent).name : '无上级', note: H.note, count: ASSETS.filter(a => hInSub(a.holder, H.id)).length,
+      stockDisabled: !!H.stock || H.type !== 'location', stockReason: H.stock ? '它已经是默认库存点；把标记设到别处即可移走，不能取消。' : H.type !== 'location' ? '只有位置能当默认库存点。' : undefined,
+      seeAssets: e => { e.preventDefault(); this.go('assets', { fHolder: H.name, fStatus: '', fCategory: '', fOwner: '', q: '' }); } };
+
+    // Users & roles
+    const roleNames = ROLES.map(r => r.name);
+    const userRows = USER_ROWS.map(u => ({ ...u, auth: u.auth === 'oidc' ? 'Google 单点登录' : '本地密码', status: u.active ? '正常' : '已停用', tagClass: u.active ? 'tag-neutral' : 'tag-outline', edit: () => this.setState({ dialog: 'user', ud: u }) }));
+    const udRaw = s.ud;
+    const ud = udRaw ? { title: `编辑「${udRaw.name}」`, isEdit: true, isNew: false, email: udRaw.email, name: udRaw.name, role: udRaw.role, sso: udRaw.auth === 'oidc', ssoReason: udRaw.auth === 'oidc' ? '该账号用单点登录，没有可重置的密码。' : undefined, toggleLabel: udRaw.active ? '停用' : '启用', submit: '保存',
+      toggle: () => udRaw.active ? this.setState({ dialog: 'confirm', confirm: { title: '停用账号', description: `「${udRaw.name}」将无法登录。名下仍有设备时会被拒绝，请先把设备改派给他人。`, phrase: udRaw.email, confirmLabel: '停用', onConfirm: () => {} }, confirmTyped: '', copied: false }) : this.setState({ dialog: null }) } : { title: '新建本地账号', isEdit: false, isNew: true, email: '', name: '', role: '', submit: '新建' };
+    const roleRows = ROLES.map(r => ({ name: r.name, admin: r.admin, notAdmin: !r.admin, users: r.users, countText: `${r.perms.length} 项`, summary: r.perms.slice(0, 4).map(p => PERMS.find(x => x[0] === p)[1]).join('、') + (r.perms.length > 4 ? '…' : ''), edit: () => this.setState({ dialog: 'role', rd: r }) }));
+    const rdRaw = s.rd;
+    const rd = rdRaw ? { title: `编辑角色：${rdRaw.name}`, isEdit: true, name: rdRaw.name, admin: rdRaw.admin, notAdmin: !rdRaw.admin, hasUsers: rdRaw.users > 0, deleteReason: rdRaw.users > 0 ? `角色下还有 ${rdRaw.users} 个账号，请先把他们改到别的角色。` : undefined, submit: '保存',
+      remove: () => this.setState({ dialog: 'confirm', confirm: { title: '删除角色', description: `「${rdRaw.name}」将被删除。角色下还有账号时会被拒绝，届时请先把他们改到别的角色。`, phrase: rdRaw.name, confirmLabel: '删除角色', onConfirm: () => {} }, confirmTyped: '', copied: false }), perms: PERMS.map(([k, label]) => ({ label, on: rdRaw.perms.includes(k) })) } : { title: '新建角色', isEdit: false, name: '', admin: false, notAdmin: true, submit: '新建', perms: PERMS.map(([k, label]) => ({ label, on: false })) };
+
+    // Audit
+    const auditRowsAll = AUDIT.filter(e => (!s.auType || e.type === s.auType) && (!s.auAction || e.action === s.auAction));
+    const auditRows = auditRowsAll.map(e => ({ when: e.when, actor: e.actor, action: e.action, targetType: AUDIT_TARGETS[e.type], target: e.target, open: () => this.setState({ dialog: 'audit', auEntry: e }) }));
+    const AU = s.auEntry || AUDIT[0];
+    const au = { describe: `${AU.when} · ${AU.actor} · ${AU.action} · ${AUDIT_TARGETS[AU.type]} ${AU.target}`, before: AU.before, after: AU.after || '（已删除）' };
+    const taN = s.taNumber.trim().toLowerCase();
+    const moveRowsAll = s.events.filter(e => { const sn = ASSETS.find(a => a.id === e.asset)?.sn || ''; return (!taN || sn.toLowerCase().includes(taN)) && (!s.taKind || e.kind === s.taKind); });
+    const moveRows = moveRowsAll.map(e => ({ ...e, asset: ASSETS.find(a => a.id === e.asset)?.sn, go: () => this.go('asset', { assetId: e.asset, banner: '' }) }));
+
+    const closeDialog = () => this.setState({ dialog: null, confirm: null, confirmTyped: '', copied: false });
+    const askConfirm = (c) => this.setState({ dialog: 'confirm', confirm: c, confirmTyped: '', copied: false });
+    // Confirm dialog
+    const C0 = s.confirm || { title: '', description: '', phrase: '', confirmLabel: '删除', onConfirm: () => {} };
+    const cf = { ...C0, typed: s.confirmTyped, disabled: s.confirmTyped.trim() !== C0.phrase, copyLabel: s.copied ? '已复制' : '复制',
+      onTyped: e => this.setState({ confirmTyped: e.target.value }),
+      copy: () => { try { navigator.clipboard?.writeText(C0.phrase); } catch (_) {} this.setState({ copied: true }); },
+      confirm: e => { e.preventDefault(); if (s.confirmTyped.trim() !== C0.phrase) return; C0.onConfirm(); closeDialog(); } };
+    // Print dialog
+    const pIds = s.printIds.length ? s.printIds : [A.id];
+    const pAssets = pIds.map(id => ASSETS.find(a => a.id === id)).filter(Boolean);
+    const groupsMap = {}; pAssets.forEach(a => { const n = cname(a); groupsMap[n] = (groupsMap[n] || 0) + 1; });
+    const prGroups = Object.keys(groupsMap).map((category, i) => { const count = groupsMap[category]; const done = s.printSubmitted ? (i === 0 ? count : Math.floor(count / 2)) : 0; const finished = done === count; const c = finished ? PALETTE.green : PALETTE.blue; return { category, count, done, pct: count ? done / count * 100 : 0, state: finished ? '已完成' : '打印中', bg: c.bg, fg: c.fg }; });
+    const pr = { subtitle: pAssets.length === 1 ? pAssets[0].sn : `已选 ${pAssets.length} 台`, planning: !s.printSubmitted, submitted: s.printSubmitted, groups: prGroups, total: pAssets.length, seqEnd: 132 + pAssets.length,
+      splitHint: `${pAssets.length} 台设备，${prGroups.length} 个类别，将产生 ${prGroups.length} 个打印作业。`,
+      submit: e => { e.preventDefault(); this.setState({ printSubmitted: true }); } };
+    // Export dialog
+    const exScope = s.exScope || 'ticked';
+    const ex = { hasTicked: s.selected.length > 0, noTicked: s.selected.length === 0, ticked: s.selected.length, scopeTicked: exScope === 'ticked', scopeFiltered: exScope === 'filtered', pickTicked: () => this.setState({ exScope: 'ticked' }), pickFiltered: () => this.setState({ exScope: 'filtered' }) };
+    return {
+      isLogin: s.screen === 'login', isApp: s.screen !== 'login',
+      isOverview: s.screen === 'overview', isAssets: s.screen === 'assets', isAsset: s.screen === 'asset', isCategories: s.screen === 'categories', isFields: s.screen === 'fields', isModels: s.screen === 'models', isStatuses: s.screen === 'statuses',
+      isHolders: s.screen === 'holders', isUsers: s.screen === 'users', isRoles: s.screen === 'roles', isAudit: s.screen === 'audit',
+      holderRows, hld, roleNames, userRows, roleRows, ud, rd,
+      dlgUser: s.dialog === 'user', dlgRole: s.dialog === 'role', dlgAudit: s.dialog === 'audit',
+      openNewUser: () => this.setState({ dialog: 'user', ud: null }), openNewRole: () => this.setState({ dialog: 'role', rd: null }),
+      auditOps: s.auditTab === 'ops', auditMoves: s.auditTab === 'moves', pickOps: () => this.setState({ auditTab: 'ops' }), pickMoves: () => this.setState({ auditTab: 'moves' }),
+      auditTitle: s.auditTab === 'ops' ? '变更审计' : '流转审计',
+      auditHint: s.auditTab === 'ops' ? '资产流转有自己的时间线；这里记录的是类别、字段、型号、持有方与账号的配置变更。' : '全系统的设备流转。另一栏记的是配置变更，两者来自不同的表。',
+      auType: s.auType, auAction: s.auAction, onAuType: e => this.setState({ auType: e.target.value }), onAuAction: e => this.setState({ auAction: e.target.value }),
+      auTargets: Object.keys(AUDIT_TARGETS).map(k => ({ key: k, label: AUDIT_TARGETS[k] })), auFiltered: !!(s.auType || s.auAction), clearAu: () => this.setState({ auType: '', auAction: '' }), auCount: auditRowsAll.length, auditRows, au,
+      taNumber: s.taNumber, taKind: s.taKind, onTaNumber: e => this.setState({ taNumber: e.target.value }), onTaKind: e => this.setState({ taKind: e.target.value }), taFiltered: !!(taN || s.taKind), clearTa: () => this.setState({ taNumber: '', taKind: '' }), taCount: moveRowsAll.length, moveRows,
+      dlgConfirm: s.dialog === 'confirm', dlgImport: s.dialog === 'import', dlgPrint: s.dialog === 'print', dlgExport: s.dialog === 'export', dlgExpr: s.dialog === 'expr',
+      cf, pr, ex, exprReads: kv(EXPR.reads), exprExamples: kv(EXPR.examples), exprFuncs: kv(EXPR.funcs), exprOps: kv(EXPR.ops),
+      openImport: () => this.setState({ dialog: 'import' }), openExport: () => this.setState({ dialog: 'export' }), openExprHelp: e => { e.preventDefault(); this.setState({ dialog: 'expr' }); },
+      printSelected: () => this.setState({ dialog: 'print', printIds: s.selected, printSubmitted: false }),
+      printThis: () => this.setState({ dialog: 'print', printIds: [A.id], printSubmitted: false }),
+      deleteThis: () => askConfirm({ title: '删除资产', description: `此操作不可撤销，将删除 ${A.sn} 及其全部流转历史。`, phrase: A.sn, confirmLabel: '删除', onConfirm: () => this.go('assets', { banner: '' }) }),
+      deleteSelected: () => askConfirm({ title: '删除资产', description: `此操作不可撤销，将删除选中的 ${s.selected.length} 台设备及其全部流转历史。`, phrase: `删除 ${s.selected.length} 台`, confirmLabel: `删除 ${s.selected.length} 台`, onConfirm: () => this.setState({ selected: [] }) }),
+      deleteCategory: () => askConfirm({ title: '删除类别', description: `「${C.name}」及其字段绑定将被删除。有子类别、或子树下有资产时会被拒绝，届时会列出是哪些。`, phrase: C.code, confirmLabel: '删除类别', onConfirm: () => {} }),
+      railWidth: compact ? '60px' : '216px', railLabels: !compact,
+      navGroups, stop, noop: e => e.preventDefault(),
+      onLogin: e => { e.preventDefault(); this.go('overview'); }, signOut: () => this.go('login'),
+      openSettings: () => this.setState({ dialog: 'settings' }), closeDialog, closeDialogSubmit: e => { e.preventDefault(); closeDialog(); },
+      goAssets: () => this.go('assets'),
+      totalAssets: total, statusDist, categoryDist, ownerDist, ownerRest, recent,
+      q: s.q, onQ: e => this.setState({ q: e.target.value }), fCategory: s.fCategory, fStatus: s.fStatus, fOwner: s.fOwner, fHolder: s.fHolder,
+      onFCategory: set('fCategory'), onFStatus: set('fStatus'), onFOwner: set('fOwner'), onFHolder: set('fHolder'),
+      clearFilters: () => this.setState({ q: '', fCategory: '', fStatus: '', fOwner: '', fHolder: '' }),
+      categoryOptions: CATS.map(c => ({ id: c.id, label: (c.parent ? '　' : '') + c.name })), statusList: s.statuses, userList: USERS, holderList: HOLDERS, modelOptions: MODELS.map(m => `${m.name} · ${m.vendor}`),
+      hasFilters, rows, noRows: filtered.length === 0, rangeText: filtered.length ? `第 1–${filtered.length} 条，共 ${filtered.length} 条` : '共 0 条',
+      allChecked, togglePage: () => this.setState({ selected: allChecked ? [] : filtered.map(a => a.id) }),
+      hasSelection: s.selected.length > 0, selectedCount: s.selected.length, clearSelection: () => this.setState({ selected: [] }),
+      transferSelected: () => this.setState({ dialog: 'transfer', transferIds: s.selected, tKind: 'checkout' }),
+      openNewAsset: () => this.setState({ dialog: 'newAsset' }),
+      asset, banner: s.banner, openTransfer: () => this.setState({ dialog: 'transfer', transferIds: [A.id], tKind: 'checkout' }),
+      dlgSettings: s.dialog === 'settings', dlgTransfer: s.dialog === 'transfer', dlgStatus: s.dialog === 'status', dlgCategory: s.dialog === 'category', dlgNewAsset: s.dialog === 'newAsset',
+      transferTargets: s.transferIds.length === 1 ? (ASSETS.find(a => a.id === s.transferIds[0])?.sn || '') : `已选 ${s.transferIds.length} 台`,
+      transferKinds: TKINDS.map(([key, label]) => ({ key, label, checked: s.tKind === key, pick: () => this.setState({ tKind: key }) })),
+      submitTransfer: e => { e.preventDefault(); const label = TKINDS.find(k => k[0] === s.tKind)[1]; const now = new Date(); const when = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`; const ev = s.transferIds.map(id => ({ asset: id, when, kind: label === '改负责人' ? '变更负责人' : label === '改状态' ? '状态变更' : label, text: '已提交（原型）', actor: '王磊' })); this.setState({ events: [...ev, ...s.events], dialog: null, selected: [], banner: `已完成 ${s.transferIds.length} 台的流转` }); },
+      cat, categoryRows: catRows, openEditCategory: () => this.setState({ dialog: 'category' }),
+      fld, fieldRows, mdl, modelRows,
+      statusRows, openNewStatus: () => this.setState({ dialog: 'status', sd: { key: '', label: '', color: 'slate', isNew: true, builtin: false } }),
+      statusDlgTitle: sdRaw.isNew ? '新建状态' : '编辑状态', sd, paletteList: Object.keys(PALETTE).map(k => ({ key: k, label: PALETTE[k].label })),
+      saveStatus: e => { e.preventDefault(); if (!sdRaw.label || !sdRaw.key) return; const next = sdRaw.isNew ? [...s.statuses, { key: sdRaw.key, label: sdRaw.label, color: sdRaw.color, builtin: false, terminal: false, counts: true, assets: 0, history: 0 }] : s.statuses.map(x => x.key === sdRaw.key ? { ...x, label: sdRaw.label, color: sdRaw.color } : x); this.setState({ statuses: next, dialog: null, sd: null }); },
+    };
+  }
+}
+</script>
+</body>
+</html>
