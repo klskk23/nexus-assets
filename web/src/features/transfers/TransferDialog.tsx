@@ -34,10 +34,18 @@ interface Props {
 export function TransferDialog({ assetIDs, open, onOpenChange, initialAction, onDone }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>{tTransfer.actions.title}</DialogTitle>
-          <DialogDescription>{tTransfer.actions.selected(assetIDs.length)}</DialogDescription>
+          {/* The count rides the title as a 13px suffix (handoff d02). */}
+          <DialogTitle>
+            {tTransfer.actions.title}
+            <span className="text-neutral-500 ml-2 text-[13px] font-normal">
+              {tTransfer.actions.selected(assetIDs.length)}
+            </span>
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            {tTransfer.actions.selected(assetIDs.length)}
+          </DialogDescription>
         </DialogHeader>
         <TransferForm
           assetIDs={assetIDs}

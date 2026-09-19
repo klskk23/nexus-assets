@@ -8,7 +8,6 @@ import { t, tImport } from "@/i18n"
 import { cn } from "cn"
 import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -118,33 +117,31 @@ function Step({
   children: ReactNode
 }) {
   return (
+    /* Handoff d10: a 24px numbered circle in a 24px column, the step's
+       content beside it. Done and current steps wear the accent on the
+       circle; a step not reached yet is drawn in neutral-700 and its title
+       in neutral-400. No card around a step: the dialog is the card. */
     <li
       aria-label={title}
       aria-current={state === "current" ? "step" : undefined}
-      className={cn(
-        "bg-well grid content-start gap-4 rounded-[28px] border px-[26px] py-[22px]",
-        state === "current" ? "border-primary" : "border-transparent",
-        state === "waiting" && "opacity-60",
-      )}
+      className="grid grid-cols-[24px_1fr] gap-3"
     >
-      <div className="grid gap-1">
-        <div className="flex items-center gap-2.5">
-          <span
-            aria-hidden
-            className={cn(
-              "font-heading grid size-6 shrink-0 place-items-center rounded-full text-[11px]",
-              state === "waiting"
-                ? "border-border-muted border"
-                : "bg-primary text-primary-foreground",
-            )}
-          >
-            {n}
-          </span>
-          <h2 className="text-[21px] leading-tight font-bold">{title}</h2>
-        </div>
-        {hint && <p className="text-muted-foreground text-sm">{hint}</p>}
+      <span
+        aria-hidden
+        className={cn(
+          "grid size-6 place-items-center rounded-full border text-xs",
+          state === "waiting" ? "border-neutral-700 text-neutral-500" : "border-primary text-primary",
+        )}
+      >
+        {n}
+      </span>
+      <div className="grid content-start gap-2.5">
+        <h2 className={cn("text-sm font-medium", state === "waiting" && "text-neutral-400")}>
+          {title}
+        </h2>
+        {hint && <p className="text-neutral-500 text-[12.5px]">{hint}</p>}
+        {children}
       </div>
-      {children}
     </li>
   )
 }
@@ -209,7 +206,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent className="max-h-[88vh] gap-[22px] overflow-y-auto sm:max-w-[680px]">
         <DialogHeader>
           <DialogTitle>{tImport.title}</DialogTitle>
         </DialogHeader>
@@ -218,7 +215,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
           to be on the same page. An ordered list, because that is what it is:
           the order is the point, and a screen reader should hear "3 of 3"
           rather than three headings that happen to follow each other. */}
-      <ol aria-label={tImport.steps} className="grid gap-[22px]">
+      <ol aria-label={tImport.steps} className="grid gap-5">
 
       <Step
         n={1}
@@ -287,7 +284,11 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       >
         <div className="grid gap-4">
           <div className="flex flex-wrap items-end gap-4">
-            <Field className="w-80">
+            {/* The dashed zone the prototype draws around the file, with the
+                native file input inside it: the input is what a keyboard and
+                a screen reader reach, and the zone is what says "drop it
+                here" to everyone else. */}
+            <Field className="border-neutral-700 w-80 rounded-md border border-dashed p-[12px_14px]">
               <FieldLabel htmlFor="im-file">{tImport.file}</FieldLabel>
               <Input
                 id="im-file"
@@ -331,15 +332,20 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       {report && (
         <Step n={3} title={tImport.step3} hint={tImport.step3Hint} state="current">
           <div className="grid gap-4">
-            <p role="status">
+            {/* A banner in the accent tint, not a status colour: how many
+                rows will import is a fact about the file, not a state of any
+                device (FR-004). The prototype's amber strip is exactly the
+                thing that rule forbids. */}
+            <p
+              role="status"
+              className="bg-accent-900 text-accent-200 rounded-md p-[8px_12px] text-[13px]"
+            >
               {tImport.summary(report.ok, report.total)}
-              {failing.length === 0 ? (
-                <Badge className="ml-2">{tImport.allGood(report.total)}</Badge>
-              ) : (
-                <Badge variant="outline" className="ml-2">
-                  {tImport.hasErrors(failing.length)}
-                </Badge>
-              )}
+              <span className="ml-2">
+                {failing.length === 0
+                  ? tImport.allGood(report.total)
+                  : tImport.hasErrors(failing.length)}
+              </span>
             </p>
 
             {failing.length > 0 && (
@@ -354,12 +360,12 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                   <TableBody>
                     {failing.map((r) => (
                       <TableRow key={r.line} aria-label={t.common.lineNo(r.line)}>
-                        <TableCell className="font-mono">{r.line}</TableCell>
-                        <TableCell>
-                          <ul className="grid gap-0.5 text-sm">
+                        <TableCell className="text-neutral-500 font-mono">{r.line}</TableCell>
+                        <TableCell className="text-destructive">
+                          <ul className="grid gap-0.5 text-[13px]">
                             {Object.entries(r.fields ?? {}).map(([k, v]) => (
                               <li key={k}>
-                                <span className="font-mono text-muted-foreground">{k}</span>：{v}
+                                <span className="font-mono">{k}</span>：{v}
                               </li>
                             ))}
                           </ul>

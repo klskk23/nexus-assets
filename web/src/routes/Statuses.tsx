@@ -25,7 +25,6 @@ import { Input } from "@/components/ui/input"
 import { cn } from "cn"
 import {
   Field,
-  FieldDescription,
   FieldGroup,
   FieldLabel,
   FieldLegend,
@@ -113,6 +112,7 @@ export function Statuses() {
         return { items: page.items.map((s: Status) => ({ ...s, id: s.key })), total: page.total }
       }}
       createLabel={tStatuses.create}
+      dialogClassName="sm:max-w-[460px]"
       createDeniedReason={deniedReason("status.manage")}
       createDisabled={key === "" || label === ""}
       onCreated={() => {
@@ -219,48 +219,53 @@ export function Statuses() {
         },
       ]}
       form={
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field>
-            <div className="flex items-center gap-1.5">
-              <FieldLabel htmlFor="st-key">{tStatuses.key}</FieldLabel>
-              <Hint>{tStatuses.keyFixed}</Hint>
-            </div>
-            <Input
-              id="st-key"
-              className="font-mono"
-              value={key}
-              placeholder={tStatuses.keyHint}
-              onChange={(e) => setKey(e.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="st-label">{tStatuses.label}</FieldLabel>
-            <Input id="st-label" value={label} onChange={(e) => setLabel(e.target.value)} />
-          </Field>
+        /* Handoff d03: key and name side by side, the colour with its live
+           preview beside the select, the two behaviour switches under a
+           12px caption. */
+        <div className="grid gap-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field>
+              <div className="flex items-center gap-1.5">
+                <FieldLabel htmlFor="st-key">{tStatuses.key}</FieldLabel>
+                <Hint>{tStatuses.keyFixed}</Hint>
+              </div>
+              <Input
+                id="st-key"
+                className="font-mono text-[13px]"
+                value={key}
+                placeholder={tStatuses.keyHint}
+                onChange={(e) => setKey(e.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="st-label">{tStatuses.label}</FieldLabel>
+              <Input id="st-label" value={label} onChange={(e) => setLabel(e.target.value)} />
+            </Field>
+          </div>
           <Field>
             <FieldLabel htmlFor="st-color">{tStatuses.color}</FieldLabel>
-            <Select value={color} onValueChange={setColor}>
-              <SelectTrigger id="st-color">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {colors.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {tStatuses.colors[c] ?? c}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <FieldDescription>
+            <div className="flex items-center gap-3">
+              <Select value={color} onValueChange={setColor}>
+                <SelectTrigger id="st-color" className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {colors.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {tStatuses.colors[c] ?? c}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
               <Badge variant="outline" className={cn("status-chip", `status-${color}`)}>
                 {label || tStatuses.label}
               </Badge>
-            </FieldDescription>
+            </div>
           </Field>
 
-          <FieldSet className="sm:col-span-3">
+          <FieldSet>
             <FieldLegend variant="label">{tStatuses.behaviour}</FieldLegend>
             <FieldGroup className="gap-3">
               <Field orientation="horizontal">
@@ -326,42 +331,57 @@ function StatusEditor({ status, colors, onOpenChange, onSave, saving }: EditProp
 
   return (
     <Dialog open={status !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[460px]">
         <DialogHeader>
           <DialogTitle>{tStatuses.editTitle}</DialogTitle>
         </DialogHeader>
 
         <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="se-label">{tStatuses.label}</FieldLabel>
-            <Input
-              id="se-label"
-              value={draft.label}
-              onChange={(e) => setDraft({ ...draft, label: e.target.value })}
-            />
-          </Field>
+          {/* The key is shown, disabled: it is what the rest of the system
+              is written against, and a dialog that hid it would be one where
+              the reader has to remember which row they opened. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field>
+              <div className="flex items-center gap-1.5">
+                <FieldLabel htmlFor="se-key">{tStatuses.key}</FieldLabel>
+                <Hint>{tStatuses.keyFixed}</Hint>
+              </div>
+              <Input id="se-key" className="font-mono text-[13px]" value={draft.key} disabled readOnly />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="se-label">{tStatuses.label}</FieldLabel>
+              <Input
+                id="se-label"
+                value={draft.label}
+                onChange={(e) => setDraft({ ...draft, label: e.target.value })}
+              />
+            </Field>
+          </div>
           <Field>
             <FieldLabel htmlFor="se-color">{tStatuses.color}</FieldLabel>
-            <Select value={draft.color} onValueChange={(c) => setDraft({ ...draft, color: c })}>
-              <SelectTrigger id="se-color">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {colors.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {tStatuses.colors[c] ?? c}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <FieldDescription>
+            <div className="flex items-center gap-3">
+              <Select value={draft.color} onValueChange={(c) => setDraft({ ...draft, color: c })}>
+                <SelectTrigger id="se-color" className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {colors.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {tStatuses.colors[c] ?? c}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
               <Badge variant="outline" className={cn("status-chip", `status-${draft.color}`)}>
                 {draft.label || tStatuses.label}
               </Badge>
-            </FieldDescription>
+            </div>
           </Field>
+          {draft.builtin && (
+            <p className="text-neutral-500 text-xs">{tStatuses.builtinFixed}</p>
+          )}
         </FieldGroup>
 
         <DialogFooter>

@@ -96,18 +96,21 @@ async function openEditor(user: ReturnType<typeof userEvent.setup>) {
 describe("Categories page", () => {
   // Binding moved to the field itself, so what a category shows is the set it
   // ends up with -- its own and its ancestors' -- and where to change it.
+  // On the pane since 030 (handoff d04 draws the editor with the four saved
+  // things and nothing else); the dialog no longer repeats the table.
   it("lists the fields it has, read-only, and says where they are bound", async () => {
     const user = userEvent.setup()
     openAt()
-    const dialog = await openEditor(user)
-    expect(within(dialog).getByRole("row", { name: /机柜/ })).toBeInTheDocument()
+    expect(await screen.findByRole("row", { name: /机柜/ })).toBeInTheDocument()
     // Where to change it is behind the question mark: the table is the answer
     // somebody opened this for, and the explanation is only wanted once.
-    const heading = within(dialog).getByText("本类别的字段")
+    const heading = screen.getByText("本类别的字段")
     await user.hover(within(heading.parentElement!).getByRole("button", { name: "这是什么" }))
     expect(await screen.findByText(/在「字段」页面上做/)).toBeInTheDocument()
-    // Nothing here binds or unbinds any more.
+    // Nothing binds or unbinds from the editor any more.
+    const dialog = await openEditor(user)
     expect(within(dialog).queryByRole("combobox", { name: "绑定字段" })).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole("row", { name: /机柜/ })).not.toBeInTheDocument()
   })
 })
 

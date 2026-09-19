@@ -215,7 +215,7 @@ export function PrintDialog({ ids, onClose }: Props) {
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="sm:max-w-[620px]">
+      <DialogContent className="sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>{t.print.title}</DialogTitle>
           {batches.length > 0 && (
@@ -255,7 +255,7 @@ export function PrintDialog({ ids, onClose }: Props) {
               return (
                 <li
                   key={b.category_id}
-                  className="bg-well grid gap-3 rounded-[28px] px-[26px] py-[22px]"
+                  className="bg-well grid gap-2.5 rounded-md px-4 py-3 text-[13px]"
                 >
                   <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                     <span className="w-[190px] font-medium">{b.category_name}</span>
@@ -352,14 +352,14 @@ export function PrintDialog({ ids, onClose }: Props) {
                        what state anything is in. The one row that does take a
                        status colour is a failed one, because that genuinely
                        is a state -- and it says so in the chip above. */
-                    <span className="flex items-center gap-3">
+                    <span className="flex min-w-[200px] items-center gap-2.5">
                       <Progress
                         value={b.count > 0 ? (printed / b.count) * 100 : 0}
-                        className="bg-background h-4 flex-1 [&>*]:bg-accent-2"
+                        className="flex-1 [&>*]:bg-accent-600"
                         aria-label={t.print.pages(printed, b.count)}
                       />
-                      <span className="font-heading text-sm tabular-nums">
-                        {printed}/{b.count}
+                      <span className="text-neutral-400 text-xs tabular-nums">
+                        {t.print.pages(printed, b.count)}
                       </span>
                     </span>
                   )}

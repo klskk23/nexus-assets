@@ -105,6 +105,8 @@ interface Props<T> {
    */
   createDeniedReason?: string
   form: ReactNode
+  /** The create dialog's width, when the form is narrower than the default. */
+  dialogClassName?: string
   /**
    * Shown above the table. This is where a failure from a row action belongs
    * -- disabling an account, moving the default stock marker -- since putting
@@ -155,6 +157,7 @@ export function CrudPage<T extends { id: string }>({
   createDisabled,
   createDeniedReason,
   form,
+  dialogClassName,
   notice,
   onRowClick,
   rowActions,
@@ -211,7 +214,7 @@ export function CrudPage<T extends { id: string }>({
               {createLabel}
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl">
+          <DialogContent className={dialogClassName ?? "sm:max-w-2xl"}>
             <DialogHeader>
               <DialogTitle>{createLabel}</DialogTitle>
             </DialogHeader>

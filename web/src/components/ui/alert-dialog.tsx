@@ -64,8 +64,9 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         onOpenAutoFocus={focusFirstControl}
         data-size={size}
+        data-tone={tone}
         className={cn(
-          "group/alert-dialog-content fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg bg-card p-[22px_24px] shadow-[var(--shadow-lg),inset_2px_0_0_var(--destructive-line)] data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-lg",
+          "group/alert-dialog-content fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-3.5 rounded-lg bg-card p-[22px_24px] shadow-lg data-[tone=danger]:shadow-[var(--shadow-lg),inset_2px_0_0_var(--destructive-line)] data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-[440px]",
           className
         )}
         {...props}

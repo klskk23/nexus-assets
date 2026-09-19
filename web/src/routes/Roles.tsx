@@ -54,6 +54,7 @@ export function Roles() {
         searchHint={tMeta.roles.searchHint}
         list={(params) => api.get<ListPage<Role>>(`/roles?${params}`)}
         createLabel={tMeta.roles.create}
+        dialogClassName="sm:max-w-[560px]"
         createDeniedReason={deniedReason("role.manage")}
         createDisabled={name === ""}
         onCreated={() => {
@@ -130,7 +131,7 @@ export function Roles() {
                 <FieldLabel>{tMeta.roles.permissions}</FieldLabel>
                 <Hint>{tMeta.roles.permissionsHint}</Hint>
               </div>
-              <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto">
+              <div className="grid max-h-72 gap-[8px_16px] overflow-y-auto [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
                 {PERMISSIONS.map((p) => (
                   <Field key={p} orientation="horizontal">
                     <Checkbox

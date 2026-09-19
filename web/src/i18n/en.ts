@@ -58,7 +58,6 @@ export const en: typeof zh = {
   settings: {
     open: "Settings",
     title: "Settings",
-    appearance: "Appearance",
     language: "Language",
     savedToAccount: "Your language follows your account, on any machine.",
     keys: "API keys",
@@ -335,6 +334,7 @@ export const enMeta: typeof zhMeta = {
     adminFixed:
       "The administrator's permissions are not a set of ticks: it means everything, including permissions added later. Only the name can be changed here.",
     deleteTitle: "Delete role",
+    deleteBlocked: (n: number) => `${n} account(s) are still on this role; move them to another role first`,
     deleteHint: (name: string) =>
       `${name} will be deleted. It is refused while accounts are still bound to it; move them to another role first.`,
     empty: "No roles yet",
@@ -757,7 +757,8 @@ export const enAudit: typeof zhAudit = {
 
 export const enConfirm: typeof zhConfirm = {
   cancel: "Cancel",
-  typeToConfirm: (what: string) => `This cannot be undone. Type ${what} to confirm.`,
+  typeBefore: "This cannot be undone. Type",
+  typeAfter: "to confirm",
   copy: "Copy",
   copied: "Copied",
   copyPhrase: "Copy the phrase to type",
@@ -793,6 +794,7 @@ export const enStatuses: typeof zhStatuses = {
   color: "Colour",
   kind: "Kind",
   builtin: "Built in",
+  builtinFixed: "A built-in status can be renamed and recoloured; its behaviour is fixed.",
   custom: "Custom",
   behaviour: "Behaviour",
   countsAsAvailable: "Counts towards the category totals",

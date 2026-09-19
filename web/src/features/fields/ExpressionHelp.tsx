@@ -19,10 +19,10 @@ import {
 function Row({ term, gloss }: { term: string; gloss: string }) {
   return (
     <div className="grid grid-cols-[minmax(0,auto)_1fr] items-baseline gap-x-3 gap-y-0.5">
-      <code className="text-foreground rounded bg-muted px-1.5 py-0.5 font-mono text-xs whitespace-nowrap">
+      <code className="text-accent-300 font-mono text-xs whitespace-nowrap">
         {term}
       </code>
-      <span className="text-muted-foreground text-sm">{gloss}</span>
+      <span className="text-neutral-300 text-[13px]">{gloss}</span>
     </div>
   )
 }
@@ -57,7 +57,7 @@ export function ExpressionHelp({ trigger }: { trigger?: ReactNode }) {
           </Button>
         )}
       </DrawerTrigger>
-      <DrawerContent className="w-full sm:max-w-md">
+      <DrawerContent className="w-full sm:max-w-[640px]">
         <DrawerHeader>
           <DrawerTitle>{tExprHelp.title}</DrawerTitle>
           <DrawerDescription>{tExprHelp.subtitle}</DrawerDescription>
@@ -131,7 +131,7 @@ export function ExpressionHelp({ trigger }: { trigger?: ReactNode }) {
 
         <DrawerFooter>
           <DrawerClose asChild>
-            <Button variant="outline">{tExprHelp.close}</Button>
+            <Button variant="secondary">{tExprHelp.close}</Button>
           </DrawerClose>
         </DrawerFooter>
       </DrawerContent>

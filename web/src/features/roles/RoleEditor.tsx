@@ -1,5 +1,6 @@
 import { WarningCircle } from "@phosphor-icons/react"
 import { Hint } from "@/features/common/Hint"
+import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
@@ -18,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 
@@ -61,12 +62,26 @@ export function RoleEditor({ role, onClose }: Props) {
     onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
   })
 
+  // Deleting lives here as well as on the row menu, the way it does for a
+  // model, a vendor and a category (029): the dialog is where somebody is
+  // looking at the thing. Refused while anybody is on the role, and the
+  // button says so before the click.
+  const remove = useMutation({
+    mutationFn: () => api.del(`/roles/${role.id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] })
+      onClose()
+    },
+    onError: (e) => setBanner(e instanceof ApiError ? e.message : t.common.error),
+  })
+  const deleteBlocked = role.users > 0 ? tMeta.roles.deleteBlocked(role.users) : undefined
+
   const toggle = (p: string) =>
     setChosen((cur) => (cur.includes(p) ? cur.filter((k) => k !== p) : [...cur, p]))
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>{tMeta.roles.editTitle(role.name)}</DialogTitle>
         </DialogHeader>
@@ -83,14 +98,16 @@ export function RoleEditor({ role, onClose }: Props) {
           </Field>
 
           {role.is_admin ? (
-            <FieldDescription>{tMeta.roles.adminFixed}</FieldDescription>
+            <p className="bg-well text-neutral-400 rounded-md p-[10px_12px] text-[13px]">
+              {tMeta.roles.adminFixed}
+            </p>
           ) : (
             <Field>
               <div className="flex items-center gap-1.5">
                 <FieldLabel>{tMeta.roles.permissions}</FieldLabel>
                 <Hint>{tMeta.roles.permissionsHint}</Hint>
               </div>
-              <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto">
+              <div className="grid max-h-72 gap-[8px_16px] overflow-y-auto [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
                 {PERMISSIONS.map((p) => (
                   <Field key={p} orientation="horizontal">
                     <Checkbox
@@ -119,8 +136,26 @@ export function RoleEditor({ role, onClose }: Props) {
         </div>
 
         <DialogFooter>
+          <ConfirmDialog
+            trigger={
+              <Button
+                variant="ghost"
+                className="text-destructive mr-auto"
+                disabled={denied !== undefined || deleteBlocked !== undefined || remove.isPending}
+                title={deleteBlocked ?? denied}
+              >
+                {tMeta.roles.delete}
+              </Button>
+            }
+            title={tMeta.roles.deleteTitle}
+            description={tMeta.roles.deleteHint(role.name)}
+            confirmLabel={tMeta.roles.delete}
+            tone="danger"
+            requirePhrase={role.name}
+            onConfirm={() => remove.mutate()}
+          />
           <DialogClose asChild>
-            <Button variant="outline">{t.common.cancel}</Button>
+            <Button variant="ghost">{t.common.cancel}</Button>
           </DialogClose>
           <Button
             onClick={() => save.mutate()}

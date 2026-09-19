@@ -174,7 +174,7 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] gap-4 overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[85vh] gap-4 overflow-y-auto sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>{t.assets.newAsset}</DialogTitle>
         </DialogHeader>
@@ -268,7 +268,7 @@ export function NewAssetDialog({ open, onOpenChange, initialCategoryID }: Props)
         {categoryId && (
           <StateBoundary isLoading={schema.isLoading} error={schema.error as Error | null}>
             <div className="grid gap-4">
-              <p className="text-sm text-muted-foreground">{t.assets.generatedSN}</p>
+              <p className="text-neutral-500 text-xs">{t.assets.generatedSN}</p>
               <ModelPicker
                 value={modelId}
                 values={values}

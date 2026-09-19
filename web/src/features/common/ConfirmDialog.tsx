@@ -1,4 +1,4 @@
-import { Check, Copy, Trash } from "@phosphor-icons/react"
+import { Check, Copy } from "@phosphor-icons/react"
 import { useRef, useState, type ReactNode } from "react"
 
 import {
@@ -100,41 +100,40 @@ export function ConfirmDialog({
       {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
       <AlertDialogContent tone={tone}>
         <AlertDialogHeader>
-          {/* The mark comes before the sentence: at a glance the shape says
-              what kind of answer is being asked for, before anyone has read a
-              word of it. Only on the destructive path -- see `tone`. */}
-          {danger && (
-            <span
-              aria-hidden
-              className="bg-destructive/12 text-destructive grid size-13 place-items-center rounded-md"
-            >
-              <Trash data-slot="confirm-danger-icon" className="size-[23px]" />
-            </span>
-          )}
+          {/* No mark (030): the prototype says "danger" with a 2px red edge
+              down the panel's left side and a red-outlined verb, and nothing
+              else. The edge is AlertDialogContent's, keyed on `tone`. */}
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
 
         {requirePhrase !== undefined && (
           <div className="grid gap-2">
-            <Label htmlFor="confirm-phrase">
-              {phraseLabel ?? tConfirm.typeToConfirm(requirePhrase)}
-            </Label>
-            {/* The phrase is here to be read and retyped, but a serial number
-                copied off a label by hand is a typo waiting to happen, and the
-                dialog is not made safer by that. Copying it still costs a
-                deliberate press on the thing being deleted. */}
+            {/* The phrase sits inside the sentence, in mono and selectable as
+                one piece, with the copy verb at the row's end (handoff
+                §弹窗 d09). The phrase is here to be read and retyped, but a
+                serial number copied off a label by hand is a typo waiting to
+                happen, and the dialog is not made safer by that. Copying it
+                still costs a deliberate press on the thing being deleted. */}
             <div className="flex items-center gap-2">
-              <code
-                ref={phraseRef}
-                className="bg-muted rounded px-2 py-1 font-mono text-sm break-all"
-              >
-                {requirePhrase}
-              </code>
+              {/* The button sits beside the label, not inside it: a button
+                  inside a label is one of the things the label labels. */}
+              <Label htmlFor="confirm-phrase" className="min-w-0 flex-1">
+                {phraseLabel ?? (
+                  <>
+                    {tConfirm.typeBefore}{" "}
+                    <code ref={phraseRef} className="text-foreground font-mono select-all">
+                      {requirePhrase}
+                    </code>{" "}
+                    {tConfirm.typeAfter}
+                  </>
+                )}
+              </Label>
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="xs"
+                className="text-neutral-400 h-auto px-1.5 py-px text-[11px]"
                 aria-label={tConfirm.copyPhrase}
                 onClick={async () => {
                   setCopied(await copyText(requirePhrase, phraseRef.current))
@@ -151,7 +150,7 @@ export function ConfirmDialog({
             )}
             <Input
               id="confirm-phrase"
-              className="font-mono"
+              className="font-mono text-[13px]"
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               autoComplete="off"
@@ -167,6 +166,9 @@ export function ConfirmDialog({
             // Save. Passing the variant is what actually makes a destructive
             // confirmation look destructive.
             variant={danger ? "destructive" : "default"}
+            // The destructive variant is red text; the outline flag adds the
+            // red border the prototype draws on a confirming verb.
+            data-outline={danger ? "" : undefined}
             disabled={!armed}
             onClick={() => {
               if (armed) onConfirm()

@@ -46,7 +46,6 @@ export const zh = {
   settings: {
     open: "设置",
     title: "设置",
-    appearance: "界面",
     language: "语言",
     savedToAccount: "语言跟随账号，换一台电脑也是这个设置。",
     keys: "API 密钥",
@@ -319,6 +318,7 @@ export const zhMeta = {
     countOf: (n: number) => `${n} 项`,
     adminFixed: "管理员的权限不是一组勾选，而是「全部，包括以后新增的」。这里只能改名。",
     deleteTitle: "删除角色",
+    deleteBlocked: (n: number) => `还有 ${n} 个账号在这个角色上，先把他们改到别的角色`,
     deleteHint: (name: string) => `「${name}」将被删除。角色下还有账号时会被拒绝，届时请先把他们改到别的角色。`,
     empty: "还没有任何角色",
     emptyHint: "角色是一组权限开关，账号绑定到角色上。",
@@ -733,7 +733,8 @@ export const zhAudit = {
 
 export const zhConfirm = {
   cancel: "取消",
-  typeToConfirm: (what: string) => `此操作不可撤销。请输入 ${what} 以确认。`,
+  typeBefore: "此操作不可撤销。请输入",
+  typeAfter: "以确认",
   copy: "复制",
   copied: "已复制",
   copyPhrase: "复制待输入的内容",
@@ -767,6 +768,7 @@ export const zhStatuses = {
   color: "颜色",
   kind: "类型",
   builtin: "内置",
+  builtinFixed: "内置状态只能改名与换色，行为固定。",
   custom: "自定义",
   behaviour: "行为",
   countsAsAvailable: "计入类别分布",

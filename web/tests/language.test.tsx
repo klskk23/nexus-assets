@@ -43,8 +43,8 @@ function renderShell(client = makeTestQueryClient()) {
 async function pickLanguage(user: ReturnType<typeof userEvent.setup>, name: string) {
   await user.click(screen.getByRole("button", { name: /管理员|Settings|设置/ }))
   const dialog = await screen.findByRole("dialog")
-  await user.click(within(dialog).getByRole("combobox", { name: /语言|Language/ }))
-  await user.click(await screen.findByRole("option", { name }))
+  // A segmented control since 030: the languages are radios in a group.
+  await user.click(within(dialog).getByRole("radio", { name }))
 }
 
 beforeEach(() => {

@@ -36,9 +36,10 @@ const base = {
 }
 
 describe("确认框的语气", () => {
-  it("默认是中性的 —— 没有告警图标", async () => {
+  // 030: the alarm is a red edge on the panel (data-tone), not an icon.
+  it("默认是中性的 —— 面板不带红缘", async () => {
     const dialog = await open(<ConfirmDialog {...base} confirmLabel="保存" />)
-    expect(dialog.querySelector("[data-slot=confirm-danger-icon]")).toBeNull()
+    expect(dialog).toHaveAttribute("data-tone", "neutral")
   })
 
   it("中性时主按钮是主色，不是危险色", async () => {
@@ -47,11 +48,11 @@ describe("确认框的语气", () => {
     expect(btn.dataset.variant).toBe("default")
   })
 
-  it("声明 danger 之后才出现告警图标", async () => {
+  it("声明 danger 之后面板才带红缘", async () => {
     const dialog = await open(
       <ConfirmDialog {...base} confirmLabel="删除" tone="danger" />,
     )
-    expect(dialog.querySelector("[data-slot=confirm-danger-icon]")).not.toBeNull()
+    expect(dialog).toHaveAttribute("data-tone", "danger")
   })
 
   // This one caught a real bug: AlertDialogAction defaults to the primary

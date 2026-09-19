@@ -1,5 +1,4 @@
-import { Check, Copy, ArrowSquareOut, Plus, Trash } from "@phosphor-icons/react"
-import { Hint } from "@/features/common/Hint"
+import { Check, Copy } from "@phosphor-icons/react"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -37,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   Table,
   TableBody,
@@ -140,54 +139,46 @@ export function SettingsDialog({ onClose }: Props) {
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="max-h-[85vh] gap-4 overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[85vh] gap-5 overflow-y-auto sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>{t.settings.title}</DialogTitle>
         </DialogHeader>
 
+        {/* Three blocks 20px apart, each a 13px caption, a 12px line of
+            explanation and the control (handoff d01). The captions are text,
+            not question marks: this is the one dialog somebody opens to read
+            what the choices mean. Only language under "appearance" -- there
+            is one ground since 017, and 030 made it the dark one. */}
         <div className="grid gap-5">
-          <div className="grid gap-3">
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-medium">{t.settings.appearance}</p>
-              <Hint>{t.settings.savedToAccount}</Hint>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="set-lang">{t.settings.language}</FieldLabel>
-                <Select value={lang} onValueChange={(v) => chooseLang(v as Lang)}>
-                  <SelectTrigger id="set-lang">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {LANGS.map((l) => (
-                        <SelectItem key={l} value={l}>
-                          {LANG_NAMES[l]}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
+          <div className="grid gap-2">
+            <p id="set-lang-label" className="text-neutral-300 text-[13px]">
+              {t.settings.language}
+            </p>
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              aria-labelledby="set-lang-label"
+              value={lang}
+              onValueChange={(v) => v && chooseLang(v as Lang)}
+            >
+              {LANGS.map((l) => (
+                <ToggleGroupItem key={l} value={l}>
+                  {LANG_NAMES[l]}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <p className="text-neutral-500 text-xs">{t.settings.savedToAccount}</p>
           </div>
 
-          <Separator />
-
-          <div className="grid gap-3">
-            <div className="flex items-center gap-3">
-              <p className="text-sm font-medium">{t.settings.keys}</p>
-              <Hint>{t.settings.keysHint}</Hint>
-              <Button
-                size="sm"
-                variant="outline"
-                className="ml-auto"
-                onClick={() => setCreating(true)}
-              >
-                <Plus />
+          <div className="grid gap-2">
+            <div className="flex items-center">
+              <p className="text-neutral-300 text-[13px]">{t.settings.keys}</p>
+              <Button size="xs" className="ml-auto" onClick={() => setCreating(true)}>
                 {t.settings.keyCreate}
               </Button>
             </div>
+            <p className="text-neutral-500 text-xs">{t.settings.keysHint}</p>
             {/* Shown once, and only here. Closing the dialog is the point of
                 no return, which is why it says so. */}
             {secret && (
@@ -259,14 +250,14 @@ export function SettingsDialog({ onClose }: Props) {
             )}
 
             <TableFrame>
-              <Table>
+              <Table className="text-[13px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t.settings.keyName}</TableHead>
                     <TableHead>{t.settings.keyPrefix}</TableHead>
                     <TableHead>{t.settings.keyExpires}</TableHead>
                     <TableHead>{t.settings.keyLastUsed}</TableHead>
-                    <TableHead className="w-10">
+                    <TableHead className="w-px">
                       <span className="sr-only">{t.common.actions}</span>
                     </TableHead>
                   </TableRow>
@@ -296,15 +287,16 @@ export function SettingsDialog({ onClose }: Props) {
                               no click of their own to compete with, and a key
                               nobody can find how to revoke is a key that stays
                               alive after the person who made it has left. */}
-                          <TableCell>
+                          <TableCell className="text-right">
                             {!k.from_config && (
                               <Button
                                 variant="ghost"
-                                size="icon"
+                                size="xs"
+                                className="text-neutral-400"
                                 aria-label={`${t.settings.keyRevoke} ${k.name}`}
                                 onClick={() => setRevoking(k)}
                               >
-                                <Trash />
+                                {t.settings.keyRevoke}
                               </Button>
                             )}
                           </TableCell>
@@ -329,21 +321,14 @@ export function SettingsDialog({ onClose }: Props) {
             )}
           </div>
 
-          <Separator />
-
-          <div className="grid gap-2">
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-medium">{t.settings.docs}</p>
-              <Hint>{t.settings.docsHint}</Hint>
-            </div>
-            <div>
-              <Button variant="outline" size="sm" asChild>
-                <a href="/api/docs" target="_blank" rel="noreferrer">
-                  <ArrowSquareOut />
-                  {t.settings.docsOpen}
-                </a>
-              </Button>
-            </div>
+          <div className="grid gap-1.5">
+            <p className="text-neutral-300 text-[13px]">{t.settings.docs}</p>
+            <p className="text-neutral-500 text-xs">{t.settings.docsHint}</p>
+            <Button variant="link" size="sm" className="h-auto justify-self-start p-0 text-[13px]" asChild>
+              <a href="/api/docs" target="_blank" rel="noreferrer">
+                {t.settings.docsOpen} →
+              </a>
+            </Button>
           </div>
 
           {banner && (

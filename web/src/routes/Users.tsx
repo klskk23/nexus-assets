@@ -76,6 +76,7 @@ export function Users() {
         )}
         list={(params) => api.get<ListPage<User>>(`/users?${params}`)}
         createLabel={tMeta.users.create}
+        dialogClassName="sm:max-w-[480px]"
         // Disabling an account is a row action; its refusal has to appear next
         // to the rows rather than inside the create dialog.
         notice={
@@ -147,7 +148,7 @@ export function Users() {
         ]}
         form={
           <>
-            <FieldGroup className="sm:grid sm:grid-cols-3">
+            <FieldGroup className="sm:grid sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="u-email">{tMeta.users.email}</FieldLabel>
                 <Input

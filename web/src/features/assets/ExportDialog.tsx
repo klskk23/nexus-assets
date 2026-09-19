@@ -131,7 +131,7 @@ export function ExportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>{tImport.exportTitle}</DialogTitle>
           <DialogDescription>{tImport.exportIntro}</DialogDescription>
@@ -198,20 +198,27 @@ export function ExportDialog({
                   <FieldDescription>{tImport.exportNoFields}</FieldDescription>
                 ) : (
                   <>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2.5">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="link"
                         size="sm"
+                        className="h-auto p-0 text-xs"
                         onClick={() => setKeys(null)}
                       >
                         {tImport.exportAll}
                       </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setKeys([])}>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => setKeys([])}
+                      >
                         {tImport.exportNone}
                       </Button>
                     </div>
-                    <div className="grid max-h-56 grid-cols-2 gap-2 overflow-y-auto">
+                    <div className="grid max-h-56 gap-[8px_16px] overflow-y-auto [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]">
                       {fields.map((f) => (
                         <Field key={f.key} orientation="horizontal">
                           <Checkbox
@@ -242,7 +249,7 @@ export function ExportDialog({
 
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">{t.common.cancel}</Button>
+            <Button variant="ghost">{t.common.cancel}</Button>
           </DialogClose>
           <Button onClick={run} disabled={(!ticked && chosen === "") || busy}>
             {busy && <Spinner />}

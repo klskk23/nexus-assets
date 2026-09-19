@@ -53,8 +53,8 @@ describe("SettingsDialog", () => {
     renderWithProviders(<SettingsDialog onClose={vi.fn()} />)
 
     const dialog = await screen.findByRole("dialog")
-    await user.click(within(dialog).getByRole("combobox", { name: "语言" }))
-    await user.click(await screen.findByRole("option", { name: "English" }))
+    // A segmented control (030, handoff d01): two radios in a group named 语言.
+    await user.click(within(dialog).getByRole("radio", { name: "English" }))
 
     await waitFor(() => expect(patch).toHaveBeenCalledWith("/me", { lang: "en" }))
   })
@@ -68,8 +68,9 @@ describe("SettingsDialog", () => {
     renderWithProviders(<SettingsDialog onClose={vi.fn()} />)
 
     const dialog = await screen.findByRole("dialog")
-    expect(within(dialog).getByRole("combobox", { name: "语言" })).toBeInTheDocument()
+    expect(within(dialog).getByRole("radio", { name: "English" })).toBeInTheDocument()
     expect(within(dialog).queryByRole("combobox", { name: "主题" })).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole("radio", { name: "深色" })).not.toBeInTheDocument()
     expect(within(dialog).queryByText("深色")).not.toBeInTheDocument()
   })
 

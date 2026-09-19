@@ -10,9 +10,7 @@ import type { Category, CategorySchema } from "@/lib/types"
 import { t, tConfig, tMeta } from "@/i18n"
 import { ConfirmDialog } from "@/features/common/ConfirmDialog"
 import { usePresets, usePrinting } from "@/features/print/usePrinting"
-import { TableFrame } from "@/features/common/TableFrame"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -42,14 +40,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 
 interface Props {
   category: Category
@@ -123,19 +113,28 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="max-h-[85vh] gap-4 overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[85vh] gap-4 overflow-y-auto sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>
             {tMeta.categories.editTitle}：{category.name}
           </DialogTitle>
-          <DialogDescription className="font-mono">{category.code}</DialogDescription>
+          <DialogDescription className="sr-only">{category.code}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
-          <Field>
-            <FieldLabel htmlFor="ce-name">{tMeta.categories.name}</FieldLabel>
-            <Input id="ce-name" value={name} onChange={(e) => setName(e.target.value)} />
-          </Field>
+          {/* Code beside the name (handoff d04). The code is fixed once made
+              -- templates read it -- so it is shown disabled rather than
+              hidden, the way the status key is. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="ce-code">{tMeta.categories.codeShort}</FieldLabel>
+              <Input id="ce-code" className="font-mono text-[13px]" value={category.code} disabled readOnly />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="ce-name">{tMeta.categories.name}</FieldLabel>
+              <Input id="ce-name" value={name} onChange={(e) => setName(e.target.value)} />
+            </Field>
+          </div>
 
           <Field>
             <FieldLabel htmlFor="ce-parent">{tMeta.categories.parent}</FieldLabel>
@@ -240,50 +239,9 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
             </FieldSet>
           )}
 
-          <div className="grid gap-2">
-            {/* Read-only: a field is bound to categories from the field
-                itself, which is where the question "where does this belong"
-                actually gets answered. */}
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-medium">{tMeta.categories.fields}</p>
-              <Hint>{tMeta.categories.bindElsewhere}</Hint>
-            </div>
-
-            <TableFrame>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{tMeta.fields.key}</TableHead>
-                    <TableHead>{tMeta.fields.label}</TableHead>
-                    <TableHead>{tMeta.categories.required}</TableHead>
-                    <TableHead>{tMeta.categories.inheritedFrom}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bound.map((f) => (
-                    <TableRow key={f.key} aria-label={f.label}>
-                          <TableCell className="text-muted-foreground font-mono">
-                            {f.key}
-                          </TableCell>
-                          <TableCell>{f.label}</TableCell>
-                          <TableCell>
-                            {f.required && (
-                              <Badge variant="outline">{tMeta.categories.required}</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {f.inherited_from && (
-                              <Badge variant="secondary">
-                                {categories.find((c) => c.id === f.inherited_from)?.name ?? ""}
-                              </Badge>
-                            )}
-                          </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableFrame>
-          </div>
+          {/* No fields table in here any more (030): the pane beside the
+              tree lists them, read-only, with the same bindElsewhere hint.
+              The dialog is for the four things one PATCH saves. */}
 
           {/* A refusal has to render in here: the page behind this dialog is
               aria-hidden and covered. */}
@@ -307,7 +265,7 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
         <DialogFooter>
           <ConfirmDialog
             trigger={
-              <Button variant="destructive" className="mr-auto" disabled={remove.isPending}>
+              <Button variant="ghost" className="text-destructive mr-auto" disabled={remove.isPending}>
                 {tMeta.categories.delete}
               </Button>
             }

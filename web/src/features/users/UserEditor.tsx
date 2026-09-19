@@ -117,51 +117,54 @@ export function UserEditor({ user, roles, onClose }: Props) {
     <Dialog open onOpenChange={(next) => !next && onClose()}>
       {/* Taller than a short screen once the two action sections are on it,
           so it scrolls inside itself rather than off the top of the window. */}
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>{tMeta.users.editTitle(user.name)}</DialogTitle>
         </DialogHeader>
 
         <FieldGroup>
-          <Field>
-            <div className="flex items-center gap-1.5">
-              <FieldLabel htmlFor="edit-email">{tMeta.users.email}</FieldLabel>
-              <Hint>{tMeta.users.emailFixed}</Hint>
-            </div>
-            {/* Read-only rather than absent: it is the thing that identifies
-                this row, and hiding it would make the dialog ambiguous. */}
-            <Input id="edit-email" value={user.email} readOnly disabled />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="edit-name">{tMeta.users.name}</FieldLabel>
-            <Input
-              id="edit-name"
-              value={name}
-              disabled={deniedUsers !== undefined}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="edit-role">{tMeta.roles.ofUser}</FieldLabel>
-            <Select
-              value={roleID}
-              onValueChange={setRoleID}
-              disabled={deniedRoles !== undefined}
-            >
-              <SelectTrigger id="edit-role">
-                <SelectValue placeholder={t.common.select} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {roles.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
+          {/* Handoff d06: two columns for the three facts. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field>
+              <div className="flex items-center gap-1.5">
+                <FieldLabel htmlFor="edit-email">{tMeta.users.email}</FieldLabel>
+                <Hint>{tMeta.users.emailFixed}</Hint>
+              </div>
+              {/* Read-only rather than absent: it is the thing that identifies
+                  this row, and hiding it would make the dialog ambiguous. */}
+              <Input id="edit-email" value={user.email} readOnly disabled />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="edit-name">{tMeta.users.name}</FieldLabel>
+              <Input
+                id="edit-name"
+                value={name}
+                disabled={deniedUsers !== undefined}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="edit-role">{tMeta.roles.ofUser}</FieldLabel>
+              <Select
+                value={roleID}
+                onValueChange={setRoleID}
+                disabled={deniedRoles !== undefined}
+              >
+                <SelectTrigger id="edit-role">
+                  <SelectValue placeholder={t.common.select} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {roles.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
 
           <FieldSet>
             <FieldLegend variant="label">{tMeta.users.status}</FieldLegend>
@@ -173,6 +176,7 @@ export function UserEditor({ user, roles, onClose }: Props) {
                 trigger={
                   <Button
                     variant="destructive"
+                    size="sm"
                     className="w-fit"
                     disabled={deniedUsers !== undefined}
                     title={deniedUsers}
@@ -191,7 +195,8 @@ export function UserEditor({ user, roles, onClose }: Props) {
               // Letting somebody back in takes nothing away from anybody, so
               // it asks for no typed confirmation.
               <Button
-                variant="outline"
+                variant="secondary"
+                size="sm"
                 className="w-fit"
                 disabled={deniedUsers !== undefined || setEnabled.isPending}
                 title={deniedUsers}
@@ -219,7 +224,8 @@ export function UserEditor({ user, roles, onClose }: Props) {
               />
             </Field>
             <Button
-              variant="outline"
+              variant="secondary"
+              size="sm"
               className="w-fit"
               disabled={!local || password === "" || deniedUsers !== undefined || reset.isPending}
               title={deniedUsers}
