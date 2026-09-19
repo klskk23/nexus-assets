@@ -57,7 +57,9 @@ export function ExpressionHelp({ trigger }: { trigger?: ReactNode }) {
           </Button>
         )}
       </DrawerTrigger>
-      <DrawerContent className="w-full sm:max-w-[640px]">
+      {/* The drawer's own right-hand cap is sm:max-w-sm under the same
+          data-attribute variant, so the override has to wear it too. */}
+      <DrawerContent className="w-full data-[vaul-drawer-direction=right]:sm:max-w-[640px]">
         <DrawerHeader>
           <DrawerTitle>{tExprHelp.title}</DrawerTitle>
           <DrawerDescription>{tExprHelp.subtitle}</DrawerDescription>

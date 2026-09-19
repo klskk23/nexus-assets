@@ -118,7 +118,9 @@ export function ConfirmDialog({
             <div className="flex items-center gap-2">
               {/* The button sits beside the label, not inside it: a button
                   inside a label is one of the things the label labels. */}
-              <Label htmlFor="confirm-phrase" className="min-w-0 flex-1">
+              {/* block, not the Label's flex: the sentence has to flow as
+                  prose around the code, not stand in three columns. */}
+              <Label htmlFor="confirm-phrase" className="block min-w-0 flex-1 leading-snug">
                 {phraseLabel ?? (
                   <>
                     {tConfirm.typeBefore}{" "}
