@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
-当前计划：`specs/028-master-detail-holders/plan.md`
+当前计划：`specs/030-nocturne-dark-theme/plan.md`
 <!-- SPECKIT END -->
 
 必读：`.specify/memory/constitution.md`（五项原则、七条合并门禁）与当前 spec。
