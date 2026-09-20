@@ -117,30 +117,6 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
       {children}
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {paging && (
-          <Field orientation="horizontal" className="w-auto gap-2">
-            {/* The label is read out but not drawn: the value already says
-                "10 / 页", and a caption in front of it said it twice. */}
-            <FieldLabel htmlFor="page-size" className="sr-only">
-              {t.assets.perPage}
-            </FieldLabel>
-            <Select value={String(pageSize)} onValueChange={(v) => onPageSize(Number(v))}>
-              <SelectTrigger id="page-size" size="xs" className="w-[84px] gap-1 px-2 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {PAGE_SIZES.map((n) => (
-                    <SelectItem key={n} value={String(n)}>
-                      {t.assets.perPageUnit(n)}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-        )}
-
         {pageCount > 1 && (
           <Pagination className="mx-0 w-auto">
             <PaginationContent className="gap-0.5">
@@ -203,6 +179,30 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
               </PaginationItem>
             </PaginationContent>
           </Pagination>
+        )}
+
+        {paging && (
+          <Field orientation="horizontal" className="w-auto gap-2">
+            {/* The label is read out but not drawn: the value already says
+                "10 / 页", and a caption in front of it said it twice. */}
+            <FieldLabel htmlFor="page-size" className="sr-only">
+              {t.assets.perPage}
+            </FieldLabel>
+            <Select value={String(pageSize)} onValueChange={(v) => onPageSize(Number(v))}>
+              <SelectTrigger id="page-size" size="xs" className="w-[84px] gap-1 px-2 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {PAGE_SIZES.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {t.assets.perPageUnit(n)}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
         )}
       </div>
     </div>
