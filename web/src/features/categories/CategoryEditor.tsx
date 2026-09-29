@@ -72,10 +72,9 @@ export function CategoryEditor({ category, categories, onClose }: Props) {
     queryKey: ["schema", category.id],
     queryFn: () => api.get<CategorySchema>(`/categories/${category.id}/schema`),
   })
-  const bound = schema.data?.fields ?? []
-  // Only unique fields are offered as the number: one two devices can share is
-  // not an identifier, and the server refuses the rest anyway.
-  const numberCandidates = bound.filter((f) => f.is_unique)
+  // The display key is a label, not the asset identity. Category-bound fields
+  // may repeat; the asset UUID remains the identity used by every operation.
+  const numberCandidates = schema.data?.fields ?? []
 
   const fail = (e: unknown) => {
     if (e instanceof ApiError) {

@@ -467,11 +467,9 @@ func ShortID(id string) string {
 
 // AssetDisplayName resolves what to show for one asset.
 //
-// A configured display key always has a value -- it must be unique, its
-// dependencies are forced to be required, and a failed evaluation rolls the
-// save back -- so the fallback only fires for a category that never nominated
-// one. It still guards against an empty stored value rather than trusting that
-// chain, because the cost of being wrong is a blank first column.
+// A configured display key is the preferred human-facing label. Its value may
+// repeat across assets, so the fallback only fires when the stored value is
+// empty. Asset identity remains the UUID passed to this function.
 func AssetDisplayName(id string, attrs map[string]any, displayKey string) string {
 	if displayKey != "" {
 		if v, ok := attrs[displayKey]; ok && v != nil {

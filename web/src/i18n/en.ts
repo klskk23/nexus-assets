@@ -626,8 +626,7 @@ export const enConfig: typeof zhConfig = {
   displayKey: {
     label: "Item used as the number",
     none: "Not set (shows the first 8 of the UUID)",
-    hint:
-      "Only fields marked unique may be chosen. The number is usually an expression key derived from a static one such as the MAC.",
+    hint: "Choose any field bound in the category chain; repeated numbers are allowed, and UUIDs still identify devices.",
   },
   field: {
     edit: "Edit field",

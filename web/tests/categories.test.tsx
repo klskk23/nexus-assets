@@ -451,24 +451,33 @@ describe("改名与移动仍在对话框里", () => {
 // The number field used to have its own card, its own save button and its own
 // recompute button beside it. It is one of the three things this dialog saves.
 describe("Category editor", () => {
-  it("offers only unique fields as the number, and saves it with the rest", async () => {
+  it.each([
+    ["机柜", "rack", false],
+    ["机柜", "rack", true],
+    ["基准 MAC", "mac", true],
+  ] as const)("saves %s as the number (inherited=%s)", async (label, key, inherited) => {
+    get.mockImplementation((p: string) => p.includes("/schema")
+      ? Promise.resolve({ ...schema, fields: schema.fields.map((f) =>
+          f.key === "rack" ? { ...f, inherited_from: inherited ? "net" : undefined } : f,
+        ) })
+      : route(p))
     const user = userEvent.setup()
     openAt()
     const dialog = await openEditor(user)
     await user.click(within(dialog).getByRole("combobox", { name: "用作编号的字段" }))
     const options = (await screen.findAllByRole("option")).map((o) => o.textContent)
-    // A number two devices can share is not an identifier.
+    // Both unique and non-unique category fields are display choices.
     expect(options.some((o) => o?.includes("基准 MAC"))).toBe(true)
-    expect(options.some((o) => o?.includes("机柜"))).toBe(false)
+    expect(options.some((o) => o?.includes("机柜"))).toBe(true)
 
-    await user.click(await screen.findByRole("option", { name: /基准 MAC/ }))
+    await user.click(await screen.findByRole("option", { name: `${label}（${key}）` }))
     await user.click(within(dialog).getByRole("button", { name: "保存" }))
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/categories/rt", {
         name: "SDWAN 路由器",
         parent_id: "net",
-        display_key: "mac",
+        display_key: key,
         print_preset_ids: [],
       }),
     )
