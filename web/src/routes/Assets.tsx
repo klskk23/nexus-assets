@@ -353,13 +353,13 @@ export function Assets() {
   // device-side half comes from the library, where a row already says which
   // models and vendors it is bound to, and the unlock rule below is what keeps
   // it from becoming a column of blanks.
-  const deviceFields = ((library.data?.items ?? []) as unknown as BoundField[]).filter(
-    (f) => (f.model_ids ?? []).length > 0 || (f.vendor_ids ?? []).length > 0,
-  )
+  const isDeviceField = (f: FieldDefinitionRow | BoundField) =>
+    (f.model_ids ?? []).length > 0 || (f.vendor_ids ?? []).length > 0
+  const deviceFields = (library.data?.items ?? []).filter(isDeviceField)
   const available = (
     categoryId !== ""
       ? [...(schema.data?.fields ?? []), ...deviceFields]
-      : ((library.data?.items ?? []) as unknown as BoundField[])
+      : (library.data?.items ?? [])
   ).filter((f) => f.type !== "computed")
   // A device field's column says nothing until the rows are devices that have
   // the field, so it unlocks only once a filter has narrowed to those (015,
@@ -375,9 +375,10 @@ export function Assets() {
   // which is the point: without one, the rows come from everywhere.
   const chainKeys = new Set((schema.data?.fields ?? []).map((f) => f.key))
 
-  const unlocked = (f: BoundField) => {
+  const unlocked = (f: FieldDefinitionRow | BoundField) => {
     const models = f.model_ids ?? []
-    if (models.length === 0) {
+    const vendors = f.vendor_ids ?? []
+    if (!isDeviceField(f)) {
       // A category-bound field belongs to some categories, not all -- so it
       // unlocks on the same terms a model-bound one does: once the list is
       // narrowed to rows that have it.
@@ -390,12 +391,17 @@ export function Assets() {
       // category's fields on offer over a list of every category's devices.
       return categoryId !== "" && chainKeys.has(f.key)
     }
-    if (modelId !== "") return models.includes(modelId)
+    if (modelId !== "") {
+      // /fields lists direct bindings. Unlike the resolved schema, model_ids
+      // does not include models inheriting the field through their vendor.
+      const modelVendor = modelList.find((m) => m.id === modelId)?.vendor_id
+      return models.includes(modelId) || (modelVendor !== undefined && vendors.includes(modelVendor))
+    }
     if (vendorId === "") return false
     // Bound to this vendor: every row the filter leaves has the field. Or
     // bound to one of its models directly, which is still a row on screen.
     return (
-      (f.vendor_ids ?? []).includes(vendorId) ||
+      vendors.includes(vendorId) ||
       models.some((id) => modelList.find((m) => m.id === id)?.vendor_id === vendorId)
     )
   }
@@ -661,7 +667,7 @@ export function Assets() {
                         title={
                           unlocked(f)
                             ? undefined
-                            : (f.model_ids ?? []).length > 0
+                            : isDeviceField(f)
                               ? t.assets.modelColumnLocked
                               : t.assets.categoryColumnLocked
                         }
