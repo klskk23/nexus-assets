@@ -247,25 +247,20 @@ func (s *Store) DisplayKeys(ctx context.Context) (map[string]string, error) {
 // ErrDisplayKeyInvalid rejects a display key that cannot serve as an identifier.
 var ErrDisplayKeyInvalid = errors.New("display key is not usable")
 
-// validateDisplayKey enforces the two things a display key must satisfy: the
-// field is in the category's effective set, and it is marked unique.
-//
-// Uniqueness is not optional decoration. Everything the display name is for --
-// a printed label, a spoken hand-over, a stock count, a scanner jumping
-// straight to one device -- stops working the moment two assets can show the
-// same value.
+// validateDisplayKey enforces that a display key is bound to the category
+// itself or one of its ancestors. The key is a display label, not the asset's
+// identity, so its value does not need to be unique.
 func validateDisplayKey(ctx context.Context, tx *sql.Tx, path, key string) error {
 	if key == "" {
 		return nil
 	}
-	const q = `SELECT f.label, f.is_unique
+	const q = `SELECT f.label
 	           FROM category_fields cf
 	           JOIN categories c ON c.id = cf.category_id
 	           JOIN field_definitions f ON f.id = cf.field_id
 	           WHERE f.key = ? AND ? LIKE c.path || '%'`
 	var label string
-	var isUnique int
-	err := tx.QueryRowContext(ctx, q, key, path).Scan(&label, &isUnique)
+	err := tx.QueryRowContext(ctx, q, key, path).Scan(&label)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Bound, but to the device side -- a model, or a vendor whose models
 		// carry it (015 decision 100, widened by 016). Refused for its own
@@ -296,9 +291,6 @@ func validateDisplayKey(ctx context.Context, tx *sql.Tx, path, key string) error
 	}
 	if err != nil {
 		return err
-	}
-	if isUnique != 1 {
-		return i18n.Wrap(ErrDisplayKeyInvalid, i18n.KeyDisplayKeyNotUnique, label)
 	}
 	return nil
 }

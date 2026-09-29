@@ -18,7 +18,7 @@ import { join } from "node:path"
  */
 const BOUNDED: Record<string, string> = {
   "features/assets/NewAssetDialog.tsx": "状态：由状态页配置，五到十个",
-  "features/categories/CategoryEditor.tsx": "编号字段：只有本类别的唯一字段，几个",
+  "features/categories/CategoryEditor.tsx": "编号字段：类别链字段，数量受字段绑定规模限制",
   "features/common/Pager.tsx": "每页条数：四档常量",
   "features/fields/FieldForm.tsx": "字段类型：八种，代码里写死",
   "features/print/PrintDialog.tsx": "标签预设：本类别勾选过的那几种",

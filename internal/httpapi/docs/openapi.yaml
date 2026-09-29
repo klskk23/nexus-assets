@@ -1814,8 +1814,8 @@ components:
         display_key:
           type: string
           description: >
-            指向该类别有效字段集内某个标为唯一的信息项 key，空串表示未设置。
-            不沿祖先链继承；未设置时资产以 UUID 前 8 位指代
+            指向该类别或祖先类别绑定的字段 key，字段不要求唯一。空串表示未设置。
+            不沿祖先链继承；未设置或字段值为空时资产以 UUID 前 8 位指代；设备内部身份始终是 UUID
 
     ProductModel:
       type: object

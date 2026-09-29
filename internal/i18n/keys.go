@@ -132,7 +132,6 @@ const (
 	KeyCategoryHasChildren   = "category.has_children"
 	KeyCategoryHasAssets     = "category.has_assets"
 	KeyDisplayKeyUnbound     = "category.display_key_unbound"
-	KeyDisplayKeyNotUnique   = "category.display_key_not_unique"
 	KeyBindDuplicate         = "binding.duplicate"
 	KeyBindingModeConflict   = "binding.mode_conflict"
 	KeyDisplayKeyNotCategory = "category.display_key_not_category_field"

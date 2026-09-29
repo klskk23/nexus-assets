@@ -83,7 +83,7 @@ func TestDisplayKeyIsNotInherited(t *testing.T) {
 	root, child := tree(t, s, ctx)
 
 	tag, err := s.CreateField(ctx, CreateFieldInput{
-		Key: "tag", Label: "标签", Type: model.FieldText, IsUnique: true,
+		Key: "tag", Label: "标签", Type: model.FieldText,
 	})
 	if err != nil {
 		t.Fatal(err)

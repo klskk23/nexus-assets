@@ -609,7 +609,7 @@ export const zhConfig = {
   displayKey: {
     label: "用作编号的字段",
     none: "未设置（显示 UUID 前 8 位）",
-    hint: "只能选择标为唯一的字段。编号通常是一个表达式键，由 MAC 等静态键推导而来。",
+    hint: "可选择类别链上的字段；相同编号可以属于多台设备，设备仍按 UUID 区分。",
   },
   field: {
     edit: "编辑字段",

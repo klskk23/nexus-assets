@@ -586,16 +586,14 @@ func TestUnbindingAnInputAnExpressionReadsIsRefused(t *testing.T) {
 	}
 }
 
-// A category may not point its display key at a field two devices could share.
-func TestDisplayKeyMustBeUnique(t *testing.T) {
+// A category may point its display key at a non-unique category field, while
+// an unbound key is still refused.
+func TestDisplayKeyAllowsNonUniqueField(t *testing.T) {
 	f := newFixture(t)
 	key := "firmware"
-	_, err := f.schema.UpdateCategory(f.ctx, f.catID, schema.UpdateCategoryInput{DisplayKey: &key})
-	if !errors.Is(err, schema.ErrDisplayKeyInvalid) {
-		t.Fatalf("want ErrDisplayKeyInvalid, got %v", err)
-	}
-	if !strings.Contains(err.Error(), "唯一") {
-		t.Errorf("the refusal should explain what to fix, got %v", err)
+	if _, err := f.schema.UpdateCategory(f.ctx, f.catID,
+		schema.UpdateCategoryInput{DisplayKey: &key}); err != nil {
+		t.Fatalf("a non-unique category field should be accepted: %v", err)
 	}
 
 	missing := "nope"

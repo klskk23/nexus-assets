@@ -196,35 +196,32 @@ func TestErrorMessagesReachTheUserWithoutTheEnglishSentinel(t *testing.T) {
 		}
 	}
 
-	// A field an expression key reads, a display key pointed at a non-unique
-	// field, and a key bound twice on one chain: three different sentinels.
+	// A field an expression key reads, an unbound display key, and a key bound
+	// twice on one chain: three different sentinels.
 	cases := []struct {
-		name string
-		rec  func() *httptest.ResponseRecorder
-		want string
+		name       string
+		rec        func() *httptest.ResponseRecorder
+		wantStatus int
+		want       string
 	}{
 		{"delete a referenced field", func() *httptest.ResponseRecorder {
 			return h.do(t, http.MethodDelete, "/api/fields/"+macID, "")
-		}, "field is still referenced"},
-		{"display key that is not unique", func() *httptest.ResponseRecorder {
-			h.post(t, "/api/fields", `{"key":"note","label":"备注","type":"text"}`)
-			all := listFields(t, h)
-			for _, f := range all {
-				if f["key"] == "note" {
-					h.post(t, "/api/categories/"+h.catID+"/bindings",
-						`{"field_id":"`+f["id"].(string)+`"}`)
-				}
-			}
-			return h.patch(t, "/api/categories/"+h.catID, `{"display_key":"note"}`)
-		}, "display key is not usable"},
+		}, http.StatusConflict, "field is still referenced"},
+		{"display key that is unbound", func() *httptest.ResponseRecorder {
+			return h.patch(t, "/api/categories/"+h.catID, `{"display_key":"missing_key"}`)
+		}, http.StatusUnprocessableEntity, "display key is not usable"},
 		{"clear the default stock point", func() *httptest.ResponseRecorder {
 			return h.patch(t, "/api/holders/"+h.locID, `{"is_default_stock":false}`)
-		}, "default stock point"},
+		}, http.StatusUnprocessableEntity, "default stock point"},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			body := tc.rec().Body.String()
+			rec := tc.rec()
+			if rec.Code != tc.wantStatus {
+				t.Fatalf("refusal status = %d, want %d: %s", rec.Code, tc.wantStatus, rec.Body.String())
+			}
+			body := rec.Body.String()
 			if contains(body, tc.want) {
 				t.Errorf("the English sentinel leaked into the message: %s", body)
 			}
