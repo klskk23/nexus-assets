@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { Assets } from "@/routes/Assets"
+import type { FieldDefinitionRow } from "@/lib/metaTypes"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { FOLD_ABOVE } from "@/features/common/useFoldable"
 import { chooseFromMenu, openMenu } from "@/test/menu"
@@ -858,7 +859,9 @@ describe("Assets model filter", () => {
   beforeEach(() => {
     get.mockReset().mockImplementation((p: string) => {
       if (p === "/models") return Promise.resolve(models)
-      if (p.includes("/schema")) return Promise.resolve(withModelField)
+      if (p.startsWith("/fields")) {
+        return Promise.resolve({ items: withModelField.fields, total: 3, offset: 0, limit: 200 })
+      }
       return route(p)
     })
   })
@@ -926,6 +929,107 @@ describe("Assets model filter", () => {
     await waitFor(() =>
       expect(screen.queryByRole("columnheader", { name: "ServiceTag" })).not.toBeInTheDocument(),
     )
+  })
+})
+
+describe("Assets columns from direct device bindings", () => {
+  // Match /fields, not /categories/:id/schema?model_id=...: vendor inheritance
+  // must be resolved by the picker rather than pre-expanded by the fixture.
+  const fields: FieldDefinitionRow[] = [
+    { id: "fv", key: "vendor_tag", label: "Vendor tag", type: "text", options: {},
+      is_unique: false, required: false, searchable: false, category_ids: [],
+      model_ids: [], vendor_ids: ["v-dell"], group_ids: [], binding_mode: "device" },
+    { id: "fb", key: "shared_tag", label: "Shared tag", type: "text", options: {},
+      is_unique: false, required: false, searchable: false, category_ids: [],
+      model_ids: ["m-dell"], vendor_ids: ["v-dell"], group_ids: [], binding_mode: "device" },
+    { id: "fm", key: "model_tag", label: "Model tag", type: "text", options: {},
+      is_unique: false, required: false, searchable: false, category_ids: [],
+      model_ids: ["m-dell"], vendor_ids: [], group_ids: [], binding_mode: "device" },
+  ]
+
+  beforeEach(() => {
+    get.mockReset().mockImplementation((p: string) => {
+      if (p === "/vendors") return Promise.resolve([
+        { id: "v-dell", name: "Dell", model_count: 2 },
+        { id: "v-acme", name: "Acme", model_count: 1 },
+      ])
+      if (p === "/models") return Promise.resolve([
+        { id: "m-dell", name: "Latitude", vendor_id: "v-dell", vendor_name: "Dell", attr_defaults: {} },
+        { id: "m-other", name: "OptiPlex", vendor_id: "v-dell", vendor_name: "Dell", attr_defaults: {} },
+        { id: "m-acme", name: "Router", vendor_id: "v-acme", vendor_name: "Acme", attr_defaults: {} },
+        { id: "m-none", name: "Unbranded", attr_defaults: {} },
+      ])
+      if (p.startsWith("/fields")) return Promise.resolve({
+        items: [...schema.fields, ...fields], total: 5, offset: 0, limit: 200,
+      })
+      return route(p)
+    })
+  })
+
+  it.each([
+    [false, "厂商", "Dell"],
+    [true, "厂商", "Dell"],
+    [false, "型号", "Dell Latitude"],
+    [true, "型号", "Dell Latitude"],
+    [false, "型号", "Dell OptiPlex"],
+    [true, "型号", "Dell OptiPlex"],
+  ] as const)("unlocks inherited columns (category=%s, %s=%s)", async (category, filter, value) => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    if (category) await chooseByLabel(user, "类别", "网络设备")
+    await chooseByLabel(user, filter, value)
+    await user.click(screen.getByRole("button", { name: "显示列" }))
+    for (const name of ["Vendor tag", "Shared tag"]) {
+      const item = await screen.findByRole("menuitemcheckbox", { name })
+      expect(item).not.toHaveAttribute("aria-disabled", "true")
+      await user.click(item)
+      expect(await screen.findByRole("columnheader", { name })).toBeInTheDocument()
+    }
+    const direct = screen.getByRole("menuitemcheckbox", { name: "Model tag" })
+    if (value === "Dell OptiPlex") {
+      expect(direct).toHaveAttribute("aria-disabled", "true")
+    } else {
+      expect(direct).not.toHaveAttribute("aria-disabled", "true")
+      await user.click(direct)
+      expect(await screen.findByRole("columnheader", { name: "Model tag" })).toBeInTheDocument()
+    }
+  })
+
+  it("locks device fields without a matching filter and explains the right binding kind", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await user.click(screen.getByRole("button", { name: "显示列" }))
+    const vendor = await screen.findByRole("menuitemcheckbox", { name: "Vendor tag" })
+    expect(vendor).toHaveAttribute("aria-disabled", "true")
+    expect(vendor).toHaveAttribute("title", "先按型号或厂商筛一下，才能显示只属于那些设备的字段列")
+    expect(screen.getByRole("menuitemcheckbox", { name: "固件版本" })).toHaveAttribute("aria-disabled", "true")
+    await user.keyboard("{Escape}")
+    for (const model of ["Acme Router", "Unbranded"]) {
+      await chooseByLabel(user, "型号", model)
+      await user.click(screen.getByRole("button", { name: "显示列" }))
+      for (const name of ["Vendor tag", "Shared tag", "Model tag"]) {
+        expect(screen.getByRole("menuitemcheckbox", { name })).toHaveAttribute("aria-disabled", "true")
+      }
+      await user.keyboard("{Escape}")
+    }
+  })
+
+  it("keeps inherited columns for a sibling model but hides them after the vendor filter is cleared", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    await chooseByLabel(user, "厂商", "Dell")
+    await user.click(screen.getByRole("button", { name: "显示列" }))
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: "Shared tag" }))
+    await user.keyboard("{Escape}")
+    expect(await screen.findByRole("columnheader", { name: "Shared tag" })).toBeInTheDocument()
+    await chooseByLabel(user, "型号", "Dell OptiPlex")
+    expect(screen.getByRole("columnheader", { name: "Shared tag" })).toBeInTheDocument()
+    await chooseByLabel(user, "型号", "全部型号")
+    expect(screen.getByRole("columnheader", { name: "Shared tag" })).toBeInTheDocument()
+    await chooseByLabel(user, "厂商", "全部厂商")
+    expect(screen.queryByRole("columnheader", { name: "Shared tag" })).not.toBeInTheDocument()
+    await chooseByLabel(user, "厂商", "Dell")
+    expect(await screen.findByRole("columnheader", { name: "Shared tag" })).toBeInTheDocument()
   })
 })
 
@@ -1009,8 +1113,8 @@ describe("Assets vendor filter", () => {
         {
           id: "f9", key: "servicetag", label: "ServiceTag", type: "text",
           options: {}, is_unique: false, required: false, sort: 30,
-          // The reach set: every Dell model. Bound to the vendor, not to them.
-          model_ids: ["m-dell"], vendor_ids: ["v-dell"],
+          // /fields reports direct bindings, not the schema's expanded reach set.
+          category_ids: [], model_ids: [], vendor_ids: ["v-dell"], binding_mode: "device",
         },
       ],
     }
@@ -1021,7 +1125,9 @@ describe("Assets vendor filter", () => {
           { id: "m-dell", name: "Latitude 5420", vendor_id: "v-dell", vendor_name: "Dell", category_ids: ["net"], attr_defaults: {} },
         ])
       }
-      if (p.includes("/schema")) return Promise.resolve(withVendorField)
+      if (p.startsWith("/fields")) {
+        return Promise.resolve({ items: withVendorField.fields, total: 3, offset: 0, limit: 200 })
+      }
       return route(p)
     })
 
