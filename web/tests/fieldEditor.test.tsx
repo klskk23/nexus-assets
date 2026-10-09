@@ -38,6 +38,7 @@ const categories = [
 /** Answers the queries the editor makes; referrers stay empty by default. */
 function route(p: string) {
   if (p === "/categories") return Promise.resolve(categories)
+  if (p === "/fields/f1/asset-count") return Promise.resolve({ count: 4 })
   if (p.startsWith("/assets")) return Promise.resolve({ items: [], total: 4, offset: 0, limit: 1 })
   return Promise.resolve([])
 }
@@ -301,6 +302,7 @@ describe("FieldEditor bindings", () => {
   // Unticking takes the field off every device under that category, so it is
   // the one direction that asks first.
   it("asks before unticking a binding, then unbinds", async () => {
+    post.mockResolvedValue({ category: categories[0], inheritance: { parent_id: null, selected_field_ids: [], candidates: { items: [], total: 0, offset: 0, limit: 20 } }, fields: [], impact: { items: [], total: 0, offset: 0, limit: 20, added_count: 0, removed_count: 0, source_changed_count: 0, category_count: 0, asset_count: 0 }, issues: { items: [], total: 0, offset: 0, limit: 20 }, requires_confirmation: false, confirmation_token: "" })
     const user = userEvent.setup()
     renderWithProviders(
       <FieldEditor field={field("text", { category_ids: ["net"] })} onClose={vi.fn()} />,
@@ -353,9 +355,7 @@ describe("binding a field to models", () => {
 
   function withModels(p: string) {
     if (p === "/models") return Promise.resolve(models)
-    if (p.startsWith("/models/") && p.endsWith("/required-impact")) {
-      return Promise.resolve({ total: 3 })
-    }
+    if (p === "/fields/f1/asset-count") return Promise.resolve({ count: 3 })
     return route(p)
   }
 
@@ -397,7 +397,7 @@ describe("binding a field to models", () => {
     await user.click(await screen.findByLabelText("必填"))
 
     expect(await screen.findByText(/已有 3 台设备/)).toBeInTheDocument()
-    await waitFor(() => expect(get).toHaveBeenCalledWith("/models/m-dell/required-impact"))
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/fields/f1/asset-count"))
   })
 })
 
@@ -451,9 +451,7 @@ describe("binding a field to vendors", () => {
   function withVendors(p: string) {
     if (p === "/models") return Promise.resolve(models)
     if (p === "/vendors") return Promise.resolve(vendors)
-    if (p.startsWith("/models/") && p.endsWith("/required-impact")) {
-      return Promise.resolve({ total: 3 })
-    }
+    if (p === "/fields/f1/asset-count") return Promise.resolve({ count: 3 })
     return route(p)
   }
 

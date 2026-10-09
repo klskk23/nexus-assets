@@ -106,6 +106,62 @@ export interface CategorySchema {
   fields: BoundField[]
 }
 
+export interface PreviewPage<T> {
+  items: T[]
+  total: number
+  offset: number
+  limit: number
+}
+
+export interface CategoryDraft {
+  code?: string
+  name: string
+  parent_id: string | null
+  display_key: string
+  print_preset_ids: string[]
+  /** Undefined means not initialized; [] is an explicit empty choice. */
+  inherited_field_ids?: string[]
+}
+
+export interface CategoryFieldDelta {
+  category_id: string
+  field_id: string
+  key: string
+  change: "added" | "removed" | "source_changed"
+  before_source_category_id?: string
+  after_source_category_id?: string
+}
+
+export interface CategoryPreviewIssue {
+  code: string
+  message: string
+  category_id?: string
+  field_id?: string
+  field_key?: string
+  asset_id?: string
+  conflict_asset_id?: string
+}
+
+export interface CategoryPreview {
+  category: Category
+  inheritance: {
+    parent_id: string | null
+    selected_field_ids: string[]
+    candidates: PreviewPage<import("./metaTypes").InheritanceCandidate>
+  }
+  fields: BoundField[]
+  impact: PreviewPage<CategoryFieldDelta> & {
+    added_count: number
+    removed_count: number
+    source_changed_count: number
+    category_count: number
+    asset_count: number
+  }
+  issues: PreviewPage<CategoryPreviewIssue>
+  requires_confirmation: boolean
+  confirmation_token: string
+}
+
 export interface User {
   id: string
   email: string

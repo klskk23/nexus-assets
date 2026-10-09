@@ -76,8 +76,8 @@ func TestBindGateRefusesUnmetDependencies(t *testing.T) {
 	if !errors.Is(err, ErrDependenciesUnmet) {
 		t.Fatalf("want ErrDependenciesUnmet, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "不存在") {
-		t.Errorf("the refusal should say the key is unknown, got %v", err)
+	if !strings.Contains(err.Error(), "mac") {
+		t.Errorf("the refusal should identify the missing effective input, got %v", err)
 	}
 
 	// Optional to begin with, so the gate has something to refuse below.
@@ -137,6 +137,7 @@ func TestBindGateAcceptsAnInheritedInput(t *testing.T) {
 	if err := s.Bind(ctx, root.ID, mac.ID, 10); err != nil {
 		t.Fatal(err)
 	}
+	selectFixtureFields(t, s, ctx, child.ID, mac.ID)
 	if err := s.Bind(ctx, child.ID, sn.ID, 20); err != nil {
 		t.Fatalf("an inherited input should satisfy the gate: %v", err)
 	}
@@ -161,6 +162,7 @@ func TestUnbindGateRefusesWhileSomethingReadsTheField(t *testing.T) {
 	}
 	// Bound on the child, reading a field bound on the parent: the reach of the
 	// check has to be the subtree, not just the category itself.
+	selectFixtureFields(t, s, ctx, child.ID, mac.ID)
 	if err := s.Bind(ctx, child.ID, sn.ID, 20); err != nil {
 		t.Fatal(err)
 	}
@@ -174,10 +176,10 @@ func TestUnbindGateRefusesWhileSomethingReadsTheField(t *testing.T) {
 	}
 
 	// Remove the reader first and the input comes free.
-	if err := s.Unbind(ctx, child.ID, sn.ID); err != nil {
+	if err := confirmedUnbind(t, s, ctx, child.ID, sn.ID); err != nil {
 		t.Fatalf("unbinding the reader itself must be allowed: %v", err)
 	}
-	if err := s.Unbind(ctx, root.ID, mac.ID); err != nil {
+	if err := confirmedUnbind(t, s, ctx, root.ID, mac.ID); err != nil {
 		t.Fatalf("with nothing reading it, the input should unbind: %v", err)
 	}
 }

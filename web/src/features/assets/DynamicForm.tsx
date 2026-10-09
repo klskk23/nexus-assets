@@ -66,7 +66,7 @@ function FieldRow({
         {field.is_unique && <Badge variant="outline">{t.common.unique}</Badge>}
       </div>
 
-      <FieldControl id={id} field={field} value={value} describedBy={describedBy} onChange={onChange} />
+      <FieldControl id={id} field={field} value={value} invalid={!!error} describedBy={describedBy} onChange={onChange} />
 
       {hintID && (
         <FieldDescription id={hintID} className="sr-only">
@@ -87,12 +87,14 @@ function FieldControl({
   field,
   value,
   describedBy,
+  invalid,
   onChange,
 }: {
   id: string
   field: BoundField
   value: unknown
   describedBy?: string
+  invalid: boolean
   onChange: (key: string, value: unknown) => void
 }) {
   const str = value === undefined || value === null ? "" : String(value)
@@ -110,6 +112,7 @@ function FieldControl({
           readOnly
           disabled
           aria-describedby={describedBy}
+          aria-invalid={invalid || undefined}
         />
       )
 
@@ -119,6 +122,7 @@ function FieldControl({
           id={id}
           checked={str === "true"}
           aria-describedby={describedBy}
+          aria-invalid={invalid || undefined}
           onCheckedChange={(v) => onChange(field.key, v === true ? "true" : "false")}
         />
       )
@@ -130,6 +134,7 @@ function FieldControl({
           type="number"
           value={str}
           aria-describedby={describedBy}
+          aria-invalid={invalid || undefined}
           onChange={(e) => onChange(field.key, e.target.value)}
         />
       )
@@ -141,6 +146,7 @@ function FieldControl({
           type="date"
           value={str}
           aria-describedby={describedBy}
+          aria-invalid={invalid || undefined}
           onChange={(e) => onChange(field.key, e.target.value)}
         />
       )
@@ -152,6 +158,7 @@ function FieldControl({
           value={str}
           placeholder={field.options.regex_hint}
           aria-describedby={describedBy}
+          aria-invalid={invalid || undefined}
           onChange={(e) => onChange(field.key, e.target.value)}
         />
       )

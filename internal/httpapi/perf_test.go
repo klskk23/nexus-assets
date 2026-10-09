@@ -18,10 +18,20 @@ const (
 	perfSampleCount = 30
 )
 
+func TestP95UsesNearestRank(t *testing.T) {
+	samples := make([]time.Duration, 30)
+	for i := range samples {
+		samples[i] = time.Duration(i + 1)
+	}
+	if got := p95(samples); got != 29 {
+		t.Fatalf("p95 of 1..30 = %v, want 29ns", got)
+	}
+}
+
 // p95 returns the 95th percentile of a set of durations.
 func p95(samples []time.Duration) time.Duration {
 	sort.Slice(samples, func(i, j int) bool { return samples[i] < samples[j] })
-	idx := int(float64(len(samples))*0.95) - 1
+	idx := (len(samples)*95+99)/100 - 1
 	if idx < 0 {
 		idx = 0
 	}
@@ -43,7 +53,7 @@ func measure(n int, fn func()) []time.Duration {
 // measurement behind the numbers in the constitution, so it has to exist and be
 // runnable rather than be a claim nobody checks.
 //
-//	go test ./internal/httpapi/ -run TestPerformance -perf
+//	NEXUS_PERF=1 GOMAXPROCS=2 go test ./internal/httpapi/ -run '^TestPerformanceAtTenThousandAssets$' -count=1 -v
 func TestPerformanceAtTenThousandAssets(t *testing.T) {
 	if os.Getenv("NEXUS_PERF") == "" {
 		t.Skip("set NEXUS_PERF=1 to run the ten-thousand-asset measurement")

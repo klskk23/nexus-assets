@@ -1,3 +1,4 @@
+import { useId } from "react"
 import { t } from "@/i18n"
 import { cn } from "cn"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -74,6 +75,7 @@ interface Props {
  * first time either was touched.
  */
 export function Pager({ page, pageSize, total, onPage, onPageSize, children }: Props) {
+  const sizeId = useId()
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
 
   // Nothing to page through, so no paging controls: no page links, and no
@@ -185,11 +187,11 @@ export function Pager({ page, pageSize, total, onPage, onPageSize, children }: P
           <Field orientation="horizontal" className="w-auto gap-2">
             {/* The label is read out but not drawn: the value already says
                 "10 / 页", and a caption in front of it said it twice. */}
-            <FieldLabel htmlFor="page-size" className="sr-only">
+            <FieldLabel htmlFor={sizeId} className="sr-only">
               {t.assets.perPage}
             </FieldLabel>
             <Select value={String(pageSize)} onValueChange={(v) => onPageSize(Number(v))}>
-              <SelectTrigger id="page-size" size="xs" className="w-[84px] gap-1 px-2 text-xs">
+              <SelectTrigger id={sizeId} size="xs" className="w-[84px] gap-1 px-2 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

@@ -1,3 +1,4 @@
+import { invalidateSchema } from "@/features/categories/invalidateSchema"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { WarningCircle } from "@phosphor-icons/react"
@@ -50,8 +51,7 @@ export function GroupCreateDialog({ onClose }: { onClose: () => void }) {
     mutationFn: () =>
       api.post("/field-groups", { name, field_ids: members, ...bindingBody(binds) }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["field-groups"] })
-      queryClient.invalidateQueries({ queryKey: ["fields"] })
+      invalidateSchema(queryClient)
       onClose()
     },
     onError: (e) => setError(e instanceof ApiError ? e.message : t.common.error),

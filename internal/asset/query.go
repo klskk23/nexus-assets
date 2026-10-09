@@ -93,6 +93,16 @@ const defaultLimit, maxLimit = 50, 200
 // how many rows come back.
 func (s *Service) List(ctx context.Context, f ListFilter) (ListResult, error) {
 	var res ListResult
+	err := s.db.ReadTx(ctx, func(ctx context.Context, q store.Querier) error {
+		var err error
+		res, err = s.listSnapshot(ctx, q, f)
+		return err
+	})
+	return res, err
+}
+
+func (s *Service) listSnapshot(ctx context.Context, q store.Querier, f ListFilter) (ListResult, error) {
+	var res ListResult
 	if f.Limit <= 0 {
 		f.Limit = defaultLimit
 	}
@@ -100,18 +110,18 @@ func (s *Service) List(ctx context.Context, f ListFilter) (ListResult, error) {
 		f.Limit = maxLimit
 	}
 
-	where, args, err := s.filterClause(ctx, f, &res)
+	where, args, err := s.filterClause(ctx, q, f, &res)
 	if err != nil {
 		return res, err
 	}
 	clause := strings.Join(where, " AND ")
 
-	if err := s.db.ReadDB().QueryRowContext(ctx,
+	if err := q.QueryRowContext(ctx,
 		`SELECT count(*) FROM assets WHERE `+clause, args...).Scan(&res.Total); err != nil {
 		return res, fmt.Errorf("count assets: %w", err)
 	}
 
-	rows, err := s.db.ReadDB().QueryContext(ctx,
+	rows, err := q.QueryContext(ctx,
 		`SELECT `+assetCols+` FROM assets WHERE `+clause+` ORDER BY created_at DESC, id LIMIT ? OFFSET ?`,
 		append(args, f.Limit, f.Offset)...)
 	if err != nil {
@@ -132,7 +142,7 @@ func (s *Service) List(ctx context.Context, f ListFilter) (ListResult, error) {
 	// One map for the whole page rather than a lookup per row: display names
 	// are the first column, so resolving them must not scale with the page.
 	if len(res.Items) > 0 {
-		displayKeys, err := s.schema.DisplayKeys(ctx)
+		displayKeys, err := displayKeysFrom(ctx, q)
 		if err != nil {
 			return res, err
 		}
@@ -147,23 +157,25 @@ func (s *Service) List(ctx context.Context, f ListFilter) (ListResult, error) {
 // exactMatch resolves a scanned code to a single asset.
 //
 // Live values first, then retired ones, then the UUID. Ambiguity stops the
-// jump rather than picking a winner: a retired value may legitimately belong to
+// jump rather than picking a winner. Values suppressed by schema withdrawal
+// never participate in either probe: they remain readable history, not identity
+// claims. An ordinary retired value may legitimately belong to
 // several devices over time -- a swapped mainboard carries its MAC to the next
 // machine -- and silently opening one of them would be worse than showing both.
-func (s *Service) exactMatch(ctx context.Context, q string) (string, bool, error) {
+func (s *Service) exactMatch(ctx context.Context, reader store.Querier, q string) (string, bool, error) {
 	normalised := normaliseScan(q)
 	probes := []struct {
 		sql  string
 		args []any
 	}{
 		{`SELECT DISTINCT asset_id FROM asset_unique_values
-		  WHERE archived_at IS NULL AND value IN (?, ?)`, []any{q, normalised}},
+		  WHERE search_suppressed = 0 AND archived_at IS NULL AND value IN (?, ?)`, []any{q, normalised}},
 		{`SELECT DISTINCT asset_id FROM asset_unique_values
-		  WHERE archived_at IS NOT NULL AND value IN (?, ?)`, []any{q, normalised}},
+		  WHERE search_suppressed = 0 AND archived_at IS NOT NULL AND value IN (?, ?)`, []any{q, normalised}},
 		{`SELECT id FROM assets WHERE id = ?`, []any{q}},
 	}
 	for _, p := range probes {
-		ids, err := s.collectIDs(ctx, p.sql+` LIMIT 2`, p.args...)
+		ids, err := collectIDs(ctx, reader, p.sql+` LIMIT 2`, p.args...)
 		if err != nil {
 			return "", false, err
 		}
@@ -180,8 +192,8 @@ func (s *Service) exactMatch(ctx context.Context, q string) (string, bool, error
 	return "", false, nil
 }
 
-func (s *Service) collectIDs(ctx context.Context, q string, args ...any) ([]string, error) {
-	rows, err := s.db.ReadDB().QueryContext(ctx, q, args...)
+func collectIDs(ctx context.Context, reader store.Querier, q string, args ...any) ([]string, error) {
+	rows, err := reader.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -375,10 +387,6 @@ func plainFilters(f ListFilter) ([]string, []any) {
 			args = append(args, f.HolderType, f.HolderID)
 		}
 	}
-	for k, v := range f.AttrFilters {
-		where = append(where, `json_extract(attrs, '$.' || ?) = ?`)
-		args = append(args, k, v)
-	}
 	return where, args
 }
 
@@ -388,14 +396,14 @@ func plainFilters(f ListFilter) ([]string, []any) {
 // on a scanned code is decided by the same search that narrows the list, and
 // running that query twice to keep the signature tidy would be a lie about the
 // cost.
-func (s *Service) filterClause(ctx context.Context, f ListFilter, res *ListResult) ([]string, []any, error) {
+func (s *Service) filterClause(ctx context.Context, reader store.Querier, f ListFilter, res *ListResult) ([]string, []any, error) {
 	where := []string{"1 = 1"}
 	args := []any{}
 
 	if f.CategoryID != "" {
 		if f.IncludeDescendants {
 			var path string
-			if err := s.db.ReadDB().QueryRowContext(ctx,
+			if err := reader.QueryRowContext(ctx,
 				`SELECT path FROM categories WHERE id = ?`, f.CategoryID).Scan(&path); err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					return nil, nil, schema.ErrNotFound
@@ -421,6 +429,12 @@ func (s *Service) filterClause(ctx context.Context, f ListFilter, res *ListResul
 	plainWhere, plainArgs := plainFilters(f)
 	where = append(where, plainWhere...)
 	args = append(args, plainArgs...)
+	attrWhere, attrArgs, err := effectiveAttrFilters(ctx, reader, f.AttrFilters)
+	if err != nil {
+		return nil, nil, err
+	}
+	where = append(where, attrWhere...)
+	args = append(args, attrArgs...)
 
 	q := strings.TrimSpace(f.Q)
 	if q == "" {
@@ -429,7 +443,7 @@ func (s *Service) filterClause(ctx context.Context, f ListFilter, res *ListResul
 
 	// Exact first: a scanner types the whole code, and a single hit should land
 	// on the device rather than on a one-row list.
-	id, found, err := s.exactMatch(ctx, q)
+	id, found, err := s.exactMatch(ctx, reader, q)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -447,13 +461,58 @@ func (s *Service) filterClause(ctx context.Context, f ListFilter, res *ListResul
 	// keys are configuration, and a query that spelled them out would answer
 	// yesterday's schema.
 	where = append(where, `(
-		id IN (SELECT asset_id FROM asset_unique_values WHERE value LIKE ? OR value LIKE ?)
+		id IN (SELECT asset_id FROM asset_unique_values WHERE search_suppressed = 0 AND (value LIKE ? OR value LIKE ?))
 		OR id IN (SELECT asset_id FROM asset_search_values WHERE value LIKE ? OR value LIKE ?)
 		OR model_id IN (SELECT id FROM product_models WHERE name LIKE ?)
 		OR id LIKE ?
 	)`)
 	args = append(args, like, upper, like, upper, like, q+"%")
 	return where, args, nil
+}
+
+// effectiveAttrFilters combines raw values with effective reach from the same
+// read transaction. JSON-bound sets avoid a parameter per category or model.
+func effectiveAttrFilters(ctx context.Context, q store.Querier, filters map[string]string) ([]string, []any, error) {
+	if len(filters) == 0 {
+		return nil, nil, nil
+	}
+	snapshot, err := schema.LoadSchemaSnapshot(ctx, q)
+	if err != nil {
+		return nil, nil, err
+	}
+	var where []string
+	var args []any
+	for key, value := range filters {
+		reach, err := snapshot.KeyReach(key)
+		if err != nil {
+			return nil, nil, err
+		}
+		predicate, reachArgs, err := reach.SQLPredicate("category_id", "model_id")
+		if err != nil {
+			return nil, nil, err
+		}
+		where = append(where, predicate, `json_extract(attrs, '$.' || ?) = ?`)
+		args = append(args, reachArgs...)
+		args = append(args, key, value)
+	}
+	return where, args, nil
+}
+
+func displayKeysFrom(ctx context.Context, q store.Querier) (map[string]string, error) {
+	rows, err := q.QueryContext(ctx, `SELECT id, coalesce(display_key, '') FROM categories`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	keys := map[string]string{}
+	for rows.Next() {
+		var id, key string
+		if err := rows.Scan(&id, &key); err != nil {
+			return nil, err
+		}
+		keys[id] = key
+	}
+	return keys, rows.Err()
 }
 
 // DisplayNames resolves the human-readable number for a set of assets.

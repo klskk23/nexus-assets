@@ -94,7 +94,7 @@ export function ExportDialog({
   const fields = schema.data?.fields ?? []
   // Everything, until somebody says otherwise: a person who wants the lot -- the
   // common case -- should not have to tick forty boxes to get it.
-  const selectedFields = keys ?? fields.map((f) => f.key)
+  const selectedFields = fields.map((f) => f.key).filter((key) => keys === null || keys.includes(key))
 
   const toggle = (key: string) =>
     setKeys(

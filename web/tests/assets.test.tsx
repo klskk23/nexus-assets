@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { screen, waitFor, within } from "@testing-library/react"
+import { act, screen, waitFor, within } from "@testing-library/react"
+import { invalidateSchema } from "@/features/categories/invalidateSchema"
 import userEvent from "@testing-library/user-event"
 
 import { Assets } from "@/routes/Assets"
@@ -154,6 +155,63 @@ describe("Assets list", () => {
     post.mockReset()
     get.mockImplementation(route)
     localStorage.clear()
+  })
+
+  it("drops a selected withdrawn column and its archived value after shared schema invalidation", async () => {
+    const user = userEvent.setup()
+    const { client } = renderWithProviders(<Assets />)
+    await screen.findByLabelText(/共 1 条/)
+    await chooseByLabel(user, "类别", "网络设备")
+    await user.click(screen.getByRole("button", { name: "显示列" }))
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: "固件版本" }))
+    await user.keyboard("{Escape}")
+    expect(await screen.findByRole("columnheader", { name: "固件版本" })).toBeInTheDocument()
+    expect(screen.getByRole("cell", { name: "2.1.3" })).toBeInTheDocument()
+    get.mockImplementation((path: string) => {
+      if (path.includes("/schema")) return Promise.resolve({ ...schema, fields: [schema.fields[0]] })
+      if (path.startsWith("/assets")) return Promise.resolve({ ...page, items: [{ ...page.items[0], attrs: { mac: "001A2B3C4D5E" }, archived_attrs: { firmware: "2.1.3" } }] })
+      return route(path)
+    })
+    await act(async () => { await invalidateSchema(client) })
+    await waitFor(() => expect(screen.queryByRole("columnheader", { name: "固件版本" })).not.toBeInTheDocument())
+    expect(screen.queryByRole("columnheader", { name: "firmware" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("cell", { name: "2.1.3" })).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "显示列" }))
+    expect(screen.queryByRole("menuitemcheckbox", { name: "固件版本" })).not.toBeInTheDocument()
+  })
+
+  it("clones only the right-clicked row without navigating or writing", async () => {
+    const user = userEvent.setup()
+    get.mockImplementation((p: string) => p === "/assets/a1"
+      ? Promise.resolve({ asset: page.items[0], value_history: [] }) : route(p))
+    renderWithProviders(<Assets />)
+    await user.pointer({ keys: "[MouseRight]", target: await screen.findByRole("cell", { name: "112394521950" }) })
+    await user.click(screen.getByRole("menuitem", { name: "克隆" }))
+    expect(await screen.findByRole("dialog", { name: "克隆设备" })).toBeInTheDocument()
+    expect(await screen.findByRole("textbox", { name: "固件版本" })).toHaveValue("2.1.3")
+    expect(get).toHaveBeenCalledWith("/assets/a1")
+    expect(post).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it("keeps clone visible but disabled with the missing create permission explained", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />, { permissions: [] })
+    await user.pointer({ keys: "[MouseRight]", target: await screen.findByRole("cell", { name: "112394521950" }) })
+    const clone = screen.getByRole("menuitem", { name: "克隆" })
+    expect(clone).toHaveAttribute("aria-disabled", "true")
+    expect(clone.getAttribute("title")).toContain("录入")
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+  })
+
+  it("does not offer a single-row clone while any asset is selected", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Assets />)
+    const cell = await screen.findByRole("cell", { name: "112394521950" })
+    await user.click(screen.getByRole("checkbox", { name: "选择 112394521950" }))
+    await user.pointer({ keys: "[MouseRight]", target: cell })
+    expect(screen.queryByRole("menuitem", { name: "克隆" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "克隆" })).not.toBeInTheDocument()
   })
 
   it("focuses the search box on mount so a scanner can type straight away", async () => {

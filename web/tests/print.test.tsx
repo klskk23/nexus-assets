@@ -61,6 +61,25 @@ beforeEach(() => {
 })
 
 describe("printing the ticked devices", () => {
+  it("reads a new server projection after reopening and never sends cached or archived field values", async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)
+    await user.click(await screen.findByRole("button", { name: "打印标签" }))
+    let dialog = await screen.findByRole("dialog")
+    expect(await within(dialog).findByText(/112394521950/)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole("button", { name: "取消" }))
+    plans({ batches: [{ category_id: "net", category_name: "网络设备", count: 1, preset_id: "p1", preset_name: "路由器标签", numbers: ["new-effective-number"], presets: [{ id: "p1", name: "路由器标签" }] }] }, { batches: [{ category_id: "net", category_name: "网络设备", count: 1, job_id: "job-2", status: "queued" }] })
+    await user.click(screen.getByRole("button", { name: "打印标签" }))
+    dialog = await screen.findByRole("dialog")
+    expect(await within(dialog).findByText("new-effective-number")).toBeInTheDocument()
+    expect(within(dialog).queryByText(/112394521950/)).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole("button", { name: "确认打印 1 张" }))
+    expect(await within(dialog).findByText("全部打印完成")).toBeInTheDocument()
+    expect(post.mock.calls.filter(([p]) => p === "/print").map(([, body]) => body)).toEqual([
+      { ids: ["a1"], dry_run: true }, { ids: ["a1"], dry_run: true }, { ids: ["a1"], presets: { net: "p1" } },
+    ])
+  })
+
   it("offers nothing when no print service is configured", async () => {
     get.mockImplementation(route(false))
     renderWithProviders(<ActionBar selected={["a1"]} onClear={vi.fn()} onDone={vi.fn()} onExport={vi.fn()} />)

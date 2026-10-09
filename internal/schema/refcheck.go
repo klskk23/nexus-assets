@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/klskk23/nexus-assets/internal/compute"
 	"github.com/klskk23/nexus-assets/internal/i18n"
@@ -20,19 +19,14 @@ var ErrFieldReferenced = errors.New("field is still referenced")
 // ErrFieldInUse blocks deleting a field that assets carry values for.
 var ErrFieldInUse = errors.New("field still holds data on existing assets")
 
-// Referrer names one expression key that reads a field.
+// Referrer names a computed field or category display key reading a definition.
 type Referrer struct {
-	// Kind is "field" for an expression key that reads this one, or
-	// "display_key" for a category that shows it as the asset identifier.
 	Kind  string `json:"kind"`
 	ID    string `json:"id"`
 	Label string `json:"label"`
 }
 
-// Message renders a referrer as a translatable fragment.
-//
-// It is a Message rather than a string so it can be an argument of the refusal
-// that quotes it: the language is chosen once, at the edge, not here.
+// Message renders a reference at the request's language boundary.
 func (r Referrer) Message() i18n.Message {
 	if r.Kind == "display_key" {
 		return i18n.M(i18n.KeyRefDisplayKey, r.Label)
@@ -43,157 +37,68 @@ func (r Referrer) Message() i18n.Message {
 // String keeps Referrer printable in logs and tests.
 func (r Referrer) String() string { return r.Message().Error() }
 
-// boundPaths lists the paths of the categories that bind this field.
-//
-// Since a key is only unique within a category chain, "everything that reads
-// the key rack" is no longer the same question as "everything that reads this
-// field": another category may have a rack of its own. Every check below is
-// therefore limited to the trees this field is actually part of, and a field
-// bound nowhere blocks nothing.
-func (s *Store) boundPaths(ctx context.Context, fieldID string) ([]string, error) {
-	// All three kinds of binding (015, widened by 016). Asking only
-	// category_fields answered "nowhere" for a device-bound field -- which
-	// quietly switched off every guard scoped by these paths, including the one
-	// that refuses to delete a field forty devices still hold a value for.
-	//
-	// A device-side binding reaches **every** category. A model is recorded
-	// under whichever category its device is in, so a field on a model, or on a
-	// vendor whose models it is, can turn up anywhere.
-	//
-	// This used to reach through product_model_categories instead, which was
-	// the same silence in a subtler place: a model associated with nothing
-	// answered "nowhere" again. Before 026 that was rare; after it, a model is
-	// associated with nothing by definition, and the table is gone (029).
-	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT c.path FROM category_fields cf JOIN categories c ON c.id = cf.category_id
-		 WHERE cf.field_id = ?
-		 UNION
-		 SELECT c.path FROM categories c
-		  WHERE EXISTS (SELECT 1 FROM model_fields mf WHERE mf.field_id = ?)
-		     OR EXISTS (SELECT 1 FROM vendor_fields vf WHERE vf.field_id = ?)`,
-		fieldID, fieldID, fieldID)
+// ReferrersOf uses field identity and simultaneous reach, not ancestor paths or
+// a global key match. Two disjoint models can define independent identical keys.
+func (s *Store) ReferrersOf(ctx context.Context, fieldID, key string) ([]Referrer, error) {
+	snapshot, err := s.Snapshot(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("load bound categories: %w", err)
+		return nil, err
 	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var p string
-		if err := rows.Scan(&p); err != nil {
+	return snapshot.referrersOf(fieldID, key)
+}
+
+func (s *SchemaSnapshot) referrersOf(fieldID, key string) ([]Referrer, error) {
+	target, err := s.FieldReach(fieldID)
+	if err != nil {
+		return nil, err
+	}
+	var out []Referrer
+	for _, f := range s.fields {
+		if f.Type != model.FieldComputed || f.ID == fieldID {
+			continue
+		}
+		reach, err := s.FieldReach(f.ID)
+		if err != nil {
 			return nil, err
 		}
-		out = append(out, p)
-	}
-	return out, rows.Err()
-}
-
-// inScope reports whether a category path shares a chain with any of the paths
-// the field is bound on -- an ancestor of one, or inside its subtree.
-func inScope(paths []string, path string) bool {
-	for _, p := range paths {
-		if strings.HasPrefix(path, p) || strings.HasPrefix(p, path) {
-			return true
-		}
-	}
-	return false
-}
-
-// ReferrersOf lists every expression key whose template reads the given field.
-//
-// References come from the parsed syntax tree, not a text search: a regular
-// expression would miss a key inside a nested call and would match one inside a
-// string literal. Both mistakes are silent, and this list is what stands
-// between an administrator and an unusable system -- taking away a field that
-// an expression key reads makes every asset in that category impossible to
-// save.
-func (s *Store) ReferrersOf(ctx context.Context, fieldID, key string) ([]Referrer, error) {
-	var out []Referrer
-
-	paths, err := s.boundPaths(ctx, fieldID)
-	if err != nil {
-		return nil, err
-	}
-	if len(paths) == 0 {
-		return nil, nil
-	}
-	readers, err := s.fieldsInScope(ctx, paths)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, f := range readers {
-		if f.Type != model.FieldComputed || f.Key == key {
+		if !reachesOverlap(target, reach) {
 			continue
 		}
 		refs, err := templateRefs(f.Key, f.Options.Template)
 		if err != nil {
-			// A template that no longer parses cannot be shown to reference
-			// anything, but it must not hide a real dependency either, so the
-			// failure is reported rather than swallowed.
 			return nil, fmt.Errorf("computed field %q has an unparsable template: %w", f.Key, err)
 		}
 		if slices.Contains(refs, key) {
 			out = append(out, Referrer{Kind: "field", ID: f.ID, Label: f.Label})
 		}
 	}
-
+	slices.SortFunc(out, func(a, b Referrer) int {
+		if a.ID < b.ID {
+			return -1
+		}
+		if a.ID > b.ID {
+			return 1
+		}
+		return 0
+	})
 	return out, nil
 }
 
-// fieldsInScope lists the field definitions that can reach an asset the given
-// paths can reach.
-//
-// Category bindings carry a path, so they answer by chain. **Device-side
-// bindings carry none** -- a model is recorded under any category, so a field
-// on a model, or on a vendor whose models it is, is in scope of every question
-// asked here. They used to be left out of this list entirely, which made a
-// computed field bound to a model invisible as a referrer: two fields on one
-// model, one computed over the other, and deleting the dependency went
-// straight through, leaving every device of that model unsaveable at the next
-// edit. Nothing said so until somebody tried to save one.
-//
-// Two device bindings that cannot actually meet -- fields on two different
-// models -- are both returned anyway. That over-refuses, and over-refusing
-// here costs a rename while under-refusing costs a category nobody can save
-// into. The same trade is already made by assertKeyFreeForCategory, which
-// stopped asking which categories a device binding reaches for the same
-// reason.
-func (s *Store) fieldsInScope(ctx context.Context, paths []string) ([]model.FieldDefinition, error) {
-	all, err := s.ListFields(ctx)
-	if err != nil {
-		return nil, err
+func reachesOverlap(a, b FieldReach) bool {
+	if len(a.CategoryIDs) > 0 && len(b.ModelIDs) > 0 || len(b.CategoryIDs) > 0 && len(a.ModelIDs) > 0 {
+		return true
 	}
-	byID := make(map[string]model.FieldDefinition, len(all))
-	for _, f := range all {
-		byID[f.ID] = f
-	}
-
-	// A path of "" marks a binding with no path of its own: in scope always.
-	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT cf.field_id, c.path FROM category_fields cf JOIN categories c ON c.id = cf.category_id
-		 UNION ALL SELECT field_id, '' FROM model_fields
-		 UNION ALL SELECT field_id, '' FROM vendor_fields`)
-	if err != nil {
-		return nil, fmt.Errorf("load bindings in scope: %w", err)
-	}
-	defer rows.Close()
-
-	seen := map[string]bool{}
-	var out []model.FieldDefinition
-	for rows.Next() {
-		var id, path string
-		if err := rows.Scan(&id, &path); err != nil {
-			return nil, err
-		}
-		if seen[id] || (path != "" && !inScope(paths, path)) {
-			continue
-		}
-		if f, ok := byID[id]; ok {
-			seen[id] = true
-			out = append(out, f)
+	for _, id := range a.CategoryIDs {
+		if slices.Contains(b.CategoryIDs, id) {
+			return true
 		}
 	}
-	return out, rows.Err()
+	for _, id := range a.ModelIDs {
+		if slices.Contains(b.ModelIDs, id) {
+			return true
+		}
+	}
+	return false
 }
 
 func templateRefs(name, text string) ([]string, error) {
@@ -204,157 +109,116 @@ func templateRefs(name, text string) ([]string, error) {
 	return p.AttrReferences(), nil
 }
 
-// Blocker names one asset standing in the way of deleting a field.
+// Blocker names an asset standing in the way of deleting a field.
 type Blocker struct {
 	AssetID string `json:"asset_id"`
 	Name    string `json:"name"`
 }
 
-// blockerLimit caps how many assets are listed. Enough to show what is going
-// on without turning an error message into a report.
 const blockerLimit = 5
 
-// AssetsUsing reports the assets carrying a non-empty value for the key.
-//
-// This has to be a full scan: attrs is a JSON column and the key is decided at
-// runtime, so a parameterised json_extract cannot use an index. Deleting is a
-// rare, deliberate act, and what the scan buys is that deleting never loses
-// data -- an approximation here would mean a silent loss there.
-//
-// Emptiness is judged after trimming rather than by IS NOT NULL. A field that
-// was once filled in and later cleared leaves an empty string behind, and
-// treating that as "in use" would make it undeletable for ever while the screen
-// shows the column as blank.
-func (s *Store) AssetsUsing(ctx context.Context, key string, paths []string) ([]Blocker, int, error) {
-	if len(paths) == 0 {
-		return nil, 0, nil
-	}
-	// Only the trees this field is bound on. A value under another category's
-	// key of the same name belongs to that category's field, not this one.
-	scope, args := pathFilter(paths)
-	pred := `coalesce(trim(json_extract(a.attrs, '$.' || ?)), '') != ''`
-
-	var total int
-	if err := s.db.ReadDB().QueryRowContext(ctx,
-		`SELECT count(*) FROM assets a JOIN categories c ON c.id = a.category_id
-		 WHERE `+pred+` AND (`+scope+`)`, append([]any{key}, args...)...).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count assets using %q: %w", key, err)
-	}
-	if total == 0 {
-		return nil, 0, nil
-	}
-
-	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT a.id, a.attrs, coalesce(c.display_key, '')
-		 FROM assets a JOIN categories c ON c.id = a.category_id
-		 WHERE `+pred+` AND (`+scope+`) ORDER BY a.created_at, a.id LIMIT ?`,
-		append(append([]any{key}, args...), blockerLimit)...)
+// assetsUsing includes ambiguous archived values even when no binding remains.
+// A value can be excluded only when another effective definition owns its key.
+func assetsUsing(ctx context.Context, q store.Querier, snapshot *SchemaSnapshot, f model.FieldDefinition) ([]Blocker, int, error) {
+	rows, err := q.QueryContext(ctx, `SELECT a.id,a.category_id,coalesce(a.model_id,''),a.attrs,coalesce(c.display_key,'')
+ FROM assets a JOIN categories c ON c.id=a.category_id
+ WHERE coalesce(trim(json_extract(a.attrs,'$.' || ?)),'') <> '' ORDER BY a.created_at,a.id`, f.Key)
 	if err != nil {
-		return nil, 0, fmt.Errorf("list assets using %q: %w", key, err)
+		return nil, 0, fmt.Errorf("load field values: %w", err)
 	}
 	defer rows.Close()
 	var out []Blocker
+	total := 0
 	for rows.Next() {
-		var b Blocker
-		var attrsJSON, displayKey string
-		if err := rows.Scan(&b.AssetID, &attrsJSON, &displayKey); err != nil {
+		var id, categoryID, modelID, raw, displayKey string
+		if err := rows.Scan(&id, &categoryID, &modelID, &raw, &displayKey); err != nil {
 			return nil, 0, err
 		}
-		attrs, err := store.UnmarshalJSONMap(attrsJSON)
+		owned, err := snapshot.valueOwnedByOther(f, categoryID, modelID)
 		if err != nil {
 			return nil, 0, err
 		}
-		b.Name = model.AssetDisplayName(b.AssetID, attrs, displayKey)
-		out = append(out, b)
+		if owned {
+			continue
+		}
+		total++
+		if len(out) >= blockerLimit {
+			continue
+		}
+		attrs, err := store.UnmarshalJSONMap(raw)
+		if err != nil {
+			return nil, 0, err
+		}
+		out = append(out, Blocker{AssetID: id, Name: model.AssetDisplayName(id, attrs, displayKey)})
 	}
 	return out, total, rows.Err()
 }
 
-// DeleteField removes a field, refusing while anything still points at it.
-//
-// Three checks, cheapest first: an expression key that reads it, a category
-// that shows it as the asset identifier, then the full scan for stored values.
-// The first two are configuration and the third is data; both kinds of refusal
-// name what is in the way, because "cannot delete" without that is a dead end.
+func (s *SchemaSnapshot) valueOwnedByOther(f model.FieldDefinition, categoryID, modelID string) (bool, error) {
+	cat, err := s.Category(categoryID)
+	if err != nil {
+		return false, err
+	}
+	fields, err := s.FieldsForAsset(cat.Path, modelID)
+	if err != nil {
+		return false, err
+	}
+	for _, effective := range fields {
+		if effective.Key == f.Key {
+			return effective.ID != f.ID, nil
+		}
+	}
+	return false, nil
+}
+
+// DeleteField checks references and retained values in the same write snapshot
+// that removes the definition. Archived values cannot race a pre-transaction guard.
 func (s *Store) DeleteField(ctx context.Context, id string) ([]Referrer, []Blocker, int, error) {
-	f, err := s.GetField(ctx, id)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-
-	paths, err := s.boundPaths(ctx, id)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	referrers, err := s.ReferrersOf(ctx, id, f.Key)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	users, err := s.categoriesUsingDisplayKey(ctx, f.Key, paths)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	referrers = append(referrers, users...)
-	if len(referrers) > 0 {
-		names := make([]any, 0, len(referrers))
-		for _, r := range referrers {
-			names = append(names, r.Message())
+	var refs []Referrer
+	var blockers []Blocker
+	var total int
+	err := s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		snapshot, err := LoadSchemaSnapshot(ctx, tx)
+		if err != nil {
+			return err
 		}
-		return referrers, nil, 0, i18n.Wrap(ErrFieldReferenced, i18n.KeyFieldReferenced,
-			i18n.Join(i18n.KeyListSeparator, names...), f.Label)
-	}
-
-	blockers, total, err := s.AssetsUsing(ctx, f.Key, paths)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	if total > 0 {
-		var partial any = ""
-		if len(blockers) < total {
-			partial = i18n.M(i18n.KeyListTruncated, len(blockers))
+		f, ok := snapshot.fields[id]
+		if !ok {
+			return ErrNotFound
 		}
-		return nil, blockers, total, i18n.Wrap(ErrFieldInUse,
-			i18n.KeyFieldInUseByAssets, total, f.Label, partial)
-	}
-
-	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		return s.deleteFieldTx(ctx, tx, f.ID, f.Key)
+		refs, err = snapshot.referrersOf(id, f.Key)
+		if err != nil {
+			return err
+		}
+		reach, err := snapshot.FieldReach(id)
+		if err != nil {
+			return err
+		}
+		for _, catID := range reach.CategoryIDs {
+			c := snapshot.categories[catID]
+			if c.DisplayKey == f.Key {
+				refs = append(refs, Referrer{Kind: "display_key", ID: c.ID, Label: c.Name})
+			}
+		}
+		if len(refs) > 0 {
+			names := make([]any, 0, len(refs))
+			for _, r := range refs {
+				names = append(names, r.Message())
+			}
+			return i18n.Wrap(ErrFieldReferenced, i18n.KeyFieldReferenced, i18n.Join(i18n.KeyListSeparator, names...), f.Label)
+		}
+		blockers, total, err = assetsUsing(ctx, tx, snapshot, f)
+		if err != nil {
+			return err
+		}
+		if total > 0 {
+			var partial any = ""
+			if len(blockers) < total {
+				partial = i18n.M(i18n.KeyListTruncated, len(blockers))
+			}
+			return i18n.Wrap(ErrFieldInUse, i18n.KeyFieldInUseByAssets, total, f.Label, partial)
+		}
+		return s.deleteFieldTx(ctx, tx, id, f.Key)
 	})
-	return nil, nil, 0, err
-}
-
-// categoriesUsingDisplayKey lists categories whose display key is this field.
-func (s *Store) categoriesUsingDisplayKey(ctx context.Context, key string, paths []string) ([]Referrer, error) {
-	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT id, name, path FROM categories WHERE display_key = ?`, key)
-	if err != nil {
-		return nil, fmt.Errorf("scan display keys: %w", err)
-	}
-	defer rows.Close()
-	var out []Referrer
-	for rows.Next() {
-		var r Referrer
-		var path string
-		if err := rows.Scan(&r.ID, &r.Label, &path); err != nil {
-			return nil, err
-		}
-		if !inScope(paths, path) {
-			continue
-		}
-		r.Kind = "display_key"
-		out = append(out, r)
-	}
-	return out, rows.Err()
-}
-
-// pathFilter builds the "inside one of these subtrees, or an ancestor of one"
-// predicate, with its arguments.
-func pathFilter(paths []string) (string, []any) {
-	clauses := make([]string, 0, len(paths))
-	args := make([]any, 0, len(paths)*2)
-	for _, p := range paths {
-		clauses = append(clauses, `c.path LIKE ? || '%' OR ? LIKE c.path || '%'`)
-		args = append(args, p, p)
-	}
-	return strings.Join(clauses, " OR "), args
+	return refs, blockers, total, err
 }

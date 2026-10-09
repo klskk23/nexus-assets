@@ -89,6 +89,40 @@ func Resolve(path string, bindingsByCategory map[string][]Binding) ([]model.Boun
 	return out, nil
 }
 
+// resolveSelectedFields preserves the parent's ordering and original source.
+// An unreachable selection is an error, never a dormant automatic inheritance.
+func resolveSelectedFields(categoryID, parentID string, parent []model.BoundField, selected map[string]bool, own []Binding) ([]model.BoundField, error) {
+	out := make([]model.BoundField, 0, len(selected)+len(own))
+	found := make(map[string]bool, len(selected))
+	keys := make(map[string]bool)
+	for _, field := range parent {
+		if !selected[field.ID] {
+			continue
+		}
+		found[field.ID] = true
+		keys[field.Key] = true
+		if field.InheritedFrom == "" {
+			field.InheritedFrom = parentID
+		}
+		out = append(out, field)
+	}
+	for id := range selected {
+		if !found[id] {
+			return nil, fmt.Errorf("category %s selects field %s absent from its parent", categoryID, id)
+		}
+	}
+	bindings := append([]Binding(nil), own...)
+	sort.SliceStable(bindings, func(i, j int) bool { return bindings[i].Sort < bindings[j].Sort })
+	for _, binding := range bindings {
+		if keys[binding.Field.Key] {
+			return nil, fmt.Errorf("category %s has duplicate field key %q: %w", categoryID, binding.Field.Key, ErrKeyConflict)
+		}
+		keys[binding.Field.Key] = true
+		out = append(out, model.BoundField{FieldDefinition: binding.Field, Required: binding.Field.Required, Sort: binding.Sort})
+	}
+	return out, nil
+}
+
 // ActiveFields returns the fields currently in effect for a category.
 //
 // Since information items lost their archived state it has nothing to filter,

@@ -35,19 +35,23 @@ const (
 	CodeUnauthenticated = "unauthenticated"
 	// CodeForbidden is authenticated but not allowed -- a permission the
 	// account's role does not carry.
-	CodeForbidden         = "forbidden"
-	CodeDomainNotAllowed  = "domain_not_allowed"
-	CodeNotFound          = "not_found"
-	CodeValidationFailed  = "validation_failed"
-	CodeUniqueConflict    = "unique_conflict"
-	CodeVersionConflict   = "version_conflict"
-	CodeReferenceBlocked  = "reference_blocked"
-	CodeIllegalTransition = "illegal_transition"
-	CodeNotTailEvent      = "not_tail_event"
-	CodeTemplateInvalid   = "template_invalid"
-	CodeComputeFailed     = "compute_failed"
-	CodeCategoryHasAssets = "category_has_assets"
-	CodeInternal          = "internal_error"
+	CodeForbidden                = "forbidden"
+	CodeDomainNotAllowed         = "domain_not_allowed"
+	CodeNotFound                 = "not_found"
+	CodeValidationFailed         = "validation_failed"
+	CodeUniqueConflict           = "unique_conflict"
+	CodeVersionConflict          = "version_conflict"
+	CodeSchemaStale              = "schema_stale"
+	CodeReferenceBlocked         = "reference_blocked"
+	CodeIllegalTransition        = "illegal_transition"
+	CodeNotTailEvent             = "not_tail_event"
+	CodeTemplateInvalid          = "template_invalid"
+	CodeComputeFailed            = "compute_failed"
+	CodeCategoryHasAssets        = "category_has_assets"
+	CodeInternal                 = "internal_error"
+	CodeConfirmationRequired     = "confirmation_required"
+	CodeImpactStale              = "impact_stale"
+	CodeSchemaEffectsUnavailable = "schema_effects_unavailable"
 )
 
 // LangOf reports the language this request asked for.
@@ -110,12 +114,16 @@ var refusals = []struct {
 	answer   refusal
 }{
 	{asset.ErrVersionConflict, refusal{http.StatusConflict, CodeVersionConflict, i18n.KeyVersionConflict, ""}},
+	{asset.ErrSchemaStale, refusal{http.StatusConflict, CodeSchemaStale, i18n.KeySchemaStale, ""}},
 
 	{asset.ErrNotFound, refusal{http.StatusNotFound, CodeNotFound, i18n.KeyNotFound, ""}},
 	{schema.ErrNotFound, refusal{http.StatusNotFound, CodeNotFound, i18n.KeyNotFound, ""}},
 	{holder.ErrNotFound, refusal{http.StatusNotFound, CodeNotFound, i18n.KeyNotFound, ""}},
 	{auth.ErrNotFound, refusal{http.StatusNotFound, CodeNotFound, i18n.KeyNotFound, ""}},
 
+	{schema.ErrConfirmationRequired, refusal{http.StatusConflict, CodeConfirmationRequired, "", ""}},
+	{schema.ErrImpactStale, refusal{http.StatusConflict, CodeImpactStale, "", ""}},
+	{schema.ErrSchemaEffectsUnavailable, refusal{http.StatusConflict, CodeSchemaEffectsUnavailable, "", ""}},
 	{schema.ErrCategoryHasChildren, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
 	{schema.ErrCategoryHasAssets, refusal{http.StatusConflict, CodeCategoryHasAssets, "", ""}},
 	{schema.ErrKeyConflict, refusal{http.StatusConflict, CodeUniqueConflict, "", ""}},
@@ -128,7 +136,7 @@ var refusals = []struct {
 	// so the message is passed through rather than flattened to a generic one.
 	{schema.ErrDependenciesUnmet, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", ""}},
 	{schema.ErrStatusInvalid, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", ""}},
-	{schema.ErrDisplayKeyInvalid, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", ""}},
+	{schema.ErrDisplayKeyInvalid, refusal{http.StatusUnprocessableEntity, CodeValidationFailed, "", "display_key"}},
 	{schema.ErrFieldDependedOn, refusal{http.StatusConflict, CodeReferenceBlocked, "", ""}},
 	// One field binds to categories or to models, never both (015, decision
 	// 96). A conflict rather than a validation failure: nothing about the

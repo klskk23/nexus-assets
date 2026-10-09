@@ -107,7 +107,7 @@ func setup(ctx context.Context) (*app, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	sch := schema.New(db)
+	sch := schema.NewWithEffects(db, asset.NewSchemaEffects())
 	a := &app{
 		cfg: cfg, db: db,
 		users:   auth.NewStore(db),

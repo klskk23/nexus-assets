@@ -18,6 +18,7 @@ var (
 	ErrNotFound        = errors.New("asset not found")
 	ErrVersionConflict = errors.New("asset was modified by someone else")
 	ErrUniqueConflict  = errors.New("value already in use")
+	ErrSchemaStale     = errors.New("asset schema changed after preparation")
 )
 
 // SaveInput is what a caller supplies for a create or an update.
@@ -120,6 +121,10 @@ type Prepared struct {
 	// DisplayKey is the category's nominated identifier, carried through so
 	// the created asset can be handed back already named.
 	DisplayKey string
+
+	// Private so callers cannot manufacture a preparation without resolving its
+	// complete schema. Persist compares it with the caller's write transaction.
+	schemaFingerprint string
 }
 
 // Prepare runs stages 1 through 5: resolve the field set, merge model defaults,
@@ -128,6 +133,16 @@ type Prepared struct {
 // Nothing here touches the write pool, so a caller can prepare many rows before
 // opening a single transaction to write them.
 func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
+	snapshot, err := s.schema.Snapshot(ctx)
+	if err != nil {
+		return Prepared{}, err
+	}
+	return s.PrepareWithSnapshot(ctx, snapshot, in)
+}
+
+// PrepareWithSnapshot lets a batch use the same schema for name resolution and
+// every row. Persist still checks it against the write transaction's schema.
+func (s *Service) PrepareWithSnapshot(ctx context.Context, snapshot *schema.SchemaSnapshot, in SaveInput) (Prepared, error) {
 	var prep Prepared
 	prep.Input = in
 	prep.ID = in.ID
@@ -135,27 +150,14 @@ func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
 		prep.ID = store.NewID()
 	}
 
-	cat, err := s.schema.GetCategory(ctx, in.CategoryID)
+	// 1. All schema inputs come from one read snapshot, including the model
+	// defaults and expression context. A later fingerprint read would certify
+	// inputs that might already have come from different schema versions.
+	resolved, err := snapshot.AssetSchema(in.CategoryID, in.ModelID)
 	if err != nil {
 		return prep, err
 	}
-	// 1. effective field set, narrowed to this device's model.
-	//
-	// Asked for this device, not for its category and then narrowed. Since 026
-	// a model may appear under any category, so what a device can record is its
-	// chain plus its own model plus that model's vendor -- and consulting no
-	// association means none can be missing. ForModel still runs below, because
-	// the set can carry fields from several models when one field is bound to
-	// more than one.
-	modelID := ""
-	if in.ModelID != nil {
-		modelID = *in.ModelID
-	}
-	all, err := s.schema.FieldsForAsset(ctx, cat.Path, modelID)
-	if err != nil {
-		return prep, err
-	}
-	fields := schema.ActiveFields(schema.ForModel(all, in.ModelID))
+	cat, fields := resolved.Category, schema.ActiveFields(resolved.Fields)
 
 	// 2. model defaults fill only the keys the caller left out
 	attrs := map[string]any{}
@@ -163,11 +165,7 @@ func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
 		attrs[k] = v
 	}
 	var modelName, modelVendor string
-	if in.ModelID != nil {
-		pm, err := s.schema.GetModel(ctx, *in.ModelID)
-		if err != nil {
-			return prep, err
-		}
+	if pm := resolved.Model; pm != nil {
 		// VendorName, not the id. `model.vendor` is exposed to the expression
 		// engine, so a category's asset numbers can be derived from it -- hand
 		// it an id and every existing template silently computes something
@@ -201,6 +199,7 @@ func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
 	prep.Unique = uniqueValues(fields, clean, in.CategoryID)
 	prep.Search = searchValues(fields, clean)
 	prep.DisplayKey = cat.DisplayKey
+	prep.schemaFingerprint = resolved.Fingerprint
 	return prep, nil
 }
 
@@ -213,6 +212,14 @@ func (s *Service) Prepare(ctx context.Context, in SaveInput) (Prepared, error) {
 // transaction, a MAC repeated twice inside one file is caught just like a
 // collision with an existing row.
 func (s *Service) Persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model.Asset, error) {
+	writer, err := s.BeginPersistence(ctx, tx)
+	if err != nil {
+		return model.Asset{}, err
+	}
+	return writer.Persist(ctx, prep)
+}
+
+func (s *Service) persist(ctx context.Context, tx *sql.Tx, prep Prepared) (model.Asset, error) {
 	in, clean := prep.Input, prep.Attrs
 	var out model.Asset
 	now := time.Now().UTC()

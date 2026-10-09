@@ -30,10 +30,11 @@ type lookups struct {
 	fieldByKey    map[string]model.BoundField
 	// displayKey is the category's nominated identifier, so a preview row can
 	// show the same label the asset will carry once it exists.
-	displayKey string
+	displayKey   string
+	categoryPath string
 }
 
-func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups, error) {
+func (s *Service) buildLookups(ctx context.Context, snapshot *schema.SchemaSnapshot, categoryID string) (*lookups, error) {
 	l := &lookups{
 		modelsByName:    map[string]string{},
 		modelsByPair:    map[[2]string]string{},
@@ -43,11 +44,12 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 		fieldByKey:      map[string]model.BoundField{},
 	}
 
-	cat, err := s.schema.GetCategory(ctx, categoryID)
+	cat, err := snapshot.Category(categoryID)
 	if err != nil {
 		return nil, err
 	}
 	l.displayKey = cat.DisplayKey
+	l.categoryPath = cat.Path
 
 	// Every model, not only ones "registered under" this category: since 026 a
 	// device of any category may be of any model, and the association that used
@@ -55,11 +57,10 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 	// naming a model the category had not been associated with had that column
 	// reported as unknown, which is the import refusing a device the entry form
 	// would have accepted.
-	models, err := s.schema.CandidateModels(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, m := range models {
+	for _, m := range snapshot.Models() {
+		if m.ArchivedAt != nil {
+			continue
+		}
 		name := strings.TrimSpace(m.Name)
 		l.modelsByPair[[2]string{name, strings.TrimSpace(m.VendorName)}] = m.ID
 		if _, dup := l.modelsByName[name]; dup {
@@ -73,11 +74,7 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 	// question the vendor column raises first is "is there such a vendor",
 	// and answering "no" for a real vendor that happens to make nothing here
 	// would send somebody off to create a duplicate.
-	vendors, err := s.schema.ListVendors(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, v := range vendors {
+	for _, v := range snapshot.Vendors() {
 		l.vendorsByName[strings.TrimSpace(v.Name)] = v.ID
 	}
 
@@ -91,12 +88,10 @@ func (s *Service) buildLookups(ctx context.Context, categoryID string) (*lookups
 		l.holdersByName[strings.TrimSpace(e.Name)] = e
 	}
 
-	// Every column the file could carry, not the category's own vocabulary:
-	// a batch is usually mixed, and each row is narrowed to its own model
-	// afterwards by appliesToModel. Asking the narrow set here would make a
-	// model-bound column unknown, and an unknown column is dropped in silence
-	// -- which is the one outcome decision 102 was written to prevent.
-	fields, err := s.schema.EveryPossibleField(ctx, categoryID)
+	// Labels for every possible column support mismatch diagnostics only.
+	// Eligibility is resolved from the row's actual category and model; one
+	// representative definition per key cannot decide that for mixed models.
+	fields, err := snapshot.EveryPossibleField(categoryID)
 	if err != nil {
 		return nil, err
 	}

@@ -1,3 +1,4 @@
+import { invalidateSchema } from "@/features/categories/invalidateSchema"
 import { WarningCircle } from "@phosphor-icons/react"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -211,9 +212,7 @@ export function GroupEditor({
       await api.post(`/field-groups/${draft.id}/bindings`, bindingBody(binds))
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["field-groups"] })
-      // The field list carries which groups each field is in.
-      queryClient.invalidateQueries({ queryKey: ["fields"] })
+      invalidateSchema(queryClient)
       onClose()
     },
     onError: (e) => setError(e instanceof ApiError ? e.message : t.common.error),

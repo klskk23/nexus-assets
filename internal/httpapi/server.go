@@ -91,6 +91,8 @@ func (s *Server) Router() *gin.Engine {
 	authed.DELETE("/api-keys/:id", s.revokeAPIKey)
 
 	authed.GET("/categories", s.listCategories)
+	authed.POST("/categories/preview", s.previewCategory)
+	authed.POST("/categories/:id/preview", s.previewCategory)
 	authed.POST("/categories", need(authz.SchemaManage), s.createCategory)
 	authed.PATCH("/categories/:id", need(authz.SchemaManage), s.patchCategory)
 	authed.DELETE("/categories/:id", need(authz.SchemaManage), s.deleteCategory)
@@ -109,7 +111,9 @@ func (s *Server) Router() *gin.Engine {
 	authed.DELETE("/fields/:id", need(authz.SchemaManage), s.deleteField)
 	authed.POST("/categories/:id/bindings", need(authz.SchemaManage), s.bindField)
 	authed.DELETE("/categories/:id/bindings/:field_id", need(authz.SchemaManage), s.unbindField)
+	authed.POST("/categories/:id/bindings/:field_id/unbind-preview", s.previewUnbindField)
 	authed.GET("/fields/:id/referrers", s.listFieldReferrers)
+	authed.GET("/fields/:id/asset-count", s.fieldAssetCount)
 	authed.POST("/fields/:id/recompute", need(authz.SchemaManage), s.recomputeField)
 	authed.POST("/categories/:id/recompute", need(authz.SchemaManage), s.recompute)
 

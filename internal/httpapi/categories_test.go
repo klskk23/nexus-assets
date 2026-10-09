@@ -1,6 +1,9 @@
 package httpapi
 
 import (
+	"context"
+	"database/sql"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -46,8 +49,10 @@ func TestCyclicExpressionKeyRefusedAtBindTime(t *testing.T) {
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("binding a cyclic expression key must be refused, got %d: %s", rec.Code, rec.Body.String())
 	}
-	if !contains(rec.Body.String(), "循环依赖") {
-		t.Errorf("the error should say it is a cycle, got %s", rec.Body.String())
+	// Only a would be effective: the unbound library definition b is not an
+	// input. Refuse its missing dependency before there can be a live cycle.
+	if !contains(rec.Body.String(), "尚未绑定") || !contains(rec.Body.String(), "b") {
+		t.Errorf("the error should identify the missing effective input, got %s", rec.Body.String())
 	}
 }
 
@@ -256,8 +261,12 @@ func TestUnbindEndpointDetachesAFieldAndKeepsStoredValues(t *testing.T) {
 		t.Fatalf("fill rack: %s", rec.Body.String())
 	}
 
+	path := "/api/categories/" + h.catID + "/bindings/" + rackID
+	preview := h.post(t, path+"/unbind-preview", `{}`)
+	requireInheritanceStatus(t, preview, http.StatusOK)
+	token := decode[inheritanceHTTPPreview](t, preview).Token
 	if rec := h.do(t, http.MethodDelete,
-		"/api/categories/"+h.catID+"/bindings/"+rackID, ""); rec.Code != http.StatusNoContent {
+		path, fmt.Sprintf(`{"confirmation_token":%q}`, token)); rec.Code != http.StatusNoContent {
 		t.Fatalf("unbind: %d %s", rec.Code, rec.Body.String())
 	}
 
@@ -566,14 +575,24 @@ func TestUniqueValuesAreScopedToTheBindingCategory(t *testing.T) {
 	}
 }
 
-// A child category inherits the binding, so it shares its ancestor's scope: the
-// field exists across that subtree and so does its uniqueness.
+// A child category that selects its parent's fields shares the original binding
+// scope, so inherited unique values cannot be reused within that subtree.
 func TestInheritedUniquenessSpansTheSubtree(t *testing.T) {
 	h := newHarness(t)
 
 	child := decode[map[string]any](t, h.post(t, "/api/categories",
 		`{"code":"SUB","name":"子类","parent_id":"`+h.catID+`"}`))
 	childID := child["id"].(string)
+	// New children start empty; explicitly select the parent's MAC and computed SN.
+	if err := h.db.Write(h.ctx, func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO category_field_selections (category_id, field_id)
+			SELECT ?, cf.field_id FROM category_fields cf
+			JOIN field_definitions f ON f.id = cf.field_id
+			WHERE cf.category_id = ? AND f.key IN ('mac', 'sn')`, childID, h.catID)
+		return err
+	}); err != nil {
+		t.Fatalf("select parent fields: %v", err)
+	}
 
 	first := h.post(t, "/api/assets", `{"category_id":"`+h.catID+`","status":"in_stock","owner_id":"`+
 		h.userID+`","holder_type":"entity","holder_id":"`+h.locID+`","attrs":{"mac":"001A2B3C0101"}}`)

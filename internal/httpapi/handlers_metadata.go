@@ -3,6 +3,7 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -29,21 +30,27 @@ func (s *Server) listCategories(c *gin.Context) {
 }
 
 func (s *Server) createCategory(c *gin.Context) {
-	var req struct {
-		Code       string  `json:"code" binding:"required"`
-		Name       string  `json:"name" binding:"required"`
-		ParentID   *string `json:"parent_id"`
-		DisplayKey string  `json:"display_key"`
+	draft, ok := readCategoryDraft(c)
+	if !ok {
+		return
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if draft.Code == "" || draft.Name == nil || *draft.Name == "" {
 		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
 		return
 	}
-	out, err := s.schema.CreateCategory(c.Request.Context(), schema.CreateCategoryInput{
-		Code: req.Code, Name: req.Name, ParentID: req.ParentID, DisplayKey: req.DisplayKey,
-	})
+	in := schema.CreateCategoryInput{Code: draft.Code, Name: *draft.Name, InheritedFieldIDs: draft.InheritedFieldIDs, ConfirmationToken: draft.ConfirmationToken}
+	if draft.ParentID != nil {
+		in.ParentID = *draft.ParentID
+	}
+	if draft.DisplayKey != nil {
+		in.DisplayKey = *draft.DisplayKey
+	}
+	if draft.PrintPresetIDs != nil {
+		in.PrintPresetIDs = *draft.PrintPresetIDs
+	}
+	out, err := s.schema.CreateCategory(c.Request.Context(), in)
 	if err != nil {
-		FailErr(c, err)
+		failCategoryDraft(c, err)
 		return
 	}
 	if !s.record(c, audit.ActionCreate, audit.TargetCategory, out.ID, nil, out) {
@@ -53,40 +60,20 @@ func (s *Server) createCategory(c *gin.Context) {
 }
 
 func (s *Server) patchCategory(c *gin.Context) {
-	var req struct {
-		Name       *string `json:"name"`
-		DisplayKey *string `json:"display_key"`
-		// Opaque here: they name presets in the print service, whose contents
-		// are that service's business.
-		PrintPresetIDs *[]string `json:"print_preset_ids"`
-		// RawMessage, not **string: unmarshalling JSON null into a double
-		// pointer clears the outer one, so "move to the root" would be
-		// indistinguishable from "leave the parent alone" and the guard on
-		// moving a populated category would never run.
-		ParentID json.RawMessage `json:"parent_id"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
+	draft, ok := readCategoryDraft(c)
+	if !ok {
 		return
 	}
-
 	in := schema.UpdateCategoryInput{
-		Name: req.Name, DisplayKey: req.DisplayKey, PrintPresetIDs: req.PrintPresetIDs,
-	}
-	if len(req.ParentID) > 0 {
-		var parent *string
-		if err := json.Unmarshal(req.ParentID, &parent); err != nil {
-			FailField(c, http.StatusBadRequest, "parent_id", i18n.KeyCategoryIDShape)
-			return
-		}
-		in.ParentID = &parent
+		Name: draft.Name, DisplayKey: draft.DisplayKey, PrintPresetIDs: draft.PrintPresetIDs,
+		ParentID: draft.ParentID, InheritedFieldIDs: draft.InheritedFieldIDs, ConfirmationToken: draft.ConfirmationToken,
 	}
 
 	before, _ := s.schema.GetCategory(c.Request.Context(), c.Param("id"))
 
 	out, err := s.schema.UpdateCategory(c.Request.Context(), c.Param("id"), in)
 	if err != nil {
-		FailErr(c, err)
+		failCategoryDraft(c, err)
 		return
 	}
 	if !s.record(c, audit.ActionUpdate, audit.TargetCategory, out.ID, before, out) {
@@ -773,7 +760,14 @@ func (s *Server) deleteField(c *gin.Context) {
 // to retire a field that assets already carry values for.
 func (s *Server) unbindField(c *gin.Context) {
 	ctx := c.Request.Context()
-	if err := s.schema.Unbind(ctx, c.Param("id"), c.Param("field_id")); err != nil {
+	var request struct {
+		ConfirmationToken string `json:"confirmation_token"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil && !errors.Is(err, io.EOF) {
+		FailMsg(c, http.StatusBadRequest, CodeValidationFailed, i18n.KeyBadRequest)
+		return
+	}
+	if err := s.schema.UnbindConfirmed(ctx, c.Param("id"), c.Param("field_id"), request.ConfirmationToken); err != nil {
 		FailErr(c, err)
 		return
 	}

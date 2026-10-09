@@ -7,9 +7,9 @@ import (
 	"github.com/klskk23/nexus-assets/internal/model"
 )
 
-// A child inherits everything and may only add. There is no override rule, so
-// rebinding a key already present on the chain has no defined meaning.
-func TestChildInheritsEverythingAndMayOnlyAppend(t *testing.T) {
+// Selecting all parent fields preserves the old vocabulary without allowing
+// a child to override any ancestor definition.
+func TestChildSelectsAllParentFieldsAndMayAppend(t *testing.T) {
 	s, ctx := newStore(t)
 	root, child := tree(t, s, ctx)
 
@@ -40,6 +40,8 @@ func TestChildInheritsEverythingAndMayOnlyAppend(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	selectFixtureFields(t, s, ctx, child.ID, mac.ID, fw.ID)
+	selectFixtureFields(t, s, ctx, grandchild.ID, mac.ID, fw.ID, tun.ID)
 	fields, err := s.EffectiveFields(ctx, grandchild.ID)
 	if err != nil {
 		t.Fatalf("effective fields: %v", err)

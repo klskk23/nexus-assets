@@ -1,6 +1,11 @@
 package httpapi
 
 import (
+	"context"
+	"database/sql"
+	"github.com/klskk23/nexus-assets/internal/asset"
+	"github.com/klskk23/nexus-assets/internal/model"
+	"github.com/klskk23/nexus-assets/internal/schema"
 	"net/http"
 	"testing"
 )
@@ -157,5 +162,40 @@ func TestRowsRendersValuesForTheReader(t *testing.T) {
 	if en.Rows[0]["sys_status"] != zh.Rows[0]["sys_status"] {
 		t.Errorf("status labels are data and must not be translated: %q vs %q",
 			en.Rows[0]["sys_status"], zh.Rows[0]["sys_status"])
+	}
+}
+
+// The parent controls columns, but each descendant controls effective values.
+func seedConsumerDescendant(t *testing.T, h *harness) (string, string) {
+	t.Helper()
+	child, err := h.schema.CreateCategory(h.ctx, schema.CreateCategoryInput{Code: "CONS", Name: "Consumer child", ParentID: &h.catID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := h.assets.Save(h.ctx, asset.SaveInput{CategoryID: child.ID, Status: model.StatusInStock, OwnerID: h.userID, ActorID: h.userID, Holder: model.Holder{Type: model.HolderTypeEntity, ID: h.locID}, Attrs: map[string]any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = h.db.Write(h.ctx, func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE assets SET attrs=json_set(attrs,'$.mac','ARCHIVED-CONSUMER') WHERE id=?`, a.ID)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return child.ID, a.ID
+}
+
+func TestRowsInheritanceLeavesUnselectedDescendantCellsEmpty(t *testing.T) {
+	h := newHarness(t)
+	_, id := seedConsumerDescendant(t, h)
+	for _, lang := range []string{"zh", "en"} {
+		rec := h.doLang(t, lang, http.MethodGet, "/api/rows?category_id="+h.catID+"&include_descendants=true", "")
+		if rec.Code != http.StatusOK {
+			t.Fatal(rec.Body.String())
+		}
+		page := decode[rowPage](t, rec)
+		if page.Total != 1 || len(page.Rows) != 1 || page.Rows[0]["sys_id"] != id || page.Rows[0]["mac"] != "" {
+			t.Fatalf("parent rows=%+v", page)
+		}
 	}
 }

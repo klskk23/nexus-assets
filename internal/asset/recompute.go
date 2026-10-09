@@ -3,46 +3,35 @@ package asset
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/klskk23/nexus-assets/internal/compute"
 	"github.com/klskk23/nexus-assets/internal/model"
 	"github.com/klskk23/nexus-assets/internal/schema"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
 
-// ErrRecomputeConflict reports that the new rules would give two devices the
-// same value on a key that must be unique.
 var ErrRecomputeConflict = errors.New("recomputed values collide on a unique key")
 
-// Conflict is one collision the new rules would cause.
 type Conflict struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-	// Assets names the devices that would end up sharing the value.
+	Key    string   `json:"key"`
+	Value  string   `json:"value"`
 	Assets []string `json:"assets"`
 }
 
-// RecomputeReport is what a run produced.
 type RecomputeReport struct {
-	// Affected counts assets at least one of whose values would change.
-	Affected int `json:"affected"`
-	// Total is how many assets the rules were applied to.
-	Total     int        `json:"total"`
-	Conflicts []Conflict `json:"conflicts"`
-	// Applied is false for a dry run, and false for a real run that was
-	// abandoned because of a conflict.
-	Applied bool `json:"applied"`
-	// Samples shows a few before/after pairs so the operator can sanity-check
-	// the rules before committing to them.
-	Samples []RecomputeSample `json:"samples"`
+	Affected  int               `json:"affected"`
+	Total     int               `json:"total"`
+	Conflicts []Conflict        `json:"conflicts"`
+	Applied   bool              `json:"applied"`
+	Samples   []RecomputeSample `json:"samples"`
 }
 
-// RecomputeSample is one before/after pair.
 type RecomputeSample struct {
 	Asset string `json:"asset"`
 	Key   string `json:"key"`
@@ -52,94 +41,266 @@ type RecomputeSample struct {
 
 const maxSamples = 5
 
-// Recompute re-evaluates every expression key of every asset in a category
-// subtree.
-//
-// Two phases on purpose. Editing a template that governs thousands of devices
-// is not something to discover the consequences of afterwards, so a dry run
-// reports the blast radius and any collisions first. The real run is one
-// transaction: if a single pair of devices would end up sharing a value on a
-// unique key the whole thing is abandoned, because a half-renumbered warehouse
-// is worse than an un-renumbered one.
+// Recompute evaluates the effective expressions in a category subtree. The
+// read plan and the single batch write are separated by a stale-input guard.
 func (s *Service) Recompute(ctx context.Context, categoryID string, dryRun bool) (RecomputeReport, error) {
-	var report RecomputeReport
+	return s.recompute(ctx, categoryID, "", dryRun)
+}
 
-	root, err := s.schema.GetCategory(ctx, categoryID)
-	if err != nil {
-		return report, err
-	}
-	lk, err := s.recomputeLookups(ctx)
-	if err != nil {
-		return report, err
-	}
+// RecomputeField visits actual field identities, including device bindings,
+// rather than assuming every descendant inherits every ancestor binding.
+func (s *Service) RecomputeField(ctx context.Context, fieldID string, dryRun bool) (RecomputeReport, error) {
+	return s.recompute(ctx, "", fieldID, dryRun)
+}
 
-	changes, claimed, err := s.planRecompute(ctx, root.Path, lk, &report)
+func (s *Service) recompute(ctx context.Context, categoryID, fieldID string, dryRun bool) (RecomputeReport, error) {
+	var plan *recomputePlan
+	err := s.db.ReadTx(ctx, func(ctx context.Context, q store.Querier) error {
+		var err error
+		plan, err = planRecompute(ctx, q, categoryID, fieldID)
+		return err
+	})
 	if err != nil {
-		return report, err
+		return RecomputeReport{}, err
 	}
-	report.Affected = len(changes)
+	if dryRun || len(plan.report.Conflicts) > 0 || plan.report.Affected == 0 {
+		return plan.report, nil
+	}
+	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error { return plan.apply(ctx, tx) })
+	if err != nil {
+		return plan.report, err
+	}
+	plan.report.Applied = true
+	return plan.report, nil
+}
 
-	for at, owners := range claimed {
-		if len(owners) > 1 {
-			report.Conflicts = append(report.Conflicts, Conflict{Key: at[1], Value: at[2], Assets: owners})
+type recomputeInput struct {
+	asset       model.Asset
+	fingerprint string
+}
+
+type change struct {
+	id      string
+	version int
+	attrs   map[string]any
+	unique  map[string]UniqueValue
+	search  map[string]string
+}
+
+type recomputePlan struct {
+	inputs  []recomputeInput
+	changes []change
+	report  RecomputeReport
+}
+
+// Plan all assets and expressions from one consistent read transaction.
+func planRecompute(ctx context.Context, q store.Querier, categoryID, fieldID string) (*recomputePlan, error) {
+	snapshot, err := schema.LoadSchemaSnapshot(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	rootPath := ""
+	if categoryID != "" {
+		root, err := snapshot.Category(categoryID)
+		if err != nil {
+			return nil, err
+		}
+		rootPath = root.Path
+	}
+	ids := []string{}
+	for _, cat := range snapshot.Categories() {
+		if strings.HasPrefix(cat.Path, rootPath) {
+			ids = append(ids, cat.ID)
 		}
 	}
-	if err := s.collideWithUntouched(ctx, root.Path, claimed, &report); err != nil {
-		return report, err
-	}
-	sortConflicts(report.Conflicts)
-
-	if dryRun || len(report.Conflicts) > 0 || report.Affected == 0 {
-		return report, nil
-	}
-
-	now := time.Now().UTC()
-	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		for _, c := range changes {
-			if err := writeRecomputed(ctx, tx, c, now); err != nil {
+	plan := &recomputePlan{}
+	cache := newSchemaComputeCache()
+	claimed := make(map[[3]string][]string)
+	err = scanSchemaAssets(ctx, q, ids, func(assets []model.Asset) error {
+		for _, a := range assets {
+			resolved, err := snapshot.AssetSchema(a.CategoryID, a.ModelID)
+			if err != nil {
+				return err
+			}
+			changed, reached := recomputeSeeds(resolved.Fields, fieldID)
+			if !reached {
+				continue
+			}
+			if err := plan.add(a, resolved, changed, cache, claimed); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
 	if err != nil {
-		return report, err
+		return nil, err
 	}
-	report.Applied = true
-	return report, nil
+	if err := plan.checkClaims(ctx, q, claimed); err != nil {
+		return nil, err
+	}
+	plan.report.Affected = len(plan.changes)
+	sortConflicts(plan.report.Conflicts)
+	return plan, nil
 }
 
-// collideWithUntouched checks the proposed values against assets outside the
-// subtree.
-//
-// Retired values are deliberately not checked: an archived row leaves the
-// partial unique index, so a value that was replaced is free to appear again.
-// A mainboard swap really does move a MAC from one device to another.
-func (s *Service) collideWithUntouched(ctx context.Context, rootPath string,
-	claimed map[[3]string][]string, report *RecomputeReport) error {
-
-	for at, owners := range claimed {
-		var otherID string
-		err := s.db.ReadDB().QueryRowContext(ctx,
-			`SELECT uv.asset_id FROM asset_unique_values uv
-			 JOIN assets a ON a.id = uv.asset_id
-			 JOIN categories c ON c.id = a.category_id
-			 WHERE uv.scope_id = ? AND uv.field_key = ? AND uv.value = ? AND uv.archived_at IS NULL
-			   AND c.path NOT LIKE ? || '%' LIMIT 1`, at[0], at[1], at[2], rootPath).Scan(&otherID)
-		if err == nil {
-			report.Conflicts = append(report.Conflicts,
-				Conflict{Key: at[1], Value: at[2], Assets: append(owners, model.ShortID(otherID))})
-			continue
+func recomputeSeeds(fields []model.BoundField, fieldID string) (map[string]bool, bool) {
+	if fieldID == "" {
+		return nil, true
+	}
+	for _, field := range fields {
+		if field.ID == fieldID {
+			return map[string]bool{field.Key: true}, true
 		}
-		if !errors.Is(err, sql.ErrNoRows) {
+	}
+	return nil, false
+}
+
+func (plan *recomputePlan) add(a model.Asset, resolved schema.AssetSchema, changed map[string]bool, cache schemaComputeCache, claimed map[[3]string][]string) error {
+	computation, err := cache.get(resolved)
+	if err != nil {
+		return err
+	}
+	values, err := computation.evaluate(resolved, a.ID, a.Attrs, changed)
+	if err != nil {
+		return err
+	}
+	attrs := maps.Clone(a.Attrs)
+	dirty := applyRecomputed(attrs, a.Attrs, values, a.ID, &plan.report)
+	next := uniqueValues(resolved.Fields, attrs, a.CategoryID)
+	for key, value := range next {
+		at := [3]string{value.Scope, key, value.Value}
+		claimed[at] = append(claimed[at], a.ID)
+	}
+	plan.inputs = append(plan.inputs, recomputeInput{asset: a, fingerprint: resolved.Fingerprint})
+	plan.report.Total++
+	if dirty {
+		plan.changes = append(plan.changes, change{id: a.ID, version: a.Version, attrs: attrs, unique: next, search: searchValues(resolved.Fields, attrs)})
+	}
+	return nil
+}
+
+func (plan *recomputePlan) checkClaims(ctx context.Context, q store.Querier, claimed map[[3]string][]string) error {
+	planned := make(map[string]bool, len(plan.inputs))
+	for _, input := range plan.inputs {
+		planned[input.asset.ID] = true
+	}
+	rows, err := q.QueryContext(ctx, `SELECT asset_id, scope_id, field_key, value FROM asset_unique_values WHERE archived_at IS NULL`)
+	if err != nil {
+		return fmt.Errorf("load recompute claims: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, scope, key, value string
+		if err := rows.Scan(&id, &scope, &key, &value); err != nil {
 			return err
+		}
+		at := [3]string{scope, key, value}
+		if !planned[id] && len(claimed[at]) > 0 {
+			claimed[at] = append(claimed[at], id)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for at, owners := range claimed {
+		if len(owners) > 1 {
+			sort.Strings(owners)
+			plan.report.Conflicts = append(plan.report.Conflicts, Conflict{Key: at[1], Value: at[2], Assets: owners})
 		}
 	}
 	return nil
 }
 
-// sortConflicts gives the report a stable order; map iteration would otherwise
-// shuffle it between identical runs and make the dry run look unrepeatable.
+// Validate even unchanged members: they contributed to the final claims check.
+// No asset, search row, or unique row is written until every input passes.
+func (plan *recomputePlan) validate(ctx context.Context, tx *sql.Tx) error {
+	snapshot, err := schema.LoadSchemaSnapshot(ctx, tx)
+	if err != nil {
+		return err
+	}
+	for _, input := range plan.inputs {
+		current, err := snapshot.AssetSchema(input.asset.CategoryID, input.asset.ModelID)
+		if err != nil || current.Fingerprint != input.fingerprint {
+			return ErrSchemaStale
+		}
+	}
+	return plan.validateVersions(ctx, tx)
+}
+
+func (plan *recomputePlan) validateVersions(ctx context.Context, q store.Querier) error {
+	ids := make([]string, 0, len(plan.inputs))
+	versions := make(map[string]int, len(plan.inputs))
+	for _, input := range plan.inputs {
+		ids = append(ids, input.asset.ID)
+		versions[input.asset.ID] = input.asset.Version
+	}
+	encoded, err := json.Marshal(ids)
+	if err != nil {
+		return err
+	}
+	rows, err := q.QueryContext(ctx, `SELECT id, version FROM assets WHERE id IN (SELECT value FROM json_each(?))`, string(encoded))
+	if err != nil {
+		return fmt.Errorf("load recompute versions: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var version int
+		if err := rows.Scan(&id, &version); err != nil {
+			return err
+		}
+		if version != versions[id] {
+			return ErrVersionConflict
+		}
+		delete(versions, id)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(versions) != 0 {
+		return ErrVersionConflict
+	}
+	return nil
+}
+
+func (plan *recomputePlan) apply(ctx context.Context, tx *sql.Tx) error {
+	if err := plan.validate(ctx, tx); err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	claims := make([]schemaClaimChange, 0, len(plan.changes))
+	for _, c := range plan.changes {
+		if err := writeRecomputed(ctx, tx, c, now); err != nil {
+			return err
+		}
+		claims = append(claims, schemaClaimChange{assetID: c.id, want: c.unique})
+	}
+	// Release the entire batch before claiming final values, so legal swaps work.
+	if err := syncSchemaClaims(ctx, tx, claims, now); err != nil {
+		return fmt.Errorf("%w: %w", ErrRecomputeConflict, err)
+	}
+	return nil
+}
+
+func writeRecomputed(ctx context.Context, tx *sql.Tx, c change, now time.Time) error {
+	attrsJSON, err := store.MarshalJSONMap(c.attrs)
+	if err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE assets SET attrs = ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ?`, attrsJSON, store.FormatTime(now), c.id, c.version)
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count != 1 {
+		return ErrVersionConflict
+	}
+	return syncSearchValues(ctx, tx, c.id, c.search)
+}
+
 func sortConflicts(cs []Conflict) {
 	sort.Slice(cs, func(i, j int) bool {
 		if cs[i].Key != cs[j].Key {
@@ -149,295 +310,23 @@ func sortConflicts(cs []Conflict) {
 	})
 }
 
-// RecomputeField re-evaluates every asset a field's expression can reach.
-//
-// A binding covers the category it is made on and everything beneath it, so
-// the work is one subtree run per bound category, with descendants dropped --
-// an ancestor's run already covered them.
-//
-// The dry run over every subtree happens before any of them is applied. A
-// conflict in the third warehouse must stop the first two from being written,
-// for the same reason a single subtree is one transaction: half a renumbering
-// is worse than none.
-func (s *Service) RecomputeField(ctx context.Context, fieldID string, dryRun bool) (RecomputeReport, error) {
-	var merged RecomputeReport
-
-	roots, err := s.categoriesBinding(ctx, fieldID)
-	if err != nil {
-		return merged, err
-	}
-
-	for _, id := range roots {
-		r, err := s.Recompute(ctx, id, true)
-		if err != nil {
-			return merged, err
-		}
-		merge(&merged, r)
-	}
-	if dryRun || len(merged.Conflicts) > 0 || merged.Affected == 0 {
-		return merged, nil
-	}
-
-	// The second pass writes. Its numbers replace the dry run's rather than
-	// adding to them, or every asset would be counted twice.
-	var applied RecomputeReport
-	for _, id := range roots {
-		r, err := s.Recompute(ctx, id, false)
-		if err != nil {
-			return applied, err
-		}
-		merge(&applied, r)
-	}
-	applied.Applied = len(applied.Conflicts) == 0
-	return applied, nil
-}
-
-// categoriesBinding lists the categories whose own binding carries the field,
-// dropping any that another one already contains.
-func (s *Service) categoriesBinding(ctx context.Context, fieldID string) ([]string, error) {
-	bindings, err := s.schema.BindingsByCategory(ctx)
-	if err != nil {
-		return nil, err
-	}
-	categories, err := s.schema.ListCategories(ctx)
-	if err != nil {
-		return nil, err
-	}
-	pathOf := make(map[string]string, len(categories))
-	for _, c := range categories {
-		pathOf[c.ID] = c.Path
-	}
-
-	var bound []string
-	for catID, bs := range bindings {
-		for _, b := range bs {
-			if b.Field.ID == fieldID {
-				bound = append(bound, catID)
-				break
-			}
-		}
-	}
-	sort.Slice(bound, func(i, j int) bool { return pathOf[bound[i]] < pathOf[bound[j]] })
-
-	var roots []string
-	for _, id := range bound {
-		covered := false
-		for _, r := range roots {
-			if strings.HasPrefix(pathOf[id], pathOf[r]) {
-				covered = true
-				break
-			}
-		}
-		if !covered {
-			roots = append(roots, id)
-		}
-	}
-	return roots, nil
-}
-
-// merge folds one subtree's report into the running total.
-func merge(into *RecomputeReport, r RecomputeReport) {
-	into.Affected += r.Affected
-	into.Total += r.Total
-	into.Conflicts = append(into.Conflicts, r.Conflicts...)
-	for _, s := range r.Samples {
-		if len(into.Samples) >= maxSamples {
-			break
-		}
-		into.Samples = append(into.Samples, s)
-	}
-}
-
-// change is one asset whose computed values moved.
-type change struct {
-	id     string
-	attrs  map[string]any
-	unique map[string]UniqueValue
-	// A computed field can be searchable, and recomputing is exactly when its
-	// value moves. Leaving the index behind would make the search answer with
-	// the number a device used to carry.
-	search map[string]string
-}
-
-// recomputeLookups is everything a subtree recompute needs that does not vary
-// per asset.
-//
-// Loaded once rather than per row: a subtree touches thousands of assets, and a
-// lookup per row is the classic N+1 the constitution forbids.
-type recomputeLookups struct {
-	bindings map[string][]schema.Binding
-	category map[string]model.Category
-	model    map[string]model.ProductModel
-}
-
-func (s *Service) recomputeLookups(ctx context.Context) (recomputeLookups, error) {
-	var lk recomputeLookups
-
-	bindings, err := s.schema.BindingsByCategory(ctx)
-	if err != nil {
-		return lk, err
-	}
-	lk.bindings = bindings
-
-	categories, err := s.schema.ListCategories(ctx)
-	if err != nil {
-		return lk, err
-	}
-	lk.category = make(map[string]model.Category, len(categories))
-	for _, c := range categories {
-		lk.category[c.ID] = c
-	}
-
-	models, err := s.schema.ListModels(ctx)
-	if err != nil {
-		return lk, err
-	}
-	lk.model = make(map[string]model.ProductModel, len(models))
-	for _, m := range models {
-		lk.model[m.ID] = m
-	}
-	return lk, nil
-}
-
-// resolve unpacks one stored row into what the expressions need.
-func (lk recomputeLookups) resolve(categoryID, attrsJSON string) (map[string]any, []model.BoundField, model.Category, error) {
-	cat := lk.category[categoryID]
-
-	attrs, err := store.UnmarshalJSONMap(attrsJSON)
-	if err != nil {
-		return nil, nil, cat, err
-	}
-	fields, err := schema.Resolve(cat.Path, lk.bindings)
-	if err != nil {
-		return nil, nil, cat, err
-	}
-	return attrs, schema.ActiveFields(fields), cat, nil
-}
-
-// modelOf is the model's name and vendor, both empty when the asset has no
-// model or it has since been deleted.
-func (lk recomputeLookups) modelOf(id sql.NullString) (name, vendor string) {
-	if !id.Valid {
-		return "", ""
-	}
-	pm, ok := lk.model[id.String]
-	if !ok {
-		return "", ""
-	}
-	// The vendor's name, for the same reason as in the save pipeline: this
-	// feeds `model.vendor` in expressions.
-	return pm.Name, pm.VendorName
-}
-
-// applyRecomputed folds the new values into attrs and reports whether anything
-// actually moved.
-//
-// Sorted, because the samples are shown to somebody about to approve the run
-// and map order would reshuffle them on every look.
 func applyRecomputed(attrs, before, values map[string]any, display string, report *RecomputeReport) bool {
 	keys := make([]string, 0, len(values))
 	for k := range values {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-
 	dirty := false
-	for _, k := range keys {
-		from, to := fmt.Sprintf("%v", before[k]), fmt.Sprintf("%v", values[k])
+	for _, key := range keys {
+		from, to := fmt.Sprint(before[key]), fmt.Sprint(values[key])
 		if from == to {
 			continue
 		}
 		dirty = true
-		attrs[k] = values[k]
+		attrs[key] = values[key]
 		if len(report.Samples) < maxSamples {
-			report.Samples = append(report.Samples, RecomputeSample{Asset: display, Key: k, From: from, To: to})
+			report.Samples = append(report.Samples, RecomputeSample{Asset: display, Key: key, From: from, To: to})
 		}
 	}
 	return dirty
-}
-
-// writeRecomputed stores one asset's new values.
-func writeRecomputed(ctx context.Context, tx *sql.Tx, c change, now time.Time) error {
-	attrsJSON, err := store.MarshalJSONMap(c.attrs)
-	if err != nil {
-		return err
-	}
-	if _, err := tx.ExecContext(ctx,
-		`UPDATE assets SET attrs = ?, version = version + 1, updated_at = ? WHERE id = ?`,
-		attrsJSON, store.FormatTime(now), c.id); err != nil {
-		return err
-	}
-	// The partial unique index is the last line of defence; a violation here
-	// aborts the whole transaction, which is the intended behaviour.
-	if err := syncSearchValues(ctx, tx, c.id, c.search); err != nil {
-		return err
-	}
-	if err := syncUniqueValues(ctx, tx, c.id, c.unique, now); err != nil {
-		return fmt.Errorf("%w: %v", ErrRecomputeConflict, err)
-	}
-	return nil
-}
-
-// planRecompute works out what the run would change, without changing it.
-//
-// The second return is every value that will exist once the run completes,
-// keyed by scope, key and value -- so a collision between two recomputed
-// assets is caught as well as one against a row nobody touched. Scope is part
-// of the key because the same value under two categories is no longer a
-// collision.
-func (s *Service) planRecompute(ctx context.Context, rootPath string,
-	lk recomputeLookups, report *RecomputeReport) ([]change, map[[3]string][]string, error) {
-
-	rows, err := s.db.ReadDB().QueryContext(ctx,
-		`SELECT a.id, a.category_id, a.model_id, a.attrs
-		 FROM assets a JOIN categories c ON c.id = a.category_id
-		 WHERE c.path LIKE ? || '%'
-		 ORDER BY a.created_at, a.id`, rootPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("load subtree assets: %w", err)
-	}
-	defer rows.Close()
-
-	var changes []change
-	claimed := map[[3]string][]string{}
-
-	for rows.Next() {
-		var id, catID, attrsJSON string
-		var modelID sql.NullString
-		if err := rows.Scan(&id, &catID, &modelID, &attrsJSON); err != nil {
-			return nil, nil, err
-		}
-		report.Total++
-
-		attrs, fields, cat, err := lk.resolve(catID, attrsJSON)
-		if err != nil {
-			return nil, nil, err
-		}
-		modelName, modelVendor := lk.modelOf(modelID)
-
-		before := make(map[string]any, len(attrs))
-		for k, v := range attrs {
-			before[k] = v
-		}
-		values, err := evalComputed(fields,
-			compute.NewContext(id, attrs, cat.Code, cat.Name, modelName, modelVendor))
-		if err != nil {
-			return nil, nil, err
-		}
-
-		display := model.AssetDisplayName(id, before, cat.DisplayKey)
-		dirty := applyRecomputed(attrs, before, values, display, report)
-
-		next := uniqueValues(fields, attrs, catID)
-		for k, uv := range next {
-			at := [3]string{uv.Scope, k, uv.Value}
-			claimed[at] = append(claimed[at], display)
-		}
-		if dirty {
-			changes = append(changes, change{
-				id: id, attrs: attrs, unique: next, search: searchValues(fields, attrs),
-			})
-		}
-	}
-	return changes, claimed, rows.Err()
 }

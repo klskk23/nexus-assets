@@ -2,171 +2,107 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 
 	"github.com/klskk23/nexus-assets/internal/model"
+	"github.com/klskk23/nexus-assets/internal/schema"
 	"github.com/klskk23/nexus-assets/internal/store"
 )
 
-// runVerify replays every transfer event and reconciles it against the
-// materialised snapshot on the asset rows.
-//
-// Two checks, and the second is the one that earns its keep: comparing each
-// event's from_* against the previous event's to_* catches any code path that
-// wrote to assets directly, bypassing the save pipeline. That is the only way
-// the snapshot can drift, and nothing else would notice it.
-//
-// A third pass reconciles asset_unique_values against attrs. That table is a
-// derived copy maintained by the same pipeline, and a derived copy nobody
-// checks is a derived copy that silently rots.
+// runVerify observes metadata, assets, indexes and events from one read-only
+// transaction. It diagnoses drift; it never repairs either current or historical data.
 func runVerify(ctx context.Context, a *app) error {
-	db := a.db.ReadDB()
+	return a.db.ReadTx(ctx, func(ctx context.Context, q store.Querier) error {
+		return verifyDatabase(ctx, q)
+	})
+}
 
-	snaps, err := loadSnapshots(ctx, db)
+func verifyDatabase(ctx context.Context, q store.Querier) error {
+	sch, err := schema.LoadSchemaSnapshot(ctx, q)
+	if err != nil {
+		return fmt.Errorf("verify schema: %w", err)
+	}
+	snaps, err := loadSnapshots(ctx, q)
 	if err != nil {
 		return err
 	}
-
-	problems := 0
+	problems := verifySchema(sch)
 	for id, snap := range snaps {
-		n, err := verifyHistory(ctx, db, id, snap)
+		n, err := verifyHistory(ctx, q, id, snap)
 		if err != nil {
 			return err
 		}
 		problems += n
 	}
-
-	drift, err := verifyUniqueValues(ctx, db)
-	if err != nil {
-		return err
+	for _, check := range []func() (int, error){
+		func() (int, error) { return verifyIndexes(ctx, q, sch, snaps) },
+		func() (int, error) { return verifyKeyConflicts(ctx, q) },
+		func() (int, error) { return verifyReferences(ctx, q) },
+	} {
+		n, err := check()
+		if err != nil {
+			return err
+		}
+		problems += n
 	}
-	problems += drift
-
-	clashes, err := verifyKeyConflicts(ctx, db)
-	if err != nil {
-		return err
-	}
-	problems += clashes
-
 	if problems > 0 {
 		return fmt.Errorf("verify found %d problem(s) across %d asset(s)", problems, len(snaps))
 	}
-	log.Printf("verify: %d asset(s) reconcile with their transfer history and unique values", len(snaps))
+	log.Printf("verify: %d asset(s) reconcile with schema, transfer history, unique and search values", len(snaps))
 	return nil
-}
-
-// verifyUniqueValues checks the reverse-lookup table both ways: no live row
-// that disagrees with attrs, and no unique field carrying a value without one.
-func verifyUniqueValues(ctx context.Context, db *sql.DB) (int, error) {
-	problems := 0
-
-	stale, err := db.QueryContext(ctx, `
-		SELECT uv.asset_id, uv.field_key, uv.value,
-		       coalesce(json_extract(a.attrs, '$.' || uv.field_key), '')
-		FROM asset_unique_values uv JOIN assets a ON a.id = uv.asset_id
-		WHERE uv.archived_at IS NULL
-		  AND coalesce(json_extract(a.attrs, '$.' || uv.field_key), '') != uv.value`)
-	if err != nil {
-		return 0, fmt.Errorf("scan stale unique values: %w", err)
-	}
-	for stale.Next() {
-		var id, key, indexed, actual string
-		if err := stale.Scan(&id, &key, &indexed, &actual); err != nil {
-			stale.Close()
-			return 0, err
-		}
-		problems++
-		log.Printf("asset %s: unique index holds %s=%q but attrs says %q; "+
-			"something wrote to assets outside the save pipeline", model.ShortID(id), key, indexed, actual)
-	}
-	stale.Close()
-	if err := stale.Err(); err != nil {
-		return 0, err
-	}
-
-	// The other direction: a unique field with a value and no live row would
-	// leave the value unsearchable and, worse, free for another device to take.
-	missing, err := db.QueryContext(ctx, `
-		SELECT DISTINCT a.id, f.key
-		FROM assets a
-		JOIN categories c  ON c.id = a.category_id
-		JOIN categories cc ON c.path LIKE cc.path || '%'
-		JOIN category_fields cf ON cf.category_id = cc.id
-		JOIN field_definitions f ON f.id = cf.field_id
-		WHERE f.is_unique = 1
-		  AND coalesce(trim(json_extract(a.attrs, '$.' || f.key)), '') != ''
-		  AND NOT EXISTS (
-		        SELECT 1 FROM asset_unique_values uv
-		        WHERE uv.asset_id = a.id AND uv.field_key = f.key AND uv.archived_at IS NULL)`)
-	if err != nil {
-		return 0, fmt.Errorf("scan missing unique values: %w", err)
-	}
-	defer missing.Close()
-	for missing.Next() {
-		var id, key string
-		if err := missing.Scan(&id, &key); err != nil {
-			return 0, err
-		}
-		problems++
-		log.Printf("asset %s: %s carries a value but has no live row in the unique index", model.ShortID(id), key)
-	}
-	return problems, missing.Err()
 }
 
 // snapshot is an asset as the assets table has it.
 type snapshot struct {
 	name, status, holderType, holderID, ownerID string
+	categoryID                                  string
+	modelID                                     *string
+	attrs                                       map[string]any
 }
 
-// loadSnapshots reads every asset's current state, named the way a person
-// would refer to it.
-func loadSnapshots(ctx context.Context, db *sql.DB) (map[string]snapshot, error) {
+// loadSnapshots includes assets with missing categories so corruption cannot
+// disappear behind an inner join.
+func loadSnapshots(ctx context.Context, db store.Querier) (map[string]snapshot, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT a.id, a.attrs, coalesce(c.display_key, ''),
-		       a.status, a.holder_type, a.holder_id, a.owner_id
-		FROM assets a JOIN categories c ON c.id = a.category_id
-		ORDER BY a.id`)
+  SELECT a.id, a.attrs, coalesce(c.display_key, ''),
+         a.status, a.holder_type, a.holder_id, a.owner_id, a.category_id, a.model_id
+  FROM assets a LEFT JOIN categories c ON c.id = a.category_id
+  ORDER BY a.id`)
 	if err != nil {
 		return nil, fmt.Errorf("load assets: %w", err)
 	}
 	defer rows.Close()
-
 	snaps := map[string]snapshot{}
 	for rows.Next() {
 		var id, attrsJSON, displayKey string
 		var s snapshot
 		if err := rows.Scan(&id, &attrsJSON, &displayKey,
-			&s.status, &s.holderType, &s.holderID, &s.ownerID); err != nil {
-			return nil, err
+			&s.status, &s.holderType, &s.holderID, &s.ownerID, &s.categoryID, &s.modelID); err != nil {
+			return nil, fmt.Errorf("scan asset snapshot: %w", err)
 		}
 		attrs, err := store.UnmarshalJSONMap(attrsJSON)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("decode asset %s attrs: %w", id, err)
 		}
+		s.attrs = attrs
 		s.name = model.AssetDisplayName(id, attrs, displayKey)
 		snaps[id] = s
 	}
 	return snaps, rows.Err()
 }
 
-// verifyHistory replays one asset's transfers and reports how many ways they
-// disagree with the row.
-//
-// Two kinds of disagreement, and both mean the same thing: something wrote to
-// assets outside the save pipeline. A chain whose from_* does not follow the
-// previous to_*, and a last event that does not describe the row as it stands.
-func verifyHistory(ctx context.Context, db *sql.DB, id string, snap snapshot) (int, error) {
+// verifyHistory retains both event-chain checks: each from_* follows the previous
+// to_*, and the last event agrees with the materialized row.
+func verifyHistory(ctx context.Context, db store.Querier, id string, snap snapshot) (int, error) {
 	evs, err := db.QueryContext(ctx, `
-		SELECT kind, from_status, from_holder_type, from_holder_id, from_owner_id,
-		       to_status, to_holder_type, to_holder_id, to_owner_id
-		FROM asset_transfers WHERE asset_id = ? ORDER BY created_at, rowid`, id)
+  SELECT kind, from_status, from_holder_type, from_holder_id, from_owner_id,
+         to_status, to_holder_type, to_holder_id, to_owner_id
+  FROM asset_transfers WHERE asset_id = ? ORDER BY created_at, rowid`, id)
 	if err != nil {
 		return 0, fmt.Errorf("load transfers for %s: %w", id, err)
 	}
 	defer evs.Close()
-
 	problems := 0
 	var prevTo, lastTo *snapshot
 	line := 0
@@ -176,13 +112,12 @@ func verifyHistory(ctx context.Context, db *sql.DB, id string, snap snapshot) (i
 		var fs, fht, fhi, fo *string
 		var ts, tht, thi, to string
 		if err := evs.Scan(&kind, &fs, &fht, &fhi, &fo, &ts, &tht, &thi, &to); err != nil {
-			return 0, err
+			return 0, fmt.Errorf("scan transfer for %s: %w", id, err)
 		}
 		if prevTo != nil {
 			if !follows(*prevTo, fs, fht, fhi, fo) {
 				problems++
-				log.Printf("asset %s event #%d (%s): from_* does not match the previous event's to_*; "+
-					"something wrote to assets outside the save pipeline", snap.name, line, kind)
+				log.Printf("asset %s event #%d (%s): from_* does not match the previous event's to_*; something wrote to assets outside the save pipeline", snap.name, line, kind)
 			}
 		} else if kind != string(model.KindCreate) {
 			problems++
@@ -194,7 +129,6 @@ func verifyHistory(ctx context.Context, db *sql.DB, id string, snap snapshot) (i
 	if err := evs.Err(); err != nil {
 		return 0, err
 	}
-
 	if lastTo == nil {
 		log.Printf("asset %s has no transfer history at all", snap.name)
 		return problems + 1, nil
@@ -202,8 +136,7 @@ func verifyHistory(ctx context.Context, db *sql.DB, id string, snap snapshot) (i
 	if lastTo.status != snap.status || lastTo.holderType != snap.holderType ||
 		lastTo.holderID != snap.holderID || lastTo.ownerID != snap.ownerID {
 		problems++
-		log.Printf("asset %s: snapshot (%s / %s:%s / owner %s) disagrees with the last event "+
-			"(%s / %s:%s / owner %s)",
+		log.Printf("asset %s: snapshot (%s / %s:%s / owner %s) disagrees with the last event (%s / %s:%s / owner %s)",
 			snap.name, snap.status, snap.holderType, snap.holderID, snap.ownerID,
 			lastTo.status, lastTo.holderType, lastTo.holderID, lastTo.ownerID)
 	}
@@ -214,64 +147,17 @@ func verifyHistory(ctx context.Context, db *sql.DB, id string, snap snapshot) (i
 	return problems, nil
 }
 
-// follows reports whether an event's from_* continues where the previous one
-// left off.
-//
-// Every column is nullable in the schema -- the first event has nothing to come
-// from -- so a nil here is a break in the chain like any other mismatch.
+// Nullable from_* columns are only expected on the initial create event.
 func follows(prev snapshot, status, holderType, holderID, ownerID *string) bool {
 	for _, pair := range []struct {
 		got  *string
 		want string
 	}{
-		{status, prev.status},
-		{holderType, prev.holderType},
-		{holderID, prev.holderID},
-		{ownerID, prev.ownerID},
+		{status, prev.status}, {holderType, prev.holderType}, {holderID, prev.holderID}, {ownerID, prev.ownerID},
 	} {
 		if pair.got == nil || *pair.got != pair.want {
 			return false
 		}
 	}
 	return true
-}
-
-// verifyKeyConflicts reports two different fields claiming one key where both
-// can reach a single device.
-//
-// The guard that should have refused these only ever asked category_fields,
-// while the resolver unions all three binding tables (026 fixed the guard).
-// Anything already in the database predates the fix, and one attrs slot with
-// two definitions makes every later answer about it -- validation, computed
-// values, uniqueness -- a different question. So the upgrade says so out loud
-// rather than letting it sit.
-func verifyKeyConflicts(ctx context.Context, db *sql.DB) (int, error) {
-	rows, err := db.QueryContext(ctx, `
-		WITH bound AS (
-		  SELECT f.id, f.key, 'category' AS side FROM category_fields b
-		    JOIN field_definitions f ON f.id = b.field_id
-		  UNION
-		  SELECT f.id, f.key, 'device' FROM model_fields b
-		    JOIN field_definitions f ON f.id = b.field_id
-		  UNION
-		  SELECT f.id, f.key, 'device' FROM vendor_fields b
-		    JOIN field_definitions f ON f.id = b.field_id
-		)
-		SELECT key, count(DISTINCT id) FROM bound GROUP BY key HAVING count(DISTINCT id) > 1`)
-	if err != nil {
-		return 0, fmt.Errorf("key conflicts: %w", err)
-	}
-	defer rows.Close()
-
-	n := 0
-	for rows.Next() {
-		var key string
-		var fields int
-		if err := rows.Scan(&key, &fields); err != nil {
-			return n, err
-		}
-		log.Printf("verify: key %q is claimed by %d different fields -- one device's attrs would hold two definitions of it", key, fields)
-		n++
-	}
-	return n, rows.Err()
 }

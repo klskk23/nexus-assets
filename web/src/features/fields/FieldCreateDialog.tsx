@@ -1,3 +1,4 @@
+import { invalidateSchema } from "@/features/categories/invalidateSchema"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { WarningCircle } from "@phosphor-icons/react"
@@ -95,7 +96,7 @@ export function FieldCreateDialog({ onClose }: { onClose: () => void }) {
         options: optionsFor(draft),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["fields"] })
+      invalidateSchema(queryClient)
       onClose()
     },
     onError: (e) => setError(e instanceof ApiError ? e.message : t.common.error),

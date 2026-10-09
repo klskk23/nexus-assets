@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
@@ -20,10 +19,20 @@ var ErrNotFound = errors.New("not found")
 var ErrCategoryHasAssets = errors.New("category subtree still holds assets")
 
 // Store provides access to categories, field definitions, bindings and models.
-type Store struct{ db *store.Store }
+type Store struct {
+	db              *store.Store
+	effects         AssetEffects
+	confirmationKey [32]byte
+}
 
-// New builds a schema store.
-func New(db *store.Store) *Store { return &Store{db: db} }
+// New builds a schema store that refuses asset-affecting schema changes.
+func New(db *store.Store) *Store { return &Store{db: db, confirmationKey: newConfirmationKey()} }
+
+// NewWithEffects supplies transactional asset-effect planning without creating
+// a dependency from schema to the asset package.
+func NewWithEffects(db *store.Store, effects AssetEffects) *Store {
+	return &Store{db: db, effects: effects, confirmationKey: newConfirmationKey()}
+}
 
 const categoryCols = `id, code, name, parent_id, path, display_key, print_preset_ids, archived_at, created_at, updated_at`
 
@@ -90,46 +99,22 @@ func (s *Store) GetCategory(ctx context.Context, id string) (model.Category, err
 
 // CreateCategoryInput describes a new category.
 type CreateCategoryInput struct {
-	Code       string
-	Name       string
-	ParentID   *string
-	DisplayKey string
+	Code              string
+	Name              string
+	ParentID          *string
+	DisplayKey        string
+	PrintPresetIDs    []string
+	InheritedFieldIDs *[]string
+	ConfirmationToken string
 }
 
 // CreateCategory inserts a category, computing its materialised path from the
 // parent so subtree queries stay a prefix match rather than a recursive CTE.
 func (s *Store) CreateCategory(ctx context.Context, in CreateCategoryInput) (model.Category, error) {
-	var out model.Category
-	err := s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		parentPath := ""
-		if in.ParentID != nil {
-			if err := tx.QueryRowContext(ctx, `SELECT path FROM categories WHERE id = ?`, *in.ParentID).
-				Scan(&parentPath); err != nil {
-				if errors.Is(err, sql.ErrNoRows) {
-					return fmt.Errorf("parent category %s: %w", *in.ParentID, ErrNotFound)
-				}
-				return err
-			}
-		}
-		now := time.Now().UTC()
-		out = model.Category{
-			ID: store.NewID(), Code: in.Code, Name: in.Name, ParentID: in.ParentID,
-			DisplayKey: in.DisplayKey, CreatedAt: now, UpdatedAt: now,
-		}
-		out.Path = BuildPath(parentPath, out.ID)
-
-		// Only inherited fields can back a display key at creation time, since
-		// the category has no bindings of its own yet.
-		if err := validateDisplayKey(ctx, tx, out.Path, out.DisplayKey); err != nil {
-			return err
-		}
-
-		_, err := tx.ExecContext(ctx,
-			`INSERT INTO categories (id, code, name, parent_id, path, display_key, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			out.ID, out.Code, out.Name, store.NullString(out.ParentID), out.Path,
-			store.NullString(nilIfEmpty(out.DisplayKey)), store.FormatTime(now), store.FormatTime(now))
-		return err
+	out, err := s.saveCategory(ctx, "", CategoryDraft{
+		Code: in.Code, Name: &in.Name, ParentID: &in.ParentID,
+		DisplayKey: &in.DisplayKey, PrintPresetIDs: &in.PrintPresetIDs,
+		InheritedFieldIDs: in.InheritedFieldIDs, ConfirmationToken: in.ConfirmationToken,
 	})
 	if err != nil {
 		return out, fmt.Errorf("create category: %w", err)
@@ -139,10 +124,12 @@ func (s *Store) CreateCategory(ctx context.Context, in CreateCategoryInput) (mod
 
 // UpdateCategoryInput carries the mutable parts of a category.
 type UpdateCategoryInput struct {
-	Name           *string
-	DisplayKey     *string
-	PrintPresetIDs *[]string
-	ParentID       **string // outer nil means "leave alone"
+	Name              *string
+	DisplayKey        *string
+	PrintPresetIDs    *[]string
+	ParentID          **string // outer nil means "leave alone"
+	InheritedFieldIDs *[]string
+	ConfirmationToken string
 }
 
 // UpdateCategory changes a category.
@@ -152,75 +139,13 @@ type UpdateCategoryInput struct {
 // The escape hatch is to create the new category, move the assets across in
 // bulk, then move the now-empty node.
 func (s *Store) UpdateCategory(ctx context.Context, id string, in UpdateCategoryInput) (model.Category, error) {
-	var out model.Category
-	err := s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		cur, err := scanCategory(tx.QueryRowContext(ctx, `SELECT `+categoryCols+` FROM categories WHERE id = ?`, id))
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNotFound
-		}
-		if err != nil {
-			return err
-		}
-
-		if in.Name != nil {
-			cur.Name = *in.Name
-		}
-		if in.DisplayKey != nil {
-			cur.DisplayKey = *in.DisplayKey
-		}
-		if in.PrintPresetIDs != nil {
-			cur.PrintPresetIDs = *in.PrintPresetIDs
-		}
-
-		// Only an actual move is a move. The editor sends the whole category
-		// back on every save, so treating "the parent it already has" as a
-		// move refused a rename on any category that held a device -- with a
-		// message about moving it, which is not what the person did.
-		moving := in.ParentID != nil && !sameParent(cur.ParentID, *in.ParentID)
-
-		if moving {
-			var n int
-			if err := tx.QueryRowContext(ctx,
-				`SELECT count(*) FROM assets a JOIN categories c ON c.id = a.category_id
-				 WHERE c.path LIKE ? || '%'`, cur.Path).Scan(&n); err != nil {
-				return err
-			}
-			if n > 0 {
-				return i18n.Wrap(ErrCategoryHasAssets, i18n.KeyCategoryHasAssetsMove, cur.Name, n)
-			}
-			parentPath := ""
-			if *in.ParentID != nil {
-				if err := tx.QueryRowContext(ctx, `SELECT path FROM categories WHERE id = ?`, **in.ParentID).
-					Scan(&parentPath); err != nil {
-					return err
-				}
-			}
-			cur.ParentID = *in.ParentID
-			cur.Path = BuildPath(parentPath, cur.ID)
-		}
-
-		if err := validateDisplayKey(ctx, tx, cur.Path, cur.DisplayKey); err != nil {
-			return err
-		}
-
-		cur.UpdatedAt = time.Now().UTC()
-		presetsJSON, err := json.Marshal(cur.PrintPresetIDs)
-		if err != nil {
-			return err
-		}
-		_, err = tx.ExecContext(ctx,
-			`UPDATE categories SET name = ?, display_key = ?, print_preset_ids = ?,
-			        parent_id = ?, path = ?, updated_at = ?
-			 WHERE id = ?`,
-			cur.Name, store.NullString(nilIfEmpty(cur.DisplayKey)), presetsJSON,
-			store.NullString(cur.ParentID), cur.Path, store.FormatTime(cur.UpdatedAt), id)
-		out = cur
-		return err
-	})
-	if err != nil {
-		return out, err
+	if id == "" {
+		return model.Category{}, ErrNotFound
 	}
-	return out, nil
+	return s.saveCategory(ctx, id, CategoryDraft{
+		Name: in.Name, ParentID: in.ParentID, DisplayKey: in.DisplayKey,
+		PrintPresetIDs: in.PrintPresetIDs, InheritedFieldIDs: in.InheritedFieldIDs, ConfirmationToken: in.ConfirmationToken,
+	})
 }
 
 // DisplayKeys returns every category's display key, keyed by category id.
@@ -247,52 +172,23 @@ func (s *Store) DisplayKeys(ctx context.Context) (map[string]string, error) {
 // ErrDisplayKeyInvalid rejects a display key that cannot serve as an identifier.
 var ErrDisplayKeyInvalid = errors.New("display key is not usable")
 
-// validateDisplayKey enforces that a display key is bound to the category
-// itself or one of its ancestors. The key is a display label, not the asset's
-// identity, so its value does not need to be unique.
-func validateDisplayKey(ctx context.Context, tx *sql.Tx, path, key string) error {
-	if key == "" {
-		return nil
+// displayKeyError distinguishes a device-only key from an unavailable category
+// key, after the planner has checked the final effective category fields.
+func displayKeyError(ctx context.Context, q store.Querier, key string) (error, error) {
+	var n int
+	if err := q.QueryRowContext(ctx, `
+		SELECT (SELECT count(*) FROM model_fields mf
+		        JOIN field_definitions f ON f.id = mf.field_id
+		        WHERE f.key = ?)
+		     + (SELECT count(*) FROM vendor_fields vf
+		        JOIN field_definitions f ON f.id = vf.field_id
+		        WHERE f.key = ?)`, key, key).Scan(&n); err != nil {
+		return nil, err
 	}
-	const q = `SELECT f.label
-	           FROM category_fields cf
-	           JOIN categories c ON c.id = cf.category_id
-	           JOIN field_definitions f ON f.id = cf.field_id
-	           WHERE f.key = ? AND ? LIKE c.path || '%'`
-	var label string
-	err := tx.QueryRowContext(ctx, q, key, path).Scan(&label)
-	if errors.Is(err, sql.ErrNoRows) {
-		// Bound, but to the device side -- a model, or a vendor whose models
-		// carry it (015 decision 100, widened by 016). Refused for its own
-		// reason: a device field covers only some of the category's assets, so
-		// the rest would fall back to the UUID prefix for good. Saying
-		// "unbound" here would send somebody looking for a binding that is
-		// already there -- and visible to them in this very category's schema.
-		//
-		// No path in the condition: a model reaches every category, so a
-		// device-side binding of this key is reachable from this one. It used
-		// to be narrowed by product_model_categories, which made the message
-		// say "unbound" about a field the schema right there was listing.
-		var n int
-		if err := tx.QueryRowContext(ctx, `
-			SELECT (SELECT count(*) FROM model_fields mf
-			        JOIN field_definitions f ON f.id = mf.field_id
-			        WHERE f.key = ?)
-			     + (SELECT count(*) FROM vendor_fields vf
-			        JOIN field_definitions f ON f.id = vf.field_id
-			        WHERE f.key = ?)`,
-			key, key).Scan(&n); err != nil {
-			return err
-		}
-		if n > 0 {
-			return i18n.Wrap(ErrDisplayKeyNotCategoryField, i18n.KeyDisplayKeyNotCategory, key)
-		}
-		return i18n.Wrap(ErrDisplayKeyInvalid, i18n.KeyDisplayKeyUnbound, key)
+	if n > 0 {
+		return i18n.Wrap(ErrDisplayKeyNotCategoryField, i18n.KeyDisplayKeyNotCategory, key), nil
 	}
-	if err != nil {
-		return err
-	}
-	return nil
+	return i18n.Wrap(ErrDisplayKeyInvalid, i18n.KeyDisplayKeyUnbound, key), nil
 }
 
 // nilIfEmpty keeps an unset display key as SQL NULL rather than an empty

@@ -31,7 +31,7 @@ func newApp(t *testing.T) (*app, string, string) {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	sch := schema.New(db)
+	sch := schema.NewWithEffects(db, asset.NewSchemaEffects())
 	a := &app{
 		cfg: &config.Config{}, db: db,
 		users: auth.NewStore(db), schema: sch, holders: holder.New(db),

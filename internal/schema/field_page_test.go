@@ -16,7 +16,7 @@ func TestListFieldPageFiltersByCategory(t *testing.T) {
 	root, child := tree(t, s, ctx)
 
 	// Two fields on the parent and one on the child. The child's page must show
-	// all three -- a bound field is inherited down the chain -- while the
+	// all three after explicitly selecting the parent's fields, while the
 	// parent's shows only its own.
 	mac := mustField(t, s, ctx, "mac", "基准 MAC", model.FieldMAC)
 	fw := mustField(t, s, ctx, "firmware", "固件版本", model.FieldText)
@@ -34,6 +34,7 @@ func TestListFieldPageFiltersByCategory(t *testing.T) {
 		}
 	}
 
+	selectFixtureFields(t, s, ctx, child.ID, mac.ID, fw.ID)
 	all, err := s.ListFieldPage(ctx, FieldFilter{})
 	if err != nil {
 		t.Fatalf("list: %v", err)
@@ -178,6 +179,7 @@ func TestCreateFieldBindsAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
+	selectFixtureFields(t, s, ctx, child.ID, f.ID)
 	bound, err := s.EffectiveFields(ctx, child.ID)
 	if err != nil {
 		t.Fatal(err)

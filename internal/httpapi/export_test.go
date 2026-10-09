@@ -252,3 +252,15 @@ func TestExportOfTickedDevicesSplitsByCategory(t *testing.T) {
 		t.Errorf("an empty selection should be refused, got %d", rec.Code)
 	}
 }
+
+func TestExportInheritanceDoesNotLeakDescendantArchivedValues(t *testing.T) {
+	h := newHarness(t)
+	seedConsumerDescendant(t, h)
+	rec := h.get(t, "/api/export.csv?category_id="+h.catID+"&include_descendants=true&fields=mac")
+	if rec.Code != http.StatusOK {
+		t.Fatal(rec.Body.String())
+	}
+	if !strings.Contains(header(rec.Body.String()), "基准 MAC") || strings.Contains(rec.Body.String(), "ARCHIVED-CONSUMER") {
+		t.Fatalf("export=%s", rec.Body.String())
+	}
+}

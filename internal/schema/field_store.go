@@ -289,6 +289,10 @@ func (s *Store) CreateField(ctx context.Context, in CreateFieldInput) (model.Fie
 			store.FormatTime(now), store.FormatTime(now)); err != nil {
 			return err
 		}
+		before, err := LoadSchemaSnapshot(ctx, tx)
+		if err != nil {
+			return err
+		}
 		// Bound in the same transaction, so a refused binding -- a key already
 		// on that chain, an expression whose inputs are not there -- leaves no
 		// field behind either. The refusal is about the pair, and half of it is
@@ -308,7 +312,7 @@ func (s *Store) CreateField(ctx context.Context, in CreateFieldInput) (model.Fie
 				return err
 			}
 		}
-		return nil
+		return s.finishCategoryBindings(ctx, tx, before, in.CategoryIDs)
 	})
 	if err != nil {
 		// The domain errors binding raises are written for a person and carry
@@ -467,6 +471,25 @@ func recheckBoundCategories(ctx context.Context, tx *sql.Tx, fieldID, key string
 // Deleting takes the bindings and any residual key with it, so nothing in the
 // database still refers to a definition that is gone.
 func (s *Store) deleteFieldTx(ctx context.Context, tx *sql.Tx, id, key string) error {
+	snapshot, err := LoadSchemaSnapshot(ctx, tx)
+	if err != nil {
+		return err
+	}
+	reach, err := snapshot.FieldReach(id)
+	if err != nil {
+		return err
+	}
+	predicate, args, err := reach.SQLPredicate("category_id", "model_id")
+	if err != nil {
+		return err
+	}
+	// Only clear empty residue currently owned by this identity. Other fields
+	// with the same key and archived attributes are not this definition's data.
+	if _, err := tx.ExecContext(ctx, `UPDATE assets SET attrs = json_remove(attrs, '$.' || ?)
+		WHERE `+predicate+` AND coalesce(trim(json_extract(attrs, '$.' || ?)), '') = ''`,
+		append(append([]any{key}, args...), key)...); err != nil {
+		return fmt.Errorf("clear deleted field residue: %w", err)
+	}
 	for _, stmt := range []struct {
 		q    string
 		args []any
@@ -481,10 +504,6 @@ func (s *Store) deleteFieldTx(ctx context.Context, tx *sql.Tx, id, key string) e
 		// 500 waits here for anyone who forgets it. field_group_members does
 		// cascade and is deliberately absent from this list.
 		{`DELETE FROM vendor_fields WHERE field_id = ?`, []any{id}},
-		// Only ever empty residue: a non-empty value would have been refused
-		// upstream. This is what makes "delete" mean what it says.
-		{`UPDATE assets SET attrs = json_remove(attrs, '$.' || ?) WHERE json_extract(attrs, '$.' || ?) IS NOT NULL`,
-			[]any{key, key}},
 		{`DELETE FROM field_definitions WHERE id = ?`, []any{id}},
 	} {
 		if _, err := tx.ExecContext(ctx, stmt.q, stmt.args...); err != nil {
@@ -528,8 +547,20 @@ func search(all []model.FieldDefinition, f FieldFilter) []model.FieldDefinition 
 // re-derived, because what is indexed must be what is stored -- deriving it a
 // second way is a second answer waiting to differ from the first.
 func reindexField(ctx context.Context, tx *sql.Tx, f model.FieldDefinition) error {
+	snapshot, err := LoadSchemaSnapshot(ctx, tx)
+	if err != nil {
+		return err
+	}
+	reach, err := snapshot.FieldReach(f.ID)
+	if err != nil {
+		return err
+	}
+	predicate, args, err := reach.SQLPredicate("category_id", "model_id")
+	if err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx,
-		`DELETE FROM asset_search_values WHERE field_key = ?`, f.Key); err != nil {
+		`DELETE FROM asset_search_values WHERE field_key = ? AND asset_id IN (SELECT id FROM assets WHERE `+predicate+`)`, append([]any{f.Key}, args...)...); err != nil {
 		return fmt.Errorf("clear index for %q: %w", f.Key, err)
 	}
 	if !f.Findable() {
@@ -537,13 +568,13 @@ func reindexField(ctx context.Context, tx *sql.Tx, f model.FieldDefinition) erro
 	}
 	// trim() then the emptiness check, for the same reason the write path
 	// skips blanks: an empty string in the index is matched by every search.
-	_, err := tx.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO asset_search_values (asset_id, field_key, value)
 		SELECT id, ?, trim(json_extract(attrs, '$.' || ?))
 		  FROM assets
 		 WHERE json_extract(attrs, '$.' || ?) IS NOT NULL
-		   AND trim(json_extract(attrs, '$.' || ?)) <> ''`,
-		f.Key, f.Key, f.Key, f.Key)
+		   AND trim(json_extract(attrs, '$.' || ?)) <> '' AND `+predicate,
+		append([]any{f.Key, f.Key, f.Key, f.Key}, args...)...)
 	if err != nil {
 		return fmt.Errorf("reindex %q: %w", f.Key, err)
 	}

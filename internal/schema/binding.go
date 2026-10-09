@@ -61,151 +61,59 @@ func (s *Store) BindingsByCategory(ctx context.Context) (map[string][]Binding, e
 	return out, rows.Err()
 }
 
-// EffectiveFields resolves the field set a category asks for.
-//
-// Two sources, unioned: the bindings along the category's own ancestor chain,
-// and the bindings of every model registered anywhere on that chain (015,
-// decision 101). This function is the single answer to "which fields does this
-// category have" -- the entry form, asset validation, the import template, the
-// export and the column picker all read it -- so unioning here is what makes
-// those five agree without each being taught about models.
-//
-// The result is the category's whole vocabulary, not one asset's. A model
-// field appears here even for a caller looking at an asset of a different
-// model; deciding whether it applies to one device is the caller's job, and
-// three of the five callers deliberately want the full set (decisions 102/103).
+// EffectiveFields answers only the category's explicitly selected vocabulary.
 func (s *Store) EffectiveFields(ctx context.Context, categoryID string) ([]model.BoundField, error) {
-	cat, err := s.GetCategory(ctx, categoryID)
+	snapshot, err := s.Snapshot(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return s.FieldsOfPath(ctx, cat.Path)
+	return snapshot.EffectiveFields(categoryID)
 }
 
-// FieldsOfPath is EffectiveFields for a caller that already holds the category.
-//
-// The save pipeline is that caller: it loads the category for its code, name
-// and display key anyway, and reading it twice per save to get the same row
-// back would be a query bought for nothing.
+// FieldsOfPath resolves a category path from one consistent schema snapshot.
 func (s *Store) FieldsOfPath(ctx context.Context, path string) ([]model.BoundField, error) {
-	bindings, err := s.BindingsByCategory(ctx)
+	snapshot, err := s.Snapshot(ctx)
 	if err != nil {
 		return nil, err
 	}
-	fields, err := Resolve(path, bindings)
-	if err != nil {
-		return nil, err
-	}
-
-	return fields, nil
+	return snapshot.FieldsOfPath(path)
 }
 
-// EveryPossibleField is a category's chain plus every device-side field there
-// is, whatever model it belongs to.
-//
-// For the CSV columns, which have to be decided before anyone knows which
-// models the rows will name. A file is one set of columns and a batch is
-// usually mixed, so the honest column set is "everything that could apply" and
-// the per-row check is what refuses a value that does not belong to that row's
-// model -- a rule the importer already enforces.
-//
-// Before 026 this was simply EffectiveFields: a category carried the fields of
-// every model attached to it. Decoupling took that away, and the columns are
-// the one caller that genuinely wanted the wider set.
+// EveryPossibleField adds all device fields for mixed-model file columns.
+// Each row still has to check field identity against its actual device schema.
 func (s *Store) EveryPossibleField(ctx context.Context, categoryID string) ([]model.BoundField, error) {
-	cat, err := s.GetCategory(ctx, categoryID)
+	snapshot, err := s.Snapshot(ctx)
 	if err != nil {
 		return nil, err
 	}
-	fields, err := s.FieldsOfPath(ctx, cat.Path)
-	if err != nil {
-		return nil, err
-	}
-	device, vendorsOfField, err := s.deviceBindings(ctx)
-	if err != nil {
-		return nil, err
-	}
-	all := make(map[string]bool, len(device))
-	for id := range device {
-		all[id] = true
-	}
-	return append(fields, resolveModelFields(all, device, vendorsOfField)...), nil
+	return snapshot.EveryPossibleField(categoryID)
 }
 
-// EffectiveFieldsForAsset is FieldsForAsset for a caller holding a category id
-// rather than a path.
-func (s *Store) EffectiveFieldsForAsset(
-	ctx context.Context, categoryID string, modelID *string,
-) ([]model.BoundField, error) {
-	cat, err := s.GetCategory(ctx, categoryID)
+// EffectiveFieldsForAsset resolves the category and actual model together.
+func (s *Store) EffectiveFieldsForAsset(ctx context.Context, categoryID string, modelID *string) ([]model.BoundField, error) {
+	snapshot, err := s.Snapshot(ctx)
 	if err != nil {
 		return nil, err
+	}
+	cat, ok := snapshot.categories[categoryID]
+	if !ok {
+		return nil, ErrNotFound
 	}
 	id := ""
 	if modelID != nil {
 		id = *modelID
 	}
-	return s.FieldsForAsset(ctx, cat.Path, id)
+	return snapshot.FieldsForAsset(cat.Path, id)
 }
 
-// FieldsForAsset is what one device can record: its category chain, its own
-// model, and that model's vendor.
-//
-// Not "the category's vocabulary narrowed to a model", which is what this used
-// to be. A model belonged to categories then, so a category's field set had to
-// contain every model that might appear under it -- which meant attaching a
-// model to a category changed that category's fields, and, worse, a device
-// whose model was *not* attached silently lost that model's fields with
-// nothing to say so (026, decisions 182-184).
-//
-// Asking per device instead makes both go away: the model is asked directly,
-// so no association is consulted and none can be missing.
+// FieldsForAsset combines selected category fields with the actual model and
+// vendor. No category-model association is consulted.
 func (s *Store) FieldsForAsset(ctx context.Context, path, modelID string) ([]model.BoundField, error) {
-	fields, err := s.FieldsOfPath(ctx, path)
+	snapshot, err := s.Snapshot(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if modelID == "" {
-		return fields, nil
-	}
-	device, vendorsOfField, err := s.deviceBindings(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if len(device) == 0 {
-		return fields, nil
-	}
-	return append(fields, resolveModelFields(
-		map[string]bool{modelID: true}, device, vendorsOfField)...), nil
-}
-
-// deviceBindings is the device side of the vocabulary, keyed by model.
-//
-// A model's own bindings unioned with the ones it inherits from its vendor. The
-// union happens here so that everything downstream -- the resolver, the entry
-// form, the export, ForModel -- keeps asking one question about one map, and
-// never has to know which of the two ways a field arrived (016, decision 108).
-//
-// Four queries, whatever the number of models: bindings, vendor bindings and
-// the vendor's models are each loaded whole, the way category bindings are.
-func (s *Store) deviceBindings(ctx context.Context) (map[string][]ModelBinding, map[string][]string, error) {
-	own, err := s.ModelBindingsByModel(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	byVendor, err := s.VendorBindingsByVendor(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(byVendor) == 0 {
-		return own, nil, nil
-	}
-	modelsOfVendor, err := s.ModelsOfVendor(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	inherited, vendorsOfField := resolveVendorFields(byVendor, modelsOfVendor)
-	return mergeDeviceBindings(own, inherited), vendorsOfField, nil
+	return snapshot.FieldsForAsset(path, modelID)
 }
 
 // ForModel narrows a category's field set to the one device in front of you.
@@ -247,7 +155,14 @@ func AppliesTo(f model.BoundField, modelID *string) bool {
 // no override rule to fall back on.
 func (s *Store) Bind(ctx context.Context, categoryID, fieldID string, sort int) error {
 	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		return bindTx(ctx, tx, categoryID, fieldID, sort)
+		before, err := LoadSchemaSnapshot(ctx, tx)
+		if err != nil {
+			return err
+		}
+		if err := bindTx(ctx, tx, categoryID, fieldID, sort); err != nil {
+			return err
+		}
+		return s.finishCategoryBindings(ctx, tx, before, []string{categoryID})
 	})
 }
 
@@ -257,7 +172,7 @@ func (s *Store) Bind(ctx context.Context, categoryID, fieldID string, sort int) 
 // a field that exists but is bound nowhere, because the second half failed, is
 // exactly the half-finished state the form was meant to save someone from.
 func bindTx(ctx context.Context, tx *sql.Tx, categoryID, fieldID string, sort int) error {
-	var path, key, ftype string
+	var path, key string
 	if err := tx.QueryRowContext(ctx, `SELECT path FROM categories WHERE id = ?`, categoryID).Scan(&path); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
@@ -265,7 +180,7 @@ func bindTx(ctx context.Context, tx *sql.Tx, categoryID, fieldID string, sort in
 		return err
 	}
 	if err := tx.QueryRowContext(ctx,
-		`SELECT key, type FROM field_definitions WHERE id = ?`, fieldID).Scan(&key, &ftype); err != nil {
+		`SELECT key FROM field_definitions WHERE id = ?`, fieldID).Scan(&key); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -324,12 +239,6 @@ func bindTx(ctx context.Context, tx *sql.Tx, categoryID, fieldID string, sort in
 		return err
 	}
 
-	if model.FieldType(ftype) == model.FieldComputed {
-		if err := checkBindDeps(ctx, tx, path, key); err != nil {
-			return err
-		}
-	}
-
 	_, err = tx.ExecContext(ctx,
 		// required is not written: it lives on the field now (018), and the
 		// column is left holding whatever it held before that migration.
@@ -349,27 +258,7 @@ func bindTx(ctx context.Context, tx *sql.Tx, categoryID, fieldID string, sort in
 // asset in that category permanently unsaveable, with an error that points at
 // the expression key rather than at the unbind that caused it.
 func (s *Store) Unbind(ctx context.Context, categoryID, fieldID string) error {
-	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		var path, key string
-		if err := tx.QueryRowContext(ctx, `SELECT path FROM categories WHERE id = ?`, categoryID).Scan(&path); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return ErrNotFound
-			}
-			return err
-		}
-		if err := tx.QueryRowContext(ctx, `SELECT key FROM field_definitions WHERE id = ?`, fieldID).Scan(&key); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return ErrNotFound
-			}
-			return err
-		}
-		if err := checkUnbindSafe(ctx, tx, path, key, fieldID); err != nil {
-			return err
-		}
-		_, err := tx.ExecContext(ctx,
-			`DELETE FROM category_fields WHERE category_id = ? AND field_id = ?`, categoryID, fieldID)
-		return err
-	})
+	return s.UnbindConfirmed(ctx, categoryID, fieldID, "")
 }
 
 // chainBinding is one effective binding, flattened for the dependency checks.
@@ -490,79 +379,6 @@ func checkBindDeps(ctx context.Context, tx *sql.Tx, path, key string) error {
 	if len(problems) > 0 {
 		return i18n.Wrap(ErrDependenciesUnmet, i18n.KeyDepUnmet,
 			key, i18n.Join(i18n.KeyProblemSeparator, problems...))
-	}
-	return nil
-}
-
-// checkUnbindSafe refuses to remove a field something bound nearby still needs.
-//
-// "Nearby" is the ancestor chain plus the whole subtree, the same reach the
-// key-collision check uses: those are exactly the categories whose effective
-// field set contains this binding.
-func checkUnbindSafe(ctx context.Context, tx *sql.Tx, path, key, fieldID string) error {
-	lib, err := loadLibrary(ctx, tx)
-	if err != nil {
-		return err
-	}
-
-	const q = `SELECT DISTINCT f.key, f.label
-	           FROM category_fields cf
-	           JOIN categories c ON c.id = cf.category_id
-	           JOIN field_definitions f ON f.id = cf.field_id
-	           WHERE f.type = ? AND cf.field_id != ?
-	             AND (? LIKE c.path || '%' OR c.path LIKE ? || '%')`
-	rows, err := tx.QueryContext(ctx, q, string(model.FieldComputed), fieldID, path, path)
-	if err != nil {
-		return fmt.Errorf("scan expression keys: %w", err)
-	}
-	defer rows.Close()
-	type ref struct{ key, label string }
-	var candidates []ref
-	for rows.Next() {
-		var r ref
-		if err := rows.Scan(&r.key, &r.label); err != nil {
-			return err
-		}
-		candidates = append(candidates, r)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	var blockers []any
-	for _, c := range candidates {
-		deps, err := DependencyClosure(c.key, lib)
-		if err != nil {
-			return fmt.Errorf("%w: %s", ErrFieldDependedOn, err)
-		}
-		if slices.Contains(deps, key) {
-			blockers = append(blockers, i18n.M(i18n.KeyRefComputedKey, c.label))
-		}
-	}
-
-	// A category that names this field as its display key would be left
-	// pointing at nothing.
-	dispRows, err := tx.QueryContext(ctx,
-		`SELECT name FROM categories
-		 WHERE display_key = ? AND (? LIKE path || '%' OR path LIKE ? || '%')`, key, path, path)
-	if err != nil {
-		return fmt.Errorf("scan display keys: %w", err)
-	}
-	defer dispRows.Close()
-	for dispRows.Next() {
-		var name string
-		if err := dispRows.Scan(&name); err != nil {
-			return err
-		}
-		blockers = append(blockers, i18n.M(i18n.KeyRefDisplayKey, name))
-	}
-	if err := dispRows.Err(); err != nil {
-		return err
-	}
-
-	if len(blockers) > 0 {
-		return i18n.Wrap(ErrFieldDependedOn, i18n.KeyUnbindBlocked,
-			i18n.Join(i18n.KeyListSeparator, blockers...), key)
 	}
 	return nil
 }

@@ -13,6 +13,8 @@ set -euo pipefail
 IMAGE="${1:-nexus-assets:smoke}"
 NAME="nexus-smoke-$$"
 PORT="${PORT:-18080}"
+# Python's standard library checks nested JSON without depending on key order.
+command -v python3 >/dev/null || { printf 'python3 is required for JSON smoke checks\n' >&2; exit 1; }
 DATA="$(mktemp -d)"
 
 cleanup() {
@@ -50,6 +52,135 @@ wait_healthy() {
 
 say() { printf '\n== %s\n' "$1"; }
 
+# Keep response bodies for structural checks, including expected non-2xx replies.
+category_request() {
+  local expected="$1" method="$2" path="$3" body="$4" status
+  local -a headers=(-H 'Content-Type: application/json') payload=()
+  if [[ -n "$body" ]]; then
+    payload=(-d "$body")
+  fi
+  if [[ "${5:-authenticated}" != anonymous ]]; then
+    headers+=(-H "Authorization: Bearer $TOKEN")
+  fi
+  status=$(curl -sS -o "$DATA/category-response.json" -w '%{http_code}' \
+    -X "$method" "http://127.0.0.1:$PORT/api/$path" "${headers[@]}" "${payload[@]}")
+  if [[ "$status" != "$expected" ]]; then
+    printf '%s %s: expected %s, got %s\n' "$method" "$path" "$expected" "$status" >&2
+    return 1
+  fi
+}
+
+category_json() {
+  python3 - "$DATA/category-response.json" "$@" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response:
+    data = json.load(response)
+mode, *args = sys.argv[2:]
+
+def text(value):
+    assert isinstance(value, str) and value
+
+def page(value, limit, total):
+    assert isinstance(value["items"], list)
+    assert value["total"] == total and value["offset"] == 0 and value["limit"] == limit
+    assert len(value["items"]) == min(total, limit)
+
+if mode == "error":
+    error = data["error"]
+    assert error["code"] == args[0]
+    text(error["message"])
+    if len(args) > 1:
+        text(error["fields"][args[1]])
+elif mode == "id":
+    text(data["id"])
+    print(data["id"])
+elif mode == "category":
+    text(data["id"])
+    assert data["code"] == "SMOKE_CHILD" and data["name"] == "Smoke Child"
+    assert data["parent_id"] == args[0] and data["display_key"] == ""
+    assert data["print_preset_ids"] == ["smoke-label"]
+    text(data["path"])
+    text(data["created_at"])
+    text(data["updated_at"])
+    print(data["id"])
+elif mode == "withdrawal":
+    category, field = args
+    assert data["category"]["id"] == category and data["fields"] == []
+    assert data["inheritance"]["selected_field_ids"] == []
+    impact = data["impact"]
+    page(impact, 2, 1)
+    assert impact["removed_count"] == impact["category_count"] == 1
+    assert impact["added_count"] == impact["source_changed_count"] == impact["asset_count"] == 0
+    assert impact["items"][0]["field_id"] == field and impact["items"][0]["change"] == "removed"
+    page(data["issues"], 3, 0)
+    assert data["requires_confirmation"] is True
+    text(data["confirmation_token"])
+    print(data["confirmation_token"])
+elif mode == "count":
+    assert data == {"count": int(args[0])}
+elif mode == "schema":
+    category, field, selected = args
+    assert data["category"]["id"] == category
+    assert [item["id"] for item in data["fields"]] == ([field] if selected == "yes" else [])
+elif mode == "unbind":
+    parent, child, field = args
+    assert data["category"]["id"] == parent and data["fields"] == []
+    inheritance = data["inheritance"]
+    assert inheritance["parent_id"] is None and inheritance["selected_field_ids"] == []
+    page(inheritance["candidates"], 1, 0)
+    impact = data["impact"]
+    page(impact, 2, 2)
+    assert impact["removed_count"] == impact["category_count"] == 2
+    assert impact["added_count"] == impact["source_changed_count"] == 0
+    assert impact["asset_count"] == 1
+    assert {item["category_id"] for item in impact["items"]} == {parent, child}
+    assert all(item["field_id"] == field and item["change"] == "removed" for item in impact["items"])
+    page(data["issues"], 3, 0)
+    assert data["requires_confirmation"] is True
+    text(data["confirmation_token"])
+    print(data["confirmation_token"])
+elif mode == "preview":
+    parent, field, selected, issue, target = args
+    selected = selected == "yes"
+    issue = issue == "yes"
+    category = data["category"]
+    text(category["id"])
+    if target:
+        assert category["id"] == target
+    assert category["parent_id"] == parent
+    assert category["print_preset_ids"] == ["smoke-label"]
+    inheritance = data["inheritance"]
+    assert inheritance["parent_id"] == parent
+    assert inheritance["selected_field_ids"] == ([field] if selected else [])
+    page(inheritance["candidates"], 1, 1)
+    candidate = inheritance["candidates"]["items"][0]
+    assert candidate["field"]["id"] == field and candidate["field"]["key"] == "smoke_inherited"
+    assert candidate["source_category_id"] == parent and candidate["selected"] is selected
+    assert isinstance(data["fields"], list) and len(data["fields"]) == int(selected)
+    impact = data["impact"]
+    page(impact, 2, int(selected))
+    assert impact["added_count"] == int(selected) and impact["category_count"] == int(selected)
+    assert impact["removed_count"] == impact["source_changed_count"] == impact["asset_count"] == 0
+    if selected:
+        assert data["fields"][0]["id"] == field and data["fields"][0]["inherited_from"] == parent
+        delta = impact["items"][0]
+        assert delta["category_id"] == category["id"] and delta["field_id"] == field
+        assert delta["key"] == "smoke_inherited" and delta["change"] == "added"
+        assert delta["after_source_category_id"] == parent
+    page(data["issues"], 3, int(issue))
+    if issue:
+        problem = data["issues"]["items"][0]
+        assert problem["code"] == "display_key_unbound" and problem["field_key"] == "missing"
+        assert problem["category_id"] == category["id"]
+        text(problem["message"])
+    assert data["requires_confirmation"] is False and data["confirmation_token"] == ""
+else:
+    raise AssertionError("unknown JSON check")
+PY
+}
+
 say "starting $IMAGE"
 run
 wait_healthy
@@ -80,6 +211,145 @@ test -n "$TOKEN"
 
 say "an authenticated request"
 curl -fsS "http://127.0.0.1:$PORT/api/categories" -H "Authorization: Bearer $TOKEN" >/dev/null
+
+# Only the disposable container database is changed. A parent with a real field
+# distinguishes an empty inheritance choice from a fixture with no candidates.
+say "category creation preserves print presets and an empty selection"
+category_request 201 POST categories '{"code":"SMOKE_PARENT","name":"Smoke Parent"}'
+PARENT=$(category_json id)
+category_request 201 POST fields \
+  "{\"key\":\"smoke_inherited\",\"label\":\"Smoke inherited\",\"type\":\"text\",\"category_ids\":[\"$PARENT\"]}"
+FIELD=$(category_json id)
+category_request 201 POST categories \
+  "{\"code\":\"SMOKE_CHILD\",\"name\":\"Smoke Child\",\"parent_id\":\"$PARENT\",\"print_preset_ids\":[\"smoke-label\"],\"inherited_field_ids\":[]}"
+CHILD=$(category_json category "$PARENT")
+PAGING='candidates_limit=1&impact_limit=2&issues_limit=3'
+
+say "both preview routes enforce authentication and return structured errors"
+for route in categories/preview "categories/$CHILD/preview"; do
+  category_request 401 POST "$route" '{}' anonymous
+  category_json error unauthenticated
+  category_request 400 POST "$route" '{"inherited_field_ids":null}'
+  category_json error validation_failed inherited_field_ids
+  category_request 404 POST "$route" '{"parent_id":"no-such-category"}'
+  category_json error not_found
+done
+category_request 404 POST categories/no-such-category/preview '{}'
+category_json error not_found
+
+say "non-destructive previews return independent pages without confirmation tokens"
+category_request 200 POST "categories/preview?$PAGING" \
+  "{\"code\":\"SMOKE_DRAFT\",\"name\":\"Smoke Draft\",\"parent_id\":\"$PARENT\",\"print_preset_ids\":[\"smoke-label\"],\"inherited_field_ids\":[\"$FIELD\"]}"
+category_json preview "$PARENT" "$FIELD" yes no ''
+category_request 200 POST "categories/$CHILD/preview?$PAGING" '{}'
+category_json preview "$PARENT" "$FIELD" no no "$CHILD"
+
+# A syntactically valid but unusable numbering field is an issue, not a failed
+# preview. Saving it is rejected; a later empty draft still reads the old state.
+say "preview issues remain editable while invalid writes are rejected"
+for route in categories/preview "categories/$CHILD/preview"; do
+  category_request 200 POST "$route?$PAGING" \
+    "{\"parent_id\":\"$PARENT\",\"print_preset_ids\":[\"smoke-label\"],\"display_key\":\"missing\"}"
+  category_json preview "$PARENT" "$FIELD" no yes ''
+done
+category_request 422 PATCH "categories/$CHILD" '{"display_key":"missing"}'
+category_json error validation_failed display_key
+category_request 200 POST "categories/$CHILD/preview?$PAGING" '{}'
+category_json preview "$PARENT" "$FIELD" no no "$CHILD"
+
+# Even an asset-free withdrawal requires a server-signed confirmation. A changed
+# draft or forged token cannot authorize it, and failed saves leave it unchanged.
+say "withdrawals require a token bound to the exact draft"
+category_request 201 POST categories \
+  "{\"code\":\"SMOKE_SELECTED\",\"name\":\"Smoke Selected\",\"parent_id\":\"$PARENT\",\"inherited_field_ids\":[\"$FIELD\"]}"
+SELECTED=$(category_json id)
+category_request 200 POST "categories/$SELECTED/preview?$PAGING" '{"inherited_field_ids":[]}'
+CONFIRMATION=$(category_json withdrawal "$SELECTED" "$FIELD")
+category_request 409 PATCH "categories/$SELECTED" '{"inherited_field_ids":[]}'
+category_json error confirmation_required
+category_request 409 PATCH "categories/$SELECTED" '{"inherited_field_ids":[],"confirmation_token":"not-a-token"}'
+category_json error impact_stale
+category_request 409 PATCH "categories/$SELECTED" \
+  "{\"name\":\"Changed draft\",\"inherited_field_ids\":[],\"confirmation_token\":\"$CONFIRMATION\"}"
+category_json error impact_stale
+category_request 200 GET "categories/$SELECTED/schema" ''
+category_json schema "$SELECTED" "$FIELD" yes
+category_request 200 PATCH "categories/$SELECTED" \
+  "{\"inherited_field_ids\":[],\"confirmation_token\":\"$CONFIRMATION\"}"
+category_request 200 GET "categories/$SELECTED/schema" ''
+category_json schema "$SELECTED" "$FIELD" no
+
+# Count a real asset, not merely an empty fixture; an unselected sibling must not
+# enter the field's reach. All data stays in the disposable container database.
+say "field asset-count follows actual selection and requires authentication"
+category_request 401 GET "fields/$FIELD/asset-count" '' anonymous
+category_json error unauthenticated
+category_request 404 GET fields/no-such-field/asset-count ''
+category_json error not_found
+category_request 200 GET me ''
+OWNER=$(category_json id)
+category_request 201 POST holders '{"type":"location","name":"Smoke Stock"}'
+STOCK=$(category_json id)
+for category in "$SELECTED" "$CHILD"; do
+  category_request 201 POST assets \
+    "{\"category_id\":\"$category\",\"owner_id\":\"$OWNER\",\"holder_type\":\"entity\",\"holder_id\":\"$STOCK\",\"status\":\"in_stock\",\"attrs\":{}}"
+done
+category_request 200 GET "fields/$FIELD/asset-count" ''
+category_json count 0
+category_request 200 PATCH "categories/$SELECTED" "{\"inherited_field_ids\":[\"$FIELD\"]}"
+category_request 200 GET "fields/$FIELD/asset-count" ''
+category_json count 1
+
+say "direct unbind previews and confirms downstream withdrawal"
+UNBIND="categories/$PARENT/bindings/$FIELD"
+category_request 401 POST "$UNBIND/unbind-preview" '{}' anonymous
+category_json error unauthenticated
+category_request 404 POST "categories/no-such-category/bindings/$FIELD/unbind-preview" '{}'
+category_json error not_found
+category_request 200 POST "$UNBIND/unbind-preview?$PAGING" '{}'
+UNBIND_TOKEN=$(category_json unbind "$PARENT" "$SELECTED" "$FIELD")
+category_request 409 DELETE "$UNBIND" ''
+category_json error confirmation_required
+category_request 409 DELETE "$UNBIND" '{"confirmation_token":"not-a-token"}'
+category_json error impact_stale
+# An edit token cannot be replayed as a direct-unbind token.
+category_request 409 DELETE "$UNBIND" "{\"confirmation_token\":\"$CONFIRMATION\"}"
+category_json error impact_stale
+category_request 200 GET "fields/$FIELD/asset-count" ''
+category_json count 1
+category_request 204 DELETE "$UNBIND" "{\"confirmation_token\":\"$UNBIND_TOKEN\"}"
+category_request 200 GET "categories/$SELECTED/schema" ''
+category_json schema "$SELECTED" "$FIELD" no
+category_request 200 GET "fields/$FIELD/asset-count" ''
+category_json count 0
+
+# These are the four schema_stale entry points. Exercise their authentication
+# and deterministic refusal envelopes without timing a concurrent schema edit.
+# The 409 itself and zero-write rollback are covered by the write-barrier tests
+# TestAssetSaveSchemaStaleHTTP and TestImportSchemaStaleHTTP, not this smoke.
+say "asset save and import entry points enforce authentication"
+category_request 401 POST assets '{}' anonymous
+category_json error unauthenticated
+category_request 401 PATCH assets/no-such-asset '{}' anonymous
+category_json error unauthenticated
+for route in import/preview import/commit; do
+  category_request 401 POST "$route" '{}' anonymous
+  category_json error unauthenticated
+done
+
+say "asset save and singular import routes return structured validation errors"
+category_request 400 POST assets '{'
+category_json error validation_failed
+# Supply the required write members so binding succeeds and the missing-version
+# guard, rather than the generic malformed-request guard, is actually exercised.
+category_request 400 PATCH assets/no-such-asset \
+  "{\"category_id\":\"$SELECTED\",\"owner_id\":\"$OWNER\",\"holder_type\":\"entity\",\"holder_id\":\"$STOCK\"}"
+category_json error validation_failed version
+for route in import/preview import/commit; do
+  category_request 400 POST "$route" '{}'
+  category_json error validation_failed category_id
+done
+say "schema_stale 409 races are not exercised here; run the deterministic HTTP tests"
 
 # The categories page puts one of these beside every node, and the overview
 # reads the same map. A JSON object is what it must be -- an array here would

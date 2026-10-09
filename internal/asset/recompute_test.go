@@ -1,6 +1,8 @@
 package asset
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"strings"
 	"testing"
@@ -300,9 +302,9 @@ func TestRecomputeFieldCoversEveryCategoryItIsBoundTo(t *testing.T) {
 // every asset would be counted twice in the report somebody is reading before
 // they approve it.
 //
-// Reachable despite the rule that a key may not be bound twice on one chain:
-// the two bindings start on separate chains and one of them is moved under the
-// other afterwards.
+// Legacy metadata could reach this state by moving two separately bound chains
+// together. Category writes now reject that move; retain a raw legacy fixture
+// so recomputation still proves it does not count overlapping roots twice.
 func TestRecomputeFieldDoesNotRepeatNestedSubtrees(t *testing.T) {
 	f := newFixture(t)
 
@@ -316,11 +318,13 @@ func TestRecomputeFieldDoesNotRepeatNestedSubtrees(t *testing.T) {
 	if err := f.schema.Bind(f.ctx, office.ID, f.snField, 20); err != nil {
 		t.Fatalf("bind sn: %v", err)
 	}
-	parent := &f.rootID
-	if _, err := f.schema.UpdateCategory(f.ctx, office.ID, schema.UpdateCategoryInput{
-		ParentID: &parent,
+	if err := f.svc.db.Write(f.ctx, func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE categories SET parent_id = ?, path =
+			(SELECT path FROM categories WHERE id = ?) || ? || '/' WHERE id = ?`,
+			f.rootID, f.rootID, office.ID, office.ID)
+		return err
 	}); err != nil {
-		t.Fatalf("move the category under the root: %v", err)
+		t.Fatalf("seed legacy overlapping bindings: %v", err)
 	}
 
 	if _, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D03"}}); err != nil {

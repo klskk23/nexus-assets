@@ -8,6 +8,7 @@ import { router } from "./routes/router"
 import { queryClient } from "./lib/queryClient"
 import { AuthProvider } from "./features/auth/useAuth"
 import { LanguageProvider } from "./i18n/useLanguage"
+import { Toaster } from "./components/ui/sonner"
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -17,6 +18,7 @@ createRoot(document.getElementById("root")!).render(
       <LanguageProvider>
         <AuthProvider>
           <RouterProvider router={router} />
+          <Toaster />
         </AuthProvider>
       </LanguageProvider>
     </QueryClientProvider>

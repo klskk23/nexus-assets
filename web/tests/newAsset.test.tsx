@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { screen, waitFor } from "@testing-library/react"
+import { act, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { NewAssetDialog } from "@/features/assets/NewAssetDialog"
@@ -65,6 +65,16 @@ beforeEach(() => {
 })
 
 describe("NewAssetDialog", () => {
+  it("removes a withdrawn input after schema refresh and never submits its stale draft value", async () => {
+    const user = userEvent.setup()
+    const { client } = renderWithProviders(<NewAssetDialog open onOpenChange={vi.fn()} initialCategoryID="rt" />)
+    await user.type(await screen.findByRole("textbox", { name: /基准 MAC/ }), "001A2B3C4D5E")
+    get.mockImplementation((p: string) => p.includes("/schema") ? Promise.resolve({ ...schema, fields: [] }) : route(p))
+    await act(async () => { await client.invalidateQueries({ queryKey: ["schema"] }) })
+    await waitFor(() => expect(screen.queryByRole("textbox", { name: /基准 MAC/ })).not.toBeInTheDocument())
+    await user.click(screen.getByRole("button", { name: "保存" }))
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/assets", expect.objectContaining({ attrs: {} })))
+  })
   // The status used to be inferred from whether a location had been picked,
   // and the picker started empty -- so recording a device that was sitting in
   // the warehouse produced "已签出" and never said so.

@@ -549,3 +549,30 @@ func TestRefreshingThePrintSourceWithoutAService(t *testing.T) {
 		t.Errorf("expected 404, got %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestPrintInheritanceUsesChildSchemaWithoutArchivedParentValues(t *testing.T) {
+	fake := newFakePrintService(t)
+	h := newHarnessWithPrinting(t, fake.server.URL)
+	child, id := seedConsumerDescendant(t, h)
+	if rec := h.patch(t, "/api/categories/"+child, `{"print_preset_ids":["preset-rt"]}`); rec.Code != http.StatusOK {
+		t.Fatal(rec.Body.String())
+	}
+	rec := h.post(t, "/api/print", `{"ids":["`+id+`"]}`)
+	if rec.Code != http.StatusOK {
+		t.Fatal(rec.Body.String())
+	}
+	if len(fake.requests) != 1 || len(fake.requests[0].Rows) != 1 {
+		t.Fatalf("print requests=%+v", fake.requests)
+	}
+	for _, key := range fake.requests[0].Columns {
+		if key == "mac" {
+			t.Fatal("unselected parent field became a print column")
+		}
+	}
+	if _, ok := fake.requests[0].Rows[0]["mac"]; ok {
+		t.Fatal("archived parent value reached printer")
+	}
+	if fake.requests[0].Rows[0]["sys_id"] != id {
+		t.Fatal("printed the wrong asset")
+	}
+}

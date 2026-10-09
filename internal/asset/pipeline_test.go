@@ -44,7 +44,7 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	sch := schema.New(db)
+	sch := schema.NewWithEffects(db, NewSchemaEffects())
 	hs := holder.New(db)
 	us := auth.NewStore(db)
 
@@ -103,6 +103,7 @@ func newFixture(t *testing.T) *fixture {
 	if err := sch.Bind(ctx, root.ID, sn.ID, 30); err != nil {
 		t.Fatalf("bind sn: %v", err)
 	}
+	selectFixtureFields(t, db, ctx, child.ID, mac.ID, fw.ID, sn.ID)
 	displayKey := "sn"
 	if _, err := sch.UpdateCategory(ctx, child.ID, schema.UpdateCategoryInput{DisplayKey: &displayKey}); err != nil {
 		t.Fatalf("set display key: %v", err)
@@ -382,6 +383,7 @@ func TestComputedChainEvaluatesInDependencyOrder(t *testing.T) {
 	if err := f.schema.Bind(ctx, rootID, full.ID, 30); err != nil {
 		t.Fatal(err)
 	}
+	selectFixtureFields(t, f.svc.db, ctx, f.catID, base.ID, full.ID)
 
 	a, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D5E"}})
 	if err != nil {
@@ -412,7 +414,11 @@ func TestGetSplitsOrphanKeys(t *testing.T) {
 	fields, _ := f.schema.ListFields(f.ctx)
 	for _, fd := range fields {
 		if fd.Key == "firmware" {
-			if err := f.schema.Unbind(f.ctx, rootID, fd.ID); err != nil {
+			preview, err := f.schema.PreviewUnbind(f.ctx, rootID, fd.ID)
+			if err != nil || len(preview.Issues) != 0 || preview.ConfirmationToken == "" {
+				t.Fatalf("preview unbind = %+v, %v", preview, err)
+			}
+			if err := f.schema.UnbindConfirmed(f.ctx, rootID, fd.ID, preview.ConfirmationToken); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -750,7 +756,7 @@ func TestSearchFindsANonUniqueSearchableField(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = tag
+	selectFixtureFields(t, f.svc.db, f.ctx, f.catID, tag.ID)
 
 	if _, err := f.save(t, SaveInput{
 		Attrs: map[string]any{"mac": "001A2B3C4D01", "service_tag": "7XKQ9R2"},
@@ -778,12 +784,14 @@ func TestSearchFindsANonUniqueSearchableField(t *testing.T) {
 // picked by nothing the reader can see.
 func TestTwoDevicesSharingASearchableValueListBoth(t *testing.T) {
 	f := newFixture(t)
-	if _, err := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
+	rack, err := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
 		Key: "rack", Label: "机柜位", Type: model.FieldText,
 		Searchable: true, CategoryIDs: []string{f.rootID},
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
+	selectFixtureFields(t, f.svc.db, f.ctx, f.catID, rack.ID)
 	for i, mac := range []string{"001A2B3C4D01", "001A2B3C4D02"} {
 		if _, err := f.save(t, SaveInput{
 			Attrs: map[string]any{"mac": mac, "rack": "B12"},
@@ -807,12 +815,14 @@ func TestTwoDevicesSharingASearchableValueListBoth(t *testing.T) {
 // A field nobody asked to be searchable stays out of the index.
 func TestUnsearchableFieldIsNotFound(t *testing.T) {
 	f := newFixture(t)
-	if _, err := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
+	note, err := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
 		Key: "internal_note", Label: "内部备注", Type: model.FieldText,
 		CategoryIDs: []string{f.rootID},
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
+	selectFixtureFields(t, f.svc.db, f.ctx, f.catID, note.ID)
 	if _, err := f.save(t, SaveInput{
 		Attrs: map[string]any{"mac": "001A2B3C4D01", "internal_note": "ZZTOP"},
 	}); err != nil {
@@ -848,12 +858,14 @@ func TestUniqueStaysFindableAndStillJumps(t *testing.T) {
 // the one result a search must never return.
 func TestEmptyValuesStayOutOfTheIndex(t *testing.T) {
 	f := newFixture(t)
-	if _, err := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
+	rack, err := f.schema.CreateField(f.ctx, schema.CreateFieldInput{
 		Key: "rack", Label: "机柜位", Type: model.FieldText,
 		Searchable: true, CategoryIDs: []string{f.rootID},
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
+	selectFixtureFields(t, f.svc.db, f.ctx, f.catID, rack.ID)
 	if _, err := f.save(t, SaveInput{
 		Attrs: map[string]any{"mac": "001A2B3C4D01", "rack": "   "},
 	}); err != nil {
@@ -884,6 +896,7 @@ func TestTurningSearchableOnBackfillsExistingDevices(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	selectFixtureFields(t, f.svc.db, f.ctx, f.catID, tag.ID)
 	if _, err := f.save(t, SaveInput{
 		Attrs: map[string]any{"mac": "001A2B3C4D01", "service_tag": "7XKQ9R2"},
 	}); err != nil {
@@ -922,6 +935,7 @@ func TestTurningSearchableOffClearsTheIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	selectFixtureFields(t, f.svc.db, f.ctx, f.catID, tag.ID)
 	if _, err := f.save(t, SaveInput{
 		Attrs: map[string]any{"mac": "001A2B3C4D01", "service_tag": "7XKQ9R2"},
 	}); err != nil {

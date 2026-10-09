@@ -22,12 +22,17 @@ func TestOrphanValuesSurviveALaterSave(t *testing.T) {
 	if err := f.schema.Bind(f.ctx, f.rootID, rack.ID, 40); err != nil {
 		t.Fatal(err)
 	}
+	selectFixtureFields(t, f.svc.db, f.ctx, f.catID, rack.ID)
 
 	a, err := f.save(t, SaveInput{Attrs: map[string]any{"mac": "001A2B3C4D5E", "rack": "R-01"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.schema.Unbind(f.ctx, f.rootID, rack.ID); err != nil {
+	preview, err := f.schema.PreviewUnbind(f.ctx, f.rootID, rack.ID)
+	if err != nil || len(preview.Issues) != 0 || preview.ConfirmationToken == "" {
+		t.Fatalf("preview unbind = %+v, %v", preview, err)
+	}
+	if err := f.schema.UnbindConfirmed(f.ctx, f.rootID, rack.ID, preview.ConfirmationToken); err != nil {
 		t.Fatal(err)
 	}
 

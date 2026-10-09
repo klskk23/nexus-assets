@@ -6,10 +6,38 @@ import (
 	"fmt"
 )
 
+// Querier is the common read-only query surface shared by a database and a
+// transaction. Schema loaders can therefore use one snapshot without knowing
+// whether the caller is preparing a read or already owns a write transaction.
+type Querier interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 // Read runs fn against the read pool. Reads are concurrent; WAL keeps them from
 // blocking on an in-flight write.
 func (s *Store) Read(ctx context.Context, fn func(ctx context.Context, db *sql.DB) error) error {
 	return fn(ctx, s.read)
+}
+
+// ReadTx runs fn in a single read transaction. The transaction gives all
+// queries the same snapshot, while the *sql.Tx surface prevents callbacks from
+// accidentally writing through the read pool.
+func (s *Store) ReadTx(ctx context.Context, fn func(ctx context.Context, q Querier) error) error {
+	tx, err := s.read.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return fmt.Errorf("begin read tx: %w", err)
+	}
+	if err := fn(ctx, tx); err != nil {
+		if rbErr := tx.Rollback(); rbErr != nil && rbErr != sql.ErrTxDone {
+			return fmt.Errorf("%w (rollback also failed: %v)", err, rbErr)
+		}
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit read tx: %w", err)
+	}
+	return nil
 }
 
 // ReadDB exposes the read pool for query helpers that need *sql.DB directly.

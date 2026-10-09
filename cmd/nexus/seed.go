@@ -158,6 +158,15 @@ func seedSchema(ctx context.Context, a *app) (seeded, error) {
 		}
 	}
 
+	// New categories do not inherit automatically. Seed the same vocabulary on
+	// the child explicitly after every parent field and its dependencies exist.
+	inherited := []string{mac.ID, fw.ID, sn.ID}
+	if _, err := a.schema.UpdateCategory(ctx, child.ID, schema.UpdateCategoryInput{
+		InheritedFieldIDs: &inherited,
+	}); err != nil {
+		return out, fmt.Errorf("select child fields: %w", err)
+	}
+
 	displayKey := "sn"
 	if _, err := a.schema.UpdateCategory(ctx, root.ID, schema.UpdateCategoryInput{
 		DisplayKey: &displayKey,

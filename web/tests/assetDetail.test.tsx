@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { screen, waitFor, within } from "@testing-library/react"
+import { act, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { AssetDetail } from "@/routes/AssetDetail"
+import { invalidateSchema } from "@/features/categories/invalidateSchema"
 import { renderWithProviders } from "@/test/renderWithProviders"
 import { statusRoute } from "./fixtures/statuses"
 import { choose } from "@/test/choose"
@@ -107,6 +108,37 @@ function route(p: string) {
  * shape 015 decision 104 removed everywhere else on this page.
  */
 describe("AssetDetail", () => {
+  it("keeps a withdrawn value read-only after schema refetch and omits it from edit submission", async () => {
+    const user = userEvent.setup()
+    const { client } = renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+    await openEdit(user)
+    get.mockImplementation((p: string) => p.includes("/schema") ? Promise.resolve({ ...schema, fields: [schema.fields[0]] }) : route(p))
+    await act(async () => { await client.invalidateQueries({ queryKey: ["schema"] }) })
+    await waitFor(() => expect(screen.queryByRole("textbox", { name: "固件版本" })).not.toBeInTheDocument())
+    await user.click(screen.getByRole("button", { name: "保存" }))
+    await waitFor(() => expect(patch).toHaveBeenCalledWith("/assets/a1", expect.objectContaining({ attrs: { mac: "001A2B3C4D5E" } })))
+  })
+  it("refreshes the real detail into a read-only archive without offering the withdrawn field in its editor", async () => {
+    const user = userEvent.setup()
+    const { client } = renderWithProviders(<AssetDetail />)
+    expect(await screen.findByText("固件版本")).toBeInTheDocument()
+    get.mockImplementation((p: string) => {
+      if (p.includes("/schema")) return Promise.resolve({ ...schema, fields: [schema.fields[0]] })
+      if (p === "/assets/a1") return Promise.resolve({ asset: { ...asset, attrs: { mac: "001A2B3C4D5E" }, archived_attrs: { firmware: "2.1.3" } }, value_history: [] })
+      return route(p)
+    })
+    await act(async () => { await invalidateSchema(client) })
+    expect(await screen.findByText("firmware")).toBeInTheDocument()
+    expect(screen.getByText("2.1.3")).toBeInTheDocument()
+    expect(screen.queryByText("固件版本")).not.toBeInTheDocument()
+    const dialog = await openEdit(user)
+    expect(within(dialog).queryByRole("textbox", { name: /固件版本|firmware/ })).not.toBeInTheDocument()
+    expect(within(dialog).queryByDisplayValue("2.1.3")).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+    await waitFor(() => expect(patch).toHaveBeenCalledWith("/assets/a1", expect.objectContaining({ attrs: { mac: "001A2B3C4D5E" } })))
+  })
+
   it("显示这台设备自己的备注", async () => {
     renderWithProviders(<AssetDetail />)
     expect(await screen.findByText("屏幕左下角有划痕")).toBeInTheDocument()
@@ -210,6 +242,44 @@ describe("AssetDetail", () => {
 
     await user.click(screen.getByRole("button", { name: "保存" }))
     expect(await screen.findByRole("status")).toHaveTextContent("他人已修改这条记录，请刷新后重试")
+  })
+
+  it("retains its edit draft after schema_stale and refreshes only the schema before a manual resubmit", async () => {
+    patch.mockRejectedValueOnce(new ApiError(409, "schema_stale", "字段配置已变化，请刷新字段后重新提交"))
+    const user = userEvent.setup()
+    renderWithProviders(<AssetDetail />)
+    await screen.findByText("112394521950")
+    await openEdit(user)
+    await user.clear(screen.getByLabelText("备注"))
+    await user.type(screen.getByLabelText("备注"), "未保存备注")
+    await user.clear(screen.getByLabelText("固件版本"))
+    await user.type(screen.getByLabelText("固件版本"), "9.9")
+    await user.click(screen.getByRole("button", { name: "保存" }))
+    const dialog = screen.getByRole("dialog")
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("字段配置已变化，请刷新字段后重新提交")
+    expect(screen.getByLabelText("备注")).toHaveValue("未保存备注")
+    expect(screen.getByLabelText("固件版本")).toHaveValue("9.9")
+    expect(screen.getByRole("button", { name: "保存" })).toBeDisabled()
+    const reads = get.mock.calls.filter(([path]) => path.includes("/schema")).length
+    let unavailable = true
+    get.mockImplementation((path: string) => path.includes("/schema") && unavailable
+      ? Promise.reject(new ApiError(503, "unavailable", "字段暂不可用，请重试")) : route(path))
+    await user.click(screen.getByRole("button", { name: "刷新字段" }))
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("字段暂不可用，请重试")
+    expect(screen.getByRole("button", { name: "保存" })).toBeDisabled()
+    expect(screen.getByLabelText("备注")).toHaveValue("未保存备注")
+    expect(patch).toHaveBeenCalledTimes(1)
+    unavailable = false
+    await user.click(screen.getByRole("button", { name: "刷新字段" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "保存" })).toBeEnabled())
+    expect(get.mock.calls.filter(([path]) => path.includes("/schema"))).toHaveLength(reads + 2)
+    expect(patch).toHaveBeenCalledTimes(1)
+    expect(screen.getByLabelText("备注")).toHaveValue("未保存备注")
+    expect(screen.getByLabelText("固件版本")).toHaveValue("9.9")
+    patch.mockResolvedValueOnce({ ...asset, version: 4 })
+    await user.click(screen.getByRole("button", { name: "保存" }))
+    await waitFor(() => expect(patch).toHaveBeenCalledTimes(2))
+    expect(patch).toHaveBeenLastCalledWith("/assets/a1", expect.objectContaining({ note: "未保存备注", attrs: expect.objectContaining({ firmware: "9.9" }) }))
   })
 
   it("puts a field-level save error next to its input", async () => {

@@ -20,6 +20,12 @@ export function fieldsForModel(fields: BoundField[], modelID: string | null): Bo
   )
 }
 
+/** A hidden/withdrawn draft value must not be submitted as an effective value. */
+export function effectiveValues(values: Record<string, unknown>, fields: BoundField[]) {
+  const keys = new Set(fields.map((field) => field.key))
+  return Object.fromEntries(Object.entries(values).filter(([key]) => keys.has(key)))
+}
+
 /** How one attribute reads. Booleans are words, not true/false. */
 export function attrText(v: unknown): string {
   if (v === true) return t.common.yes

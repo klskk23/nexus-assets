@@ -176,6 +176,47 @@ describe("Import page", () => {
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("已导入 3 台设备"))
   })
 
+  it("retains the file and category after schema_stale and requires a new preview before another commit", async () => {
+    fetchMock.mockReturnValue(ok({ total: 1, ok: 1, rows: [] }))
+    const user = userEvent.setup()
+    renderWithProviders(<ImportDialog onClose={vi.fn()} />)
+    await uploadAndPreview(user)
+    await screen.findByText("全部 1 行校验通过")
+    const selectedFile = (screen.getByLabelText("CSV 文件") as HTMLInputElement).files![0]
+    fetchMock.mockReturnValueOnce(ok({ error: { code: "schema_stale", message: "字段配置已变化，请刷新预览后重新提交" } }, 409))
+    await user.click(screen.getByRole("button", { name: "确认导入" }))
+    expect(await screen.findByRole("alert")).toHaveTextContent("字段配置已变化，请刷新预览后重新提交")
+    expect((screen.getByLabelText("CSV 文件") as HTMLInputElement).files![0]).toBe(selectedFile)
+    expect(screen.getByRole("combobox", { name: "导入到类别" })).toHaveTextContent("SDWAN 路由器")
+    expect(screen.queryByRole("button", { name: "确认导入" })).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/import/commit")).toHaveLength(1)
+    await user.click(screen.getByRole("button", { name: "预览" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "确认导入" })).toBeEnabled())
+    const requests = fetchMock.mock.calls.filter(([url]) => url === "/api/import/preview")
+    expect(requests).toHaveLength(2)
+    expect((requests[1][1].body as FormData).get("file")).toBe(selectedFile)
+    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/import/commit")).toHaveLength(1)
+  })
+
+  it("replaces the old passing preview with withdrawn-field errors after schema_stale", async () => {
+    fetchMock.mockReturnValueOnce(ok({ total: 1, ok: 1, rows: [] }))
+    const user = userEvent.setup()
+    renderWithProviders(<ImportDialog onClose={vi.fn()} />)
+    await uploadAndPreview(user)
+    await screen.findByText("全部 1 行校验通过")
+    const selectedFile = (screen.getByLabelText("CSV 文件") as HTMLInputElement).files![0]
+    fetchMock.mockReturnValueOnce(ok({ error: { code: "schema_stale", message: "字段配置已变化，请刷新预览后重新提交" } }, 409))
+    await user.click(screen.getByRole("button", { name: "确认导入" }))
+    await screen.findByRole("alert")
+    fetchMock.mockReturnValueOnce(ok({ total: 1, ok: 0, rows: [{ line: 2, status: "error", fields: { firmware: "字段已撤回，不能导入" } }] }))
+    await user.click(screen.getByRole("button", { name: "预览" }))
+    expect(await screen.findByRole("row", { name: "第 2 行" })).toHaveTextContent("字段已撤回，不能导入")
+    expect(screen.getByRole("button", { name: "确认导入" })).toBeDisabled()
+    expect(screen.queryByText("全部 1 行校验通过")).not.toBeInTheDocument()
+    expect((screen.getByLabelText("CSV 文件") as HTMLInputElement).files![0]).toBe(selectedFile)
+    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/import/commit")).toHaveLength(1)
+  })
+
   it("sends the category and the file as one upload", async () => {
     fetchMock.mockReturnValue(ok({ total: 1, ok: 1, rows: [] }))
     const user = userEvent.setup()

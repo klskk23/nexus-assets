@@ -195,7 +195,8 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
     },
     onError: (e) => {
       const refused = reportOf(e)
-      if (refused) setReport(refused)
+      if (e instanceof ApiError && e.code === "schema_stale") setReport(null)
+      else if (refused) setReport(refused)
       setBanner(e instanceof ApiError ? e.message : t.common.error)
     },
   })

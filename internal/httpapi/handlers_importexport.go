@@ -38,6 +38,10 @@ func (s *Server) importPreview(c *gin.Context) {
 
 	report, err := s.importer.Preview(c.Request.Context(), LangOf(c), categoryID, actor.ID, file)
 	if err != nil {
+		if errors.Is(err, asset.ErrSchemaStale) {
+			FailErr(c, err)
+			return
+		}
 		Fail(c, http.StatusUnprocessableEntity, CodeValidationFailed, userText(c, err), nil)
 		return
 	}
@@ -53,6 +57,10 @@ func (s *Server) importCommit(c *gin.Context) {
 
 	res, err := s.importer.Commit(c.Request.Context(), LangOf(c), categoryID, actor.ID, file)
 	if err != nil {
+		if errors.Is(err, asset.ErrSchemaStale) {
+			FailErr(c, err)
+			return
+		}
 		// The report travels with the refusal so the page can keep showing
 		// which rows are in the way instead of just saying it failed.
 		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{

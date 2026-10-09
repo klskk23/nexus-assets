@@ -64,9 +64,26 @@ function route(p: string) {
   return Promise.resolve([])
 }
 
+let previewFields = schema.fields
+
+function previewRoute(path: string, body: Record<string, unknown>) {
+  if (!path.includes("/preview")) return Promise.resolve(undefined)
+  const category = path.startsWith("/categories/net/") ? categories[0] : schema.category
+  const choices = body.inherited_field_ids as string[] | undefined ?? (category.parent_id ? ["f2"] : [])
+  const empty = { items: [], total: 0, offset: 0, limit: 20 }
+  return Promise.resolve({
+    category: { ...category, ...body },
+    inheritance: { parent_id: category.parent_id, selected_field_ids: choices, candidates: empty },
+    fields: previewFields,
+    impact: { ...empty, added_count: 0, removed_count: 0, source_changed_count: 0, category_count: 0, asset_count: 0 },
+    issues: empty, requires_confirmation: false, confirmation_token: "",
+  })
+}
+
 beforeEach(() => {
+  previewFields = schema.fields
   get.mockReset().mockImplementation(route)
-  post.mockReset().mockResolvedValue(undefined)
+  post.mockReset().mockImplementation(previewRoute)
   patch.mockReset().mockResolvedValue({})
   del.mockReset().mockResolvedValue(undefined)
 })
@@ -145,6 +162,9 @@ describe("Categories create dialog", () => {
         code: "SW",
         name: "交换机",
         parent_id: null,
+        display_key: "",
+        print_preset_ids: [],
+        inherited_field_ids: [],
       }),
     )
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
@@ -173,7 +193,7 @@ describe("Categories create dialog", () => {
   // A create failure belongs in the dialog; the page banner is for the binding
   // actions in the panel below, which are a different place entirely.
   it("shows a create failure inside the dialog", async () => {
-    post.mockRejectedValue(new ApiError(409, "unique_conflict", "类别编码已存在"))
+    post.mockImplementation((p: string, b: Record<string, unknown>) => p.includes("/preview") ? previewRoute(p, b) : Promise.reject(new ApiError(409, "unique_conflict", "类别编码已存在")))
     const user = userEvent.setup()
     openAt()
     await screen.findByRole("link", { name: /SDWAN 路由器/ })
@@ -443,6 +463,7 @@ describe("改名与移动仍在对话框里", () => {
         parent_id: null,
         display_key: "",
         print_preset_ids: [],
+        inherited_field_ids: [],
       }),
     )
   })
@@ -456,10 +477,11 @@ describe("Category editor", () => {
     ["机柜", "rack", true],
     ["基准 MAC", "mac", true],
   ] as const)("saves %s as the number (inherited=%s)", async (label, key, inherited) => {
+    previewFields = schema.fields.map((f) =>
+      f.key === "rack" ? { ...f, inherited_from: inherited ? "net" : undefined } : f,
+    )
     get.mockImplementation((p: string) => p.includes("/schema")
-      ? Promise.resolve({ ...schema, fields: schema.fields.map((f) =>
-          f.key === "rack" ? { ...f, inherited_from: inherited ? "net" : undefined } : f,
-        ) })
+      ? Promise.resolve({ ...schema, fields: previewFields })
       : route(p))
     const user = userEvent.setup()
     openAt()
@@ -479,10 +501,11 @@ describe("Category editor", () => {
         parent_id: "net",
         display_key: key,
         print_preset_ids: [],
+        inherited_field_ids: ["f2"],
       }),
     )
     // Choosing which number to show renumbers nothing on its own.
-    expect(post).not.toHaveBeenCalled()
+    expect(post.mock.calls.every(([path]) => path.includes("/preview"))).toBe(true)
   })
 
 })
@@ -506,6 +529,7 @@ describe("Category print preset", () => {
         parent_id: "net",
         display_key: "",
         print_preset_ids: ["preset-rt", "preset-sw"],
+        inherited_field_ids: ["f2"],
       }),
     )
   })

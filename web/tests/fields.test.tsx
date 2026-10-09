@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query"
+import { api } from "@/lib/api"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
@@ -82,6 +84,20 @@ function openAt(id?: string, opts: Record<string, unknown> = {}) {
  * the reader sees that it sits in two groups.
  */
 describe("字段页的树", () => {
+  it("refetches effective schemas after creating a group with bindings", async () => {
+    let changed = false
+    get.mockImplementation((p: string) => p === "/observe-schema" ? Promise.resolve({ value: changed ? "新字段集" : "旧字段集" }) : route(p))
+    post.mockImplementation(async () => { changed = true; return {} })
+    function Observer() { const query = useQuery({ queryKey: ["category-schema", "net"], queryFn: () => api.get<{ value: string }>("/observe-schema") }); return <output>{query.data?.value}</output> }
+    const user = userEvent.setup()
+    renderWithProviders(<><Fields /><Observer /></>)
+    await screen.findByText("旧字段集")
+    await user.click(screen.getByRole("button", { name: "新建字段组" }))
+    await user.type(screen.getByRole("textbox", { name: "组名" }), "新组")
+    await user.click(screen.getByRole("checkbox", { name: "网络设备" }))
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "新建字段组" }))
+    expect(await screen.findByText("新字段集")).toBeInTheDocument()
+  })
   it("组是父节点，未分组的在一个标题下", async () => {
     openAt()
     await screen.findByRole("link", { name: /网络参数/ })

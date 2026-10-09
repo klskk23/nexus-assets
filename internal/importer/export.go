@@ -47,7 +47,11 @@ func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter
 		return nil, err
 	}
 
-	fields, err := s.exportFields(ctx, f.CategoryID, keys)
+	snapshot, err := s.schema.Snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	fields, err := exportFields(snapshot, f.CategoryID, keys)
 	if err != nil {
 		return nil, err
 	}
@@ -93,18 +97,11 @@ func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter
 			a.Note,
 			a.CreatedAt.Format("2006-01-02 15:04"),
 		}
-		for _, fd := range fields {
-			// The column belongs to the category; the value belongs to the
-			// device. A model field on a row of a different model is empty --
-			// whatever is still stored under that key stopped being live when
-			// the model changed (015, decisions 98 and 102).
-			v, ok := a.Attrs[fd.Key]
-			if !ok || v == nil || !schema.AppliesTo(fd, a.ModelID) {
-				rec = append(rec, "")
-				continue
-			}
-			rec = append(rec, fmt.Sprintf("%v", v))
+		values, err := exportValues(snapshot, fields, a)
+		if err != nil {
+			return nil, err
 		}
+		rec = append(rec, values...)
 		if err := w.Write(rec); err != nil {
 			return nil, err
 		}
@@ -116,14 +113,30 @@ func (s *Service) Export(ctx context.Context, lang i18n.Lang, f asset.ListFilter
 	return buf.Bytes(), nil
 }
 
+// exportValues preserves column identities even when disjoint model definitions
+// share a key. A raw archived value is never enough to populate an output cell.
+func exportValues(snapshot *schema.SchemaSnapshot, fields []model.BoundField, a model.Asset) ([]string, error) {
+	values := make([]string, len(fields))
+	for i, fd := range fields {
+		applies, err := snapshot.FieldAppliesTo(fd.ID, a.CategoryID, assetModelID(a))
+		if err != nil {
+			return nil, err
+		}
+		if v := a.Attrs[fd.Key]; v != nil && applies {
+			values[i] = fmt.Sprintf("%v", v)
+		}
+	}
+	return values, nil
+}
+
 // exportFields is the category's fields, narrowed to the chosen keys.
 //
 // nil takes every field; a non-nil list selects. Filtered rather than
 // reordered: the schema's order is the one the category page and the import
 // template already use, and a CSV whose columns move about depending on the
 // order boxes were ticked in is one nobody can write a formula against.
-func (s *Service) exportFields(ctx context.Context, categoryID string, keys []string) ([]model.BoundField, error) {
-	fields, err := s.schema.EveryPossibleField(ctx, categoryID)
+func exportFields(snapshot *schema.SchemaSnapshot, categoryID string, keys []string) ([]model.BoundField, error) {
+	fields, err := snapshot.EveryPossibleField(categoryID)
 	if err != nil {
 		return nil, err
 	}

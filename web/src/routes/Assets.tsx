@@ -175,6 +175,7 @@ export function Assets() {
   })
   // The overview's quick-entry card links here with a category already picked.
   const [creating, setCreating] = useState(searchParams.get("new") === "1")
+  const [cloneSourceID, setCloneSourceID] = useState<string | undefined>()
   const [exporting, setExporting] = useState(false)
   const [pageSize, setPageSize] = useState(() => {
     const n = Number(searchParams.get("limit"))
@@ -440,7 +441,7 @@ export function Assets() {
           {tImport.export}
         </Button>
         <Button
-          onClick={() => setCreating(true)}
+          onClick={() => { setCloneSourceID(undefined); setCreating(true) }}
           disabled={deniedReason("asset.create") !== undefined}
           title={deniedReason("asset.create")}
         >
@@ -765,8 +766,8 @@ export function Assets() {
                           that are ticked, and one right-click cannot mean
                           both -- right-clicking a ticked row and getting an
                           action for only that row is the kind of thing you
-                          find out about afterwards. The bar is on screen and
-                          carries the same four verbs. */}
+                          find out about afterwards. Bulk actions remain on
+                          the bar; clone is intentionally single-device only. */}
                       <ContextMenuTrigger asChild disabled={selection.ids.length > 0}>
                         {/* The whole row opens the device. It used to carry the
                             pointer cursor while only the number cell listened,
@@ -886,9 +887,17 @@ export function Assets() {
                           </TableCell>
                         </TableRow>
                       </ContextMenuTrigger>
-                      {/* The same actions the selection bar offers, reachable on
-                          one device without ticking it first. */}
+                      {/* Single-device actions, including clone. Bulk actions
+                          stay on the selection bar; cloning is never a batch. */}
                       <ContextMenuContent>
+                        <ContextMenuItem
+                          disabled={!can("asset.create")}
+                          title={deniedReason("asset.create")}
+                          onSelect={() => { setCloneSourceID(a.id); setCreating(true) }}
+                        >
+                          {t.assets.clone}
+                        </ContextMenuItem>
+                        <ContextMenuSeparator />
                         {transferActions().map(([action, label]) => (
                           <ContextMenuItem
                             key={action}
@@ -960,6 +969,7 @@ export function Assets() {
       <NewAssetDialog
         open={creating}
         onOpenChange={setCreating}
+        cloneSourceID={cloneSourceID}
         initialCategoryID={searchParams.get("category_id") ?? undefined}
       />
 

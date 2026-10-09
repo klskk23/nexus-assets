@@ -1,0 +1,59 @@
+{
+  "definition": "Navigation origin to real category content visible + edit enabled, followed by real click and editor visible; custom business interactivity, not Lighthouse TTI. 5.1s later quiet window is corroboration, not added to metric.",
+  "browser": "153.0.8010.12",
+  "cpu": "AMD Ryzen 9 6900HX with Radeon Graphics",
+  "cores": 16,
+  "memoryGiB": 29,
+  "platform": "linux 7.0.10+deb14-amd64",
+  "network": "localhost real backend, no throttling; HTTP cache cleared+disabled; same browser process",
+  "samples": [
+    {
+      "sample": 1,
+      "contentAndEnabledMs": 364,
+      "successfulEditMs": 451,
+      "quietWindowMs": 5102,
+      "quietPeakHTTP": 0,
+      "longTasks": [
+        {
+          "start": 108.10000014305115,
+          "duration": 84
+        }
+      ]
+    },
+    {
+      "sample": 2,
+      "contentAndEnabledMs": 157,
+      "successfulEditMs": 217,
+      "quietWindowMs": 5102,
+      "quietPeakHTTP": 0,
+      "longTasks": []
+    },
+    {
+      "sample": 3,
+      "contentAndEnabledMs": 148,
+      "successfulEditMs": 214,
+      "quietWindowMs": 5102,
+      "quietPeakHTTP": 0,
+      "longTasks": []
+    },
+    {
+      "sample": 4,
+      "contentAndEnabledMs": 156,
+      "successfulEditMs": 226,
+      "quietWindowMs": 5102,
+      "quietPeakHTTP": 0,
+      "longTasks": []
+    },
+    {
+      "sample": 5,
+      "contentAndEnabledMs": 152,
+      "successfulEditMs": 228,
+      "quietWindowMs": 5102,
+      "quietPeakHTTP": 0,
+      "longTasks": []
+    }
+  ],
+  "successfulEditMedian": 226,
+  "successfulEditP95NearestRank": 451,
+  "successfulEditMax": 451
+}

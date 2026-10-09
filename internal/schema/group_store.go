@@ -186,7 +186,7 @@ func (s *Store) CreateGroup(ctx context.Context, in CreateGroupInput) (model.Fie
 		if in.Empty() {
 			return nil
 		}
-		return bindGroupTx(ctx, tx, in.GroupTargets, g)
+		return s.bindGroupTx(ctx, tx, in.GroupTargets, g)
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -341,7 +341,7 @@ func (s *Store) BindGroupTo(ctx context.Context, groupID string, t GroupTargets)
 		return nil
 	}
 	return s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		return bindGroupTx(ctx, tx, t, g)
+		return s.bindGroupTx(ctx, tx, t, g)
 	})
 }
 
@@ -371,7 +371,18 @@ func (t GroupTargets) Empty() bool {
 // and one refusal rolls back the lot -- across targets as well as across
 // members. Half of a "bind these five fields to these three categories" is a
 // state whoever asked has to go and work out.
-func bindGroupTx(ctx context.Context, tx *sql.Tx, t GroupTargets, g model.FieldGroup) error {
+func (s *Store) bindGroupTx(ctx context.Context, tx *sql.Tx, t GroupTargets, g model.FieldGroup) error {
+	before, err := LoadSchemaSnapshot(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if err := expandGroupBindings(ctx, tx, t, g); err != nil {
+		return err
+	}
+	return s.finishCategoryBindings(ctx, tx, before, t.CategoryIDs)
+}
+
+func expandGroupBindings(ctx context.Context, tx *sql.Tx, t GroupTargets, g model.FieldGroup) error {
 	for i, fieldID := range g.FieldIDs {
 		sort := (i + 1) * 10
 		for _, target := range []struct {

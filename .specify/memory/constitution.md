@@ -1,6 +1,23 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.2.1 → 1.3.0
+Bump rationale: MINOR。将技术栈约束中的表达式引擎从已被 011 轮替换的
+`text/template` 修正为现行 `expr-lang/expr`，并明确继续执行 AST 护栏与函数白名单。
+这是对既有技术栈约束的实质性更正，不改变其他原则、安全约束或合并门禁。
+
+Modified principles: 无
+Added sections: 无
+Removed sections: 无
+Modified content:
+  「技术栈约束 → 后端 → 模板求值」改为 expr-lang/expr，并引用 docs/rules/expr.md。
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md — Constitution Check 版本更新为 v1.3.0
+  ✅ specs/031-selective-field-inheritance/plan.md — 版本与表达式引擎说明同步
+Follow-up TODOs: 无
+
+Sync Impact Report
+==================
 Version change: 1.1.0 → 1.2.0
 Bump rationale: MINOR。「设计基线」一节改写为「事实来源」：原文指定
                 当时路径下的 `design-baseline.md`（v1，决策 1–24）为唯一事实来源，
@@ -194,7 +211,7 @@ error 里，故障将表现为静默的数据损坏而非可见的崩溃。
 - 数据库：SQLite。写事务一律 `BEGIN IMMEDIATE`，开启 WAL，`busy_timeout=5000`，
   写连接池大小为 1 —— 这是应用层唯一性校验成立的前提，不得更改。
 - 迁移：goose，SQL 文件经 `embed.FS` 打包进二进制
-- 模板求值：Go 标准库 `text/template` + 函数白名单
+- 表达式求值：`expr-lang/expr`；必须遵守 `docs/rules/expr.md` 的 AST 护栏与函数白名单。`text/template` 仅作为历史迁移背景，不是现行实现约束。
 - SQLite 驱动：`modernc.org/sqlite`（纯 Go 实现，**不使用 CGO**）。构建必须以
   `CGO_ENABLED=0` 进行 —— 这是「单二进制交付」能够无目标平台 C 工具链直接交叉编译
   的前提，禁止改用需要 CGO 的驱动。
@@ -290,4 +307,4 @@ error 里，故障将表现为静默的数据损坏而非可见的崩溃。
 - 每次 code review 必须核对上节的七条合并门禁
 - 运行时开发指引见 `CLAUDE.md`（跨栈硬规则）与 `docs/rules/`（按包分开的详细规则）
 
-**Version**: 1.2.1 | **Ratified**: 2026-08-27 | **Last Amended**: 2026-09-09
+**Version**: 1.3.0 | **Ratified**: 2026-08-27 | **Last Amended**: 2026-10-02

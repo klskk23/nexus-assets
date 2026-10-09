@@ -72,7 +72,7 @@ func newHarnessWith(t *testing.T, over config.Config) *harness {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	sch := schema.New(db)
+	sch := schema.NewWithEffects(db, asset.NewSchemaEffects())
 	hs := holder.New(db)
 	us := auth.NewStore(db)
 	svc := asset.NewService(db, sch)

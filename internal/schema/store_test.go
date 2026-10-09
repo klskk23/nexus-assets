@@ -107,8 +107,9 @@ func TestDisplayKeyIsNotInherited(t *testing.T) {
 		t.Errorf("the child must not inherit the parent's display key, got %q", keys[child.ID])
 	}
 
-	// An inherited binding is still eligible, it just has to be chosen.
-	if _, err := s.UpdateCategory(ctx, child.ID, UpdateCategoryInput{DisplayKey: &key}); err != nil {
+	// Select the inherited field and its display key in the same draft.
+	choices := []string{tag.ID}
+	if _, err := s.UpdateCategory(ctx, child.ID, UpdateCategoryInput{DisplayKey: &key, InheritedFieldIDs: &choices}); err != nil {
 		t.Fatalf("a key inherited from the parent must be selectable: %v", err)
 	}
 }
@@ -138,7 +139,7 @@ func TestBindRejectsKeyAlreadyOnTheChain(t *testing.T) {
 	}
 }
 
-func TestEffectiveFieldsUnionsTheChain(t *testing.T) {
+func TestEffectiveFieldsCombinesSelectionsAndOwnBindings(t *testing.T) {
 	s, ctx := newStore(t)
 	root, child := tree(t, s, ctx)
 
@@ -152,6 +153,7 @@ func TestEffectiveFieldsUnionsTheChain(t *testing.T) {
 	if err := s.Bind(ctx, child.ID, tun.ID, 20); err != nil {
 		t.Fatal(err)
 	}
+	selectFixtureFields(t, s, ctx, child.ID, mac.ID)
 
 	fields, err := s.EffectiveFields(ctx, child.ID)
 	if err != nil {
@@ -182,7 +184,7 @@ func TestUnbindLeavesTheDefinitionAlone(t *testing.T) {
 	if err := s.Bind(ctx, root.ID, f.ID, 10); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Unbind(ctx, root.ID, f.ID); err != nil {
+	if err := confirmedUnbind(t, s, ctx, root.ID, f.ID); err != nil {
 		t.Fatalf("unbind: %v", err)
 	}
 	fields, _ := s.EffectiveFields(ctx, root.ID)
@@ -285,6 +287,7 @@ func TestEffectiveFieldsIncludesModelBoundFields(t *testing.T) {
 	if err := s.BindModel(ctx, dell.ID, tag.ID, 20); err != nil {
 		t.Fatalf("bind model: %v", err)
 	}
+	selectFixtureFields(t, s, ctx, child.ID, mac.ID)
 
 	fields, err := s.EffectiveFields(ctx, child.ID)
 	if err != nil {

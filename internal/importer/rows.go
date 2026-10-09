@@ -64,7 +64,11 @@ func (s *Service) Rows(ctx context.Context, lang i18n.Lang, f asset.ListFilter) 
 		f.Limit = rowLimit
 	}
 
-	bound, err := s.schema.EveryPossibleField(ctx, f.CategoryID)
+	snapshot, err := s.schema.Snapshot(ctx)
+	if err != nil {
+		return page, err
+	}
+	bound, err := snapshot.EveryPossibleField(f.CategoryID)
 	if err != nil {
 		return page, err
 	}
@@ -84,8 +88,12 @@ func (s *Service) Rows(ctx context.Context, lang i18n.Lang, f asset.ListFilter) 
 		SysPrefix+"id", SysPrefix+"sn", SysPrefix+"category", SysPrefix+"status",
 		SysPrefix+"holder", SysPrefix+"owner", SysPrefix+"model", SysPrefix+"vendor",
 		SysPrefix+"note", SysPrefix+"created_at")
+	seen := map[string]bool{}
 	for _, fd := range fields {
-		page.Columns = append(page.Columns, fd.Key)
+		if !seen[fd.Key] {
+			page.Columns = append(page.Columns, fd.Key)
+			seen[fd.Key] = true
+		}
 	}
 
 	for _, a := range res.Items {
@@ -101,15 +109,19 @@ func (s *Service) Rows(ctx context.Context, lang i18n.Lang, f asset.ListFilter) 
 			SysPrefix + "note":       a.Note,
 			SysPrefix + "created_at": a.CreatedAt.Format("2006-01-02"),
 		}
+		for key := range seen {
+			row[key] = ""
+		}
 		for _, fd := range fields {
-			// Same rule as the export: the column is the category's, the value
-			// is the device's, and a model field on a row of another model is
-			// empty rather than showing what stopped being live.
-			if !schema.AppliesTo(fd, a.ModelID) {
-				row[fd.Key] = ""
-				continue
+			// Multiple device definitions may share a column key. Only the row's
+			// effective identity may write it; another identity must not erase it.
+			applies, err := snapshot.FieldAppliesTo(fd.ID, a.CategoryID, assetModelID(a))
+			if err != nil {
+				return page, err
 			}
-			row[fd.Key] = renderValue(a.Attrs[fd.Key], fd.Type, lang)
+			if applies {
+				row[fd.Key] = renderValue(a.Attrs[fd.Key], fd.Type, lang)
+			}
 		}
 		page.Rows = append(page.Rows, row)
 	}
@@ -118,6 +130,13 @@ func (s *Service) Rows(ctx context.Context, lang i18n.Lang, f asset.ListFilter) 
 	page.Offset = f.Offset
 	page.Limit = f.Limit
 	return page, nil
+}
+
+func assetModelID(a model.Asset) string {
+	if a.ModelID == nil {
+		return ""
+	}
+	return *a.ModelID
 }
 
 // renderValue turns a stored value into the string a person would read.

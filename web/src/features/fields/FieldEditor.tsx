@@ -1,9 +1,13 @@
 import { WarningCircle } from "@phosphor-icons/react"
+import { invalidateSchema } from "@/features/categories/invalidateSchema"
+import { toast } from "sonner"
+import { InheritanceConfirmation } from "@/features/categories/InheritanceConfirmation"
+import { usePermissions } from "@/features/auth/usePermissions"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, ApiError, blockerKey, type Blocker, type Referrer } from "@/lib/api"
-import type { AssetPage, Category, Conflict, RecomputeReport } from "@/lib/types"
+import type { Category, CategoryPreview, Conflict, RecomputeReport } from "@/lib/types"
 import type { FieldDefinitionRow, ProductModelRow, VendorRow } from "@/lib/metaTypes"
 import { t, tConfig, tMeta } from "@/i18n"
 import { Badge } from "@/components/ui/badge"
@@ -35,6 +39,8 @@ interface Props {
  */
 export function FieldEditor({ field, onClose }: Props) {
   const queryClient = useQueryClient()
+  const { deniedReason } = usePermissions()
+  const denied = deniedReason("schema.manage")
   // The same value the create dialog builds, so one form serves both. Key,
   // type and uniqueness ride along read-only: FieldForm freezes them in edit
   // mode, which is where the "唯一 cannot change" rule is enforced in the UI.
@@ -88,29 +94,15 @@ export function FieldEditor({ field, onClose }: Props) {
   // checked when an asset is written, so the answer is a promise about their
   // next edit rather than anything that happens now.
   const populated = useQuery({
-    queryKey: ["binding-asset-count", draft.bindMode, draft.bindTo],
-    queryFn: async () => {
-      const counts = await Promise.all(
-        draft.bindTo.map((id) =>
-          draft.bindMode === "device"
-            ? api.get<{ total: number }>(`/models/${id}/required-impact`).then((r) => r.total)
-            : api
-                .get<AssetPage>(`/assets?category_id=${id}&include_descendants=true&limit=1`)
-                .then((r) => r.total),
-        ),
-      )
-      return counts.reduce((a, b) => a + b, 0)
-    },
-    enabled: draft.bindTo.length > 0 && draft.required,
+    queryKey: ["field-asset-count", field.id],
+    queryFn: () => api.get<{ count: number }>(`/fields/${field.id}/asset-count`).then((data) => data.count),
+    enabled: draft.required,
   })
 
   // The field already exists, so ticking a box is a binding, not an intention:
   // it goes to the server now and the checkbox follows the answer. (Creating
   // is the other way round -- there is nothing to bind to yet.)
-  const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["fields"] })
-    queryClient.invalidateQueries({ queryKey: ["schema"] })
-  }
+  const refresh = () => invalidateSchema(queryClient)
   const tick = (id: string) => setDraft((d) => ({ ...d, bindTo: [...d.bindTo, id] }))
   const untick = (id: string) =>
     setDraft((d) => ({ ...d, bindTo: d.bindTo.filter((x) => x !== id) }))
@@ -152,8 +144,10 @@ export function FieldEditor({ field, onClose }: Props) {
   })
 
   const unbind = useMutation({
-    mutationFn: (categoryID: string) => api.del(`/categories/${categoryID}/bindings/${field.id}`),
-    onSuccess: (_data, categoryID) => {
+    mutationFn: ({ categoryID, token }: { categoryID: string; token: string }) => api.del(`/categories/${categoryID}/bindings/${field.id}`, { confirmation_token: token }),
+    onSuccess: (_data, { categoryID }) => {
+      setUnbinding(null)
+      toast.success(tMeta.categories.inheritance.unbound)
       setBanner(null)
       untick(categoryID)
       refresh()
@@ -247,7 +241,7 @@ export function FieldEditor({ field, onClose }: Props) {
       return report
     },
     onSuccess: (report) => {
-      queryClient.invalidateQueries({ queryKey: ["fields"] })
+      refresh()
       if (report && (report.conflicts ?? []).length > 0) {
         setConflicts(report.conflicts ?? [])
         setBanner(tConfig.field.recomputeConflict)
@@ -272,8 +266,8 @@ export function FieldEditor({ field, onClose }: Props) {
   const remove = useMutation({
     mutationFn: () => api.del(`/fields/${field.id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["fields"] })
-      queryClient.invalidateQueries({ queryKey: ["categories"] })
+      refresh()
+
       onClose()
     },
     onError: (e) => {
@@ -291,7 +285,7 @@ export function FieldEditor({ field, onClose }: Props) {
   })
 
   return (
-    <Dialog open onOpenChange={(next) => !next && onClose()}>
+    <Dialog open onOpenChange={(next) => !next && !unbind.isPending && onClose()}>
       <DialogContent className="max-h-[85vh] gap-4 overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -301,6 +295,10 @@ export function FieldEditor({ field, onClose }: Props) {
         </DialogHeader>
 
         <div className="grid gap-4">
+          {denied && <Alert><AlertDescription>{denied}</AlertDescription></Alert>}
+          {draft.required && populated.isFetching && <Spinner aria-label={tMeta.categories.inheritance.loading} />}
+          {draft.required && populated.isError && <Alert variant="destructive"><AlertDescription>{populated.error instanceof ApiError ? populated.error.message : t.common.error}<Button variant="outline" onClick={() => populated.refetch()}>{tMeta.categories.inheritance.retry}</Button></AlertDescription></Alert>}
+          <fieldset disabled={!!denied || unbinding !== null || unbind.isPending}>
           <FieldForm
             mode="edit"
             idPrefix="fe"
@@ -312,6 +310,7 @@ export function FieldEditor({ field, onClose }: Props) {
             bindModeFrozen={draft.bindTo.length > 0 || draft.bindVendors.length > 0}
             impact={populated.data}
           />
+          </fieldset>
 
           {(referrers.data ?? []).length > 0 && (
             <p className="text-sm text-muted-foreground">
@@ -361,7 +360,7 @@ export function FieldEditor({ field, onClose }: Props) {
               buttons that get pressed on the way out. */}
           <ConfirmDialog
             trigger={
-              <Button variant="destructive" className="mr-auto" disabled={remove.isPending}>
+              <Button variant="destructive" className="mr-auto" disabled={!!denied || remove.isPending || unbinding !== null}>
                 {tConfig.field.delete}
               </Button>
             }
@@ -375,7 +374,7 @@ export function FieldEditor({ field, onClose }: Props) {
           <DialogClose asChild>
             <Button variant="ghost">{t.common.cancel}</Button>
           </DialogClose>
-          <Button onClick={submit} disabled={save.isPending}>
+          <Button onClick={submit} disabled={!!denied || save.isPending || unbinding !== null}>
             {save.isPending && <Spinner aria-hidden />}
             {save.isPending ? tConfig.field.saving : tConfig.field.save}
           </Button>
@@ -394,7 +393,7 @@ export function FieldEditor({ field, onClose }: Props) {
           />
         </DialogFooter>
         <ConfirmDialog
-          open={unbinding !== null}
+          open={unbinding !== null && draft.bindMode === "device"}
           onOpenChange={(next) => !next && setUnbinding(null)}
           title={tMeta.categories.unbindTitle}
           description={tMeta.categories.unbindHint(field.label)}
@@ -403,9 +402,13 @@ export function FieldEditor({ field, onClose }: Props) {
             unbinding &&
             (draft.bindMode === "device"
               ? unbindModel.mutate(unbinding)
-              : unbind.mutate(unbinding))
+              : undefined)
           }
         />
+        {unbinding !== null && draft.bindMode === "category" && <InheritanceConfirmation categories={categories.data ?? []}
+          load={(params) => api.post<CategoryPreview>(`/categories/${unbinding}/bindings/${field.id}/unbind-preview?${params}`, {})}
+          onConfirm={(token) => unbind.mutateAsync({ categoryID: unbinding, token })}
+          onCancel={() => setUnbinding(null)} confirmLabel={tMeta.categories.unbind} />}
         <ConfirmDialog
           open={unbindingVendor !== null}
           onOpenChange={(next) => !next && setUnbindingVendor(null)}

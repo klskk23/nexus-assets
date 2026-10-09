@@ -40,7 +40,7 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	sch := schema.New(db)
+	sch := schema.NewWithEffects(db, asset.NewSchemaEffects())
 	hs := holder.New(db)
 	us := auth.NewStore(db)
 	as := asset.NewService(db, sch)

@@ -17,8 +17,10 @@ func TestNonUniqueDisplayKeyKeepsFieldSettingsAndReferenceGuards(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	choices := []string{field.ID}
 	created, err := s.CreateCategory(ctx, CreateCategoryInput{
 		Code: "NEW", Name: "New child", ParentID: &root.ID, DisplayKey: "rack",
+		InheritedFieldIDs: &choices,
 	})
 	if err != nil {
 		t.Fatalf("create with inherited non-unique display key: %v", err)
@@ -27,7 +29,7 @@ func TestNonUniqueDisplayKeyKeepsFieldSettingsAndReferenceGuards(t *testing.T) {
 		t.Fatalf("display key = %q", created.DisplayKey)
 	}
 	key := "rack"
-	if _, err := s.UpdateCategory(ctx, child.ID, UpdateCategoryInput{DisplayKey: &key}); err != nil {
+	if _, err := s.UpdateCategory(ctx, child.ID, UpdateCategoryInput{DisplayKey: &key, InheritedFieldIDs: &choices}); err != nil {
 		t.Fatalf("select inherited non-unique field: %v", err)
 	}
 	got, err := s.GetField(ctx, field.ID)
@@ -49,7 +51,7 @@ func TestNonUniqueDisplayKeyKeepsFieldSettingsAndReferenceGuards(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := s.Unbind(ctx, root.ID, field.ID); err != nil {
+	if err := confirmedUnbind(t, s, ctx, root.ID, field.ID); err != nil {
 		t.Fatalf("clearing display keys releases the binding: %v", err)
 	}
 }

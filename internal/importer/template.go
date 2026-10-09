@@ -68,12 +68,16 @@ func (s *Service) Columns(ctx context.Context, lang i18n.Lang, categoryID string
 		keys = append(keys, c.key)
 		labels = append(labels, i18n.M(c.labelKey).In(lang))
 	}
+	seen := map[string]bool{}
 	for _, f := range fields {
 		// A computed value is derived, never supplied, so offering a column for
 		// it would invite someone to fill it in and have it silently ignored.
-		if f.Type == model.FieldComputed {
+		if f.Type == model.FieldComputed || seen[f.Key] {
 			continue
 		}
+		// Disjoint device definitions may share a key. CSV input has one slot
+		// per key; row validation still selects the actual model's definition.
+		seen[f.Key] = true
 		keys = append(keys, f.Key)
 		label := f.Label
 		if f.Required {

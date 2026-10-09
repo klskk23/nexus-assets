@@ -16,7 +16,7 @@ import { StatusBadge } from "@/features/statuses/StatusBadge"
 import { SearchSelect } from "@/features/common/SearchSelect"
 import { StateBoundary } from "@/components/StateBoundary"
 import { DynamicForm } from "@/features/assets/DynamicForm"
-import { attrText, fieldsForModel } from "@/features/assets/modelFields"
+import { attrText, effectiveValues, fieldsForModel } from "@/features/assets/modelFields"
 import { MovementCell } from "@/features/transfers/MovementCell"
 import { TableFrame } from "@/features/common/TableFrame"
 import {
@@ -88,6 +88,7 @@ export function AssetDetail() {
   const [banner, setBanner] = useState<string | null>(null)
   const [editing, setEditing] = useState<Transfer | null>(null)
   const [editOpen, setEditOpen] = useState(false)
+  const [schemaStale, setSchemaStale] = useState(false)
   const [transferOpen, setTransferOpen] = useState(false)
   const [note, setNote] = useState("")
   const [modelId, setModelId] = useState<string | null>(null)
@@ -158,7 +159,7 @@ export function AssetDetail() {
         home_holder_type: homeID === NONE ? null : "entity",
         home_holder_id: homeID === NONE ? null : homeID,
         home_owner_id: homeOwnerID === NONE ? null : homeOwnerID,
-        attrs: values,
+        attrs: effectiveValues(values, fieldsForModel(schema.data?.fields ?? [], modelId)),
         note,
         version: asset!.version,
       }),
@@ -190,7 +191,8 @@ export function AssetDetail() {
         // so the form stays open on it. Anything about the record as a whole
         // -- a stale version, a refused permission -- has nowhere to sit in
         // the form, and its banner is on the page, which a modal hides.
-        if (Object.keys(fields).length === 0) setEditOpen(false)
+        if (err.code === "schema_stale") setSchemaStale(true)
+        else if (Object.keys(fields).length === 0) setEditOpen(false)
       }
     },
   })
@@ -543,6 +545,20 @@ export function AssetDetail() {
                     <DialogDescription>{t.assets.editAttrsHint}</DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-6">
+                    {schemaStale && <Alert variant="destructive"><AlertDescription className="grid gap-2">
+                      {banner}
+                      <Button variant="outline" disabled={schema.isFetching} onClick={async () => {
+                        const result = await schema.refetch()
+                        if (result.isSuccess) {
+                          setSchemaStale(false)
+                          setBanner(null)
+                        } else {
+                          setBanner(result.error instanceof ApiError ? result.error.message : t.common.error)
+                        }
+                      }}>
+                        {schema.isFetching && <Spinner aria-hidden />}{t.assets.refreshSchema}
+                      </Button>
+                    </AlertDescription></Alert>}
                     {/* A sentence that belongs to the device and to no category's
                   schema: the scratch on the lid, the trial it is out on. It
                   sits with the built-ins because that is what it is. */}
@@ -635,7 +651,7 @@ export function AssetDetail() {
                     </>
 
                     <DialogFooter>
-                      <Button onClick={() => save.mutate()} disabled={save.isPending}>
+                      <Button onClick={() => save.mutate()} disabled={save.isPending || schemaStale || schema.isFetching}>
                         {save.isPending && <Spinner aria-hidden />}
                         {save.isPending ? t.assets.saving : t.assets.save}
                       </Button>

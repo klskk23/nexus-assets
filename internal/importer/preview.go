@@ -7,12 +7,12 @@ import (
 	"encoding/csv"
 	"errors"
 	"io"
-	"slices"
 	"strings"
 
 	"github.com/klskk23/nexus-assets/internal/asset"
 	"github.com/klskk23/nexus-assets/internal/i18n"
 	"github.com/klskk23/nexus-assets/internal/model"
+	"github.com/klskk23/nexus-assets/internal/schema"
 )
 
 // bom is the UTF-8 byte order mark Excel expects on a CSV.
@@ -128,18 +128,39 @@ func (s *Service) check(ctx context.Context, lang i18n.Lang, categoryID, actorID
 		return report, i18n.M(i18n.KeyImportNoRows)
 	}
 
-	look, err := s.buildLookups(ctx, categoryID)
+	snapshot, err := s.schema.Snapshot(ctx)
 	if err != nil {
 		return report, err
+	}
+	look, err := s.buildLookups(ctx, snapshot, categoryID)
+	if err != nil {
+		return report, err
+	}
+	prepared := make([]preparedRow, len(rows))
+	for i, row := range rows {
+		prepared[i] = s.prepareRow(ctx, snapshot, lang, categoryID, actorID, look, row, batchID)
 	}
 
 	commit := batchID != nil
 	err = s.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		report.Rows = report.Rows[:0]
-		report.OK = 0
-
-		for _, row := range rows {
-			res := s.checkRow(ctx, tx, lang, categoryID, actorID, look, row, batchID)
+		writer, err := s.assets.BeginPersistence(ctx, tx)
+		if err != nil {
+			return err
+		}
+		// Preflight the entire batch before the first asset write. A stale row
+		// is a batch error, not an ordinary validation message to collect.
+		for _, row := range prepared {
+			if row.prep != nil {
+				if err := writer.Check(*row.prep); err != nil {
+					return err
+				}
+			}
+		}
+		for _, row := range prepared {
+			res, err := persistRow(ctx, writer, lang, row)
+			if err != nil {
+				return err
+			}
 			if res.Status == "ok" {
 				report.OK++
 			}
@@ -158,8 +179,13 @@ func (s *Service) check(ctx context.Context, lang i18n.Lang, categoryID, actorID
 	return report, nil
 }
 
-func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, lang i18n.Lang, categoryID, actorID string,
-	look *lookups, row parsedRow, batchID *string) RowResult {
+type preparedRow struct {
+	result RowResult
+	prep   *asset.Prepared
+}
+
+func (s *Service) prepareRow(ctx context.Context, snapshot *schema.SchemaSnapshot, lang i18n.Lang, categoryID, actorID string,
+	look *lookups, row parsedRow, batchID *string) preparedRow {
 
 	res := RowResult{Line: row.line, Status: "error", Fields: map[string]string{}}
 
@@ -198,27 +224,39 @@ func (s *Service) checkRow(ctx context.Context, tx *sql.Tx, lang i18n.Lang, cate
 		in.Holder = model.Holder{Type: model.HolderTypeEntity, ID: entity.ID}
 	}
 
-	readAttrs(lang, look, row, &in, &res)
+	if err := readAttrs(snapshot, lang, look, row, &in, &res); err != nil {
+		collect(&res, err, lang)
+	}
 
 	if len(res.Fields) > 0 {
-		return res
+		return preparedRow{result: res}
 	}
 
-	prep, err := s.assets.Prepare(ctx, in)
+	prep, err := s.assets.PrepareWithSnapshot(ctx, snapshot, in)
 	if err != nil {
 		collect(&res, err, lang)
-		return res
+		return preparedRow{result: res}
 	}
-	created, err := s.assets.Persist(ctx, tx, prep)
-	if err != nil {
-		collect(&res, err, lang)
-		return res
-	}
+	return preparedRow{result: res, prep: &prep}
+}
 
+func persistRow(ctx context.Context, writer *asset.Persistence, lang i18n.Lang, row preparedRow) (RowResult, error) {
+	res := row.result
+	if row.prep == nil {
+		return res, nil
+	}
+	created, err := writer.Persist(ctx, *row.prep)
+	if errors.Is(err, asset.ErrSchemaStale) {
+		return res, err
+	}
+	if err != nil {
+		collect(&res, err, lang)
+		return res, nil
+	}
 	res.Status = "ok"
-	res.Display = model.AssetDisplayName(created.ID, created.Attrs, look.displayKey)
+	res.Display = created.DisplayName
 	res.Fields = nil
-	return res
+	return res, nil
 }
 
 // collect turns a pipeline error into per-field messages, keeping the row's
@@ -238,40 +276,35 @@ func collect(res *RowResult, err error, lang i18n.Lang) {
 	res.Fields["_row"] = i18n.Text(err, lang)
 }
 
-// readAttrs moves the row's field columns onto the input, refusing the ones
-// that do not belong to the model the row names.
-//
-// Its own function so checkRow stays inside the complexity limit -- and
-// because "which columns count as attributes" is one question, kept in one
-// place rather than mixed in with resolving models and holders.
-func readAttrs(lang i18n.Lang, look *lookups, row parsedRow, in *asset.SaveInput, res *RowResult) {
+// readAttrs accepts only fields effective for this row's category and model.
+// A mixed-model template can keep inapplicable columns empty, but a nonempty
+// value must never be silently discarded, including an archived parent field.
+func readAttrs(snapshot *schema.SchemaSnapshot, lang i18n.Lang, look *lookups, row parsedRow, in *asset.SaveInput, res *RowResult) error {
+	modelID := ""
+	if in.ModelID != nil {
+		modelID = *in.ModelID
+	}
+	fields, err := snapshot.FieldsForAsset(look.categoryPath, modelID)
+	if err != nil {
+		return err
+	}
+	effective := make(map[string]bool, len(fields))
+	for _, f := range schema.ActiveFields(fields) {
+		effective[f.Key] = true
+	}
 	for key, raw := range row.byKey {
 		if key == ColModel || key == ColVendor || key == ColHolder || key == ColNote || raw == "" {
 			continue
 		}
-		f, known := look.fieldByKey[key]
-		if !known {
-			// An unknown column is ignored rather than fatal: a template kept
-			// from before a field was unbound should still import.
-			continue
-		}
-		// A model-bound column filled in for a model it does not belong to
-		// (015, decision 102). Refused rather than dropped: whoever typed the
-		// value meant it, and the likely mistake is the model column, not this
-		// one -- silently discarding it would hide which.
-		if len(f.ModelIDs) > 0 && !appliesToModel(f, in.ModelID) {
-			res.Fields[key] = i18n.M(i18n.KeyFieldNotForModel, f.Label).In(lang)
+		if !effective[key] {
+			if f, known := look.fieldByKey[key]; known {
+				res.Fields[key] = i18n.M(i18n.KeyFieldNotForModel, f.Label).In(lang)
+			} else {
+				res.Fields[key] = i18n.M(i18n.KeyDepUnbound, key).In(lang)
+			}
 			continue
 		}
 		in.Attrs[key] = raw
 	}
-}
-
-// appliesToModel says whether a model-bound field belongs to the device a row
-// describes. A row that names no model is covered by none of them.
-func appliesToModel(f model.BoundField, modelID *string) bool {
-	if modelID == nil {
-		return false
-	}
-	return slices.Contains(f.ModelIDs, *modelID)
+	return nil
 }

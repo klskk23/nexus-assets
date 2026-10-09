@@ -37,6 +37,12 @@ export interface FieldDefinitionRow {
   required?: boolean
 }
 
+export interface InheritanceCandidate {
+  field: FieldDefinitionRow
+  source_category_id: string
+  selected: boolean
+}
+
 export interface ProductModelRow {
   id: string
   name: string

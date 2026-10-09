@@ -4,6 +4,10 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+
+	"github.com/pressly/goose/v3"
+
+	"github.com/klskk23/nexus-assets/migrations"
 )
 
 func TestMigrateUpAndDown(t *testing.T) {
@@ -21,7 +25,7 @@ func TestMigrateUpAndDown(t *testing.T) {
 
 	want := []string{
 		"users", "holder_entities", "categories", "field_definitions",
-		"category_fields", "product_models",
+		"category_fields", "category_field_selections", "product_models",
 		"assets", "asset_unique_values", "asset_transfers", "audit_log",
 		"statuses", "sessions", "api_keys",
 	}
@@ -37,7 +41,7 @@ func TestMigrateUpAndDown(t *testing.T) {
 	}
 
 	// The partial indexes an ORM could not express.
-	for _, idx := range []string{"ux_uv_live", "ux_default_stock"} {
+	for _, idx := range []string{"ux_uv_live", "ux_default_stock", "ix_category_field_selections_field"} {
 		var n int
 		q := `SELECT count(*) FROM sqlite_master WHERE type = 'index' AND name = ?`
 		if err := s.read.QueryRowContext(ctx, q, idx).Scan(&n); err != nil {
@@ -108,6 +112,9 @@ func TestMigrateUpAndDown(t *testing.T) {
 			t.Errorf("assets should carry %s after 008", c)
 		}
 	}
+	if column("asset_unique_values", "search_suppressed") != 1 {
+		t.Error("asset_unique_values should carry search_suppressed after 024")
+	}
 
 	// 009 marks which side of the expression-syntax change a database is on.
 	var marker int
@@ -120,55 +127,91 @@ func TestMigrateUpAndDown(t *testing.T) {
 		t.Error("009 should have created the expression-syntax marker table")
 	}
 
-	// Rolling back one revision at a time must restore each earlier shape
-	// exactly, so a half-applied upgrade can be undone rather than requiring a
-	// fresh file.
-	// The list is every revision above 008, newest first. It is spelled out
-	// rather than counted so that adding a migration and forgetting this line
-	// fails here -- which is what happened when 021 arrived, and is better than
-	// the alternative: each step below would silently roll back one revision
-	// too few and report the wrong shape as a regression.
+	// An empty database can safely roll back 024. A populated one is checked by
+	// the selective-inheritance migration regression, where the guard must reject
+	// the down before any table is changed.
+	if err := s.MigrateDown(ctx); err != nil {
+		t.Fatalf("MigrateDown 024: %v", err)
+	}
+	var version int64
+	if err := s.read.QueryRowContext(ctx,
+		`SELECT max(version_id) FROM goose_db_version WHERE is_applied = 1`).Scan(&version); err != nil {
+		t.Fatalf("read migration version after down: %v", err)
+	}
+	if version != 23 {
+		t.Fatalf("migration version after down = %d, want 23", version)
+	}
+	if column("asset_unique_values", "search_suppressed") != 0 {
+		t.Fatal("down left search_suppressed on an empty database")
+	}
+
+	// Older migrations remain individually reversible. Use a separate database
+	// at 023 so the intentionally unsupported 024 Down is not crossed by this
+	// historical shape test.
+	legacy, err := Open(filepath.Join(t.TempDir(), "migrate-023.db"))
+	if err != nil {
+		t.Fatalf("Open legacy rollback db: %v", err)
+	}
+	defer func() { _ = legacy.Close() }()
+	if err := goose.SetDialect("sqlite3"); err != nil {
+		t.Fatalf("set goose dialect: %v", err)
+	}
+	goose.SetBaseFS(migrations.FS)
+	if err := goose.UpToContext(ctx, legacy.write, ".", 23); err != nil {
+		t.Fatalf("migrate legacy rollback db to 023: %v", err)
+	}
+
+	legacyColumn := func(table, name string) int {
+		t.Helper()
+		var n int
+		if err := legacy.read.QueryRowContext(ctx,
+			`SELECT count(*) FROM pragma_table_info(?) WHERE name = ?`, table, name).Scan(&n); err != nil {
+			t.Fatalf("check legacy %s.%s: %v", table, name, err)
+		}
+		return n
+	}
+	// Rolling back one revision at a time must restore each earlier shape.
 	for _, rev := range []string{"023", "022", "021", "020", "019", "018", "017", "016", "015", "014", "013", "012", "011", "010", "009"} {
-		if err := s.MigrateDown(ctx); err != nil {
-			t.Fatalf("MigrateDown %s: %v", rev, err)
+		if err := legacy.MigrateDown(ctx); err != nil {
+			t.Fatalf("legacy MigrateDown %s: %v", rev, err)
 		}
 	}
 
-	if err := s.MigrateDown(ctx); err != nil {
-		t.Fatalf("MigrateDown 008: %v", err)
+	if err := legacy.MigrateDown(ctx); err != nil {
+		t.Fatalf("legacy MigrateDown 008: %v", err)
 	}
-	if column("assets", "home_holder_id") != 0 {
+	if legacyColumn("assets", "home_holder_id") != 0 {
 		t.Error("down from 008 should have dropped the home columns")
 	}
 
-	if err := s.MigrateDown(ctx); err != nil {
-		t.Fatalf("MigrateDown 007: %v", err)
+	if err := legacy.MigrateDown(ctx); err != nil {
+		t.Fatalf("legacy MigrateDown 007: %v", err)
 	}
-	if column("statuses", "requires_location") != 1 {
+	if legacyColumn("statuses", "requires_location") != 1 {
 		t.Error("down from 007 should have restored requires_location")
 	}
 
-	if err := s.MigrateDown(ctx); err != nil {
-		t.Fatalf("MigrateDown 006: %v", err)
+	if err := legacy.MigrateDown(ctx); err != nil {
+		t.Fatalf("legacy MigrateDown 006: %v", err)
 	}
-	if column("holder_entities", "archived_at") != 1 {
+	if legacyColumn("holder_entities", "archived_at") != 1 {
 		t.Error("down from 006 should have restored archived_at")
 	}
 
-	if err := s.MigrateDown(ctx); err != nil {
-		t.Fatalf("MigrateDown 005: %v", err)
+	if err := legacy.MigrateDown(ctx); err != nil {
+		t.Fatalf("legacy MigrateDown 005: %v", err)
 	}
-	if column("holder_entities", "note") != 0 {
+	if legacyColumn("holder_entities", "note") != 0 {
 		t.Error("down from 005 should have dropped holder_entities.note")
 	}
 
 	// One more revision back takes the statuses table with it.
-	if err := s.MigrateDown(ctx); err != nil {
-		t.Fatalf("MigrateDown 004: %v", err)
+	if err := legacy.MigrateDown(ctx); err != nil {
+		t.Fatalf("legacy MigrateDown 004: %v", err)
 	}
 	for table, wantN := range map[string]int{"statuses": 0, "product_model_categories": 1} {
 		var n int
-		if err := s.read.QueryRowContext(ctx,
+		if err := legacy.read.QueryRowContext(ctx,
 			`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&n); err != nil {
 			t.Fatalf("check %s after down: %v", table, err)
 		}
@@ -181,7 +224,7 @@ func TestMigrateUpAndDown(t *testing.T) {
 		{"product_models", "category_id"}:    0,
 	} {
 		var n int
-		if err := s.read.QueryRowContext(ctx,
+		if err := legacy.read.QueryRowContext(ctx,
 			`SELECT count(*) FROM pragma_table_info(?) WHERE name = ?`, spec[0], spec[1]).Scan(&n); err != nil {
 			t.Fatalf("check %s.%s after down: %v", spec[0], spec[1], err)
 		}
@@ -336,7 +379,7 @@ func TestMigrateConvertsEnumAndReferenceFieldsToText(t *testing.T) {
 	}
 	// Back past the withdrawal, so the rows can be written in the shape that
 	// revision allowed.
-	for _, rev := range []string{"023", "022", "021", "020", "019", "018", "017", "016", "015", "014", "013", "012", "011", "010"} {
+	for _, rev := range []string{"024", "023", "022", "021", "020", "019", "018", "017", "016", "015", "014", "013", "012", "011", "010"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -397,7 +440,7 @@ func TestMigrateMovesRequiredOntoTheField(t *testing.T) {
 	// Back to before the move, so the rows can be written the way that
 	// revision allowed: required on the binding. Two steps, because 019 sits
 	// on top of it now.
-	for _, rev := range []string{"023", "022", "021", "020", "019", "018"} {
+	for _, rev := range []string{"024", "023", "022", "021", "020", "019", "018"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -441,7 +484,7 @@ func TestMigrateMovesRequiredOntoTheField(t *testing.T) {
 
 	// And going back down puts it where the older code reads it. Two steps
 	// again: the Migrate above went all the way up to 019.
-	for _, rev := range []string{"023", "022", "021", "020", "019", "018"} {
+	for _, rev := range []string{"024", "023", "022", "021", "020", "019", "018"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}
@@ -477,7 +520,7 @@ func TestMigrateVendorsBackfillVerbatim(t *testing.T) {
 	}
 	// Down to below 019, one migration at a time. Every revision added after
 	// it lengthens this walk, which is the whole reason it is a loop.
-	for _, rev := range []string{"023", "022", "021", "020", "019"} {
+	for _, rev := range []string{"024", "023", "022", "021", "020", "019"} {
 		if err := s.MigrateDown(ctx); err != nil {
 			t.Fatalf("MigrateDown %s: %v", rev, err)
 		}

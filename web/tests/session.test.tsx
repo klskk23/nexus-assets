@@ -27,6 +27,17 @@ function json(status: number, body: unknown) {
 }
 
 describe("session renewal", () => {
+  it("preserves a DELETE confirmation body through renewal and keeps legacy deletes bodyless", async () => {
+    setToken("stale")
+    fetchMock.mockResolvedValueOnce(json(401, { error: { code: "unauthenticated" } }))
+      .mockResolvedValueOnce(json(200, { token: "fresh", user: { id: "u1" } }))
+      .mockResolvedValue(json(200, {}))
+    await api.del("/categories/c/bindings/f", { confirmation_token: "signed-impact" })
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: "DELETE", body: '{"confirmation_token":"signed-impact"}' })
+    expect(fetchMock.mock.calls[2][1]).toMatchObject({ method: "DELETE", body: '{"confirmation_token":"signed-impact"}' })
+    await api.del("/categories/c")
+    expect(fetchMock.mock.calls[3][1].body).toBeUndefined()
+  })
   it("refreshes once and replays the request that met the 401", async () => {
     setToken("stale")
     fetchMock

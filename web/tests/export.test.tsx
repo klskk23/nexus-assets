@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { screen, waitFor, within } from "@testing-library/react"
+import { act, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { Assets } from "@/routes/Assets"
@@ -94,6 +94,17 @@ function exported(): URLSearchParams {
 }
 
 describe("export from the asset list", () => {
+  it("drops withdrawn fields from a previously edited export selection after schema refetch", async () => {
+    const user = userEvent.setup()
+    const { client: queryClient } = renderWithProviders(<Assets />, { route: "/assets?category_id=net" })
+    const dialog = await openExport(user)
+    await user.click(await within(dialog).findByRole("checkbox", { name: /固件版本/ }))
+    get.mockImplementation((p: string) => p.includes("/schema") ? Promise.resolve({ ...schema, fields: [schema.fields[1]] }) : statusRoute(p) ?? Promise.resolve(p === "/categories" ? categories : p === "/users" ? users : p === "/holders" ? holders : page))
+    await act(async () => { await queryClient.invalidateQueries({ queryKey: ["schema"] }) })
+    await waitFor(() => expect(within(dialog).queryByRole("checkbox", { name: /基准 MAC/ })).not.toBeInTheDocument())
+    await user.click(within(dialog).getByRole("button", { name: "导出" }))
+    await waitFor(() => expect(exported().get("fields")).toBe(""))
+  })
   // Ticking rows is a different request from filtering: what was ticked, and
   // one file per category, because one CSV cannot hold two categories' fields.
   describe("the ticked devices", () => {

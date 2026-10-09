@@ -223,7 +223,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Asset" }
-        "409": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/AssetWriteConflict" }
         "422": { $ref: "#/components/responses/Error" }
 
   /assets/{id}:
@@ -259,7 +259,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Asset" }
-        "409": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/AssetWriteConflict" }
     delete:
       tags: [assets]
       summary: 硬删并级联流转历史与唯一值。需带 confirm 二次确认（输入该资产的显示编号）
@@ -434,7 +434,92 @@ paths:
         - { $ref: "#/components/parameters/ListLimit" }
       responses:
         "200": { description: OK }
-    post: { tags: [metadata], summary: 新建类别, responses: { "201": { description: Created } } }
+    post:
+      tags: [metadata]
+      summary: 新建类别并一次保存继承选择、编号和打印配置
+      description: >
+        需要 schema.manage。code 与 name 必须非空。
+        inherited_field_ids 省略或 [] 表示不继承，null 非法；只能选择直接父类的有效字段 ID。
+        print_preset_ids 随创建保存，不要求部署已配置打印服务。
+        confirmation_token 为服务端预览签发的确认凭据，不替代写权限；无撤回时无需凭据。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoryCreate" }
+      responses:
+        "201":
+          description: 已创建并保存完整草稿
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "400": { $ref: "#/components/responses/CategoryDraftInvalid" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/CategoryDraftNotFound" }
+        "409": { $ref: "#/components/responses/CategoryDraftConflict" }
+        "422": { $ref: "#/components/responses/CategoryDraftUnprocessable" }
+
+  /categories/preview:
+    post:
+      tags: [metadata]
+      summary: 只读预览新建类别草稿
+      description: >
+        必须认证，但不需要 schema.manage；不写库、不产生审计记录。
+        接受创建草稿，code 与 name 可暂缺；{} 预览空根类别。
+        category.id 是仅用于投影的临时标识，不是已持久化的 UUID。
+        依赖、编号和移动等业务问题返回 200 + issues；输入形状、非法候选及树环返回 400，
+        父类不存在返回 404。存量资产同步不可用时仍返回 200，issues 含 schema_effects_unavailable。
+        新建草稿无撤回时 requires_confirmation 为 false、confirmation_token 为空。
+        预览不提交已有凭据；编辑及解绑预览对无 issues 的撤回签发 HMAC-SHA256 确认凭据。
+      parameters:
+        - { $ref: "#/components/parameters/CandidatesOffset" }
+        - { $ref: "#/components/parameters/CandidatesLimit" }
+        - { $ref: "#/components/parameters/ImpactOffset" }
+        - { $ref: "#/components/parameters/ImpactLimit" }
+        - { $ref: "#/components/parameters/IssuesOffset" }
+        - { $ref: "#/components/parameters/IssuesLimit" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoryDraft" }
+      responses:
+        "200": { $ref: "#/components/responses/CategoryPreview" }
+        "400": { $ref: "#/components/responses/CategoryDraftInvalid" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/CategoryDraftNotFound" }
+
+  /categories/{id}/preview:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [metadata]
+      summary: 只读预览已有类别的完整编辑草稿
+      description: >
+        必须认证，但不需要 schema.manage；{} 加载当前配置，不写库、不产生审计记录。
+        接受与 PATCH 相同的草稿；code 不可修改，预览无需提交 confirmation_token。
+        换父且省略 inherited_field_ids 时保留原选择与新父有效字段的 ID 交集；
+        显式提交非法候选返回 400，不静默过滤。依赖、编号和移动等业务问题返回 200 + issues。
+        完整影响包含撤回且 issues 为空时签发 confirmation_token，即使没有受影响资产也需确认。
+        凭据绑定完整草稿、相关 schema、全部影响及资产校验数据，不受响应分页裁剪；存在 issues 时不签发。
+      parameters:
+        - { $ref: "#/components/parameters/CandidatesOffset" }
+        - { $ref: "#/components/parameters/CandidatesLimit" }
+        - { $ref: "#/components/parameters/ImpactOffset" }
+        - { $ref: "#/components/parameters/ImpactLimit" }
+        - { $ref: "#/components/parameters/IssuesOffset" }
+        - { $ref: "#/components/parameters/IssuesLimit" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoryDraft" }
+      responses:
+        "200": { $ref: "#/components/responses/CategoryPreview" }
+        "400": { $ref: "#/components/responses/CategoryDraftInvalid" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/CategoryDraftNotFound" }
 
   /categories/counts:
     get:
@@ -506,10 +591,31 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     patch:
       tags: [metadata]
-      summary: 改名 / 改 display_key / 移动位置。子树下有资产时拒绝移动
+      summary: 一次保存名称、父级、继承选择、编号和打印配置
+      description: >
+        需要 schema.manage；code 不可修改。parent_id 省略表示不移动，null 表示移到根；
+        子树下有资产时仍拒绝移动。inherited_field_ids 省略表示不主动修改，[] 表示清空，null 非法。
+        换父且省略选择时只保留与新父有效字段的 ID 交集，失去来源的选择进入撤回影响。
+        包含撤回的保存必须提交同一完整草稿的 confirmation_token；缺失返回 409 confirmation_required，
+        非空凭据与当前操作、草稿或影响不匹配返回 409 impact_stale。写事务中重新规划和校验，失败零写入。
+        凭据采用进程内随机密钥 HMAC-SHA256，重启后失效；客户端保留草稿并重新预览、人工确认，禁止自动重试。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoryDraft" }
       responses:
-        "200": { description: OK }
-        "409": { $ref: "#/components/responses/Error" }
+        "200":
+          description: 已保存完整草稿
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "400": { $ref: "#/components/responses/CategoryDraftInvalid" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/CategoryDraftNotFound" }
+        "409": { $ref: "#/components/responses/CategoryDraftConflict" }
+        "422": { $ref: "#/components/responses/CategoryDraftUnprocessable" }
 
   /categories/{id}/delete:
     delete:
@@ -544,8 +650,10 @@ paths:
     # model was not attached silently lost that model's fields.
     get:
       tags: [metadata]
-      summary: 该类别的有效信息项集（祖先并集、必填、排序、options）与它选定的显示编号
-      description: 动态表单、筛选器与 CSV 模板的唯一数据源
+      summary: 该类别的有效字段集（自身绑定与显式继承、必填、排序、options）及显示编号
+      description: >
+        动态表单、筛选器与 CSV 模板的共同字段来源；不混入未选择的父类候选。
+        无 model_id 时仅返回类别有效字段，有 model_id 时再合入该型号及厂商的有效设备字段
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
       responses:
@@ -695,6 +803,25 @@ paths:
         "204": { description: Deleted }
         "409": { $ref: "#/components/responses/Error" }
 
+  /fields/{id}/asset-count:
+    get:
+      tags: [metadata]
+      summary: 字段实际影响的去重资产数
+      description: >
+        必须认证，沿用元数据读默认开放规则，不需要 schema.manage。
+        按字段 ID 的实际有效到达计数，包含显式类别继承、型号与厂商字段，
+        同一资产只计一次；不将类别祖先整个子树当作继承范围。字段不存在返回 404。
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: 实际影响计数，零资产返回 count 为 0
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FieldAssetCount" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
   /fields/{id}/referrers:
     get:
       tags: [metadata]
@@ -740,19 +867,60 @@ paths:
         "409": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
 
-  /categories/{id}/bindings/{field_id}:
-    delete:
+  /categories/{id}/bindings/{field_id}/unbind-preview:
+    post:
       tags: [metadata]
-      summary: 从类别解绑信息项。存量取值保留为孤儿键
+      summary: 只读预览直接解绑及下游继承撤回
       description: >
-        信息项没有停用机制，所以解绑是「不再需要某个字段但要留住存量数据」的唯一路径。
-        沿用绑定侧的护栏：被表达式键读取、或被选作显示编号时拒绝。
+        必须认证，但不需要 schema.manage；不写库、不产生审计记录。
+        使用与类别编辑相同的规划、分页和确认协议。issues 可定位恢复值或唯一性冲突资产；
+        完整影响含撤回且无 issues 时签发绑定本次解绑操作的确认凭据，不能用于其他类别或编辑操作。
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
         - { name: field_id, in: path, required: true, schema: { type: string } }
+        - { $ref: "#/components/parameters/CandidatesOffset" }
+        - { $ref: "#/components/parameters/CandidatesLimit" }
+        - { $ref: "#/components/parameters/ImpactOffset" }
+        - { $ref: "#/components/parameters/ImpactLimit" }
+        - { $ref: "#/components/parameters/IssuesOffset" }
+        - { $ref: "#/components/parameters/IssuesLimit" }
       responses:
-        "204": { description: Unbound }
-        "409": { $ref: "#/components/responses/Error" }
+        "200":
+          description: 解绑后的投影、完整影响统计与当前页明细
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CategoryPreview" }
+        "400": { $ref: "#/components/responses/CategoryDraftInvalid" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/CategoryDraftNotFound" }
+
+  /categories/{id}/bindings/{field_id}:
+    delete:
+      tags: [metadata]
+      summary: 确认后解绑类别字段，存量取值保留为孤儿键
+      description: >
+        需要 schema.manage。使用与编辑相同的规划器，在写事务中重新校验依赖、编号及完整影响。
+        可不带 body，但有撤回时缺少凭据返回 confirmation_required，非空凭据无效返回 impact_stale；
+        取消或拒绝均不改变直接绑定、下游选择及资产派生数据。型号与厂商解绑不套用本协议。
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: field_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirmation_token: { type: string, description: 本次解绑预览签发的凭据；省略或空串表示无凭据 }
+      responses:
+        "204": { description: 已解绑并同步下游选择与资产派生数据 }
+        "400": { $ref: "#/components/responses/CategoryDraftInvalid" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/CategoryDraftNotFound" }
+        "409": { $ref: "#/components/responses/CategoryDraftConflict" }
+        "422": { $ref: "#/components/responses/CategoryDraftUnprocessable" }
 
   /models:
     get:
@@ -1565,6 +1733,7 @@ paths:
                         fields:
                           type: object
                           additionalProperties: { type: string }
+        "409": { $ref: "#/components/responses/ImportSchemaStale" }
 
   /import/commit:
     post:
@@ -1589,6 +1758,7 @@ paths:
                 properties:
                   created: { type: integer }
                   batch_id: { type: string }
+        "409": { $ref: "#/components/responses/ImportSchemaStale" }
         "422": { $ref: "#/components/responses/Error" }
 
   /export.csv:
@@ -1630,6 +1800,36 @@ paths:
 
 components:
   parameters:
+    CandidatesOffset:
+      name: candidates_offset
+      in: query
+      description: 候选页偏移，独立于影响和问题页；负值归零，超出总数截到总数
+      schema: { type: integer, default: 0 }
+    CandidatesLimit:
+      name: candidates_limit
+      in: query
+      description: 候选页大小；省略或非正数取 50，大于 200 截到 200
+      schema: { type: integer, default: 50, maximum: 200 }
+    ImpactOffset:
+      name: impact_offset
+      in: query
+      description: 影响页偏移，独立于候选和问题页；负值归零，超出总数截到总数
+      schema: { type: integer, default: 0 }
+    ImpactLimit:
+      name: impact_limit
+      in: query
+      description: 影响页大小；省略或非正数取 50，大于 200 截到 200；不裁剪全量统计和校验
+      schema: { type: integer, default: 50, maximum: 200 }
+    IssuesOffset:
+      name: issues_offset
+      in: query
+      description: 问题页偏移，独立于候选和影响页；负值归零，超出总数截到总数
+      schema: { type: integer, default: 0 }
+    IssuesLimit:
+      name: issues_limit
+      in: query
+      description: 问题页大小；省略或非正数取 50，大于 200 截到 200
+      schema: { type: integer, default: 50, maximum: 200 }
     ListQ:
       name: q
       in: query
@@ -1667,6 +1867,79 @@ components:
       bearerFormat: JWT
 
   responses:
+    AssetWriteConflict:
+      description: >
+        schema_stale：准备保存后字段配置发生变化，在写事务首个领域写入前拒绝，本次保存零写入。
+        新建与编辑均受保护，即使资产 version 未变化也可能发生；不等同于 version_conflict。
+        保留输入，刷新字段配置并重新校验后再由用户提交，不自动重试。
+        既有 version_conflict、unique_conflict 等冲突仍使用同一错误信封。
+        error.message 按 Accept-Language 本地化，error.code 不翻译。
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+          examples:
+            schema_stale:
+              value:
+                error:
+                  code: schema_stale
+                  message: 字段配置已变化，请刷新后重试
+    ImportSchemaStale:
+      description: >
+        schema_stale：本次请求准备数据后，字段配置在事务内复核时已变化；预览或提交整体返回 409，
+        不降级为 200 的逐行错误或 422 validation_failed，不附带普通逐行 report。
+        预览不写入；提交整批回滚，已处理的有效行也不保留。保留文件并刷新预览，
+        由用户检查后重新提交，不自动重试。error.message 按 Accept-Language 本地化，error.code 不翻译。
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+          examples:
+            schema_stale:
+              value:
+                error:
+                  code: schema_stale
+                  message: 字段配置已变化，请刷新后重试
+    CategoryPreview:
+      description: 只读草稿投影；业务问题在 issues 中，三组分页相互独立
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/CategoryPreview" }
+    CategoryDraftInvalid:
+      description: >
+        validation_failed：JSON 或成员类型错误、非法继承候选、树环，或创建缺少非空 code/name。
+        继承错误以 error.fields.inherited_field_ids 定位；父级类型或树环错误以 parent_id 定位。
+        error.message 与 error.fields 的值按 Accept-Language 本地化。
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    CategoryDraftNotFound:
+      description: not_found：目标类别或父类别不存在
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    CategoryDraftConflict:
+      description: >
+        confirmation_required：存在撤回但缺少确认凭据；impact_stale：非空凭据无效、
+        与操作或完整草稿不匹配、schema/资产/影响已变化，或服务重启使凭据失效。
+        schema_effects_unavailable：存量资产派生同步不可用；category_has_assets：子树有资产，拒绝移动；
+        unique_conflict：字段 key 或恢复值等唯一性冲突。所有拒绝均零写入。
+        客户端保留草稿，刷新预览后再次人工确认，不得自动接受新凭据并重试。
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+          examples:
+            confirmation_required:
+              value:
+                error: { code: confirmation_required, message: "请先预览并确认字段撤回影响" }
+            impact_stale:
+              value:
+                error: { code: impact_stale, message: "影响已变化，请重新预览并确认" }
+    CategoryDraftUnprocessable:
+      description: >
+        validation_failed：最终有效集不满足编号或计算依赖等业务校验；
+        非法编号定位到 error.fields.display_key。预览中相应问题以 200 + issues 呈现。
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     Error:
       description: 统一错误 envelope
       content:
@@ -1803,6 +2076,172 @@ components:
           type: string
           description: 这次保存若产生了流转事件，写在那条事件上的说明。不可事后修改
 
+    CategoryDraft:
+      type: object
+      description: >
+        创建与编辑共用的草稿；预览允许未填完的名称和代号，创建保存另要求二者非空。
+        确认凭据绑定完整草稿；字段 ID 集合去重并排序，不将提交顺序视为业务变化。
+      properties:
+        confirmation_token:
+          type: string
+          description: 预览签发的不透明凭据；省略或空串表示无凭据，非空但不匹配返回 impact_stale；不替代写权限
+        code:
+          type: string
+          description: 创建代号；已有类别不可修改，PATCH 和编辑预览忽略此成员
+        name:
+          type: [string, "null"]
+          description: 名称；编辑省略或 null 表示不修改；创建保存必须非空
+        parent_id:
+          type: [string, "null"]
+          description: 创建省略或 null 为根；编辑省略不移动，null 移到根，字符串指定父类别
+        display_key:
+          type: [string, "null"]
+          description: 最终有效类别字段的 key；不要求唯一；空串清空，省略或 null 不修改；创建默认空串
+        print_preset_ids:
+          type: [array, "null"]
+          items: { type: string }
+          description: 打印预设标识列表；创建默认 []；编辑省略或 null 不修改，[] 清空
+        inherited_field_ids:
+          type: array
+          items: { type: string }
+          description: >
+            直接父类有效字段 ID 集合，重复项去重；不允许 null 或 null 元素。
+            创建省略或 [] 均不继承；编辑省略不主动修改，[] 明确清空。
+            换父且省略时取原选择与新父有效集的 ID 交集；显式非法候选返回 400，
+            不接受设备侧字段或跳过直接父类的字段。
+    CategoryCreate:
+      allOf:
+        - { $ref: "#/components/schemas/CategoryDraft" }
+        - type: object
+          required: [code, name]
+          properties:
+            code: { type: string, minLength: 1 }
+            name: { type: string, minLength: 1 }
+    CategoryPreview:
+      type: object
+      required: [category, inheritance, fields, impact, issues, requires_confirmation, confirmation_token]
+      properties:
+        category:
+          $ref: "#/components/schemas/Category"
+          description: 应用草稿后的投影；新建时 id 为临时标识、时间可为零值，不代表真实类别行
+        inheritance:
+          type: object
+          required: [parent_id, selected_field_ids, candidates]
+          properties:
+            parent_id: { type: [string, "null"] }
+            selected_field_ids:
+              type: array
+              items: { type: string }
+              description: 去重并排序的完整已选 ID 集合，不受候选页分页影响；空集为 []
+            candidates:
+              allOf:
+                - { $ref: "#/components/schemas/Page" }
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items: { $ref: "#/components/schemas/InheritanceCandidate" }
+        fields:
+          type: array
+          description: 草稿最终有效类别字段；不混入未选候选或设备字段；空集为 []
+          items: { $ref: "#/components/schemas/CategoryPreviewField" }
+        impact: { $ref: "#/components/schemas/CategoryImpact" }
+        issues:
+          allOf:
+            - { $ref: "#/components/schemas/Page" }
+            - type: object
+              properties:
+                items:
+                  type: array
+                  items: { $ref: "#/components/schemas/CategoryPreviewIssue" }
+        requires_confirmation:
+          type: boolean
+          description: 完整影响中存在 removed 时为 true，即使当前页无撤回项或受影响资产数为零
+        confirmation_token:
+          type: string
+          description: >
+            仅在 requires_confirmation 为 true 且完整 issues 为空时签发的不透明 HMAC-SHA256 凭据，其他情况为空串。
+            绑定操作、目标、规范化完整草稿、相关 schema、完整影响及资产身份/版本/校验数据。
+            分页不缩小签名范围；进程内密钥在重启后变化，旧凭据失效。
+    InheritanceCandidate:
+      type: object
+      required: [field, source_category_id, selected]
+      properties:
+        field: { $ref: "#/components/schemas/InheritanceFieldDefinition" }
+        source_category_id:
+          type: string
+          description: 原始类别绑定来源，不一定是直接父类别
+        selected: { type: boolean }
+    InheritanceFieldDefinition:
+      type: object
+      required: [id, key, label, type, options, is_unique, searchable, required, created_at, updated_at]
+      properties:
+        id: { type: string }
+        key: { type: string }
+        label: { type: string }
+        type: { type: string, enum: [text, number, boolean, date, mac, ip, url, computed] }
+        options: { type: object, additionalProperties: true }
+        is_unique: { type: boolean }
+        searchable: { type: boolean }
+        required: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CategoryPreviewField:
+      allOf:
+        - { $ref: "#/components/schemas/InheritanceFieldDefinition" }
+        - type: object
+          required: [sort, model_ids, vendor_ids]
+          properties:
+            sort: { type: integer }
+            inherited_from:
+              type: string
+              description: 原始类别绑定来源；本级直接绑定时省略
+            model_ids: { type: [array, "null"], items: { type: string } }
+            vendor_ids: { type: [array, "null"], items: { type: string } }
+    CategoryImpact:
+      description: 全量影响统计，不受 impact_offset/limit 裁剪；asset_count 为受影响资产去重数
+      allOf:
+        - { $ref: "#/components/schemas/Page" }
+        - type: object
+          required: [added_count, removed_count, source_changed_count, category_count, asset_count]
+          properties:
+            added_count: { type: integer, minimum: 0 }
+            removed_count: { type: integer, minimum: 0 }
+            source_changed_count: { type: integer, minimum: 0 }
+            category_count: { type: integer, minimum: 0 }
+            asset_count: { type: integer, minimum: 0 }
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/CategoryFieldDelta" }
+    CategoryFieldDelta:
+      type: object
+      required: [category_id, field_id, key, change]
+      properties:
+        category_id: { type: string }
+        field_id: { type: string }
+        key: { type: string }
+        change: { type: string, enum: [added, removed, source_changed] }
+        before_source_category_id: { type: string, description: 变更前的原始绑定来源；不存在时省略 }
+        after_source_category_id: { type: string, description: 变更后的原始绑定来源；不存在时省略 }
+    CategoryPreviewIssue:
+      type: object
+      required: [code, message]
+      description: 按问题提供类别、字段和资产 UUID 定位；不适用的定位成员省略
+      properties:
+        code: { type: string, description: 英文机器码 }
+        message: { type: string, description: 按 Accept-Language 本地化的问题说明 }
+        category_id: { type: string }
+        field_id: { type: string }
+        field_key: { type: string }
+        asset_id: { type: string, description: 受影响资产的 UUID }
+        conflict_asset_id: { type: string, description: 与恢复值发生唯一性冲突的另一资产 UUID }
+
+    FieldAssetCount:
+      type: object
+      required: [count]
+      properties:
+        count: { type: integer, minimum: 0, description: 字段实际有效到达范围内的去重资产数 }
+
     Category:
       type: object
       properties:
@@ -1814,8 +2253,14 @@ components:
         display_key:
           type: string
           description: >
-            指向该类别或祖先类别绑定的字段 key，字段不要求唯一。空串表示未设置。
+            指向该类别最终有效字段的 key（自身直接绑定或显式继承），字段不要求唯一。空串表示未设置。
             不沿祖先链继承；未设置或字段值为空时资产以 UUID 前 8 位指代；设备内部身份始终是 UUID
+        print_preset_ids:
+          type: array
+          items: { type: string }
+          description: 该类别保存的打印预设标识；空集为 []
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
 
     ProductModel:
       type: object
